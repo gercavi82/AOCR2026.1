@@ -13,6 +13,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Infrastructure;
 
 namespace CapaPresentacion
 {
@@ -411,7 +412,7 @@ namespace CapaPresentacion
             var ticketRoleData = AuthTicketRoleDataHelper.Deserialize(authTicket.UserData);
             var rolesDesdeTicket = ticketRoleData.Roles.Count > 0;
             var rolesTicket = RoleGroupingHelper.SanitizeRawRolesForUser(authTicket.Name, ticketRoleData.Roles).ToArray();
-            var rolesDb = RoleGroupingHelper.SanitizeRawRolesForUser(authTicket.Name, GetRolesFromDB(authTicket.Name)).ToArray();
+            var rolesDb = RoleGroupingHelper.SanitizeRawRolesForUser(authTicket.Name, GetRolesFromDBCached(authTicket.Name)).ToArray();
             var rolesBase = rolesDb.Length > 0
                 ? rolesDb
                 : (rolesDesdeTicket ? rolesTicket : new string[] { });
@@ -432,27 +433,9 @@ namespace CapaPresentacion
             {
                 ReemitirTicketRoles(authTicket, rolesBase, selectedRole);
             }
-
-            try
+            else if (Context.Items["__AocrRolesSyncLogged"] == null)
             {
-                var rolesSession = new string[] { };
-                if (Context != null && Context.Session != null)
-                {
-                    rolesSession = RoleGroupingHelper
-                        .ExtractRoles(Context.Session["RolesRaw"] ?? Context.Session["Roles"])
-                        .ToArray();
-                }
-                PerfLogger.LogInfo(string.Format(
-                    "[AOCR][ROLES_SYNC] Usuario={0}; RolesBD={1}; RolesTicket={2}; RolesSession={3}; RolActivo={4}; Resultado={5}",
-                    authTicket.Name,
-                    string.Join(",", rolesDb),
-                    string.Join(",", rolesTicket),
-                    string.Join(",", rolesSession),
-                    selectedRole ?? string.Empty,
-                    rolesDb.Length > 0 ? "OK_BD" : "OK_TICKET_SANITIZADO"));
-            }
-            catch
-            {
+                Context.Items["__AocrRolesSyncLogged"] = true;
             }
 
             var identity = new GenericIdentity(authTicket.Name);
@@ -470,6 +453,27 @@ namespace CapaPresentacion
                     roles != null ? roles.Length : 0,
                     authStopwatch.ElapsedMilliseconds));
             }
+        }
+
+        protected void Application_PostAcquireRequestState(object sender, EventArgs e)
+        {
+            if (Context == null || Context.Session == null)
+            {
+                return;
+            }
+
+            if (Context.User == null || Context.User.Identity == null || !Context.User.Identity.IsAuthenticated)
+            {
+                return;
+            }
+
+            if (Context.Items["__AocrSessionBootstrapped"] != null)
+            {
+                return;
+            }
+
+            Context.Items["__AocrSessionBootstrapped"] = true;
+            AuthenticatedSessionBootstrapper.EnsureSession(new HttpContextWrapper(Context));
         }
 
         private static bool RolesEquivalent(string[] left, string[] right)
@@ -533,6 +537,23 @@ namespace CapaPresentacion
             {
                 PerfLogger.LogWarning("[AOCR][ROLES_SYNC] No se pudo reemitir ticket de roles: " + ex.Message);
             }
+        }
+
+        private string[] GetRolesFromDBCached(string username)
+        {
+            const string cacheKey = "__AocrRolesDbCache";
+            if (HttpContext.Current != null && HttpContext.Current.Items[cacheKey] is string[] cachedRoles)
+            {
+                return cachedRoles;
+            }
+
+            var roles = GetRolesFromDB(username);
+            if (HttpContext.Current != null)
+            {
+                HttpContext.Current.Items[cacheKey] = roles;
+            }
+
+            return roles;
         }
 
         private string[] GetRolesFromDB(string username)

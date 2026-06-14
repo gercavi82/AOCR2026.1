@@ -29,9 +29,11 @@ namespace CapaNegocio.Services
             _logger = LoggingServiceFactory.Create();
         }
 
-        public bool PuedeRtContinuarFlujoAocr(int codigoSolicitud)
+        public bool PuedeRtContinuarFlujoAocr(int codigoSolicitud, int codigoUsuario = 0)
         {
-            var estadoOrden = ObtenerUltimoEstadoOrdenPorSolicitud(codigoSolicitud);
+            var estadoOrden = codigoUsuario > 0
+                ? _ordenDao.ObtenerUltimoEstadoOrdenPorSolicitudOUsuario(codigoSolicitud, codigoUsuario)
+                : ObtenerUltimoEstadoOrdenPorSolicitud(codigoSolicitud);
             if (string.IsNullOrWhiteSpace(estadoOrden))
             {
                 return false;

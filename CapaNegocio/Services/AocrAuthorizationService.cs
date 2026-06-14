@@ -89,6 +89,9 @@ namespace CapaNegocio.Services
             { "SolicitudAOCR", new[] { "Solicitante", "Administrador" } },
             { "Financiero", new[] { "Financiero", "Administrador" } },
             { "Coordinador", new[] { "Coordinacion", "Administrador" } },
+            { "Documento", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Tecnico", new[] { "Coordinacion", "Administrador" } },
+            { "CoordinacionJefatura", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "RevisionDocumental", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "InformeTecnico", new[] { "InspectorTecnico", "DireccionJefaturaTecnica", "Administrador" } },
@@ -110,6 +113,7 @@ namespace CapaNegocio.Services
             { "Financiero/AprobarYEnviarAS400", new[] { "Financiero", "Administrador" } },
             { "SolicitudAOCR/AbrirFormularioRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/EditarRT", new[] { "Solicitante", "Administrador" } },
+            { "SolicitudAOCR/GuardarProgresoRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/FinalizarRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/Detalle", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/Generar", new[] { "DireccionJefaturaTecnica", "Administrador" } },
@@ -122,11 +126,53 @@ namespace CapaNegocio.Services
             { "SolicitudAOCR/Emitir", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/DecisionInstitucional", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "Coordinador/AsignarInspector", new[] { "Coordinacion", "Administrador" } },
+            { "Tecnico/Index", new[] { "Coordinacion", "Administrador" } },
+            { "Tecnico/AsignarInspector", new[] { "Coordinacion", "Administrador" } },
+            { "Documento/Lista", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Documento/Subir", new[] { "Solicitante", "Administrador" } },
+            { "Documento/Descargar", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/DashboardInspeccion", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/ValidarAocr", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/RevisionVerificacion", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/DocumentoValidacionAocr", new[] { "Coordinacion", "DireccionJefaturaTecnica", "InspectorTecnico", "Administrador" } },
+            { "CoordinacionJefatura/GenerarDocumentoValidacionAocr", new[] { "Coordinacion", "DireccionJefaturaTecnica", "InspectorTecnico", "Administrador" } },
+            { "CoordinacionJefatura/FirmarAceptacionDocumental", new[] { "Coordinacion", "Administrador" } },
             { "RevisionDocumental/Index", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "RevisionDocumental/Revisar", new[] { "InspectorTecnico", "Administrador" } },
             { "Inspeccion/Detalle", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
+            { "Inspeccion/Index", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
             { "Inspeccion/Abrir", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/LV", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/ConfirmarRevisionDocumentalInspector", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/GuardarInformeTecnico", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FinalizarInformeTecnico", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FirmarInformeInspector", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/GuardarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FinalizarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FirmarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/VerInforme", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
+            { "Inspeccion/DescargarInforme", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
+            { "Inspeccion/VerListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/DescargarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/VerAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/DescargarAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/VerLvEaeOficial", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/DescargarLvEaeOficial", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/CambiarEstado", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/SubirInforme", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/SubirDocumentoSolicitante", new[] { "Solicitante", "Administrador" } },
+            { "Inspeccion/RegistrarNoConforme", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/GuardarPosicionFirmaInformeTecnico", new[] { "InspectorTecnico", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/AprobarNcSubsanacionDocumental", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/SolicitarNueva", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Documento/RevisarDocumentos", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/ModalInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/RevisionDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/AprobarDecisionFinalDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/DevolverDecisionFinalDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/FirmarDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/FirmarInformeDirdac", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/RechazarInformeDirdac", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "InformeTecnico/Inspector", new[] { "InspectorTecnico", "Administrador" } },
             { "InformeTecnico/RevisionDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "CorreoInstitucional/Index", new[] { "Administrador" } }
@@ -232,14 +278,8 @@ namespace CapaNegocio.Services
                 return false;
             }
 
-            if (!_ordenDao.TieneAprobacionFinancieraSolicitud(codigoSolicitud))
-            {
-                return false;
-            }
-
-            var estado = EstadoSolicitud.Normalizar(solicitud.Estado);
-            if (Comparer.Equals(estado, EstadoSolicitud.Anulada)
-                || Comparer.Equals(estado, EstadoSolicitud.Finalizado))
+            var tieneAprobacionFinanciera = _ordenDao.TieneAprobacionFinancieraSolicitud(codigoSolicitud);
+            if (!new AocrFlujoService().PuedeCoordinadorAsignarInspector(solicitud, tieneAprobacionFinanciera))
             {
                 return false;
             }
@@ -279,7 +319,7 @@ namespace CapaNegocio.Services
                 return false;
             }
 
-            return _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion);
+            return _revisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv(inspeccion);
         }
 
         public bool PuedeInspectorAbrirLv(int codigoInspeccion, int codigoUsuario)
@@ -290,6 +330,12 @@ namespace CapaNegocio.Services
         public bool PuedeInspectorGenerarInforme(int codigoInspeccion, int codigoUsuario)
         {
             if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
+            {
+                return false;
+            }
+
+            string motivoLv;
+            if (!new AocrFlujoValidacionService().PuedeGenerarInformeTecnico(codigoInspeccion, out motivoLv))
             {
                 return false;
             }
@@ -312,6 +358,23 @@ namespace CapaNegocio.Services
             return pendientes.Any(i => i != null && i.CodigoInforme == codigoInforme && i.FirmadoInspector && !i.FirmadoDirdac);
         }
 
+        public bool PuedeInspectorFirmarInforme(int codigoInspeccion, int codigoUsuario)
+        {
+            if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
+            {
+                return false;
+            }
+
+            var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            if (informe == null)
+            {
+                return false;
+            }
+
+            string motivo;
+            return new AocrFlujoValidacionService().PuedeFirmarInformeTecnico(informe.CodigoInforme, out motivo);
+        }
+
         public bool PuedeAdministradorConfigurarCorreos(int codigoUsuario)
         {
             return codigoUsuario > 0;
@@ -323,6 +386,11 @@ namespace CapaNegocio.Services
 
             if (Comparer.Equals(modulo, "SolicitudAOCR"))
             {
+                if (Comparer.Equals(accion, "GuardarProgresoRT"))
+                {
+                    return ValidarGuardarProgresoRt(usuario, codigoSolicitud, out motivo);
+                }
+
                 if (Comparer.Equals(accion, "AbrirFormularioRT") || Comparer.Equals(accion, "EditarRT") || Comparer.Equals(accion, "FinalizarRT"))
                 {
                     return ValidarRtSobreSolicitud(usuario, codigoSolicitud, out motivo);
@@ -330,13 +398,7 @@ namespace CapaNegocio.Services
 
                 if (Comparer.Equals(accion, "Aprobar"))
                 {
-                    if (!PuedeCoordinadorAsignarInspector(codigoSolicitud.GetValueOrDefault(), usuario.UserId))
-                    {
-                        motivo = "La solicitud no está lista para asignación o no tiene pago aprobado.";
-                        return false;
-                    }
-
-                    return true;
+                    return ValidarAprobacionDocumentalCoordinador(usuario, codigoSolicitud, out motivo);
                 }
 
                 if (Comparer.Equals(accion, "Detalle") || Comparer.Equals(accion, "DescargarGenerada"))
@@ -395,6 +457,26 @@ namespace CapaNegocio.Services
                 return false;
             }
 
+            if (Comparer.Equals(modulo, "Tecnico") && Comparer.Equals(accion, "AsignarInspector")
+                && !PuedeCoordinadorAsignarInspector(codigoSolicitud.GetValueOrDefault(), usuario.UserId))
+            {
+                motivo = "La solicitud no cumple las condiciones para asignar inspector.";
+                return false;
+            }
+
+            if (Comparer.Equals(modulo, "Documento"))
+            {
+                if (Comparer.Equals(accion, "Lista") || Comparer.Equals(accion, "Descargar"))
+                {
+                    return ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo);
+                }
+
+                if (Comparer.Equals(accion, "Subir"))
+                {
+                    return ValidarRtSobreSolicitud(usuario, codigoSolicitud, out motivo);
+                }
+            }
+
             if (Comparer.Equals(modulo, "RevisionDocumental") && Comparer.Equals(accion, "Revisar"))
             {
                 var roles = NormalizarRoles(usuario);
@@ -408,14 +490,147 @@ namespace CapaNegocio.Services
                 }
             }
 
-            if (Comparer.Equals(modulo, "Inspeccion") && (Comparer.Equals(accion, "Abrir") || Comparer.Equals(accion, "LV")))
+            if (Comparer.Equals(modulo, "Inspeccion"))
             {
-                var permitido = Comparer.Equals(accion, "LV")
-                    ? PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId)
-                    : PuedeInspectorAbrirInspeccion(codigoInspeccion.GetValueOrDefault(), usuario.UserId);
-                if (!permitido)
+                var rolesInspeccion = NormalizarRoles(usuario);
+                var esAdministrador = rolesInspeccion.Contains("Administrador", Comparer);
+
+                if (codigoInspeccion.GetValueOrDefault() > 0
+                    && !ValidarAccesoInspeccion(usuario, codigoInspeccion.GetValueOrDefault(), out motivo))
+                {
+                    return false;
+                }
+
+                if (Comparer.Equals(accion, "ConfirmarRevisionDocumentalInspector"))
+                {
+                    if (!esAdministrador
+                        && !PuedeInspectorRevisarDocumentos(ObtenerCodigoSolicitudInspeccion(codigoInspeccion.GetValueOrDefault()), usuario.UserId))
+                    {
+                        motivo = "No tiene una inspección asignada para confirmar la revisión documental.";
+                        return false;
+                    }
+                }
+
+                if (!esAdministrador
+                    && (Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
+                    || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
+                    || Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae")
+                    || Comparer.Equals(accion, "LV")))
+                {
+                    if (!PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    {
+                        motivo = "La inspección no está habilitada para gestionar la Lista de Verificación.";
+                        return false;
+                    }
+                }
+
+                if (!esAdministrador
+                    && (Comparer.Equals(accion, "GuardarInformeTecnico")
+                    || Comparer.Equals(accion, "FinalizarInformeTecnico")
+                    || Comparer.Equals(accion, "ModalInformeTecnico")))
+                {
+                    if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    {
+                        motivo = "Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.";
+                        return false;
+                    }
+                }
+
+                if (!esAdministrador
+                    && Comparer.Equals(accion, "FirmarInformeInspector")
+                    && !PuedeInspectorFirmarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                {
+                    motivo = "El informe técnico no cumple las condiciones para firma del inspector.";
+                    return false;
+                }
+
+                if (!esAdministrador
+                    && (Comparer.Equals(accion, "RevisionDireccion")
+                    || Comparer.Equals(accion, "AprobarDecisionFinalDireccion")
+                    || Comparer.Equals(accion, "DevolverDecisionFinalDireccion")
+                    || Comparer.Equals(accion, "FirmarDireccion")
+                    || Comparer.Equals(accion, "FirmarInformeDirdac")
+                    || Comparer.Equals(accion, "RechazarInformeDirdac")))
+                {
+                    var codigoInformeValidar = codigoInforme.GetValueOrDefault();
+                    if (codigoInformeValidar <= 0 && codigoInspeccion.GetValueOrDefault() > 0)
+                    {
+                        var informeTmp = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion.GetValueOrDefault());
+                        if (informeTmp != null)
+                        {
+                            codigoInformeValidar = informeTmp.CodigoInforme;
+                        }
+                    }
+
+                    if (!PuedeDirectorRevisarInforme(codigoInformeValidar, usuario.UserId))
+                    {
+                        motivo = "El informe técnico no está pendiente de revisión o firma institucional.";
+                        return false;
+                    }
+                }
+
+                if (!esAdministrador
+                    && Comparer.Equals(accion, "Abrir")
+                    && !PuedeInspectorAbrirInspeccion(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
                 {
                     motivo = "La inspección no está habilitada para el inspector actual o la fase documental aún no está aprobada.";
+                    return false;
+                }
+
+                if (!esAdministrador
+                    && rolesInspeccion.Contains("Solicitante", Comparer)
+                    && (Comparer.Equals(accion, "CambiarEstado")
+                        || Comparer.Equals(accion, "GuardarInformeTecnico")
+                        || Comparer.Equals(accion, "FinalizarInformeTecnico")
+                        || Comparer.Equals(accion, "FirmarInformeInspector")
+                        || Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "LV")
+                        || Comparer.Equals(accion, "RegistrarNoConforme")
+                        || Comparer.Equals(accion, "SubirInforme")))
+                {
+                    motivo = "No tiene permisos para ejecutar esta acción en la inspección.";
+                    return false;
+                }
+
+                if (!esAdministrador
+                    && rolesInspeccion.Contains("Coordinacion", Comparer)
+                    && (Comparer.Equals(accion, "GuardarInformeTecnico")
+                        || Comparer.Equals(accion, "FinalizarInformeTecnico")
+                        || Comparer.Equals(accion, "FirmarInformeInspector")
+                        || Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "LV")
+                        || Comparer.Equals(accion, "RegistrarNoConforme")
+                        || Comparer.Equals(accion, "SubirInforme")))
+                {
+                    motivo = "La coordinación no puede modificar LV ni Informe Técnico del inspector.";
+                    return false;
+                }
+
+                if (!esAdministrador
+                    && (Comparer.Equals(accion, "VerLvEaeOficial")
+                        || Comparer.Equals(accion, "DescargarLvEaeOficial")
+                        || Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae")
+                        || Comparer.Equals(accion, "LV"))
+                    && !PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId)
+                    && !rolesInspeccion.Contains("Coordinacion", Comparer)
+                    && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer))
+                {
+                    motivo = "La Lista de Verificación no está habilitada para su usuario.";
+                    return false;
+                }
+
+                if (!esAdministrador
+                    && (Comparer.Equals(accion, "RegistrarNoConforme")
+                        || Comparer.Equals(accion, "SubirInforme"))
+                    && !PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                {
+                    motivo = "Debe finalizar y firmar la LV antes de gestionar el informe o registrar no conformidades.";
                     return false;
                 }
             }
@@ -435,6 +650,21 @@ namespace CapaNegocio.Services
                 }
             }
 
+            if (Comparer.Equals(modulo, "CoordinacionJefatura"))
+            {
+                if (Comparer.Equals(accion, "FirmarAceptacionDocumental"))
+                {
+                    return ValidarAprobacionDocumentalCoordinador(usuario, codigoSolicitud, out motivo);
+                }
+
+                if (Comparer.Equals(accion, "GenerarDocumentoValidacionAocr")
+                    || Comparer.Equals(accion, "DocumentoValidacionAocr")
+                    || Comparer.Equals(accion, "ValidarAocr"))
+                {
+                    return ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo);
+                }
+            }
+
             if (Comparer.Equals(modulo, "CorreoInstitucional") && !PuedeAdministradorConfigurarCorreos(usuario.UserId))
             {
                 motivo = "No tiene permisos administrativos para configurar correos institucionales.";
@@ -444,18 +674,154 @@ namespace CapaNegocio.Services
             return true;
         }
 
+        private bool ValidarAprobacionDocumentalCoordinador(AocrAuthorizationContext usuario, int? codigoSolicitud, out string motivo)
+        {
+            motivo = string.Empty;
+            var roles = NormalizarRoles(usuario);
+            if (!roles.Contains("Administrador", Comparer) && !roles.Contains("Coordinacion", Comparer))
+            {
+                motivo = "Solo Coordinación puede aceptar formalmente la documentación.";
+                return false;
+            }
+
+            if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+            {
+                motivo = "Solicitud inválida.";
+                return false;
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
+            if (solicitud == null)
+            {
+                motivo = "La solicitud no existe.";
+                return false;
+            }
+
+            var estado = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (Comparer.Equals(estado, EstadoSolicitud.Anulada) || Comparer.Equals(estado, EstadoSolicitud.Finalizado))
+            {
+                motivo = "La solicitud está cerrada o anulada.";
+                return false;
+            }
+
+            var estadosPermitidos = new AocrFlujoService().EsTransicionPermitida(estado, EstadoSolicitud.AceptacionDocumental)
+                || Comparer.Equals(estado, EstadoSolicitud.EnRevision)
+                || Comparer.Equals(estado, EstadoSolicitud.DocumentacionCompleta)
+                || Comparer.Equals(estado, EstadoSolicitud.Subsanada)
+                || Comparer.Equals(estado, EstadoSolicitud.DocumentacionPendiente);
+
+            if (!estadosPermitidos)
+            {
+                motivo = "La solicitud no está en un estado válido para aceptación documental.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ValidarGuardarProgresoRt(AocrAuthorizationContext usuario, int? codigoSolicitud, out string motivo)
+        {
+            motivo = string.Empty;
+            var roles = NormalizarRoles(usuario);
+            if (!roles.Contains("Administrador", Comparer) && !roles.Contains("Solicitante", Comparer))
+            {
+                motivo = "No tiene permisos para guardar esta sección.";
+                return false;
+            }
+
+            if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
+            {
+                return ValidarEdicionRtSolicitudExistente(usuario, codigoSolicitud.Value, out motivo);
+            }
+
+            if (PuedeIniciarOContinuarSolicitudRt(usuario, out motivo))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(motivo))
+            {
+                motivo = "La Solicitud AOCR no está habilitada. Debe contar con Orden de Recaudación vigente y pago aprobado.";
+            }
+
+            return false;
+        }
+
         private bool ValidarRtSobreSolicitud(AocrAuthorizationContext usuario, int? codigoSolicitud, out string motivo)
         {
             motivo = string.Empty;
             if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
             {
+                return ValidarEdicionRtSolicitudExistente(usuario, codigoSolicitud.Value, out motivo);
+            }
+
+            if (PuedeIniciarOContinuarSolicitudRt(usuario, out motivo))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(motivo))
+            {
+                motivo = "La Solicitud AOCR no está habilitada para el RT hasta contar con Orden de Recaudación vigente y pago aprobado.";
+            }
+
+            return false;
+        }
+
+        private bool ValidarEdicionRtSolicitudExistente(AocrAuthorizationContext usuario, int codigoSolicitud, out string motivo)
+        {
+            motivo = string.Empty;
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null || solicitud.CodigoSolicitud <= 0)
+            {
+                motivo = "No se encontró la solicitud AOCR.";
+                return false;
+            }
+
+            var roles = NormalizarRoles(usuario);
+            if (!roles.Contains("Administrador", Comparer) && solicitud.CodigoUsuario != usuario.UserId)
+            {
+                motivo = "No tiene permisos para modificar esta solicitud.";
+                return false;
+            }
+
+            if (!roles.Contains("Administrador", Comparer) && !CoincideCompania(usuario.CompanyCode, solicitud.CompaniasSeleccionadas))
+            {
+                motivo = "La solicitud no corresponde a la compañía activa.";
+                return false;
+            }
+
+            if (!EstadoSolicitud.PermiteEdicionFormularioEmision(solicitud.Estado))
+            {
+                var estadoVisible = string.IsNullOrWhiteSpace(solicitud.Estado) ? "desconocido" : solicitud.Estado.Trim();
+                motivo = "La solicitud ya no puede editarse porque se encuentra en estado: " + estadoVisible;
+                return false;
+            }
+
+            if (!roles.Contains("Administrador", Comparer))
+            {
                 string mensajeRt;
-                if (!_solicitudRtService.PuedeRtEditarSolicitud(codigoSolicitud.Value, usuario.UserId, out mensajeRt))
+                if (!_solicitudRtService.PuedeRtEditarSolicitud(codigoSolicitud, usuario.UserId, out mensajeRt))
                 {
                     motivo = string.IsNullOrWhiteSpace(mensajeRt) ? "La solicitud no está habilitada para edición RT." : mensajeRt;
                     return false;
                 }
+            }
 
+            return true;
+        }
+
+        private bool PuedeIniciarOContinuarSolicitudRt(AocrAuthorizationContext usuario, out string motivo)
+        {
+            motivo = string.Empty;
+            if (usuario == null || usuario.UserId <= 0)
+            {
+                motivo = "La sesión expiró o no ha iniciado sesión.";
+                return false;
+            }
+
+            if (_ordenDao.ExisteORGeneradaOPagada(usuario.UserId))
+            {
                 return true;
             }
 
@@ -467,6 +833,11 @@ namespace CapaNegocio.Services
                     continue;
                 }
 
+                if (!EstadoSolicitud.PermiteEdicionFormularioEmision(solicitud.Estado))
+                {
+                    continue;
+                }
+
                 string mensajeRt;
                 if (_solicitudRtService.PuedeRtEditarSolicitud(solicitud.CodigoSolicitud, usuario.UserId, out mensajeRt))
                 {
@@ -474,7 +845,6 @@ namespace CapaNegocio.Services
                 }
             }
 
-            motivo = "La Solicitud AOCR no está habilitada para el RT hasta contar con Orden de Recaudación vigente y pago aprobado.";
             return false;
         }
 
@@ -531,6 +901,83 @@ namespace CapaNegocio.Services
             }
 
             motivo = "No tiene permisos para acceder a esta solicitud.";
+            return false;
+        }
+
+        private int ObtenerCodigoSolicitudInspeccion(int codigoInspeccion)
+        {
+            if (codigoInspeccion <= 0)
+            {
+                return 0;
+            }
+
+            var inspeccion = _inspeccionDao.ObtenerPorId(codigoInspeccion);
+            return inspeccion != null ? inspeccion.CodigoSolicitud : 0;
+        }
+
+        private bool ValidarAccesoInspeccion(AocrAuthorizationContext usuario, int codigoInspeccion, out string motivo)
+        {
+            motivo = string.Empty;
+            if (codigoInspeccion <= 0)
+            {
+                motivo = "Inspección inválida.";
+                return false;
+            }
+
+            var roles = NormalizarRoles(usuario);
+            if (roles.Contains("Administrador", Comparer))
+            {
+                return true;
+            }
+
+            Inspeccion inspeccion;
+            try
+            {
+                inspeccion = _inspeccionDao.ObtenerPorId(codigoInspeccion);
+            }
+            catch (Exception)
+            {
+                motivo = "No fue posible validar el acceso a la inspección.";
+                return false;
+            }
+
+            if (inspeccion == null)
+            {
+                motivo = "La inspección no existe.";
+                return false;
+            }
+
+            if (roles.Contains("Coordinacion", Comparer)
+                || roles.Contains("DireccionJefaturaTecnica", Comparer))
+            {
+                return true;
+            }
+
+            if (roles.Contains("Solicitante", Comparer))
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(inspeccion.CodigoSolicitud);
+                if (solicitud == null || solicitud.CodigoUsuario != usuario.UserId)
+                {
+                    motivo = "No tiene permisos sobre esta inspección.";
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (roles.Contains("InspectorTecnico", Comparer))
+            {
+                var inspectorIds = ResolverIdsInspector(usuario.UserId, usuario.CodigoUsuario);
+                if (inspeccion.CodigoInspector.HasValue && inspectorIds.Contains(inspeccion.CodigoInspector.Value))
+                {
+                    return true;
+                }
+
+                motivo = "No tiene asignada esta inspección.";
+                return false;
+            }
+
+            motivo = "No tiene permisos para acceder a esta inspección.";
             return false;
         }
 

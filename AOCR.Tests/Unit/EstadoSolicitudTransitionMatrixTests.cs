@@ -49,6 +49,7 @@ namespace AOCR.Tests.Unit
         [DataRow("AOCR En Revision", "AOCR Emitido/Recibido")]
         [DataRow("AOCR Validado", "En Inspeccion")]
         [DataRow("AOCR Emitido/Recibido", "AOCR En Revision")]
+        [DataRow("Firmado Coordinador", "Finalizado")]
         public void Matriz_TransicionesInvalidas_DebeBloquear(string estadoActual, string estadoDestino)
         {
             var resultado = EstadoSolicitud.EsTransicionValida(estadoActual, estadoDestino);

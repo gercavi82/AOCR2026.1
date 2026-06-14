@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using CapaDatos.Services;
 using CapaNegocio.DTOs;
@@ -42,7 +43,10 @@ namespace CapaNegocio.Services
                     MaxIntentos = 3,
                     CorrelationId = correlationId,
                     OrdenId = request.OrdenId,
-                    TipoNotificacion = request.TipoNotificacion
+                    TipoNotificacion = request.TipoNotificacion,
+                    EventKey = ConstruirEventKeyNotificacion(request, correlationId),
+                    Remitente = AocrEmailService.CorreoNoReply,
+                    AliasRemitente = "DGAC - Sistema AOCR"
                 };
 
                 var queueId = await _queueService.EncolarAsync(item);
@@ -125,6 +129,34 @@ namespace CapaNegocio.Services
                 default:
                     return "Tiene una nueva notificación en el sistema AOCR.";
             }
+        }
+
+        private static string ConstruirEventKeyNotificacion(EnviarNotificacionRequest request, string correlationId)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.EmailDestino))
+            {
+                return null;
+            }
+
+            var tipo = (request.TipoNotificacion ?? "NOTIFICACION").Trim().ToUpperInvariant();
+            var destinatario = request.EmailDestino.Trim().ToLowerInvariant();
+            if (request.OrdenId > 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "ORDEN:{0}:{1}:{2}:{3}",
+                    tipo,
+                    request.OrdenId,
+                    correlationId,
+                    destinatario);
+            }
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "NOTIF:{0}:{1}:{2}",
+                tipo,
+                correlationId,
+                destinatario);
         }
     }
 }

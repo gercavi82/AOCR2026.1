@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hoja de ruta — Publicación oficial — Sistema AOCR</title>
+  <style>
+    :root { --brand:#2c5282; --brand2:#4299e1; --light:#ebf4ff; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Hoja de ruta — Publicación oficial<br><span style="font-weight:400;font-size:1.35rem">Gates A–E · infra · go-live</span></h1>
+    <p class="lead">Todo lo pendiente para pasar de piloto publicacion1 a producción institucional aprobada.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/HOJA_RUTA_PUBLICACION.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/HOJA_RUTA_PUBLICACION.pdf</code> · Editable Word → <code>docs/export/editable/HOJA_RUTA_PUBLICACION.docx</code> · Markdown → <code>docs/export/editable/HOJA_RUTA_PUBLICACION.md</code></div>
+    <article class="md-body">
+<h1>Hoja de ruta — Fase de publicación oficial AOCR</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Objetivo:</strong> listar <strong>todo lo que falta</strong> para pasar de <em>piloto en <code>publicacion1</code></em> a <strong>publicación institucional aprobada</strong> (QA → pre-prod → producción).</p>
+<p><strong>Estado actual resumido:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Completitud estimada</th>
+<th>Bloquea go-live</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Código flujo emisión (tipo 1/2)</td>
+<td>~85%</td>
+<td>Parcial</td>
+</tr>
+<tr>
+<td>Prueba E2E solicitud #12 hasta AOCR</td>
+<td>~40%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Modificación tipo 3 (escenarios C/D)</td>
+<td>Código OK · prueba ☐</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Rama NC / informe insatisfactorio</td>
+<td>~20%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Endurecimiento plataforma (Nivel E)</td>
+<td>~35%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Documentación escrita</td>
+<td>~90%</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Capturas PNG (42)</td>
+<td>0%</td>
+<td>No (pero sí entrega usuario)</td>
+</tr>
+<tr>
+<td><code>CHECKLIST_PRODUCCION.md</code> (116 ítems)</td>
+<td>0% firmado</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Deploy <code>publicacion1</code></td>
+<td>DLLs 11-jun-2026</td>
+<td>Reciclar IIS pendiente verificar</td>
+</tr>
+</tbody></table>
+<p><strong>Regla de cierre (del propio proyecto):</strong><br>100% funcional = Niveles <strong>A + B + C + D + E</strong> (<code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> §12) + dependencias externas + checklist producción.</p>
+<hr>
+<h2>1. Qué significa «fase de publicación»</h2>
+<p>No es solo copiar DLLs a IIS. La fase de publicación oficial exige <strong>tres gates</strong> independientes:</p>
+<pre><code class="language-mermaid">flowchart LR
+    G1[Gate 1 — Funcional&lt;br/&gt;Flujos probados E2E] --&gt; G2[Gate 2 — Operación&lt;br/&gt;IIS, SMTP, certs, backups]
+    G2 --&gt; G3[Gate 3 — Gobernanza&lt;br/&gt;Checklists firmados + release notes]
+    G3 --&gt; PROD[Go-live institucional]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Pregunta que debe responderse «Sí»</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1 Funcional</strong></td>
+<td>¿Un trámite emisión (#12 u otro) llegó de RT a AOCR emitido con todos los roles?</td>
+</tr>
+<tr>
+<td><strong>2 Operación</strong></td>
+<td>¿El servidor prod tiene SMTP, certificados, BD, permisos y monitoreo?</td>
+</tr>
+<tr>
+<td><strong>3 Gobernanza</strong></td>
+<td>¿QA, infra y PO firmaron <code>CHECKLIST_PRODUCCION.md</code>?</td>
+</tr>
+</tbody></table>
+<p>Hoy el proyecto está <strong>entre Gate 0 y Gate 1</strong>: código desplegado en piloto, documentación lista, <strong>validación E2E incompleta</strong>.</p>
+<hr>
+<h2>2. Mapa de fases (orden recomendado)</h2>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Nombre</th>
+<th>Duración orientativa</th>
+<th>Responsable</th>
+<th>Entregable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>0</strong></td>
+<td>Preparación deploy</td>
+<td>0,5 día</td>
+<td>Dev + Infra</td>
+<td>Build Release + republicación verificada</td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td>Gate A — Regresión corta</td>
+<td>1 día</td>
+<td>QA + Coordinación</td>
+<td>Escenarios A–D (<code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code>)</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Gate B — Emisión completa #12</td>
+<td>2–3 días</td>
+<td>Todos los roles</td>
+<td>COO-1 → INS-1 → DIR-1 → DIR-2</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Gate C — Modificación tipo 3</td>
+<td>1 día</td>
+<td>Inspector + RT</td>
+<td>Escenarios C y D</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Gate D — NC + Financiero</td>
+<td>1–2 días</td>
+<td>Coord. + RT + Financiero</td>
+<td>Caso 5 + FIN-1/FIN-2</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Gate E — Endurecimiento</td>
+<td>3–5 días dev</td>
+<td>Desarrollo</td>
+<td>DT-1 a DT-5 (priorizado abajo)</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Pre-producción</td>
+<td>1–2 días</td>
+<td>Infra + Seguridad</td>
+<td><code>CHECKLIST_IIS.md</code> + <code>CHECKLIST_PRODUCCION.md</code> §1–3</td>
+</tr>
+<tr>
+<td><strong>7</strong></td>
+<td>Documentación usuario</td>
+<td>1 día</td>
+<td>QA + Comunicaciones</td>
+<td>42 PNG + PDFs finales</td>
+</tr>
+<tr>
+<td><strong>8</strong></td>
+<td>Go-live</td>
+<td>0,5 día</td>
+<td>Infra</td>
+<td>Prod + smoke test + rollback listo</td>
+</tr>
+</tbody></table>
+<p><strong>Total orientativo:</strong> 10–15 días hábiles (paralelizando fases 5 y 7 parcialmente).</p>
+<hr>
+<h2>3. Fase 0 — Preparación deploy (obligatoria antes de cualquier prueba)</h2>
+<h3>3.1 Qué falta</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Tarea</th>
+<th>Cómo verificar</th>
+<th>Referencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Build <strong>Release</strong> sin errores</td>
+<td>Visual Studio → Build Solution</td>
+<td><code>CHECKLIST_IIS.md</code> Pre-deploy</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Tests unitarios ejecutados y <strong>verdes</strong></td>
+<td>Test Explorer → Run All (~95 tests)</td>
+<td><code>AOCR.Tests</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Publicar perfil <code>FolderProfile4</code> → destino acordado</td>
+<td>Timestamps DLL recientes</td>
+<td><code>MANUAL_TECNICO_AOCR.md</code> §10</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><strong>Reciclar App Pool IIS</strong></td>
+<td>Reinicio confirmado</td>
+<td><code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code> §0.2</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Ctrl+F5 / incógnito en cada sesión de prueba</td>
+<td>CSS/JS no cacheados</td>
+<td>Guía post-republicación §0.3</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Tag Git + release notes borrador</td>
+<td><code>v2026.06.xx</code></td>
+<td>Operación estándar</td>
+</tr>
+</tbody></table>
+<h3>3.2 Archivos críticos en publicación</h3>
+<p>Confirmar fecha reciente en destino (ej. <code>C:\AOCR\publicacion1</code>):</p>
+<pre><code>bin\CapaDatos.dll
+bin\CapaNegocio.dll
+bin\CapaPresentacion.dll
+Content\aocr-contrast.css
+Content\aocr-datatables.css
+Views\Documento\Lista.cshtml
+Views\RevisionDocumental\Index.cshtml
+Views\Inspeccion\Detalle.cshtml
+Views\Tecnico\Index.cshtml
+Views\SolicitudAOCR\Detalle.cshtml
+</code></pre>
+<p><strong>Última referencia conocida:</strong> DLLs <strong>11-jun-2026 ~15:56</strong>.</p>
+<hr>
+<h2>4. Fase 1 — Gate A (regresión corta, 1 día)</h2>
+<p><strong>Documento guía:</strong> <code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code><br><strong>Meta:</strong> confirmar que los fixes de la iteración no rompieron lo ya corregido.</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Escenario</th>
+<th>Rol</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>A1</td>
+<td>Fix visual <code>/Tecnico</code></td>
+<td>Coordinación</td>
+<td>Sin texto azul fantasma</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B2</td>
+<td>Firma coord. emisión #12</td>
+<td>Coordinación</td>
+<td>→ <code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B3</td>
+<td>Descarga constancia</td>
+<td>RT</td>
+<td><strong>No</strong> → <code>Finalizado</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B4</td>
+<td>Asignación inspector #12</td>
+<td>Coordinación</td>
+<td>→ <code>En Inspeccion</code>, log <code>[GestionInspeccion]</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C2</td>
+<td>Mod. con aeropuertos</td>
+<td>Inspector</td>
+<td>Solo cierre fase → <code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C3</td>
+<td>RT orden post mod.</td>
+<td>RT</td>
+<td>Panel + <code>/OrdenRecaudacion/Nueva</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>D</td>
+<td>Mod. sin aeropuertos</td>
+<td>Inspector</td>
+<td>Ramas CL / inspección clásicas</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A8</td>
+<td>Tests unitarios</td>
+<td>Dev</td>
+<td>Todos pasan</td>
+</tr>
+</tbody></table>
+<p><strong>Evidencia:</strong> capturas + líneas de log <code>[FirmarAceptacionDocumental]</code>, <code>[GestionInspeccion]</code>, <code>[DOC_FLOW]</code>.</p>
+<p><strong>Criterio de salida Fase 1:</strong> checklist consolidado guía post-republicación § consolidado — <strong>8/8 ☐ → ✅</strong>.</p>
+<hr>
+<h2>5. Fase 2 — Gate B (emisión completa, bloqueante principal)</h2>
+<p><strong>Meta Nivel B:</strong> solicitud <strong>#12</strong> (o nueva tipo 1) desde RT hasta <strong>AOCR Emitido/Recibido</strong>.</p>
+<p><strong>Documentos:</strong> <code>MANUAL_FLUJO_RT_A_AOCR.md</code> · <code>GUIA_INSPECTOR_SOLICITUD_12.md</code> · <code>GUIA_VISUAL_FLUJO_RT_AOCR.md</code></p>
+<h3>5.1 Cadena por rol (marcar en orden)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Fase</th>
+<th>Rol</th>
+<th>Acción clave</th>
+<th>Estado destino</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E2E-01</td>
+<td>1–2</td>
+<td>RT</td>
+<td>Solicitud + orden + comprobante</td>
+<td>Pago pendiente</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-02</td>
+<td>3</td>
+<td>Financiero</td>
+<td>Aprobar pago</td>
+<td>Documentación habilitada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-03</td>
+<td>4</td>
+<td>RT</td>
+<td>Cargar docs + enviar</td>
+<td><code>En Revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-1a</td>
+<td>5–6</td>
+<td>Coordinación</td>
+<td>Revisión COO-1 + firma</td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-1b</td>
+<td>7</td>
+<td>Coordinación</td>
+<td>Asignar inspector 43</td>
+<td><code>En Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1a</td>
+<td>8</td>
+<td>Inspector</td>
+<td><code>modo=revision</code> — 12 docs PENDIENTE</td>
+<td>Decisiones inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1b</td>
+<td>9</td>
+<td>Inspector</td>
+<td>Confirmar cierre documental</td>
+<td>LV habilitada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1c</td>
+<td>10</td>
+<td>Inspector</td>
+<td>LV finalizada + firmada (.p12)</td>
+<td><code>firmado_tecnico=true</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1d</td>
+<td>11</td>
+<td>Inspector</td>
+<td>Informe + firma</td>
+<td><code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>DIR-1</td>
+<td>12</td>
+<td>DIRDAC</td>
+<td>Aprobar informe</td>
+<td><code>AOCR En Elaboracion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-2</td>
+<td>14</td>
+<td>Coordinación</td>
+<td><code>ValidarAocr</code></td>
+<td><code>AOCR En Revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>DIR-2</td>
+<td>15</td>
+<td>DIRDAC</td>
+<td>Firma AOCR</td>
+<td><code>AOCR Emitido/Recibido</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>RT-FIN</td>
+<td>16</td>
+<td>RT</td>
+<td><code>GeneradasFirmadas</code> — descarga PDF</td>
+<td>Trámite operativo cerrado RT</td>
+</tr>
+</tbody></table>
+<h3>5.2 Puntos de fallo conocidos (vigilar)</h3>
+<table>
+<thead>
+<tr>
+<th>Síntoma</th>
+<th>Revisar</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Docs ACEPTADO sin acción inspector</td>
+<td>URL debe ser <code>modo=revision</code>, no <code>modo=ver</code></td>
+</tr>
+<tr>
+<td>Bandeja revisión vacía</td>
+<td>Inspector asignado en <code>aocr_tbinspeccion</code></td>
+</tr>
+<tr>
+<td>LV candado</td>
+<td>Cierre documental no confirmado</td>
+</tr>
+<tr>
+<td>Informe bloqueado</td>
+<td>LV no firmada</td>
+</tr>
+<tr>
+<td>AOCR no genera</td>
+<td>Informe no aprobado DIRDAC</td>
+</tr>
+</tbody></table>
+<h3>5.3 Criterio de salida Fase 2</h3>
+<ul>
+<li>PDF AOCR firmado descargado por RT desde <strong><code>/SolicitudAOCR/GeneradasFirmadas</code></strong></li>
+<li>Log completo archivado</li>
+<li>Capturas fases 8–16 guardadas en <code>docs/images/</code></li>
+</ul>
+<hr>
+<h2>6. Fase 3 — Gate C (modificación tipo 3)</h2>
+<p><strong>Documento:</strong> <code>MANUAL_TECNICO_AOCR.md</code> §18 · Escenarios C y D guía post-republicación</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Escenario</th>
+<th>Condición</th>
+<th>Acción</th>
+<th>Estado final</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td><strong>C</strong></td>
+<td>Tipo 3 + <code>AeropuertosEcuador</code></td>
+<td>Inspector: <code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><strong>C-RT</strong></td>
+<td>Tras C</td>
+<td>RT: <code>OrdenRecaudacion/Nueva</code></td>
+<td>Orden creada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><strong>D-CL</strong></td>
+<td>Tipo 3 sin aeropuertos</td>
+<td>Inspector: <code>GenerarCondicionesLimitacionesModificacion</code></td>
+<td><code>Generado Condiciones y Limitaciones</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><strong>D-INS</strong></td>
+<td>Tipo 3 sin aeropuertos</td>
+<td>Inspector: <code>MarcarRequiereInspeccionModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><strong>C-neg</strong></td>
+<td>Con aeropuertos</td>
+<td>Intentar CL directo → debe <strong>rechazar</strong></td>
+<td>Mensaje §18.4</td>
+</tr>
+</tbody></table>
+<p><strong>Criterio de salida:</strong> 5/5 ☐ → ✅ + IDs de solicitud de prueba documentados.</p>
+<hr>
+<h2>7. Fase 4 — Gate D (NC + financiero)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Qué probar</th>
+<th>Documento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>FIN-1</td>
+<td>Pago aprobado + <strong>un solo</strong> correo por <code>event_key</code></td>
+<td><code>PLAN_CIERRE_POR_ROL.md</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>FIN-2</td>
+<td>Contador sidebar financiero = filas bandeja</td>
+<td>Idem</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-2</td>
+<td>Informe <strong>no satisfactorio</strong> → coordinación aprueba NC</td>
+<td><code>AOCR_FLUJO_INTEGRAL</code> Caso 5</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>RT-2</td>
+<td>RT <strong>no</strong> subsana antes de aprobación NC; <strong>sí</strong> después</td>
+<td>Idem</td>
+</tr>
+</tbody></table>
+<p><strong>Nota:</strong> Caso 5 es el más largo; puede ejecutarse en paralelo a Fase 5 si hay otra solicitud de prueba.</p>
+<hr>
+<h2>8. Fase 5 — Gate E (endurecimiento técnico)</h2>
+<p>No bloquea piloto interno, <strong>sí bloquea prod institucional</strong> si no se mitiga.</p>
+<h3>8.1 Prioridad alta (antes de prod)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Entregable</th>
+<th>Archivos</th>
+<th>Esfuerzo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E1 / DT-1</td>
+<td>Migrar acciones críticas <code>InspeccionController</code> a <code>[AocrAuthorize]</code></td>
+<td><code>InspeccionController.cs</code> (47 <code>[Authorize]</code> legacy restantes)</td>
+<td>2–3 días</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E3 / DT-3</td>
+<td>Auditar callers de <code>ObtenerDecisionRevisionDocumental</code> — siempre revisiones filtradas</td>
+<td><code>RevisionDocumentalService</code>, BL</td>
+<td>1 día</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>ADM-1</td>
+<td>URL sin permiso → <strong>403</strong> en módulos críticos</td>
+<td>Caso 6 matriz</td>
+<td>1 día QA</td>
+</tr>
+</tbody></table>
+<h3>8.2 Prioridad media (primer mes post go-live)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Entregable</th>
+<th>Esfuerzo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E2 / DT-2</td>
+<td>Botones flujo → <code>SolicitudAocrFlujoViewModel</code></td>
+<td>3–5 días</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E4 / DT-5</td>
+<td>Revisión PDFs AOCR / CL / aceptación con Legal</td>
+<td>2–3 días</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E7</td>
+<td>Correos idempotentes en <strong>todos</strong> los eventos (no solo post-pago)</td>
+<td>2 días</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E6 / DT-4</td>
+<td>Retirar legacy <code>EstadosSolicitudAOCR</code></td>
+<td>1–2 días</td>
+</tr>
+</tbody></table>
+<h3>8.3 Prioridad baja / mejora continua</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Entregable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E5</td>
+<td>Casos 1–10 E2E automatizados o checklist firmado</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E10</td>
+<td>Test integración <code>FlujoCompletoTests</code> con BD (hoy <code>Inconclusive</code>)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>ADM-2</td>
+<td>Inventario AOCR legacy documentado</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>9. Fase 6 — Pre-producción (infraestructura)</h2>
+<p><strong>Documentos:</strong> <code>CHECKLIST_IIS.md</code> · <code>CHECKLIST_PRODUCCION.md</code> · <code>VARIABLES_AMBIENTE.md</code> · <code>CHECKLIST_SEGURIDAD.md</code></p>
+<h3>9.1 Infraestructura mínima</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Categoría</th>
+<th>Ítems críticos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>IIS</td>
+<td>App Pool .NET 4.8, permisos <code>App_Data</code>, SSL prod</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>BD</td>
+<td><code>AOCR_CONNSTR_POSTGRESQL</code>, backup diario probado</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>AS400</td>
+<td>ODBC + credenciales en variables de entorno (no Web.config plano)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Email</td>
+<td>SMTP prod + correo de prueba + cola <code>email_queue</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Certificados</td>
+<td><code>.p12</code> LV, informe inspector, firma DIRDAC <strong>vigentes en servidor</strong></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Seguridad</td>
+<td>CSRF POST sensibles, upload validado, headers HSTS/CSP</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Observabilidad</td>
+<td>Logs <code>App_Data/Logs</code>, rotación, health check</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Rollback</td>
+<td>Backup pre-deploy + procedimiento documentado</td>
+</tr>
+</tbody></table>
+<h3>9.2 Dependencias externas (§12.6 matrices)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Dependencia</th>
+<th>Responsable típico</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Certificados digitales institucionales</td>
+<td>DIRDAC / TI</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>SMTP <code>no_reply@</code> validado en prod</td>
+<td>Infra / correo DGAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Esquema BD estable (columnas críticas)</td>
+<td>DBA</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>10. Fase 7 — Documentación y comunicación</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Entregable</th>
+<th>Estado</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Manuales PDF (<code>docs/export/</code>)</td>
+<td>✅ Generados</td>
+<td>Distribuir a usuarios</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>42 capturas PNG</td>
+<td>☐ 0/42</td>
+<td>Recorrer flujo + <code>images/README.md</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>npm run build</code> post-capturas</td>
+<td>☐</td>
+<td>Regenerar PDF con imágenes</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Release notes usuario</td>
+<td>☐</td>
+<td>Cambios visibles por rol</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Capacitación RT / Inspector / Coord.</td>
+<td>☐</td>
+<td>Sesión 2h con <code>MANUAL_FLUJO_RT_A_AOCR.md</code></td>
+</tr>
+</tbody></table>
+<p><strong>Checklist documentación:</strong> <code>CHECKLIST_DOCUMENTACION_100.md</code></p>
+<hr>
+<h2>11. Fase 8 — Go-live</h2>
+<h3>11.1 Día D</h3>
+<table>
+<thead>
+<tr>
+<th>Hora</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>T-24h</td>
+<td>Backup BD + carpeta aplicación</td>
+</tr>
+<tr>
+<td>T-1h</td>
+<td>Publicar Release → prod</td>
+</tr>
+<tr>
+<td>T-0</td>
+<td>Reciclar App Pool</td>
+</tr>
+<tr>
+<td>T+15m</td>
+<td>Smoke test: login cada rol + <code>/health</code></td>
+</tr>
+<tr>
+<td>T+30m</td>
+<td>Smoke test: RT crea borrador (no prod data real si es prueba)</td>
+</tr>
+<tr>
+<td>T+1h</td>
+<td>Monitoreo logs 1 hora</td>
+</tr>
+</tbody></table>
+<h3>11.2 Smoke test mínimo post go-live</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Prueba</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Login RT, Coordinación, Inspector, Financiero, DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Sidebar contadores cargan sin error</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>/Tecnico/Index</code> sin error 500</td>
+</tr>
+<tr>
+<td>☐</td>
+<td><code>/RevisionDocumental/Index</code> inspector con sesión correcta</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Envío correo de prueba desde flujo financiero</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Log escribe en <code>App_Data/Logs</code></td>
+</tr>
+</tbody></table>
+<h3>11.3 Rollback</h3>
+<p>Si falla Gate smoke: restaurar backup carpeta + BD según <code>CHECKLIST_IIS.md</code> § Rollback.</p>
+<hr>
+<h2>12. Matriz responsables (RACI simplificado)</h2>
+<table>
+<thead>
+<tr>
+<th>Actividad</th>
+<th>Dev</th>
+<th>QA</th>
+<th>Infra</th>
+<th>Coord.</th>
+<th>Inspector</th>
+<th>DIRDAC</th>
+<th>RT</th>
+<th>PO</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Fase 0 Deploy</td>
+<td><strong>R</strong></td>
+<td>C</td>
+<td><strong>A</strong></td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Fase 1 Gate A</td>
+<td>C</td>
+<td><strong>R/A</strong></td>
+<td>I</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+<td>I</td>
+</tr>
+<tr>
+<td>Fase 2 Gate B</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td><strong>R</strong></td>
+<td><strong>R</strong></td>
+<td><strong>R</strong></td>
+<td><strong>R</strong></td>
+<td><strong>A</strong></td>
+</tr>
+<tr>
+<td>Fase 3 Gate C</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td><strong>R</strong></td>
+<td>A</td>
+</tr>
+<tr>
+<td>Fase 4 Gate D</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td><strong>R</strong></td>
+<td>C</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>A</td>
+</tr>
+<tr>
+<td>Fase 5 Gate E</td>
+<td><strong>R/A</strong></td>
+<td>C</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+</tr>
+<tr>
+<td>Fase 6 Pre-prod</td>
+<td>C</td>
+<td>C</td>
+<td><strong>R/A</strong></td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>C</td>
+</tr>
+<tr>
+<td>Fase 7 Docs</td>
+<td>C</td>
+<td><strong>R</strong></td>
+<td>I</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td><strong>A</strong></td>
+</tr>
+<tr>
+<td>Fase 8 Go-live</td>
+<td>C</td>
+<td>C</td>
+<td><strong>R/A</strong></td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td>I</td>
+<td><strong>A</strong></td>
+</tr>
+</tbody></table>
+<p>R = Responsible · A = Accountable · C = Consulted · I = Informed</p>
+<hr>
+<h2>13. Resumen «qué falta» en una lista</h2>
+<h3>Bloqueantes absolutos (no prod sin esto)</h3>
+<ol>
+<li><strong>Gate B completo</strong> — #12 (u otra emisión) hasta AOCR descargado por RT  </li>
+<li><strong>Gate A</strong> — escenarios A–D post-republicación  </li>
+<li><strong>Reciclar IIS</strong> + verificar DLLs actuales en servidor de prueba  </li>
+<li><strong>CHECKLIST_PRODUCCION</strong> — mínimo seguridad + QA E2E + firmas  </li>
+<li><strong>SMTP + certificados</strong> en servidor destino  </li>
+<li><strong>Backup y rollback</strong> probados</li>
+</ol>
+<h3>Importantes (prod con riesgo controlado / plan de remediación)</h3>
+<ol start="7">
+<li>Gate C — modificación tipo 3  </li>
+<li>Gate D — NC + financiero idempotente  </li>
+<li>Gate E1 — autorización unificada Inspección  </li>
+<li>42 capturas PNG para manuales usuario</li>
+</ol>
+<h3>Mejora continua (post go-live primer mes)</h3>
+<ol start="11">
+<li>DT-2 ViewModels en Razor  </li>
+<li>DT-4 legacy constants  </li>
+<li>Tests integración BD  </li>
+<li>E7 correos idempotentes globales</li>
+</ol>
+<hr>
+<h2>14. Documentos de referencia (índice)</h2>
+<table>
+<thead>
+<tr>
+<th>Documento</th>
+<th>Uso en esta hoja de ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="HOJA_RUTA_PUBLICACION.md">HOJA_RUTA_PUBLICACION.md</a></td>
+<td>Este documento</td>
+</tr>
+<tr>
+<td><a href="AOCR_FLUJO_INTEGRAL_MATRICES.md">AOCR_FLUJO_INTEGRAL_MATRICES.md</a></td>
+<td>Definición done §12</td>
+</tr>
+<tr>
+<td><a href="GUIA_PRUEBAS_POST_REPUBLICACION.md">GUIA_PRUEBAS_POST_REPUBLICACION.md</a></td>
+<td>Fase 1 Gate A</td>
+</tr>
+<tr>
+<td><a href="GUIA_INSPECTOR_SOLICITUD_12.md">GUIA_INSPECTOR_SOLICITUD_12.md</a></td>
+<td>Fase 2 INS-1</td>
+</tr>
+<tr>
+<td><a href="MANUAL_FLUJO_RT_A_AOCR.md">MANUAL_FLUJO_RT_A_AOCR.md</a></td>
+<td>Fase 2 narrativa 16 fases</td>
+</tr>
+<tr>
+<td><a href="GUIA_VISUAL_FLUJO_RT_AOCR.md">GUIA_VISUAL_FLUJO_RT_AOCR.md</a></td>
+<td>Capturas + textos UI</td>
+</tr>
+<tr>
+<td><a href="PLAN_CIERRE_POR_ROL.md">PLAN_CIERRE_POR_ROL.md</a></td>
+<td>Entregables por rol</td>
+</tr>
+<tr>
+<td><a href="CHECKLIST_DOCUMENTACION_100.md">CHECKLIST_DOCUMENTACION_100.md</a></td>
+<td>Docs + PNG + E2E</td>
+</tr>
+<tr>
+<td><a href="CHECKLIST_PRODUCCION.md">CHECKLIST_PRODUCCION.md</a></td>
+<td>Gate gobernanza (116 ítems)</td>
+</tr>
+<tr>
+<td><a href="CHECKLIST_IIS.md">CHECKLIST_IIS.md</a></td>
+<td>Fase 6 infra</td>
+</tr>
+<tr>
+<td><a href="CHECKLIST_SEGURIDAD.md">CHECKLIST_SEGURIDAD.md</a></td>
+<td>Fase 6 seguridad</td>
+</tr>
+<tr>
+<td><a href="VARIABLES_AMBIENTE.md">VARIABLES_AMBIENTE.md</a></td>
+<td>Config prod</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>15. Próximo paso inmediato (mañana)</h2>
+<p>Si solo puedes hacer <strong>una cosa</strong> para avanzar a fase de publicación:</p>
+<pre><code class="language-text">1. Reciclar IIS en publicacion1
+2. Ejecutar Gate A (8 escenarios) con GUIA_PRUEBAS_POST_REPUBLICACION.md
+3. Si B4 OK → iniciar Gate B con inspector 43 en solicitud #12
+   (GUIA_INSPECTOR_SOLICITUD_12.md desde Fase 2)
+</code></pre>
+<p>Cuando Gate B termine con PDF AOCR en mano del RT, el proyecto pasa de <strong>~40%</strong> a <strong>~70%</strong> hacia publicación oficial.</p>
+<p><strong>Seguimiento semanal:</strong> <a href="export/editable/SEGUIMIENTO_PUBLICACION_AOCR.csv">export/editable/SEGUIMIENTO_PUBLICACION_AOCR.csv</a> · <a href="export/editable/SEGUIMIENTO_PUBLICACION_README.md">instrucciones</a></p>
+<hr>
+<p><em>Última actualización: 2026-06-11 — Consolidado desde auditoría de código, matrices §12, checklists prod/IIS y estado deploy <code>publicacion1</code>.</em></p>
+
+    </article>
+    <div class="footer">Hoja de ruta — Publicación oficial — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

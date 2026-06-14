@@ -68,6 +68,7 @@ namespace CapaNegocio.Services
                         AgregarUsuariosPorRol(destinatarios,
                             "CoordinadorInspecciones",
                             "Coordinador",
+                            "Coordinacion",
                             "JefaturaTecnica",
                             "Administrador");
                         AgregarCorreosInstitucionales(destinatarios, CorreoInstitucionalService.CoordinadorAocr);

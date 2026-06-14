@@ -758,7 +758,7 @@ namespace CapaNegocio.Services
 
         private sealed class NoOpDataEmailService : DataEmailService
         {
-            public Task<CapaDatos.Services.EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo, byte[] adjunto = null, string adjuntoNombre = null)
+            public Task<CapaDatos.Services.EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo, byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null)
             {
                 return Task.FromResult(new CapaDatos.Services.EmailSendResult
                 {

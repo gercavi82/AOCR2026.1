@@ -393,7 +393,20 @@
                                 ? _estadoRevisionDocumental.MensajeBloqueoDocumental
                                 : "Fase documental pendiente. Revise y apruebe los documentos habilitantes antes de iniciar la inspección.")
                             : string.Empty;
-                        var urlVerSolicitud = Url.Action("Detalle", "SolicitudAOCR", new { id = inspeccion.CodigoSolicitud });
+                        var urlVerDocumentacion = Url.Action("Lista", "Documento", new
+                        {
+                            solicitudId = inspeccion.CodigoSolicitud,
+                            modo = "ver",
+                            origen = "inspeccion",
+                            inspeccionId = inspeccion.CodigoInspeccion
+                        });
+                        var urlRevisionDocumental = Url.Action("Lista", "Documento", new
+                        {
+                            solicitudId = inspeccion.CodigoSolicitud,
+                            modo = "revision",
+                            origen = "revision-documental",
+                            inspeccionId = inspeccion.CodigoInspeccion
+                        });
                         var urlGestionarInspeccion = Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion });
 
                         <tr class="@rowClass"
@@ -476,10 +489,17 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Acciones rapidas de inspeccion">
-                                    <a href="@urlVerSolicitud"
-                                       class="btn btn-outline-secondary" title="Ver solicitud">
+                                    <a href="@urlVerDocumentacion"
+                                       class="btn btn-outline-secondary" title="Ver documentación cargada">
                                         <i class="fa fa-folder-open"></i>
                                     </a>
+                                    @if (esBandejaInspector && faseDocumentalPendiente)
+                                    {
+                                        <a href="@urlRevisionDocumental"
+                                           class="btn btn-outline-success" title="Revisar documentación (modo decisión)">
+                                            <i class="fa fa-clipboard-check"></i>
+                                        </a>
+                                    }
                                     <a href="@urlGestionarInspeccion"
                                        class="btn btn-outline-primary" title="Gestionar inspección">
                                         <i class="fa fa-eye"></i>
@@ -505,12 +525,8 @@
                 <i class="fas @(esBandejaInspector ? "fa-clipboard-check" : "fa-clipboard-list")"></i>
                 @if (esBandejaInspector)
                 {
-                    <h4 class="mb-2">No existen inspecciones habilitadas</h4>
-                    <p class="mb-@(cantidadInspeccionesNoHabilitadas > 0 ? "1" : "0")">Las inspecciones aparecerán en esta bandeja únicamente cuando la fase documental haya sido finalizada y aprobada.</p>
-                    if (cantidadInspeccionesNoHabilitadas > 0)
-                    {
-                        <p class="small text-muted mb-0">Actualmente existen @cantidadInspeccionesNoHabilitadas asignaciones ocultas hasta cerrar satisfactoriamente la fase documental.</p>
-                    }
+                    <h4 class="mb-2">No hay inspecciones asignadas</h4>
+                    <p class="mb-0">Cuando el coordinador le asigne una solicitud, aparecerá en esta bandeja.</p>
                 }
                 else
                 {

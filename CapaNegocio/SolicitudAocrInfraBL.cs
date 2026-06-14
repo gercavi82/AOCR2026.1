@@ -79,6 +79,37 @@ namespace CapaNegocio
                    ?? new Dictionary<int, RevisionDocumentalDetalle>();
         }
 
+        public bool RequiereDecisionDocumentalInspector(int codigoSolicitud)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            var inspecciones = ListarInspeccionesPorSolicitud(codigoSolicitud);
+            return TieneInspectorAsignado(solicitud, inspecciones);
+        }
+
+        public Dictionary<int, RevisionDocumentalDetalle> ObtenerUltimosDetallesRevisionInspectorPorSolicitud(int codigoSolicitud)
+        {
+            var detalles = ObtenerUltimosDetallesRevisionPorSolicitud(codigoSolicitud);
+            if (codigoSolicitud <= 0 || !RequiereDecisionDocumentalInspector(codigoSolicitud))
+            {
+                return detalles;
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            var inspecciones = ListarInspeccionesPorSolicitud(codigoSolicitud);
+            var idsInspector = ObtenerIdsInspectorAsignados(solicitud, inspecciones);
+            return FiltrarDetallesRevisionPorInspector(detalles, idsInspector);
+        }
+
+        public Dictionary<int, Tuple<string, string>> ObtenerUltimasRevisionesInspectorPorSolicitud(int codigoSolicitud)
+        {
+            return ConvertirDetallesRevisionATuplas(ObtenerUltimosDetallesRevisionInspectorPorSolicitud(codigoSolicitud));
+        }
+
         public EstadoRevisionDocumental ObtenerEstadoRevisionDocumental(int codigoSolicitud)
         {
             var estado = new EstadoRevisionDocumental
@@ -96,6 +127,7 @@ namespace CapaNegocio
 
             var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
             var inspecciones = ListarInspeccionesPorSolicitud(codigoSolicitud);
+            var faseInspector = TieneInspectorAsignado(solicitud, inspecciones);
 
             var documentos = (_documentoDao.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>())
                 .Where(d => d != null && d.CodigoDocumento > 0)
@@ -108,12 +140,14 @@ namespace CapaNegocio
                     .First())
                 .ToList();
 
-            var revisiones = ObtenerUltimasRevisionesPorSolicitud(codigoSolicitud);
+            var revisiones = faseInspector
+                ? ObtenerUltimasRevisionesInspectorPorSolicitud(codigoSolicitud)
+                : ObtenerUltimasRevisionesPorSolicitud(codigoSolicitud);
             estado.TotalDocumentosVigentes = documentos.Count;
 
             foreach (var documento in documentos)
             {
-                var decision = ObtenerDecisionRevisionDocumental(documento, revisiones);
+                var decision = ObtenerDecisionRevisionDocumental(documento, revisiones, faseInspector);
                 var estadoDocumento = NormalizarEstadoDocumento(documento.Estado);
 
                 if (decision == "ACEPTADO")
@@ -324,6 +358,7 @@ namespace CapaNegocio
                 || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
             {
                 AsignarFlujoDocumental(estado, "REVISADA_POR_INSPECTOR", "Revision completada por inspector", "COORDINADOR");
@@ -350,11 +385,9 @@ namespace CapaNegocio
                 || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
             {
-                AsignarFlujoDocumental(
-                    estado,
-                    tieneInspectorAsignado ? (estado.TieneDocumentosSubsanadosPendientes ? "SUBSANADA_POR_RT" : "EN_REVISION_INSPECTOR") : "PENDIENTE_COORDINADOR",
-                    tieneInspectorAsignado ? (estado.TieneDocumentosSubsanadosPendientes ? "Documentacion subsanada" : "En revision documental") : "Pendiente de coordinador",
-                    tieneInspectorAsignado ? "INSPECTOR" : "COORDINADOR");
+                var codigoFlujo = estado.TieneDocumentosSubsanadosPendientes ? "SUBSANADA_POR_RT" : "EN_REVISION_INSPECTOR";
+                var nombreFlujo = estado.TieneDocumentosSubsanadosPendientes ? "Documentacion subsanada" : "En revision documental";
+                AsignarFlujoDocumental(estado, codigoFlujo, nombreFlujo, "INSPECTOR");
                 return;
             }
 
@@ -389,6 +422,70 @@ namespace CapaNegocio
             estado.VisibleEnBandejaRt = string.Equals(estado.ResponsableActual, "RT", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static HashSet<int> ObtenerIdsInspectorAsignados(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)
+        {
+            var ids = new HashSet<int>();
+
+            if (solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
+            {
+                ids.Add(solicitud.CodigoTecnico.Value);
+            }
+
+            foreach (var inspeccion in inspecciones ?? Enumerable.Empty<Inspeccion>())
+            {
+                if (inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                {
+                    ids.Add(inspeccion.CodigoInspector.Value);
+                }
+            }
+
+            return ids;
+        }
+
+        private static Dictionary<int, RevisionDocumentalDetalle> FiltrarDetallesRevisionPorInspector(
+            IDictionary<int, RevisionDocumentalDetalle> detalles,
+            HashSet<int> idsInspector)
+        {
+            var resultado = new Dictionary<int, RevisionDocumentalDetalle>();
+            if (detalles == null || idsInspector == null || idsInspector.Count == 0)
+            {
+                return resultado;
+            }
+
+            foreach (var kvp in detalles)
+            {
+                if (kvp.Value == null
+                    || !kvp.Value.CodigoUsuarioRevisor.HasValue
+                    || !idsInspector.Contains(kvp.Value.CodigoUsuarioRevisor.Value))
+                {
+                    continue;
+                }
+
+                resultado[kvp.Key] = kvp.Value;
+            }
+
+            return resultado;
+        }
+
+        private static Dictionary<int, Tuple<string, string>> ConvertirDetallesRevisionATuplas(
+            IDictionary<int, RevisionDocumentalDetalle> detalles)
+        {
+            var resultado = new Dictionary<int, Tuple<string, string>>();
+            foreach (var kvp in detalles ?? new Dictionary<int, RevisionDocumentalDetalle>())
+            {
+                if (kvp.Value == null || kvp.Key <= 0)
+                {
+                    continue;
+                }
+
+                resultado[kvp.Key] = Tuple.Create(
+                    (kvp.Value.Decision ?? string.Empty).Trim(),
+                    (kvp.Value.Observacion ?? string.Empty).Trim());
+            }
+
+            return resultado;
+        }
+
         private static bool TieneInspectorAsignado(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)
         {
             if (solicitud != null)
@@ -410,6 +507,22 @@ namespace CapaNegocio
                     && ((inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
                         || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
                         || !string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula)));
+        }
+
+        /// <summary>
+        /// Revisión documental previa a la asignación de inspector de campo (emisión/renovación).
+        /// </summary>
+        public static bool EsRevisionDocumentalPreAsignacion(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)
+        {
+            if (solicitud == null || TieneInspectorAsignado(solicitud, inspecciones))
+            {
+                return false;
+            }
+
+            var estado = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            return string.Equals(estado, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string ConstruirMensajeBloqueoDocumental(EstadoRevisionDocumental estado)
@@ -442,7 +555,10 @@ namespace CapaNegocio
             return string.Empty;
         }
 
-        private static string ObtenerDecisionRevisionDocumental(Documento documento, IDictionary<int, Tuple<string, string>> revisiones)
+        private static string ObtenerDecisionRevisionDocumental(
+            Documento documento,
+            IDictionary<int, Tuple<string, string>> revisiones,
+            bool faseInspector = false)
         {
             if (documento == null)
             {
@@ -456,6 +572,11 @@ namespace CapaNegocio
                 !string.IsNullOrWhiteSpace(revisionActual.Item1))
             {
                 return NormalizarDecisionRevisionDocumental(revisionActual.Item1);
+            }
+
+            if (faseInspector)
+            {
+                return string.Empty;
             }
 
             var estadoDocumento = NormalizarEstadoDocumento(documento.Estado);

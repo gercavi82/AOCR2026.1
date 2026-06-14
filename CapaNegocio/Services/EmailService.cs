@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Configuration;
-using System.Net;
-using System.Net.Mail;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using CapaModelo.Common;
+using CapaDatos.Services;
 
 namespace CapaNegocio.Services
 {
@@ -30,9 +27,13 @@ namespace CapaNegocio.Services
         Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre);
     }
 
+    /// <summary>
+    /// Fachada de compatibilidad. Delega en AocrEmailService institucional.
+    /// </summary>
     public class EmailService : IEmailService
     {
         private static readonly Regex EmailRegex = new Regex(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled);
+        private readonly AocrEmailService _emailService = new AocrEmailService();
 
         public void EnviarConAdjunto(string para, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre)
         {
@@ -47,59 +48,16 @@ namespace CapaNegocio.Services
 
             adjuntoNombre = string.IsNullOrWhiteSpace(adjuntoNombre) ? "documento.pdf" : adjuntoNombre;
 
-            // ✅ Producción: usa config + credenciales seguras (no hardcode)
-            var host = ConfigurationManager.AppSettings["SmtpHost"];
-            var portStr = ConfigurationManager.AppSettings["SmtpPort"];
-            var user = ConfigurationManager.AppSettings["SmtpUser"];
-            var pass = ConfigurationManager.AppSettings["SmtpPass"]; // ideal: variable de entorno / secret manager
-            var from = ConfigurationManager.AppSettings["MailFrom"]
-                ?? ConfigurationManager.AppSettings["EmailFrom"]
-                ?? ConfigurationManager.AppSettings["Email:FromAddress"]
-                ?? "no_reply@aviacioncivil.gob.ec";
-            var fromName = ConfigurationManager.AppSettings["Email:FromName"]
-                ?? ConfigurationManager.AppSettings["EmailFromName"]
-                ?? ConfigurationManager.AppSettings["FromName"]
-                ?? "aocr@aviacioncivil.gob.ec";
-            var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
-
-            if (string.IsNullOrWhiteSpace(host))
-                throw new Exception("SMTP no configurado (SmtpHost).");
-
-            int port = 587;
-            int.TryParse(portStr, out port);
-
-            bool enableSsl = true;
-            bool.TryParse(enableSslStr, out enableSsl);
-
-            using (var msg = new MailMessage())
+            if (!_emailService.EnviarMensajeCorreoConAdjunto(
+                para,
+                asunto,
+                html,
+                adjuntoBytes,
+                adjuntoNombre,
+                AocrEmailService.AliasDefault,
+                "application/pdf"))
             {
-                msg.From = new MailAddress(from, fromName);
-                msg.To.Add(para);
-                msg.Subject = asunto;
-                msg.IsBodyHtml = true;
-                msg.Body = EmailTemplateRenderer.EnsureStandardLayout(
-                    asunto,
-                    html,
-                    null,
-                    "Este es un mensaje automatico del workflow AOCR.");
-
-                // Adjuntar PDF desde memoria (sin tocar disco)
-                using (var ms = new System.IO.MemoryStream(adjuntoBytes))
-                using (var attachment = new Attachment(ms, adjuntoNombre, "application/pdf"))
-                {
-                    msg.Attachments.Add(attachment);
-
-                    using (var smtp = new SmtpClient(host, port))
-                    {
-                        smtp.EnableSsl = enableSsl;
-
-                        // Si tu servidor requiere auth
-                        if (!string.IsNullOrWhiteSpace(user))
-                            smtp.Credentials = new NetworkCredential(user, pass);
-
-                        smtp.Send(msg);
-                    }
-                }
+                throw new Exception(_emailService.LastError ?? "No fue posible enviar el correo con adjunto.");
             }
         }
 
@@ -107,65 +65,32 @@ namespace CapaNegocio.Services
         {
             try
             {
-                // Si hay adjunto, reutiliza el flujo existente
-                if (adjuntoBytes != null && adjuntoBytes.Length > 0)
-                {
-                    EnviarConAdjunto(para, asunto, html, adjuntoBytes, adjuntoNombre);
-                    return Task.FromResult(EmailSendResult.Ok());
-                }
-
                 if (string.IsNullOrWhiteSpace(para) || !EmailRegex.IsMatch(para))
                     return Task.FromResult(EmailSendResult.Fail("Correo destino inválido"));
 
                 if (string.IsNullOrWhiteSpace(asunto))
                     return Task.FromResult(EmailSendResult.Fail("Asunto requerido"));
 
-                var host = ConfigurationManager.AppSettings["SmtpHost"];
-                var portStr = ConfigurationManager.AppSettings["SmtpPort"];
-                var user = ConfigurationManager.AppSettings["SmtpUser"];
-                var pass = ConfigurationManager.AppSettings["SmtpPass"];
-                var from = ConfigurationManager.AppSettings["MailFrom"]
-                    ?? ConfigurationManager.AppSettings["EmailFrom"]
-                    ?? ConfigurationManager.AppSettings["Email:FromAddress"]
-                    ?? "no_reply@aviacioncivil.gob.ec";
-                var fromName = ConfigurationManager.AppSettings["Email:FromName"]
-                    ?? ConfigurationManager.AppSettings["EmailFromName"]
-                    ?? ConfigurationManager.AppSettings["FromName"]
-                    ?? "aocr@aviacioncivil.gob.ec";
-                var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
-
-                if (string.IsNullOrWhiteSpace(host))
-                    return Task.FromResult(EmailSendResult.Fail("SMTP no configurado (SmtpHost)."));
-
-                int port = 587;
-                int.TryParse(portStr, out port);
-
-                bool enableSsl = true;
-                bool.TryParse(enableSslStr, out enableSsl);
-
-                using (var msg = new MailMessage())
+                bool enviado;
+                if (adjuntoBytes != null && adjuntoBytes.Length > 0)
                 {
-                    msg.From = new MailAddress(from, fromName);
-                    msg.To.Add(para);
-                    msg.Subject = asunto;
-                    msg.IsBodyHtml = true;
-                    msg.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                    enviado = _emailService.EnviarMensajeCorreoConAdjunto(
+                        para,
                         asunto,
                         html,
-                        nombrePara,
-                        "Este es un mensaje automatico del workflow AOCR.");
-
-                    using (var smtp = new SmtpClient(host, port))
-                    {
-                        smtp.EnableSsl = enableSsl;
-                        if (!string.IsNullOrWhiteSpace(user))
-                            smtp.Credentials = new NetworkCredential(user, pass);
-
-                        smtp.Send(msg);
-                    }
+                        adjuntoBytes,
+                        adjuntoNombre,
+                        AocrEmailService.AliasDefault,
+                        "application/pdf");
+                }
+                else
+                {
+                    enviado = _emailService.EnviarMensajeCorreo(para, asunto, html, AocrEmailService.AliasDefault);
                 }
 
-                return Task.FromResult(EmailSendResult.Ok());
+                return Task.FromResult(enviado
+                    ? EmailSendResult.Ok()
+                    : EmailSendResult.Fail(_emailService.LastError ?? "No fue posible enviar el correo."));
             }
             catch (Exception ex)
             {

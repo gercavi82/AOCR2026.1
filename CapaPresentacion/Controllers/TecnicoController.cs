@@ -6,6 +6,8 @@ using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Services;
 using CapaDatos.DAOs;
+using CapaPresentacion.Filters;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using DataSecureConfigurationService = CapaDatos.Services.SecureConfigurationService;
 
@@ -31,11 +33,12 @@ namespace CapaPresentacion.Controllers
         // BANDEJA STANDALONE - Asignación de inspectores
         // =======================================================
         [Authorize(Roles = RolesGestionInspecciones)]
+        [AocrAuthorize(Modulo = "Tecnico", Accion = "Index")]
         public ActionResult Index()
         {
             _logger.LogInfo("[AOCR][ASIGNACION_INSPECTOR] Entrada Tecnico/Index heredado. Usuario=" + ObtenerUsuarioActual() + ", RolesDetectados=" + ObtenerRolActual() + ", RolesRequeridos=" + RolesGestionInspecciones);
 
-            var pendientes = SolicitudAOCRBL.ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>();
+            var pendientes = new CoordinacionBandejaService().ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>();
             ViewBag.TotalPendientes = pendientes.Count;
 
             _logger.LogInfo("[AOCR][ASIGNACION_INSPECTOR] Bandeja de coordinacion cargada. Usuario=" + ObtenerUsuarioActual() + ", Pendientes=" + pendientes.Count);
@@ -48,6 +51,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpGet]
         [Authorize(Roles = RolesGestionInspecciones)]
+        [AocrAuthorize(Modulo = "Tecnico", Accion = "AsignarInspector", CodigoSolicitudParameter = "solicitudId")]
         public ActionResult AsignarInspector(int? solicitudId, string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString() : "null"));
@@ -132,6 +136,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = RolesGestionInspecciones)]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "Tecnico", Accion = "AsignarInspector", CodigoSolicitudParameter = "solicitudId")]
         public ActionResult AsignarInspector(
             int solicitudId,
             string inspectorPrincipal,

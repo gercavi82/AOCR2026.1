@@ -143,7 +143,8 @@ namespace CapaPresentacion.Controllers
             }
 
             if (_ordenRecaudacionDAO.TieneOrdenActivaEnProceso(codigoUsuario)
-                || _ordenRecaudacionDAO.TieneOrdenPendienteComprobante(codigoUsuario))
+                || _ordenRecaudacionDAO.TieneOrdenPendienteComprobante(codigoUsuario)
+                || _ordenRecaudacionDAO.ExisteORGeneradaOPagada(codigoUsuario))
             {
                 mensaje = "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago correspondiente.";
                 return true;
@@ -237,36 +238,62 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryTokenFromHeader]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "GuardarProgresoRT", RequireCompanySelection = true, CodigoSolicitudParameter = "codigoSolicitud")]
         public JsonResult GuardarFlota(GuardarFlotaRequest request)
         {
             try
             {
                 if (request == null || request.CodigoSolicitud <= 0)
                 {
-                    return Json(new { success = false, message = "Solicitud inválida para guardar flota." });
+                    return JsonGuardado(false, "Solicitud inválida para guardar flota.", null);
                 }
 
                 var usuarioId = ObtenerUsuarioActualId();
                 if (usuarioId <= 0)
                 {
-                    return Json(new { success = false, message = "Sesión expirada." });
+                    return JsonGuardado(false, "Sesión expirada.", null, Url.Action("Login", "Account"));
+                }
+
+                if (string.IsNullOrWhiteSpace(ObtenerCompaniaActivaCodigo()))
+                {
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(request.CodigoSolicitud);
                 if (solicitud == null)
                 {
-                    return Json(new { success = false, message = "La solicitud no existe." });
+                    return JsonGuardado(false, "La solicitud no existe.", null);
                 }
 
                 if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
                 {
-                    return Json(new { success = false, message = "No tiene permisos para guardar la flota de esta solicitud." });
+                    return JsonGuardado(false, "No tiene permisos para guardar la flota de esta solicitud.", null);
                 }
 
                 var companiaActiva = ObtenerCompaniaActivaCodigo();
+                if (string.IsNullOrWhiteSpace(companiaActiva))
+                {
+                    return JsonGuardado(
+                        false,
+                        "Debe seleccionar una compañía activa antes de continuar.",
+                        null,
+                        Url.Action("SeleccionarCompania", "Account", new { returnUrl = Request?.RawUrl }),
+                        requiresCompanySelection: true);
+                }
+
                 if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(solicitud, companiaActiva))
                 {
-                    return Json(new { success = false, message = "La solicitud no corresponde a la compañía activa seleccionada." });
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
+                    companiaActiva = ObtenerCompaniaActivaCodigo();
+                    if (!SolicitudCoincideConCompaniaActiva(solicitud, companiaActiva))
+                    {
+                        return JsonGuardado(false, "La solicitud no corresponde a la compañía activa seleccionada.", null);
+                    }
+                }
+
+                if (!EsAdmin() && !SolicitudEsEditableFormularioEmision(solicitud))
+                {
+                    return JsonRechazoEdicionFormularioEmision(solicitud);
                 }
 
                 var aeronaves = (request.Aeronaves ?? new List<AeronaveSolicitud>())
@@ -275,17 +302,49 @@ namespace CapaPresentacion.Controllers
 
                 if (!aeronaves.Any())
                 {
-                    return Json(new { success = false, message = "Debe ingresar al menos una aeronave válida." });
+                    return JsonGuardado(false, "Debe ingresar al menos una aeronave válida.", null);
                 }
 
                 var usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
-                _aeronaveSolDAO.ReemplazarPorSolicitud(request.CodigoSolicitud, aeronaves, usuarioCorreo);
+                var insertadas = _aeronaveSolDAO.ReemplazarPorSolicitud(request.CodigoSolicitud, aeronaves, usuarioCorreo);
 
-                return Json(new { success = true, message = "Flota guardada correctamente.", total = aeronaves.Count });
+                // Verificación posterior al guardado: releer desde base con el mismo SolicitudId.
+                var persistidas = _aeronaveSolDAO.ObtenerPorSolicitud(request.CodigoSolicitud) ?? new List<AeronaveSolicitud>();
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[SOLICITUD_AOCR][GUARDAR_FLOTA] SolicitudId=" + request.CodigoSolicitud +
+                    "; UsuarioId=" + usuarioId +
+                    "; Compania=" + (companiaActiva ?? string.Empty) +
+                    "; Enviadas=" + aeronaves.Count +
+                    "; FilasAfectadas=" + insertadas +
+                    "; PersistidasEnBase=" + persistidas.Count +
+                    "; Resultado=" + (persistidas.Count > 0 ? "OK" : "SIN_FILAS"));
+
+                if (insertadas <= 0 || persistidas.Count <= 0)
+                {
+                    return JsonGuardado(
+                        false,
+                        "No se pudo guardar la información de la flota. La solicitud activa no fue encontrada o no se registraron aeronaves.",
+                        null);
+                }
+
+                return JsonGuardado(
+                    true,
+                    "Flota guardada correctamente.",
+                    new
+                    {
+                        solicitudId = request.CodigoSolicitud,
+                        total = persistidas.Count,
+                        aeronaves = persistidas
+                    },
+                    id: request.CodigoSolicitud);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Error al guardar flota: " + ex.Message });
+                System.Diagnostics.Trace.TraceError(
+                    "[SOLICITUD_AOCR][GUARDAR_FLOTA] SolicitudId=" + (request != null ? request.CodigoSolicitud : 0) +
+                    "; Resultado=ERROR; Detalle=" + ex);
+                return JsonGuardado(false, "No se pudo guardar la flota por un error de base de datos. Revise el log técnico.", null);
             }
         }
 
@@ -320,15 +379,25 @@ namespace CapaPresentacion.Controllers
             return solicitud != null && solicitud.TipoSolicitud.GetValueOrDefault() == 3;
         }
 
+        private static bool EstadoPermiteDescargaAceptacionDocumental(string estadoNormalizado)
+        {
+            return string.Equals(estadoNormalizado, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsTransicionFirmaAceptacionDocumentalCoordinacion(string estadoNuevo)
+        {
+            var normalizado = EstadoSolicitud.Normalizar(estadoNuevo ?? string.Empty);
+            return string.Equals(normalizado, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool SolicitudModificacionTieneNuevoAeropuertoDeclarado(SolicitudAOCR solicitud)
         {
-            if (!EsSolicitudModificacion(solicitud))
-            {
-                return false;
-            }
-
-            return !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuador)
-                || !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuadorOtros);
+            return AocrModificationWorkflowService.TieneNuevoAeropuertoDeclarado(solicitud);
         }
 
         private static IEnumerable<KeyValuePair<string, string>> ObtenerDocumentosObligatoriosPorTipoSolicitud(int? tipoSolicitud)
@@ -482,6 +551,8 @@ namespace CapaPresentacion.Controllers
                 return "Subsanada";
             if (norm == EstadoSolicitud.AceptacionDocumental || norm == EstadoSolicitud.DocumentacionCompleta)
                 return "Documentación Aceptada";
+            if (norm == EstadoSolicitud.PendienteAsignacionRT)
+                return "Pendiente asignación inspector";
             if (norm == EstadoSolicitud.FirmadoCoordinador)
                 return "Aceptación firmada por coordinación";
             if (norm == EstadoSolicitud.Finalizado)
@@ -555,6 +626,13 @@ namespace CapaPresentacion.Controllers
                 var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
                 var companiaActivaNombre = ObtenerCompaniaActivaNombre();
 
+                if (oid.HasValue && oid.Value > 0 && string.IsNullOrWhiteSpace(companiaActivaCodigo))
+                {
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, oid.Value, usuarioId, EsAdmin());
+                    companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
+                    companiaActivaNombre = ObtenerCompaniaActivaNombre();
+                }
+
                 // 1) Cargar usuario logueado
                 System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Intentando obtener usuario: {usuarioId}");
                 
@@ -611,15 +689,54 @@ namespace CapaPresentacion.Controllers
 
                 if ((!oid.HasValue || oid.Value <= 0) && !EsAdmin())
                 {
-                    var solicitudActiva = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud)
-                        ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
-                    if (solicitudActiva != null)
+                    var solicitudVinculadaOrden = ObtenerSolicitudVinculadaOrdenUsuario(usuarioId, tipoSolicitud);
+                    if (solicitudVinculadaOrden != null
+                        && !SolicitudEsEditableFormularioEmision(solicitudVinculadaOrden)
+                        && SolicitudCoincideConCompaniaActiva(solicitudVinculadaOrden, companiaActivaCodigo))
                     {
-                        oid = solicitudActiva.CodigoSolicitud;
-                        System.Diagnostics.Trace.TraceInformation(
-                            "[SOLICITUD_AOCR] Reutilizando solicitud activa existente " + solicitudActiva.CodigoSolicitud +
-                            " para usuario=" + usuarioId +
-                            "; compania=" + (companiaActivaCodigo ?? string.Empty));
+                        var editableAlternativa = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud)
+                            ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
+                        if (editableAlternativa != null)
+                        {
+                            oid = editableAlternativa.CodigoSolicitud;
+                            System.Diagnostics.Trace.TraceInformation(
+                                "[SOLICITUD_AOCR] FormularioEmisionAOCR abre solicitud editable alternativa=" + editableAlternativa.CodigoSolicitud +
+                                " en lugar de solicitud no editable vinculada=" + solicitudVinculadaOrden.CodigoSolicitud +
+                                "; usuario=" + usuarioId);
+                        }
+                        else
+                        {
+                            return RedirigirSeguimientoSolicitudNoEditable(
+                                solicitudVinculadaOrden,
+                                usuarioId,
+                                "FormularioEmisionAOCR.OrdenVinculada");
+                        }
+                    }
+
+                    if (!oid.HasValue || oid.Value <= 0)
+                    {
+                        var oidDesdeOrden = ResolverOidSolicitudDesdeOrdenUsuario(usuarioId, tipoSolicitud);
+                        if (oidDesdeOrden.HasValue && oidDesdeOrden.Value > 0)
+                        {
+                            oid = oidDesdeOrden;
+                            System.Diagnostics.Trace.TraceInformation(
+                                "[SOLICITUD_AOCR] Reutilizando solicitud editable vinculada a orden: solicitud=" + oidDesdeOrden.Value +
+                                " para usuario=" + usuarioId +
+                                "; compania=" + (companiaActivaCodigo ?? string.Empty));
+                        }
+                        else
+                        {
+                            var solicitudActiva = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud)
+                                ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
+                            if (solicitudActiva != null)
+                            {
+                                oid = solicitudActiva.CodigoSolicitud;
+                                System.Diagnostics.Trace.TraceInformation(
+                                    "[SOLICITUD_AOCR] Reutilizando solicitud activa existente " + solicitudActiva.CodigoSolicitud +
+                                    " para usuario=" + usuarioId +
+                                    "; compania=" + (companiaActivaCodigo ?? string.Empty));
+                            }
+                        }
                     }
                 }
 
@@ -636,6 +753,11 @@ namespace CapaPresentacion.Controllers
 
                     if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(vm.Solicitud, companiaActivaCodigo))
                         return Content("<div class='alert alert-danger m-3'><i class='fas fa-lock'></i> Error: La solicitud no corresponde a la compañía activa.</div>");
+
+                    if (!EsAdmin() && !SolicitudEsEditableFormularioEmision(vm.Solicitud))
+                    {
+                        return RedirigirSeguimientoSolicitudNoEditable(vm.Solicitud, usuarioId, "FormularioEmisionAOCR");
+                    }
 
                     // Guard: bloquear edición si el pago aún está pendiente de aprobación por Financiero
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
@@ -674,6 +796,8 @@ namespace CapaPresentacion.Controllers
                         ? vm.Solicitud.NombreComercial
                         : (vm.Solicitud.NombreOperador ?? string.Empty);
 
+                    NormalizarTextosSolicitudFormulario(vm.Solicitud);
+
                     ConfigurarModoSubsanacionObservada(vm, oid.Value);
                 }
                 else
@@ -709,21 +833,32 @@ namespace CapaPresentacion.Controllers
                     vm.DocumentosExistentes = new List<Documento>();
                 }
 
-                var usarDatosUsuarioActual = !oid.HasValue || oid.Value <= 0 ||
+                var esEdicion = oid.HasValue && oid.Value > 0;
+                var usarDatosUsuarioActual = !esEdicion ||
                     (vm.Solicitud != null && vm.Solicitud.CodigoUsuario == usuarioId);
+
+                // Los datos persistidos en la solicitud SIEMPRE prevalecen sobre los datos
+                // del perfil del usuario; el perfil es solo un valor inicial (fallback).
+                var representanteGuardado = esEdicion && vm.Solicitud != null
+                    ? FormatearNombreCompleto(vm.Solicitud.RepresentanteLegal, null)
+                    : string.Empty;
+                var identificacionGuardada = esEdicion && vm.Solicitud != null
+                    ? NormalizarIdentificacion(!string.IsNullOrWhiteSpace(vm.Solicitud.CedulaRepresentante)
+                        ? vm.Solicitud.CedulaRepresentante
+                        : vm.Solicitud.Ruc)
+                    : string.Empty;
 
                 var nombreRepresentanteUsuario = usarDatosUsuarioActual
                     ? ObtenerNombreRepresentanteTecnicoActual(usuarioId, vm.Usuario)
                     : string.Empty;
                 var identificacionUsuario = ObtenerIdentificacionUsuarioActual(usuarioId, vm.Usuario);
-                var identificacionVista = !string.IsNullOrWhiteSpace(identificacionUsuario)
-                    ? identificacionUsuario
-                    : (usarDatosUsuarioActual
-                        ? NormalizarIdentificacion(vm.Solicitud != null ? (vm.Solicitud.CedulaRepresentante ?? vm.Solicitud.Ruc) : null)
-                        : string.Empty);
-                var nombreRepresentanteVista = !string.IsNullOrWhiteSpace(nombreRepresentanteUsuario)
-                    ? nombreRepresentanteUsuario
-                    : FormatearNombreCompleto(vm.Solicitud != null ? vm.Solicitud.RepresentanteLegal : null, null);
+
+                var identificacionVista = !string.IsNullOrWhiteSpace(identificacionGuardada)
+                    ? identificacionGuardada
+                    : (!string.IsNullOrWhiteSpace(identificacionUsuario) ? identificacionUsuario : string.Empty);
+                var nombreRepresentanteVista = !string.IsNullOrWhiteSpace(representanteGuardado)
+                    ? representanteGuardado
+                    : nombreRepresentanteUsuario;
 
                 var companiaSeleccionadaCodigo = ResolverCompaniaSeleccionadaUnica(
                     companiaActivaCodigo,
@@ -754,6 +889,15 @@ namespace CapaPresentacion.Controllers
                 vm.Solicitud.CompaniasSeleccionadas = companiaSeleccionadaCodigo;
 
                 vm.CompaniasDisponibles = ConstruirCompaniaActivaView(companiaSeleccionadaCodigo, companiaSeleccionadaNombre);
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[SOLICITUD_AOCR][CARGAR_FORMULARIO] SolicitudId=" + (vm.Solicitud != null ? vm.Solicitud.CodigoSolicitud : 0) +
+                    "; UsuarioId=" + usuarioId +
+                    "; Compania=" + (companiaSeleccionadaCodigo ?? string.Empty) +
+                    "; Estado=" + (vm.Solicitud != null ? (vm.Solicitud.Estado ?? string.Empty) : string.Empty) +
+                    "; RepresentanteEncontrado=" + (!string.IsNullOrWhiteSpace(representanteGuardado)) +
+                    "; Aeronaves=" + (vm.Aeronaves != null ? vm.Aeronaves.Count : 0) +
+                    "; TipoSolicitud=" + (vm.Solicitud != null && vm.Solicitud.TipoSolicitud.HasValue ? vm.Solicitud.TipoSolicitud.Value : 0));
 
                 if (Request != null && Request.IsAjaxRequest())
                 {
@@ -1087,6 +1231,11 @@ namespace CapaPresentacion.Controllers
                     if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(actual, companiaActivaCodigo))
                         return Json(new { success = false, mensaje = "La solicitud no corresponde a la compañía activa." }, JsonRequestBehavior.AllowGet);
 
+                    if (!EsAdmin() && !SolicitudEsEditableFormularioEmision(actual))
+                    {
+                        return JsonRechazoEdicionFormularioEmision(actual);
+                    }
+
                     // Guard POST: no permitir guardar si el pago está pendiente de aprobación
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
@@ -1189,6 +1338,18 @@ namespace CapaPresentacion.Controllers
 
                 MarcarSubsanadaDespuesDeGuardar(actual, idFinal, usuarioId);
 
+                if (requiereEnvioCoordinador)
+                {
+                    try
+                    {
+                        _solicitudDAO.MarcarPendienteAsignacionCoordinacion(idFinal, usuarioCorreo);
+                    }
+                    catch (Exception exPendienteAsignacion)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] No se pudo marcar pendiente_asignacion_inspector: " + exPendienteAsignacion.Message);
+                    }
+                }
+
                 if (!esNuevaSolicitud && requiereEnvioCoordinador)
                 {
                     try
@@ -1268,7 +1429,7 @@ namespace CapaPresentacion.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryTokenFromHeader]
-        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "EditarRT", RequireCompanySelection = true)]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "GuardarProgresoRT", RequireCompanySelection = true, CodigoSolicitudParameter = "codigoSolicitud")]
         public JsonResult GuardarProgreso()
         {
             try
@@ -1317,16 +1478,34 @@ namespace CapaPresentacion.Controllers
                 // Validaciones mínimas independientes de sección
                 var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
                 var companiaActivaNombre = ObtenerCompaniaActivaNombre();
+
+                if (string.IsNullOrWhiteSpace(companiaActivaCodigo) && sol.CodigoSolicitud > 0)
+                {
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, sol.CodigoSolicitud, usuarioId, EsAdmin());
+                    companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
+                    companiaActivaNombre = ObtenerCompaniaActivaNombre();
+                }
+
                 var companiaFinal = ResolverCompaniaSeleccionadaUnica(
                     companiaActivaCodigo, sol.CompaniasSeleccionadas, null);
 
                 if (string.IsNullOrWhiteSpace(companiaFinal))
                 {
-                    return JsonEnvelope(false, "COMPANY_CONTEXT_MISSING", "No hay compañía activa seleccionada.", data: null);
+                    return Json(new
+                    {
+                        ok = false,
+                        success = false,
+                        code = "COMPANY_CONTEXT_MISSING",
+                        message = "No hay compañía activa seleccionada.",
+                        mensaje = "No hay compañía activa seleccionada.",
+                        requiresCompanySelection = true,
+                        redirectUrl = Url.Action("SeleccionarCompania", "Account", new { returnUrl = Request != null ? Request.RawUrl : null }),
+                        data = (object)null
+                    });
                 }
-
                 sol.CompaniasSeleccionadas = companiaFinal;
                 sol.TipoSolicitud = NormalizarTipoSolicitud(sol.TipoSolicitud);
+                NormalizarTextosSolicitudFormulario(sol);
 
                 if (sol.CodigoSolicitud <= 0)
                 {
@@ -1384,6 +1563,16 @@ namespace CapaPresentacion.Controllers
                         return JsonEnvelope(false, "FORBIDDEN", "Sin permisos para modificar esta solicitud.", data: null);
                     }
 
+                    if (!EsAdmin() && !SolicitudEsEditableFormularioEmision(actual))
+                    {
+                        var estadoVisible = string.IsNullOrWhiteSpace(actual.Estado) ? "desconocido" : actual.Estado.Trim();
+                        return JsonEnvelope(
+                            false,
+                            "NOT_EDITABLE",
+                            "La solicitud ya no puede editarse porque avanzó a la etapa: " + estadoVisible,
+                            data: null);
+                    }
+
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
                         string mensajeBloqueo;
@@ -1397,24 +1586,70 @@ namespace CapaPresentacion.Controllers
                     bool ok = _solicitudBL.Actualizar(actual, usuarioId, out msg, EsAdmin());
                     if (!ok)
                     {
-                        return JsonEnvelope(false, "UPDATE_FAILED", msg, data: null);
+                        System.Diagnostics.Trace.TraceWarning(
+                            "[SOLICITUD_AOCR][GUARDAR_PROGRESO] SolicitudId=" + actual.CodigoSolicitud +
+                            "; UsuarioId=" + usuarioId +
+                            "; Compania=" + (companiaFinal ?? string.Empty) +
+                            "; Seccion=" + seccion +
+                            "; FilasAfectadas=0; Resultado=UPDATE_FAILED; Mensaje=" + (msg ?? string.Empty));
+                        return JsonEnvelope(false, "UPDATE_FAILED",
+                            string.IsNullOrWhiteSpace(msg)
+                                ? "No se guardaron cambios. Verifique la solicitud activa y los datos enviados."
+                                : msg,
+                            data: null);
                     }
                     idFinal = actual.CodigoSolicitud;
                 }
+
+                var persistida = _solicitudDAO.ObtenerPorId(idFinal);
+                if (persistida == null)
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        "[SOLICITUD_AOCR][GUARDAR_PROGRESO] SolicitudId=" + idFinal +
+                        "; UsuarioId=" + usuarioId +
+                        "; Seccion=" + seccion +
+                        "; Resultado=NO_CONFIRMADO (relectura nula)");
+                    return JsonEnvelope(false, "PERSISTENCE_NOT_CONFIRMED",
+                        "El sistema intentó guardar, pero no pudo confirmar la persistencia de los datos.", data: null);
+                }
+
+                NormalizarTextosSolicitudFormulario(persistida);
+
+                string campoNoPersistido;
+                if (!SeccionQuedoPersistida(persistida, sol, seccion, out campoNoPersistido))
+                {
+                    System.Diagnostics.Trace.TraceError(
+                        "[SOLICITUD_AOCR][GUARDAR_PROGRESO] SolicitudId=" + idFinal +
+                        "; UsuarioId=" + usuarioId +
+                        "; Seccion=" + seccion +
+                        "; Resultado=NO_CONFIRMADO; CampoNoPersistido=" + campoNoPersistido);
+                    return JsonEnvelope(false, "PERSISTENCE_NOT_CONFIRMED",
+                        "El sistema guardó, pero no pudo confirmar la persistencia del campo: " + campoNoPersistido + ". Revise el log técnico.", data: null);
+                }
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[SOLICITUD_AOCR][GUARDAR_PROGRESO] SolicitudId=" + idFinal +
+                    "; UsuarioId=" + usuarioId +
+                    "; Compania=" + (companiaFinal ?? string.Empty) +
+                    "; Seccion=" + seccion +
+                    "; Estado=" + (persistida.Estado ?? string.Empty) +
+                    "; Resultado=OK; PersistenciaConfirmada=True");
 
                 return Json(new
                 {
                     ok = true,
                     success = true,
                     code = "OK",
-                    message = "Sección guardada correctamente.",
-                    mensaje = "Sección guardada correctamente.",
+                    message = "Datos guardados correctamente.",
+                    mensaje = "Datos guardados correctamente.",
                     id = idFinal,
                     seccion = seccion,
+                    redirectUrl = (string)null,
                     data = new
                     {
                         id = idFinal,
-                        seccion = seccion
+                        seccion = seccion,
+                        solicitud = ConstruirSnapshotSolicitudGuardada(persistida, seccion)
                     }
                 });
             }
@@ -1423,6 +1658,80 @@ namespace CapaPresentacion.Controllers
                 System.Diagnostics.Debug.WriteLine("[GuardarProgreso] Error: " + ex.Message);
                 return JsonEnvelope(false, "INTERNAL_ERROR", "Error al guardar: " + ex.Message, data: null);
             }
+        }
+
+        /// <summary>
+        /// Compara los campos editables de la sección guardada contra la fila releída de base,
+        /// para confirmar que la persistencia fue real (no solo que el endpoint terminó sin error).
+        /// </summary>
+        private static bool SeccionQuedoPersistida(SolicitudAOCR persistida, SolicitudAOCR enviada, string seccion, out string campoNoPersistido)
+        {
+            campoNoPersistido = string.Empty;
+            if (persistida == null)
+            {
+                campoNoPersistido = "(solicitud)";
+                return false;
+            }
+
+            if (enviada == null)
+            {
+                return true;
+            }
+
+            Func<string, string> norm = v => FormularioEmisionTextHelper.NormalizarTextoPlano(v ?? string.Empty).Trim();
+
+            var seccionNormalizada = (seccion ?? string.Empty).Trim().ToLowerInvariant();
+            if (seccionNormalizada == "explotador")
+            {
+                if (norm(persistida.Direccion) != norm(enviada.Direccion)) { campoNoPersistido = "Direccion"; return false; }
+                if (norm(persistida.Telefono) != norm(enviada.Telefono)) { campoNoPersistido = "Telefono"; return false; }
+                if (norm(persistida.RepresentanteLegal) != norm(enviada.RepresentanteLegal)) { campoNoPersistido = "RepresentanteLegal"; return false; }
+                return true;
+            }
+
+            if (seccionNormalizada == "operaciones")
+            {
+                if (norm(persistida.ResumenOperacionesEae) != norm(enviada.ResumenOperacionesEae)
+                    && norm(persistida.DescripcionOperacion) != norm(enviada.ResumenOperacionesEae))
+                {
+                    campoNoPersistido = "ResumenOperacionesEae";
+                    return false;
+                }
+                if (!TokensCsvEquivalentes(persistida.TipoOperacion, enviada.TipoOperacion, '|')) { campoNoPersistido = "TipoOperacion"; return false; }
+                if (norm(persistida.NumeroAOC) != norm(enviada.NumeroAOC)) { campoNoPersistido = "NumeroAOC"; return false; }
+                if (!TokensCsvEquivalentes(persistida.AeropuertosEcuador, enviada.AeropuertosEcuador, ',')) { campoNoPersistido = "AeropuertosEcuador"; return false; }
+                if (norm(persistida.AeropuertosEcuadorOtros) != norm(enviada.AeropuertosEcuadorOtros)) { campoNoPersistido = "AeropuertosEcuadorOtros"; return false; }
+                return true;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Compara listas de tokens separados por delimitador sin depender del orden
+        /// (evita falsos negativos en verificación post-guardado).
+        /// </summary>
+        private static bool TokensCsvEquivalentes(string valorA, string valorB, char separadorPrincipal)
+        {
+            var setA = TokenizarListaPersistencia(valorA, separadorPrincipal);
+            var setB = TokenizarListaPersistencia(valorB, separadorPrincipal);
+            if (setA.Count != setB.Count)
+            {
+                return false;
+            }
+
+            return setA.SetEquals(setB);
+        }
+
+        private static HashSet<string> TokenizarListaPersistencia(string valor, char separadorPrincipal)
+        {
+            var separadores = new[] { separadorPrincipal, ',', ';', '|' };
+            return new HashSet<string>(
+                (valor ?? string.Empty)
+                    .Split(separadores, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(v => FormularioEmisionTextHelper.NormalizarTextoPlano(v).Trim().ToUpperInvariant())
+                    .Where(v => !string.IsNullOrWhiteSpace(v)),
+                StringComparer.OrdinalIgnoreCase);
         }
 
         private static void AplicarCambiosGuardarProgreso(SolicitudAOCR actual, SolicitudAOCR parcial, string seccion)
@@ -1463,15 +1772,91 @@ namespace CapaPresentacion.Controllers
 
             if (seccionNormalizada == "operaciones")
             {
-                actual.TipoOperacion = parcial.TipoOperacion;
-                actual.DescripcionOperacion = parcial.DescripcionOperacion;
-                actual.ResumenOperacionesEae = parcial.ResumenOperacionesEae;
-                actual.NumeroAOC = parcial.NumeroAOC;
-                actual.AprobacionesEspeciales = parcial.AprobacionesEspeciales;
-                actual.AprobacionesEspecialesOtros = parcial.AprobacionesEspecialesOtros;
-                actual.AeropuertosEcuador = parcial.AeropuertosEcuador;
-                actual.AeropuertosEcuadorOtros = parcial.AeropuertosEcuadorOtros;
+                var resumen = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.ResumenOperacionesEae);
+                if (string.IsNullOrWhiteSpace(resumen))
+                {
+                    resumen = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.DescripcionOperacion);
+                }
+
+                actual.TipoOperacion = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.TipoOperacion);
+                actual.ResumenOperacionesEae = resumen;
+                actual.DescripcionOperacion = resumen;
+                actual.NumeroAOC = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.NumeroAOC);
+                actual.AeropuertosEcuador = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.AeropuertosEcuador);
+                actual.AeropuertosEcuadorOtros = FormularioEmisionTextHelper.NormalizarTextoPlano(parcial.AeropuertosEcuadorOtros);
             }
+        }
+
+        private static void NormalizarTextosSolicitudFormulario(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return;
+            }
+
+            solicitud.RepresentanteLegal = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.RepresentanteLegal);
+            solicitud.Direccion = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.Direccion);
+            solicitud.Telefono = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.Telefono);
+            solicitud.Email = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.Email);
+            solicitud.RazonSocial = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.RazonSocial);
+            solicitud.NombreComercial = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.NombreComercial);
+            solicitud.NombreOperador = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.NombreOperador);
+            solicitud.TipoOperacion = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.TipoOperacion);
+            solicitud.DescripcionOperacion = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.DescripcionOperacion);
+            solicitud.ResumenOperacionesEae = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.ResumenOperacionesEae);
+            solicitud.NumeroAOC = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.NumeroAOC);
+            solicitud.AprobacionesEspeciales = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.AprobacionesEspeciales);
+            solicitud.AprobacionesEspecialesOtros = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.AprobacionesEspecialesOtros);
+            solicitud.AeropuertosEcuador = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.AeropuertosEcuador);
+            solicitud.AeropuertosEcuadorOtros = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.AeropuertosEcuadorOtros);
+            solicitud.ObservacionesGenerales = FormularioEmisionTextHelper.NormalizarTextoPlano(solicitud.ObservacionesGenerales);
+        }
+
+        private static object ConstruirSnapshotSolicitudGuardada(SolicitudAOCR persistida, string seccion)
+        {
+            if (persistida == null)
+            {
+                return null;
+            }
+
+            NormalizarTextosSolicitudFormulario(persistida);
+
+            var seccionNormalizada = (seccion ?? string.Empty).Trim().ToLowerInvariant();
+            if (seccionNormalizada == "explotador")
+            {
+                return new
+                {
+                    persistida.RepresentanteLegal,
+                    persistida.CedulaRepresentante,
+                    persistida.CorreoRepresentanteTecnico,
+                    persistida.Direccion,
+                    persistida.Telefono,
+                    persistida.Email,
+                    persistida.Ruc
+                };
+            }
+
+            if (seccionNormalizada == "operaciones")
+            {
+                return new
+                {
+                    persistida.TipoOperacion,
+                    persistida.DescripcionOperacion,
+                    persistida.ResumenOperacionesEae,
+                    persistida.NumeroAOC,
+                    persistida.AeropuertosEcuador,
+                    persistida.AeropuertosEcuadorOtros
+                };
+            }
+
+            return new
+            {
+                persistida.NombreOperador,
+                persistida.RazonSocial,
+                persistida.NombreComercial,
+                persistida.CodigoOaci,
+                persistida.CompaniasSeleccionadas
+            };
         }
 
         private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo, bool bloquearModuloRtAlFinalizar)
@@ -2620,6 +3005,21 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
+            var oidDesdeOrden = ResolverOidSolicitudDesdeOrdenUsuario(codigoUsuario, tipoSolicitud);
+            if (oidDesdeOrden.HasValue && oidDesdeOrden.Value > 0
+                && (!excluirCodigoSolicitud.HasValue || excluirCodigoSolicitud.Value != oidDesdeOrden.Value))
+            {
+                var solicitudOrden = _solicitudDAO.ObtenerPorId(oidDesdeOrden.Value);
+                if (solicitudOrden != null && EsSolicitudActivaReutilizable(solicitudOrden))
+                {
+                    string mensajeBloqueoOrden;
+                    if (_solicitudAocrService.PuedeRtEditarSolicitud(solicitudOrden.CodigoSolicitud, codigoUsuario, out mensajeBloqueoOrden))
+                    {
+                        return solicitudOrden;
+                    }
+                }
+            }
+
             var tipoNormalizado = NormalizarTipoSolicitud(tipoSolicitud);
             var workflow = _solicitudAocrService;
 
@@ -2647,7 +3047,53 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            return EstadoSolicitud.PermiteEdicion(solicitud.Estado);
+            return EstadoSolicitud.PermiteEdicionFormularioEmision(solicitud.Estado);
+        }
+
+        private const string MensajeRedireccionSeguimientoNoEditable =
+            "Esta solicitud ya avanzó a la etapa de inspección y no puede ser editada. Puede consultar el estado del trámite y continuar el flujo desde la pantalla de seguimiento.";
+
+        private static bool SolicitudEsEditableFormularioEmision(SolicitudAOCR solicitud)
+        {
+            return solicitud != null && EstadoSolicitud.PermiteEdicionFormularioEmision(solicitud.Estado);
+        }
+
+        private ActionResult RedirigirSeguimientoSolicitudNoEditable(SolicitudAOCR solicitud, int usuarioId, string origen)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[SOLICITUD_AOCR] Redirigiendo seguimiento por estado no editable: origen={0}; solicitud={1}; estado={2}; usuario={3}",
+                origen ?? string.Empty,
+                solicitud != null ? solicitud.CodigoSolicitud.ToString() : "N/A",
+                solicitud != null ? (solicitud.Estado ?? string.Empty) : string.Empty,
+                usuarioId);
+
+            TempData["Info"] = MensajeRedireccionSeguimientoNoEditable;
+
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                var url = Url.Action("Detalle", new { id = solicitud.CodigoSolicitud });
+                return Content(
+                    "<div class='alert alert-info m-3'>" +
+                    "<i class='fas fa-circle-info me-2'></i>" +
+                    HttpUtility.HtmlEncode(MensajeRedireccionSeguimientoNoEditable) +
+                    "<div class='mt-3'><a class='btn btn-primary btn-sm' href='" + HttpUtility.HtmlAttributeEncode(url) + "'>" +
+                    "<i class='fas fa-route me-1'></i>Ir al seguimiento AOCR</a></div></div>");
+            }
+
+            return RedirectToAction("Detalle", new { id = solicitud.CodigoSolicitud });
+        }
+
+        private JsonResult JsonRechazoEdicionFormularioEmision(SolicitudAOCR solicitud)
+        {
+            var estadoVisible = solicitud == null || string.IsNullOrWhiteSpace(solicitud.Estado)
+                ? "desconocido"
+                : solicitud.Estado.Trim();
+
+            return Json(new
+            {
+                success = false,
+                message = "La solicitud ya no puede editarse porque avanzó a la etapa: " + estadoVisible
+            });
         }
 
         private static bool ContieneValorLista(string lista, string valor)
@@ -2659,6 +3105,44 @@ namespace CapaPresentacion.Controllers
                 .Split(',')
                 .Select(x => (x ?? string.Empty).Trim())
                 .Any(x => x.Equals(valor, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private int? ResolverOidSolicitudDesdeOrdenUsuario(int codigoUsuario, int? tipoSolicitud)
+        {
+            var solicitud = ObtenerSolicitudVinculadaOrdenUsuario(codigoUsuario, tipoSolicitud);
+            if (solicitud == null || !EstadoSolicitud.PermiteEdicionFormularioEmision(solicitud.Estado))
+            {
+                return null;
+            }
+
+            return solicitud.CodigoSolicitud;
+        }
+
+        private SolicitudAOCR ObtenerSolicitudVinculadaOrdenUsuario(int codigoUsuario, int? tipoSolicitud)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            var codigoSolicitudOrden = _ordenRecaudacionDAO.ObtenerCodigoSolicitudOrdenRecienteUsuario(codigoUsuario, soloOrdenGenerada: true);
+            if (!codigoSolicitudOrden.HasValue || codigoSolicitudOrden.Value <= 0)
+            {
+                return null;
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(codigoSolicitudOrden.Value);
+            if (solicitud == null || solicitud.CodigoSolicitud <= 0)
+            {
+                return null;
+            }
+
+            if (NormalizarTipoSolicitud(solicitud.TipoSolicitud) != NormalizarTipoSolicitud(tipoSolicitud))
+            {
+                return null;
+            }
+
+            return solicitud;
         }
 
         // =========================================================
@@ -2864,7 +3348,7 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         public ActionResult RevisarSolicitudes()
         {
             // Si no hay en ENVIADO_A_INSPECTOR, mostramos otros estados pendientes
@@ -2882,7 +3366,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Aprobar", CodigoSolicitudParameter = "id")]
         public ActionResult Aprobar(string id)
@@ -2919,7 +3403,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult Observar(string id, string observacion)
         {
@@ -2962,7 +3446,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult RevisarDocumentoItem(int id, int codigoDocumento, string decision, string observacion)
         {
@@ -3052,7 +3536,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult AccionMasivaRevisionDocumental(int id, string tipoAccion, string revisionesJson, string observacionCoordinador)
         {
@@ -3317,7 +3801,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         [AocrAuthorize(Modulo = "RevisionDocumental", Accion = "Revisar", CodigoSolicitudParameter = "id")]
         public ActionResult FinalizarRevisionDocumental(int id)
@@ -3453,7 +3937,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
@@ -4060,11 +4544,28 @@ namespace CapaPresentacion.Controllers
                 ViewBag.AocrYaGenerado = false;
             }
 
+            try
+            {
+                var authContext = CrearContextoAutorizacionAocr();
+                ViewBag.Flujo = SolicitudAocrFlujoViewModelBuilder.Construir(
+                    solicitud,
+                    authContext,
+                    procesoCerradoOperativamente,
+                    (bool)(ViewBag.PuedeGenerarAOCR ?? false),
+                    ViewBag.MotivoGenerarAOCR as string,
+                    inspeccionesSolicitud);
+            }
+            catch
+            {
+                ViewBag.Flujo = new SolicitudAocrFlujoViewModel();
+            }
+
             return View(solicitud);
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "FirmarAceptacionDocumental", CodigoSolicitudParameter = "id")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarAceptacionDocumental(int id, string observacion = "")
         {
@@ -4112,7 +4613,12 @@ namespace CapaPresentacion.Controllers
                     ", UsuarioFirmante=" + usuarioFirmante);
             }
 
-            var firmaPlan = _revisionDocumentalService.PrepararFirmaAceptacionDocumental(estadoActual, documentosRevision, revisiones, observacion);
+            var firmaPlan = _revisionDocumentalService.PrepararFirmaAceptacionDocumental(
+                estadoActual,
+                documentosRevision,
+                revisiones,
+                observacion,
+                solicitud.TipoSolicitud);
             var documentosAceptados = documentosRevision.Count(d => d != null && d.CodigoDocumento > 0 && ObtenerDecisionRevisionDocumentalLog(d, revisiones) == "ACEPTADO");
             _logger.LogInfo(
                 "[FirmarAceptacionDocumental] Validacion. SolicitudId=" + id +
@@ -4166,7 +4672,9 @@ namespace CapaPresentacion.Controllers
             }
 
             TempData["NotificacionTipo"] = "success";
-            TempData["NotificacionMensaje"] = "La revisión final de Coordinación fue registrada. Continúe el flujo institucional hacia DIRDAC/DCAV para la firma final cuando corresponda.";
+            TempData["NotificacionMensaje"] = string.Equals(firmaPlan.EstadoDestino, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
+                ? "La aceptación documental fue firmada. La solicitud quedó pendiente de asignación de inspector en la bandeja de coordinación."
+                : "La aceptación documental fue firmada por coordinación. Continúe el flujo institucional según el tipo de trámite.";
             return RedirectToAction("Detalle", new { id });
         }
 
@@ -4227,8 +4735,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
-            if (!string.Equals(estadoActual, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase))
+            if (!EstadoPermiteDescargaAceptacionDocumental(estadoActual))
             {
                 TempData["NotificacionTipo"] = "warning";
                 TempData["NotificacionMensaje"] = "La aceptación documental aún no está firmada por coordinación.";
@@ -4237,7 +4744,7 @@ namespace CapaPresentacion.Controllers
 
             var historialEstados = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id) ?? new List<CapaModelo.HistorialEstado>();
             var firmaCoordinacion = historialEstados
-                .Where(h => h != null && string.Equals(EstadoSolicitud.Normalizar(h.EstadoNuevo), EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
+                .Where(h => h != null && EsTransicionFirmaAceptacionDocumentalCoordinacion(h.EstadoNuevo))
                 .OrderByDescending(h => h.FechaCambio)
                 .FirstOrDefault();
 
@@ -4264,15 +4771,6 @@ namespace CapaPresentacion.Controllers
 
             var pdfBytes = pdf.BuildFile(ControllerContext);
             var nombreArchivo = ConstruirNombrePdfAceptacionDocumental(solicitud, firmaCoordinacion != null ? firmaCoordinacion.FechaCambio : (DateTime?)null);
-
-            if (!vistaPrevia && esPropietario && string.Equals(estadoActual, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
-            {
-                string mensajeCambio;
-                if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, "Aceptación documental descargada por el RT.", out mensajeCambio))
-                {
-                    System.Diagnostics.Debug.WriteLine("[DescargarAceptacionDocumental] No se pudo marcar la solicitud como finalizada: " + mensajeCambio);
-                }
-            }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
@@ -5328,7 +5826,7 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("RevisarLegalizacion");
         }
 
-        [Authorize(Roles = "Inspector,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinadorInspecciones,Coordinacion,Administrador")]
         public ActionResult MarcarPendienteAsignacionRT(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -5365,6 +5863,27 @@ namespace CapaPresentacion.Controllers
             TempData["NotificacionMensaje"] = "El acceso SolicitarInspeccion se mantiene solo por compatibilidad. Continúe desde la inspección vinculada para iniciar y gestionar esta fase.";
             TempData["NotificacionTipo"] = "info";
             return RedirectToAction("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Inspector,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult CerrarFaseDocumentalNuevoAeropuertoModificacion(int id, string observacion = "")
+        {
+            var contextoAocr = CrearContextoAutorizacionAocr();
+            var resultado = _aocrModificationWorkflowService.EjecutarCierreFaseDocumentalNuevoAeropuerto(
+                id,
+                observacion,
+                ObtenerUsuarioActualId(),
+                contextoAocr.Roles,
+                contextoAocr.IsAuthenticated);
+
+            TempData["NotificacionTipo"] = resultado.ClaveTempData;
+            TempData["NotificacionMensaje"] = resultado.Mensaje;
+            return RedirectToAction(
+                resultado.AccionRedireccion,
+                resultado.ControladorRedireccion,
+                new RouteValueDictionary(resultado.RouteValues ?? new Dictionary<string, object> { { "id", id } }));
         }
 
         [HttpPost]
@@ -5410,7 +5929,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult RevisarCondicionesLimitacionesModificacion(int id, string observacion = "")
         {
@@ -5439,7 +5958,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarCondicionesLimitacionesDcav(int id, string observacion = "")
         {
@@ -5468,7 +5987,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult MarcarAocrEnElaboracion(int id, string observacion = "")
         {
@@ -5493,7 +6012,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult MarcarAocrEnRevision(int id, string observacion = "")
         {
@@ -6247,6 +6766,16 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
+            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
+            if (SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion(solicitud, inspecciones))
+            {
+                return User != null && (
+                    User.IsInRole("Inspector")
+                    || User.IsInRole("Coordinador")
+                    || User.IsInRole("CoordinadorInspecciones")
+                    || User.IsInRole("Coordinacion"));
+            }
+
             var estadoRevision = _solicitudAocrInfraBL.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
                 ?? new EstadoRevisionDocumental();
             if (!estadoRevision.VisibleEnBandejaInspector)
@@ -6257,7 +6786,6 @@ namespace CapaPresentacion.Controllers
             int usuarioActualId;
             TryObtenerUsuarioActualId(out usuarioActualId);
             var identidadInspector = ConstruirIdentidadInspectorActual(usuarioActualId);
-            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
             return EsInspectorAsignadoActual(solicitud, inspecciones, identidadInspector);
         }
 
@@ -6473,6 +7001,27 @@ namespace CapaPresentacion.Controllers
             public SolicitudAOCR Solicitud { get; set; }
         }
 
+        private JsonResult JsonGuardado(
+            bool success,
+            string message,
+            object data = null,
+            string redirectUrl = null,
+            bool requiresCompanySelection = false,
+            int? id = null)
+        {
+            return Json(new
+            {
+                success = success,
+                ok = success,
+                message = message ?? string.Empty,
+                mensaje = message ?? string.Empty,
+                data = data,
+                redirectUrl = redirectUrl,
+                requiresCompanySelection = requiresCompanySelection,
+                id = id
+            }, JsonRequestBehavior.AllowGet);
+        }
+
         private JsonResult JsonEnvelope(bool ok, string code, string message, object data = null, object legacy = null)
         {
             var safeCode = string.IsNullOrWhiteSpace(code) ? (ok ? "OK" : "ERROR") : code.Trim();
@@ -6488,8 +7037,9 @@ namespace CapaPresentacion.Controllers
                     message = safeMessage,
                     mensaje = safeMessage,
                     data = data,
+                    redirectUrl = (string)null,
                     legacy = legacy
-                });
+                }, JsonRequestBehavior.AllowGet);
             }
 
             return Json(new
@@ -6499,8 +7049,9 @@ namespace CapaPresentacion.Controllers
                 code = safeCode,
                 message = safeMessage,
                 mensaje = safeMessage,
-                data = data
-            });
+                data = data,
+                redirectUrl = (string)null
+            }, JsonRequestBehavior.AllowGet);
         }
 
         private bool TryObtenerUsuarioActualId(out int idUsuario)

@@ -261,7 +261,7 @@ namespace CapaDatos.Constants
             { EnviadoDcav, new[] { FirmadoDcav } },
             { FirmadoDcav, new[] { Finalizado } },
             { PendienteAsignacionRT, new[] { EnInspeccion } },
-            { FirmadoCoordinador, new[] { Finalizado } },
+            { FirmadoCoordinador, new[] { PendienteAsignacionRT, RequiereInspeccion, GeneradoCondicionesLimitaciones } },
             { Finalizado, Array.Empty<string>() },
             { EnInspeccion, new[] { AOCR_EnElaboracion } },
             { AOCR_EnElaboracion, new[] { AOCR_EnRevision } },
@@ -296,6 +296,10 @@ namespace CapaDatos.Constants
                 case "DOCUMENTACION_PENDIENTE":
                 case "EN_REVISION_DOCUMENTAL":
                 case "EN REVISION DOCUMENTAL":
+                case "PENDIENTE_REVISION_DOCUMENTAL":
+                case "PENDIENTE REVISION DOCUMENTAL":
+                case "PENDIENTE_CARGA_DOCUMENTAL_RT":
+                case "PENDIENTE CARGA DOCUMENTAL RT":
                 case "ENVIADO":
                 case "PREPARANDO":
                 case "ENVIADO_COORDINADOR":
@@ -416,6 +420,112 @@ namespace CapaDatos.Constants
                    string.Equals(actual, DocumentacionPendiente, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(actual, Observada, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(actual, Subsanada, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Clave técnica del estado para reglas de edición del formulario RT (FormularioEmisionAOCR).
+        /// </summary>
+        public static string NormalizarClaveEdicion(string estado)
+        {
+            return (estado ?? string.Empty)
+                .Trim()
+                .ToUpperInvariant()
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U")
+                .Replace(" ", "_")
+                .Replace("-", "_");
+        }
+
+        private static readonly HashSet<string> ClavesEditablesFormularioEmision = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "BORRADOR",
+            "NO_GENERADO",
+            "PENDIENTE_SUBSANACION",
+            "SUBSANACION_REQUERIDA",
+            "EN_CARGA",
+            "REGISTRO_INICIAL"
+        };
+
+        private static readonly HashSet<string> ClavesNoEditablesFormularioEmision = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "EN_INSPECCION",
+            "EN_REVISION_DOCUMENTAL",
+            "ACEPTACION_DOCUMENTAL",
+            "PENDIENTE_CARGA_FIRMADA",
+            "SOLICITUD_FIRMADA",
+            "ENVIADO_COORDINADOR",
+            "EN_REVISION_COORDINADOR",
+            "ASIGNADA_INSPECTOR",
+            "AOCR_EN_ELABORACION",
+            "FIRMADO_COORDINADOR",
+            "AOCR_LEGALIZADO",
+            "AUTORIZACION_FIRMADA",
+            "CERRADA",
+            "FINALIZADA",
+            "CERRADO",
+            "FINALIZADO"
+        };
+
+        private static readonly HashSet<string> EstadosNormalizadosNoEditablesFormularioEmision = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            EnInspeccion,
+            EnRevision,
+            AceptacionDocumental,
+            RequiereInspeccion,
+            GeneradoCondicionesLimitaciones,
+            EnRevisionCoordinadorFinal,
+            EnviadoDcav,
+            FirmadoDcav,
+            PendienteAsignacionRT,
+            FirmadoCoordinador,
+            Finalizado,
+            AOCR_EnElaboracion,
+            AOCR_EnRevision,
+            AOCR_Validado,
+            AOCR_Legalizado,
+            AOCR_EmitidoRecibido,
+            DocumentacionCompleta,
+            PagoPendiente,
+            PagoValidado,
+            InspeccionProgramada,
+            InspeccionRealizada,
+            Aprobada,
+            Rechazada,
+            CertificadoEmitido,
+            Anulada
+        };
+
+        /// <summary>
+        /// Determina si el RT puede editar el formulario de emisión AOCR según el estado actual del trámite.
+        /// </summary>
+        public static bool PermiteEdicionFormularioEmision(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return true;
+            }
+
+            var clave = NormalizarClaveEdicion(estado);
+            if (ClavesEditablesFormularioEmision.Contains(clave))
+            {
+                return true;
+            }
+
+            if (PermiteEdicion(estado))
+            {
+                return true;
+            }
+
+            if (ClavesNoEditablesFormularioEmision.Contains(clave))
+            {
+                return false;
+            }
+
+            var actual = Normalizar(estado);
+            return !EstadosNormalizadosNoEditablesFormularioEmision.Contains(actual);
         }
 
         public static bool EsEstadoValido(string estado)

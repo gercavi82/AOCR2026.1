@@ -9,5 +9,6 @@ packages/
 *.log
 *.vsidx
 **/App_Data/Logs/
+docs/export/node_modules/
 
 .fake

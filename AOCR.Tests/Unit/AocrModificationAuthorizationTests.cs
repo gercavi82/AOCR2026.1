@@ -12,14 +12,15 @@ namespace AOCR.Tests.Unit
         public void SolicitudAocr_ModificationInspectorActions_ShouldRequireInspectorRole()
         {
             AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "MarcarRequiereInspeccionModificacion", "Inspector,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "CerrarFaseDocumentalNuevoAeropuertoModificacion", "Inspector,Administrador");
             AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "GenerarCondicionesLimitacionesModificacion", "Inspector,Administrador");
         }
 
         [TestMethod]
         public void SolicitudAocr_ModificationCoordinatorActions_ShouldRequireCoordinatorRole()
         {
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "RevisarCondicionesLimitacionesModificacion", "Coordinador,CoordinadorInspecciones,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "EnviarCondicionesLimitacionesDcav", "Coordinador,CoordinadorInspecciones,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "RevisarCondicionesLimitacionesModificacion", "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "EnviarCondicionesLimitacionesDcav", "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
         }
 
         [TestMethod]
@@ -37,10 +38,10 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void CoordinacionJefatura_ModificationDocumentWorkflow_ShouldExposeExpectedRoleContracts()
         {
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "EditarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "PreviewDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GenerarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GuardarPosicionFirmaAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "EditarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "PreviewDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GenerarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GuardarPosicionFirmaAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
         }
 
         [TestMethod]
@@ -184,10 +185,10 @@ namespace AOCR.Tests.Unit
         public void InspeccionNcCoordinatorActions_ShouldRequireCoordinatorRole()
         {
             var solicitarNueva = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "SolicitarNueva");
-            StringAssert.Contains(solicitarNueva, "[Authorize(Roles = ROL_COORD + \",\" + ROL_COORD_ALIAS + \",\" + ROL_JEFATURA + \",\" + ROL_ADMIN)]", "SolicitarNueva debe seguir restringido a coordinación/jefatura o administrador.");
+            StringAssert.Contains(solicitarNueva, "[Authorize(Roles = ROL_COORD + \",\" + ROL_COORD_ALIAS + \",\" + ROL_COORD_GRUPO + \",\" + ROL_JEFATURA + \",\" + ROL_ADMIN)]", "SolicitarNueva debe seguir restringido a coordinación/jefatura o administrador.");
 
             var aprobarNcSubsanacion = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "AprobarNcSubsanacionDocumental");
-            StringAssert.Contains(aprobarNcSubsanacion, "[Authorize(Roles = ROL_COORD + \",\" + ROL_COORD_ALIAS + \",\" + ROL_JEFATURA + \",\" + ROL_ADMIN)]", "AprobarNcSubsanacionDocumental debe seguir restringido a coordinación/jefatura o administrador.");
+            StringAssert.Contains(aprobarNcSubsanacion, "[Authorize(Roles = ROL_COORD + \",\" + ROL_COORD_ALIAS + \",\" + ROL_COORD_GRUPO + \",\" + ROL_JEFATURA + \",\" + ROL_ADMIN)]", "AprobarNcSubsanacionDocumental debe seguir restringido a coordinación/jefatura o administrador.");
         }
 
         [TestMethod]

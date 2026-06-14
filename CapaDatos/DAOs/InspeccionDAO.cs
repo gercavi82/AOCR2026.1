@@ -185,11 +185,12 @@ namespace CapaDatos.DAOs
                 var filtroSolicitudNoEliminada = columnasSolicitud.Contains("deleted_at")
                     ? "s.deleted_at IS NULL"
                     : "TRUE";
+                var filtroVisibilidadPostAsignacion = @"(COALESCE(i.codigo_inspector, 0) > 0 OR COALESCE(s.codigo_tecnico, 0) > 0)";
                 var filtroPagoAprobado = columnasSolicitud.Contains("pago_aprobado")
-                    ? "COALESCE(s.pago_aprobado, FALSE) = TRUE"
+                    ? "(COALESCE(s.pago_aprobado, FALSE) = TRUE OR " + filtroVisibilidadPostAsignacion + ")"
                     : "TRUE";
                 var filtroModuloRtHabilitado = columnasSolicitud.Contains("modulo_solicitud_rt_habilitado")
-                    ? "COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) = TRUE"
+                    ? "(COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) = TRUE OR " + filtroVisibilidadPostAsignacion + ")"
                     : "TRUE";
                 var filtroPendienteCargaDocumentalRt = columnasSolicitud.Contains("pendiente_carga_documental_rt")
                     ? @"(

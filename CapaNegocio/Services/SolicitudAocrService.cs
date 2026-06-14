@@ -69,9 +69,19 @@ namespace CapaNegocio.Services
                         FROM aocr_tbsolicitud s
                         LEFT JOIN LATERAL (
                             SELECT estado
-                            FROM aocr_or_orden
-                            WHERE codigo_solicitud::text = s.codigo_solicitud::text
-                            ORDER BY fecha_creacion DESC NULLS LAST, id DESC
+                            FROM aocr_or_orden o
+                            WHERE UPPER(TRIM(COALESCE(o.estado, ''))) <> 'ANULADA'
+                              AND (
+                                  TRIM(COALESCE(o.codigo_solicitud::text, '')) = s.codigo_solicitud::text
+                                  OR o.codigo_usuario::text = s.codigo_usuario::text
+                              )
+                            ORDER BY
+                                CASE
+                                    WHEN TRIM(COALESCE(o.codigo_solicitud::text, '')) = s.codigo_solicitud::text THEN 0
+                                    ELSE 1
+                                END,
+                                o.fecha_creacion DESC NULLS LAST,
+                                o.id DESC
                             LIMIT 1
                         ) o ON TRUE
                         WHERE s.codigo_solicitud = @codigo_solicitud
@@ -101,9 +111,10 @@ namespace CapaNegocio.Services
                             var requiereNuevaOrden = rd["requiere_nueva_orden"] != DBNull.Value && Convert.ToBoolean(rd["requiere_nueva_orden"]);
                             var solicitudFinalizada = rd["solicitud_finalizada_rt"] != DBNull.Value && Convert.ToBoolean(rd["solicitud_finalizada_rt"]);
                             var estadoOrden = rd["estado_orden"] == DBNull.Value ? string.Empty : rd["estado_orden"].ToString();
-                            var ordenVigente = _ordenService.PuedeRtContinuarFlujoAocr(codigoSolicitud);
-                            var pagoAprobadoPorOrden = _ordenDao.TieneAprobacionFinancieraSolicitud(codigoSolicitud);
+                            var ordenVigente = _ordenService.PuedeRtContinuarFlujoAocr(codigoSolicitud, codigoUsuarioRt);
+                            var pagoAprobadoPorOrden = _ordenDao.TieneAprobacionFinancieraSolicitud(codigoSolicitud, codigoUsuarioRt);
                             var ordenPagada = EstadoOrden.EsPagado(estadoOrden) || pagoAprobadoPorOrden;
+                            var ordenGeneradaUsuario = _ordenDao.ExisteORGeneradaOPagada(codigoUsuarioRt);
 
                             if (solicitudFinalizada || requiereNuevaOrden)
                             {
@@ -113,7 +124,9 @@ namespace CapaNegocio.Services
 
                             if (!ordenVigente && !ordenPagada)
                             {
-                                mensaje = "Debe generar la Orden de Recaudación para continuar con el proceso AOCR.";
+                                mensaje = ordenGeneradaUsuario
+                                    ? MensajePagoPendiente
+                                    : "Debe generar la Orden de Recaudación para continuar con el proceso AOCR.";
                                 return false;
                             }
 
@@ -122,9 +135,20 @@ namespace CapaNegocio.Services
                                 pagoAprobado = true;
                             }
 
-                            if (!pagoAprobado || !moduloHabilitado || !ordenPagada)
+                            if (pagoAprobadoPorOrden && !moduloHabilitado)
                             {
-                                mensaje = MensajePagoPendiente;
+                                moduloHabilitado = true;
+                            }
+
+                            var pagoOk = pagoAprobado || pagoAprobadoPorOrden;
+                            var moduloOk = moduloHabilitado || pagoAprobadoPorOrden || EstadoOrden.EsPagado(estadoOrden);
+                            var ordenOk = ordenPagada || ordenVigente;
+
+                            if (!pagoOk || !moduloOk || !ordenOk)
+                            {
+                                mensaje = (ordenVigente || ordenGeneradaUsuario)
+                                    ? MensajePagoPendiente
+                                    : "Debe generar la Orden de Recaudación para continuar con el proceso AOCR.";
                                 return false;
                             }
 

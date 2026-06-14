@@ -14,10 +14,12 @@ using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
 using CapaUtilidades;
+using CapaPresentacion.Filters;
 
 namespace CapaPresentacion.Controllers
 {
     [Authorize]
+    [AocrAuthorize(Modulo = "Documento")]
     public class DocumentoController : Controller
     {
         // 1. Usamos la BL en lugar del DAO
@@ -46,10 +48,17 @@ namespace CapaPresentacion.Controllers
         #region Vistas Principales
 
         // GET: Documento/Lista/5
-        public ActionResult Lista(int solicitudId, string modo = null)
+        public ActionResult Lista(int solicitudId, string modo = null, string origen = null, int? inspeccionId = null)
         {
             try
             {
+                string motivoAuth;
+                if (!AocrPresentacionAuthorizationHelper.EsPermitido(HttpContext, "Documento", "Lista", out motivoAuth, solicitudId))
+                {
+                    TempData["Error"] = motivoAuth;
+                    return RedirectToAction("Index", "SolicitudAOCR");
+                }
+
                 var solicitud = _solicitudDAO.ObtenerPorId(solicitudId);
                 if (solicitud == null) return RedirectToAction("Index", "SolicitudAOCR");
 
@@ -95,8 +104,19 @@ namespace CapaPresentacion.Controllers
                 ViewBag.PuedeRevisarDocumentos = puedeRevisar;
                 ViewBag.PuedeReabrirDocumentos = puedeReabrir;
                 ViewBag.ModoDocumentos = esModoRevisionDocumental ? "revision" : "ver";
+                ViewBag.EsFaseInspectorDocumental = _solicitudAocrInfraBL.RequiereDecisionDocumentalInspector(solicitudId);
                 ViewBag.OperadoraEae = ObtenerOperadoraEaeVisible(solicitud);
                 ViewData["SolicitudId"] = solicitudId;
+
+                if (inspeccionId.HasValue && inspeccionId.Value > 0)
+                {
+                    ViewBag.CodigoInspeccion = inspeccionId.Value;
+                }
+
+                var volver = ResolverUrlRetornoDocumentos(origen, solicitudId, inspeccionId);
+                ViewBag.VolverUrl = volver.Url;
+                ViewBag.VolverTexto = volver.Texto;
+                ViewBag.SolicitudNumero = solicitud.NumeroSolicitud ?? solicitudId.ToString();
 
                 return View(documentos);
             }
@@ -107,28 +127,11 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        // GET: Documento/RevisarDocumentos
-        // [Authorize(Roles = "Administrador,Inspector")] // Descomentar luego
+        // GET: Documento/RevisarDocumentos — redirige a bandeja institucional (no expone listado global sin filtro).
+        [AocrAuthorize(Modulo = "Documento", Accion = "RevisarDocumentos")]
         public ActionResult RevisarDocumentos()
         {
-            try
-            {
-                var todos = _documentoBL.ObtenerTodos() ?? new List<Documento>();
-
-                // Pendiente documental incluye estados vigentes como CARGADO / SIN_REVISAR.
-                var pendientes = todos
-                    .Where(d => EsEstadoDocumentoPendiente(d != null ? d.Estado : null))
-                    .OrderByDescending(d => d.FechaSubida)
-                    .ToList();
-
-                return View(pendientes);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al cargar bandeja: {ex.Message}";
-                // Retornamos lista vacía para no causar error 302
-                return View(new List<Documento>());
-            }
+            return RedirectToAction("Index", "RevisionDocumental");
         }
 
         // GET: Documento/Detalle/5
@@ -193,6 +196,13 @@ namespace CapaPresentacion.Controllers
                 {
                     TempData["Error"] = "Debe especificar una solicitud válida para subir documentos.";
                     return RedirectToAction("Index", "SolicitudAOCR");
+                }
+
+                string motivoAuth;
+                if (!AocrPresentacionAuthorizationHelper.EsPermitido(HttpContext, "Documento", "Subir", out motivoAuth, solicitudId))
+                {
+                    TempData["Error"] = motivoAuth;
+                    return RedirectToAction("Detalle", "SolicitudAOCR", new { id = solicitudId.Value });
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(solicitudId.Value);
@@ -301,6 +311,12 @@ namespace CapaPresentacion.Controllers
                 if (solicitud == null)
                 {
                     return HttpNotFound();
+                }
+
+                string motivoAuth;
+                if (!AocrPresentacionAuthorizationHelper.EsPermitido(HttpContext, "Documento", "Descargar", out motivoAuth, doc.CodigoSolicitud))
+                {
+                    return new HttpStatusCodeResult(HttpStatusCode.Forbidden, motivoAuth);
                 }
 
                 Inspeccion inspeccionVinculada;
@@ -670,7 +686,7 @@ namespace CapaPresentacion.Controllers
                     codigoSolicitud,
                     idDocumento,
                     decisionNormalizada,
-                    decisionNormalizada == "ACEPTADO" ? string.Empty : observacionNormalizada,
+                    observacionNormalizada,
                     usuarioId,
                     usuarioVisible);
                 _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
@@ -773,6 +789,19 @@ namespace CapaPresentacion.Controllers
                 "; ResponsableActual=" + (estadoRevision.ResponsableActual ?? string.Empty) +
                 "; Flujo=" + (estadoRevision.FlujoDocumentalCodigo ?? string.Empty) +
                 "; EsInspectorAsignado=" + esInspectorAsignado);
+
+            if (SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion(solicitud, inspecciones))
+            {
+                var esInspector = roles.Any(r => RoleGroupingHelper.IsInspectorTecnico(r))
+                    || RoleGroupingHelper.HasAnyRawRole(roles, "Inspector", "InspectorTecnico");
+                var esCoordinacion = roles.Any(r => RoleGroupingHelper.IsCoordinacion(r));
+                return esInspector || esCoordinacion;
+            }
+
+            if (esInspectorAsignado)
+            {
+                return true;
+            }
 
             return esInspectorAsignado && estadoRevision.VisibleEnBandejaInspector;
         }
@@ -905,6 +934,73 @@ namespace CapaPresentacion.Controllers
             return string.Equals(valor, "revision", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(valor, "revisar", StringComparison.OrdinalIgnoreCase)
                    || string.Equals(valor, "revision-documental", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private sealed class DocumentoRetornoNavegacion
+        {
+            public string Url { get; set; }
+            public string Texto { get; set; }
+        }
+
+        private DocumentoRetornoNavegacion ResolverUrlRetornoDocumentos(string origen, int solicitudId, int? inspeccionId)
+        {
+            var origenNormalizado = (origen ?? string.Empty).Trim().ToLowerInvariant();
+
+            if (string.Equals(origenNormalizado, "revision-documental", StringComparison.OrdinalIgnoreCase))
+            {
+                return new DocumentoRetornoNavegacion
+                {
+                    Url = Url.Action("Index", "RevisionDocumental"),
+                    Texto = "Volver a revisión documental"
+                };
+            }
+
+            if (string.Equals(origenNormalizado, "inspeccion", StringComparison.OrdinalIgnoreCase))
+            {
+                return new DocumentoRetornoNavegacion
+                {
+                    Url = Url.Action("Index", "Inspeccion"),
+                    Texto = "Volver a inspecciones"
+                };
+            }
+
+            if (string.Equals(origenNormalizado, "inspeccion-detalle", StringComparison.OrdinalIgnoreCase)
+                && inspeccionId.HasValue
+                && inspeccionId.Value > 0)
+            {
+                return new DocumentoRetornoNavegacion
+                {
+                    Url = Url.Action("Detalle", "Inspeccion", new { id = inspeccionId.Value }),
+                    Texto = "Volver a la inspección"
+                };
+            }
+
+            if (string.Equals(origenNormalizado, "solicitud-detalle", StringComparison.OrdinalIgnoreCase)
+                && solicitudId > 0)
+            {
+                return new DocumentoRetornoNavegacion
+                {
+                    Url = Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudId }),
+                    Texto = "Volver al detalle de solicitud"
+                };
+            }
+
+            if (inspeccionId.HasValue && inspeccionId.Value > 0)
+            {
+                return new DocumentoRetornoNavegacion
+                {
+                    Url = Url.Action("Index", "Inspeccion"),
+                    Texto = "Volver a inspecciones"
+                };
+            }
+
+            return new DocumentoRetornoNavegacion
+            {
+                Url = solicitudId > 0
+                    ? Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudId })
+                    : Url.Action("Index", "SolicitudAOCR"),
+                Texto = "Volver al detalle de solicitud"
+            };
         }
 
         private IList<string> ObtenerRolesActuales()
@@ -1167,7 +1263,10 @@ namespace CapaPresentacion.Controllers
                 return;
             }
 
-            var revisiones = _solicitudAocrInfraBL.ObtenerUltimosDetallesRevisionPorSolicitud(solicitud.CodigoSolicitud);
+            var faseInspector = _solicitudAocrInfraBL.RequiereDecisionDocumentalInspector(solicitud.CodigoSolicitud);
+            var revisiones = faseInspector
+                ? _solicitudAocrInfraBL.ObtenerUltimosDetallesRevisionInspectorPorSolicitud(solicitud.CodigoSolicitud)
+                : _solicitudAocrInfraBL.ObtenerUltimosDetallesRevisionPorSolicitud(solicitud.CodigoSolicitud);
             var operadora = ObtenerOperadoraEaeVisible(solicitud);
 
             foreach (var documento in lista)
@@ -1187,6 +1286,14 @@ namespace CapaPresentacion.Controllers
                         ? revision.NombreUsuarioRevisor.Trim()
                         : ((!string.IsNullOrWhiteSpace(revision.CreatedBy) ? revision.CreatedBy.Trim() : (documento.ValidadoPor ?? string.Empty).Trim()));
                 }
+                else if (faseInspector)
+                {
+                    documento.DecisionRevision = string.Empty;
+                    documento.ObservacionRevision = string.Empty;
+                    documento.FechaRevision = null;
+                    documento.CodigoUsuarioRevisor = null;
+                    documento.NombreUsuarioRevisor = string.Empty;
+                }
                 else
                 {
                     documento.DecisionRevision = NormalizarDecisionRevision(documento.Estado);
@@ -1195,7 +1302,7 @@ namespace CapaPresentacion.Controllers
                     documento.NombreUsuarioRevisor = (documento.ValidadoPor ?? string.Empty).Trim();
                 }
 
-                documento.EstadoRevisionVisible = ObtenerEstadoDocumentoVisible(documento);
+                documento.EstadoRevisionVisible = ObtenerEstadoDocumentoVisible(documento, faseInspector);
             }
         }
 
@@ -1240,7 +1347,7 @@ namespace CapaPresentacion.Controllers
             return etiqueta;
         }
 
-        private static string ObtenerEstadoDocumentoVisible(Documento documento)
+        private static string ObtenerEstadoDocumentoVisible(Documento documento, bool faseInspector = false)
         {
             var decision = NormalizarDecisionRevision(documento != null ? documento.DecisionRevision : null);
             switch (decision)
@@ -1251,6 +1358,11 @@ namespace CapaPresentacion.Controllers
                     return "DEVUELTO";
                 case "OBSERVADO":
                     return "OBSERVADO";
+            }
+
+            if (faseInspector)
+            {
+                return "PENDIENTE";
             }
 
             switch (NormalizarEstadoDocumento(documento != null ? documento.Estado : null))

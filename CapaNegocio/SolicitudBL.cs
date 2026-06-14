@@ -188,10 +188,9 @@ namespace CapaNegocio
                     return false;
                 }
 
-                // Regla de negocio: Solo editar si está en BORRADOR (opcional, según tu flujo)
-                if (!esAdmin && !EstadoSolicitud.PermiteEdicion(actual.Estado))
+                if (!esAdmin && !EstadoSolicitud.PermiteEdicionFormularioEmision(actual.Estado))
                 {
-                    mensaje = "La solicitud ya no se puede editar porque está en estado: " + actual.Estado;
+                    mensaje = "La solicitud ya no puede editarse porque avanzó a la etapa: " + actual.Estado;
                     return false;
                 }
 

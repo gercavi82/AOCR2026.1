@@ -60,6 +60,12 @@ namespace CapaPresentacion.Controllers
         private const string MensajeSolicitudInspeccionSoloLectura = "No se puede modificar la Solicitud de Inspecciones porque la orden ya fue generada.";
         private const string MensajeSolicitudInspeccionPreliminarBloqueada = "No se puede acceder a la Solicitud de Inspecciones preliminar porque la orden ya fue generada.";
         private const string MensajeSolicitudInspeccionSoloLecturaSinFirmado = "La orden ya no permite edición y no se encontró la solicitud firmada. Revise el expediente documental.";
+        private const string MensajeSolicitudInspeccionYaGenerada = "La Solicitud de Inspecciones ya fue generada. Descárguela y cargue la versión firmada para continuar.";
+        private const string MensajeSolicitudInspeccionPendienteCargaFirmada = "La solicitud ya fue generada. Descargue el PDF, fírmelo externamente y cargue la versión firmada para continuar. No se pueden agregar nuevas acciones, conceptos o inspecciones adicionales a esta solicitud.";
+        private const string MensajeSolicitudInspeccionPendienteConReapertura = "La solicitud ya fue generada. Si necesita agregar nuevas acciones, debe rechazar la generación actual antes de cargar el PDF firmado.";
+        private const string MensajeSolicitudInspeccionReaperturaExito = "La generación fue rechazada. Puede seguir agregando acciones, conceptos o inspecciones a la orden.";
+        private const string AccionReaperturaPorAgregarAcciones = "REAPERTURA_POR_AGREGAR_ACCIONES";
+        private const string MensajeSolicitudInspeccionGeneradaExito = "La Solicitud de Inspecciones fue generada correctamente. Descárguela, fírmela externamente y cargue la versión firmada para continuar. No se pueden agregar nuevas acciones, conceptos o inspecciones adicionales a esta solicitud.";
         private const string MensajeSolicitudInspeccionModoSoloLectura = "Documento disponible en modo solo lectura.";
 
         private OrdenRecaudacionDAO _ordenDAO;
@@ -502,9 +508,10 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                if (detalles.Count == 0)
+                string errorConceptosObligatorios;
+                if (!ValidarDetallesConceptosObligatoriosOrdenNueva(detalles, out errorConceptosObligatorios))
                 {
-                    ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
+                    ModelState.AddModelError("", errorConceptosObligatorios);
                     PrepararNuevaOrdenViewModel(model);
                     return View(model);
                 }
@@ -673,7 +680,7 @@ namespace CapaPresentacion.Controllers
                             out documentoId,
                             out errorGeneracion))
                         {
-                            TempData["OK"] = "Orden " + numeroOrden + " creada en borrador. La Solicitud de Inspecciones fue generada correctamente. Descárguela, fírmela y súbala al sistema.";
+                            TempData["OK"] = "Orden " + numeroOrden + " creada en borrador. " + MensajeSolicitudInspeccionGeneradaExito;
                             return RedirectToAction("Detalles", new { id = ordenId });
                         }
 
@@ -706,12 +713,161 @@ namespace CapaPresentacion.Controllers
             }
 
             CargarConceptosNueva(model);
+            ConfigurarConceptoObligatorioViewBag(model);
             model.SolicitudInspeccionPanel = BuildNuevaSolicitudInspeccionPanelViewModel(model, tieneInspeccionExt);
+        }
+
+        private void ConfigurarConceptoObligatorioViewBag(OrdenRecaudacionNuevaVM model)
+        {
+            var conceptoObligatorio = (model?.Conceptos ?? new List<CapaPresentacion.Models.ConceptoOptionVM>())
+                .FirstOrDefault(c => EsConceptoInspeccionExt(c.Codigo));
+
+            ViewBag.ConceptoObligatorioCodigo = CodigoConceptoInspeccionExt;
+            ViewBag.ConceptoObligatorioId = conceptoObligatorio?.Id ?? 0;
+            ViewBag.ConceptoObligatorioEncontrado = conceptoObligatorio != null;
+        }
+
+        private bool ValidarDetallesConceptosObligatoriosOrdenNueva(List<DetalleOrdenRequest> detalles, out string mensajeError)
+        {
+            mensajeError = null;
+
+            var conceptoObligatorioCatalogo = _conceptoDao.ObtenerPorCodigo(CodigoConceptoInspeccionExt);
+            if (conceptoObligatorioCatalogo == null || !conceptoObligatorioCatalogo.Activo)
+            {
+                mensajeError = "No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.";
+                return false;
+            }
+
+            if (detalles == null || detalles.Count == 0)
+            {
+                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                return false;
+            }
+
+            var tieneInspeccionExt = false;
+            var tieneOtroConcepto = false;
+
+            foreach (var det in detalles)
+            {
+                var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
+                if (concepto == null || det.Cantidad <= 0)
+                {
+                    continue;
+                }
+
+                if (EsConceptoInspeccionExt(concepto.Codigo))
+                {
+                    tieneInspeccionExt = true;
+                }
+                else
+                {
+                    tieneOtroConcepto = true;
+                }
+            }
+
+            if (!tieneInspeccionExt)
+            {
+                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                return false;
+            }
+
+            if (!tieneOtroConcepto)
+            {
+                mensajeError = "Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ValidarConceptosOrdenInspeccionExt(OrdenRecaudacionModel orden, out string mensajeError)
+        {
+            mensajeError = null;
+
+            var conceptoObligatorioCatalogo = _conceptoDao.ObtenerPorCodigo(CodigoConceptoInspeccionExt);
+            if (conceptoObligatorioCatalogo == null || !conceptoObligatorioCatalogo.Activo)
+            {
+                mensajeError = "No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.";
+                return false;
+            }
+
+            var detalles = ObtenerDetallesOrdenParaValidacion(orden);
+            if (detalles == null || detalles.Count == 0)
+            {
+                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                return false;
+            }
+
+            var tieneInspeccionExt = false;
+            var tieneOtroConcepto = false;
+
+            foreach (var det in detalles)
+            {
+                if (det.Cantidad <= 0)
+                {
+                    continue;
+                }
+
+                if (EsConceptoInspeccionExt(det.ConceptoCodigo))
+                {
+                    tieneInspeccionExt = true;
+                }
+                else
+                {
+                    tieneOtroConcepto = true;
+                }
+            }
+
+            if (!tieneInspeccionExt)
+            {
+                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                return false;
+            }
+
+            if (!tieneOtroConcepto)
+            {
+                mensajeError = "Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private List<CapaDatos.Models.OrdenDetalleModel> ObtenerDetallesOrdenParaValidacion(OrdenRecaudacionModel orden)
+        {
+            if (orden == null)
+            {
+                return new List<CapaDatos.Models.OrdenDetalleModel>();
+            }
+
+            var detalles = orden.Detalles ?? new List<CapaDatos.Models.OrdenDetalleModel>();
+            if (detalles.Count == 0 && orden.Id > 0)
+            {
+                try
+                {
+                    detalles = (_dao.ObtenerDetallesPorOrdenId(orden.Id) ?? new List<DetalleOrden>())
+                        .Select(d => new CapaDatos.Models.OrdenDetalleModel
+                        {
+                            OrdenId = d.OrdenId,
+                            ConceptoId = d.ConceptoId ?? 0,
+                            ConceptoCodigo = d.ConceptoCodigo,
+                            ConceptoNombre = d.ConceptoNombre,
+                            Cantidad = d.Cantidad
+                        })
+                        .ToList();
+                }
+                catch
+                {
+                    detalles = new List<CapaDatos.Models.OrdenDetalleModel>();
+                }
+            }
+
+            return detalles;
         }
 
         private SolicitudInspeccionExtPanelViewModel BuildNuevaSolicitudInspeccionPanelViewModel(OrdenRecaudacionNuevaVM model, bool? tieneInspeccionExt = null)
         {
-            var requiereSolicitudInspeccion = tieneInspeccionExt ?? false;
+            var requiereSolicitudInspeccion = tieneInspeccionExt ?? true;
             return new SolicitudInspeccionExtPanelViewModel
             {
                 OrdenId = 0,
@@ -722,6 +878,7 @@ namespace CapaPresentacion.Controllers
                 TienePdfGenerado = false,
                 TienePdfFirmado = false,
                 PuedeEditarSolicitudInspeccionExt = requiereSolicitudInspeccion,
+                PuedeAgregarAccionesOrden = requiereSolicitudInspeccion,
                 PuedeGenerarSolicitud = requiereSolicitudInspeccion,
                 PuedeDescargarSolicitud = false,
                 PuedeSubirSolicitudFirmada = false,
@@ -918,6 +1075,13 @@ namespace CapaPresentacion.Controllers
                 orden.CodigoUsuario,
                 orden.LugarEmision);
 
+            CompletarDatosOrdenParaVista(orden);
+            if (!OrdenPermiteAgregarAccionesInspeccionExt(orden))
+            {
+                TempData["Error"] = MensajeSolicitudInspeccionPendienteCargaFirmada;
+                return RedirectToAction("Detalles", new { id });
+            }
+
             return View(orden);
         }
 
@@ -957,6 +1121,14 @@ namespace CapaPresentacion.Controllers
 
             if (!string.Equals((ordenExistente.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase))
                 return new HttpStatusCodeResult(403);
+
+            var ordenParaValidacion = _dao.ObtenerOrdenPorIdModel(model.Id);
+            CompletarDatosOrdenParaVista(ordenParaValidacion);
+            if (!OrdenPermiteAgregarAccionesInspeccionExt(ordenParaValidacion))
+            {
+                TempData["Error"] = MensajeSolicitudInspeccionPendienteCargaFirmada;
+                return RedirectToAction("Detalles", new { id = model.Id });
+            }
 
             try
             {
@@ -1800,18 +1972,19 @@ namespace CapaPresentacion.Controllers
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
             var orden = _dao.ObtenerOrdenPorIdModel(id);
-            if (orden == null || orden.CodigoUsuario != idUsuario)
+            var esAdmin = User != null && User.IsInRole("Administrador");
+            if (orden == null || (!esAdmin && orden.CodigoUsuario != idUsuario))
                 return HttpNotFound();
 
-            var estadoOrden = (orden.Estado ?? "").Trim();
-            if (estadoOrden.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
-                estadoOrden.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
+            var estadoAnterior = (orden.Estado ?? string.Empty).Trim();
+            if (estadoAnterior.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
+                estadoAnterior.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "No se pueden anular órdenes aprobadas o facturadas.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
-            if (string.Equals((orden.Estado ?? "").Trim(), "ANULADA", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(estadoAnterior, "ANULADA", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "La orden ya está anulada";
                 return RedirectToAction("Detalles", new { id = id });
@@ -1819,24 +1992,31 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(motivo))
             {
-                TempData["Error"] = "Debe proporcionar un motivo para la anulación";
+                TempData["Error"] = "Debe ingresar el motivo de la anulación.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             try
             {
-                // TODO: AquÃ­ se debera guardar el motivo de la anulacin en la base de datos
-                bool result = _dao.CambiarEstadoOrden(id, "ANULADA");
+                var motivoLimpio = motivo.Trim();
+                bool result = _dao.Anular(id, motivoLimpio);
                 if (result)
                 {
+                    CapaNegocio.LogBL.RegistrarInfo(
+                        string.Format(
+                            "[AOCR][ORDEN] Orden anulada. OrdenId={0}; NumeroOrden={1}; EstadoAnterior={2}; Usuario={3}; Motivo={4}",
+                            id,
+                            FirstNonEmpty(orden.NumeroOrden, id.ToString()),
+                            FirstNonEmpty(estadoAnterior, "N/A"),
+                            idUsuario,
+                            motivoLimpio),
+                        "OrdenRecaudacionController");
                     TempData["OK"] = "Orden anulada correctamente";
                     return RedirectToAction("Detalles", new { id = id });
                 }
-                else
-                {
-                    TempData["Error"] = "Error al anular la orden";
-                    return RedirectToAction("Detalles", new { id = id });
-                }
+
+                TempData["Error"] = "Error al anular la orden";
+                return RedirectToAction("Detalles", new { id = id });
             }
             catch (Exception ex)
             {
@@ -1878,17 +2058,102 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalles", new { id });
             }
 
+            var solicitudIdOrden = ObtenerCodigoSolicitudOrden(orden);
+            var solicitudYaGenerada = solicitudIdOrden > 0
+                ? ObtenerUltimoDocumentoSolicitudInspeccion(solicitudIdOrden, TipoSolicitudInspeccionGenerada, orden.Id)
+                : null;
+            if (solicitudYaGenerada != null)
+            {
+                CapaNegocio.LogBL.RegistrarInfo(
+                    $"{LogSolicitudInspeccionExt} OrdenId={id} SolicitudId={solicitudIdOrden} CodigoConcepto={CodigoConceptoInspeccionExt} DocumentoId={solicitudYaGenerada.CodigoDocumento} Usuario={idUsuario} Accion=GenerarSolicitud Resultado=Bloqueado MotivoBloqueo=PdfYaGenerado",
+                    "OrdenRecaudacionController");
+                TempData["Error"] = MensajeSolicitudInspeccionYaGenerada;
+                return RedirectToAction("Detalles", new { id });
+            }
+
+            string errorConceptosOrden;
+            if (!ValidarConceptosOrdenInspeccionExt(orden, out errorConceptosOrden))
+            {
+                TempData["Error"] = errorConceptosOrden;
+                return RedirectToAction("Detalles", new { id });
+            }
+
             int documentoId;
             string errorGeneracion;
             if (GenerarSolicitudInspeccionDocumento(orden, aeropuertosSolicitados, idUsuario, out documentoId, out errorGeneracion))
             {
-                TempData["OK"] = "La Solicitud de Inspecciones fue generada correctamente. Descárguela, fírmela y súbala al sistema.";
+                TempData["OK"] = MensajeSolicitudInspeccionGeneradaExito;
             }
             else
             {
                 TempData["Error"] = "No fue posible generar la Solicitud de Inspecciones. " + (errorGeneracion ?? string.Empty);
             }
 
+            return RedirectToAction("Detalles", new { id });
+        }
+
+        /// <summary>
+        /// Invalida el PDF generado y reabre la orden para agregar acciones (solo si no hay firmado cargado).
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Solicitante,Administrador,Operador")]
+        public ActionResult RechazarGeneracionSolicitudInspeccion(int id, string motivo = null)
+        {
+            int idUsuario = GetUserId();
+            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
+            if (!ValidarOrdenSolicitudInspeccion(orden, idUsuario, permitirGestion: true, mensajeError: out var mensaje))
+            {
+                TempData["Error"] = mensaje;
+                return orden == null ? (ActionResult)HttpNotFound() : RedirectToAction("Detalles", new { id });
+            }
+
+            if (!PuedeEditarSolicitudInspeccionExt(orden, idUsuario, out var documentoFirmado, out var motivoBloqueoEdicion))
+            {
+                CapaNegocio.LogBL.RegistrarInfo(
+                    $"{LogSolicitudInspeccionExt} OrdenId={id} EstadoOrden={FirstNonEmpty(orden != null ? orden.Estado : null, "N/A")} Accion={AccionReaperturaPorAgregarAcciones} Usuario={idUsuario} PuedeEditar=False MotivoBloqueo={FirstNonEmpty(motivoBloqueoEdicion, MensajeSolicitudInspeccionSoloLectura)} Resultado=Bloqueado",
+                    "OrdenRecaudacionController");
+                TempData["Error"] = FirstNonEmpty(motivoBloqueoEdicion, MensajeSolicitudInspeccionSoloLectura);
+                return RedirectToAction("Detalles", new { id });
+            }
+
+            if (documentoFirmado != null)
+            {
+                CapaNegocio.LogBL.RegistrarInfo(
+                    $"{LogSolicitudInspeccionExt} OrdenId={id} SolicitudId={ObtenerCodigoSolicitudOrden(orden)} CodigoConcepto={CodigoConceptoInspeccionExt} DocumentoId={documentoFirmado.CodigoDocumento} Accion={AccionReaperturaPorAgregarAcciones} Usuario={idUsuario} Resultado=Bloqueado MotivoBloqueo=SolicitudFirmadaCargada",
+                    "OrdenRecaudacionController");
+                TempData["Error"] = "No se puede rechazar la generación porque ya existe una solicitud firmada cargada.";
+                return RedirectToAction("Detalles", new { id });
+            }
+
+            var solicitudId = ObtenerCodigoSolicitudOrden(orden);
+            var generado = ObtenerUltimoDocumentoSolicitudInspeccion(solicitudId, TipoSolicitudInspeccionGenerada, orden.Id);
+            if (generado == null)
+            {
+                TempData["Error"] = "No existe una solicitud generada para rechazar.";
+                return RedirectToAction("Detalles", new { id });
+            }
+
+            var estadoAnterior = "PENDIENTE_CARGA_FIRMADA";
+            var usuarioNombre = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
+                ? User.Identity.Name
+                : idUsuario.ToString();
+
+            if (!_documentoDao.MarcarComoEliminado(generado.CodigoDocumento, usuarioNombre))
+            {
+                TempData["Error"] = "No fue posible invalidar el PDF generado. Intente nuevamente o contacte al administrador.";
+                return RedirectToAction("Detalles", new { id });
+            }
+
+            Session.Remove("SolicitudInspeccionAeropuertos_" + orden.Id);
+
+            CapaNegocio.LogBL.RegistrarInfo(
+                $"{LogSolicitudInspeccionExt} OrdenId={id} SolicitudId={solicitudId} CodigoConcepto={CodigoConceptoInspeccionExt} DocumentoId={generado.CodigoDocumento} Usuario={idUsuario} Accion={AccionReaperturaPorAgregarAcciones} EstadoAnterior={estadoAnterior} EstadoNuevo=NO_GENERADO Motivo={FirstNonEmpty(motivo, "Rechazo por usuario para agregar acciones")} Resultado=Reabierto",
+                "OrdenRecaudacionController");
+
+            TempData["OK"] = MensajeSolicitudInspeccionReaperturaExito;
             return RedirectToAction("Detalles", new { id });
         }
 
@@ -1930,6 +2195,18 @@ namespace CapaPresentacion.Controllers
             if (solicitudId <= 0)
             {
                 mensajeError = "La orden no tiene solicitud asociada.";
+                return false;
+            }
+
+            var generadoExistente = ObtenerUltimoDocumentoSolicitudInspeccion(solicitudId, TipoSolicitudInspeccionGenerada, orden.Id);
+            if (generadoExistente != null)
+            {
+                mensajeError = MensajeSolicitudInspeccionYaGenerada;
+                return false;
+            }
+
+            if (!ValidarConceptosOrdenInspeccionExt(orden, out mensajeError))
+            {
                 return false;
             }
 
@@ -2004,7 +2281,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Solicitante,Administrador,Operador,Financiero,Inspector,Coordinador,CoordinadorInspecciones,JefaturaTecnica,Direccion")]
+        [Authorize(Roles = "Solicitante,Administrador,Operador,Financiero,Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,JefaturaTecnica,Direccion")]
         public ActionResult DescargarSolicitudInspeccion(int id, bool vistaPrevia = false)
         {
             int idUsuario = GetUserId();
@@ -2156,7 +2433,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Solicitante,Administrador,Operador,Financiero,Inspector,Coordinador,CoordinadorInspecciones,JefaturaTecnica,Direccion")]
+        [Authorize(Roles = "Solicitante,Administrador,Operador,Financiero,Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,JefaturaTecnica,Direccion")]
         public ActionResult VerSolicitudInspeccionFirmada(int id)
         {
             int idUsuario = GetUserId();
@@ -2359,6 +2636,8 @@ namespace CapaPresentacion.Controllers
             var puedeEditar = requiere && PuedeEditarSolicitudInspeccionExt(orden, idUsuario, out _, out _);
             var puedeContinuarConOrden = !requiere || PuedeContinuarConSolicitudInspeccion(orden, out _, out _);
             var puedeVerFirmada = requiere && PuedeVerSolicitudFirmada(orden, idUsuario, firmado, out _);
+            var puedeAccederPanel = requiere && UsuarioPuedeAccederOrdenInspeccion(orden, idUsuario, permitirGestion: false);
+            var puedeRechazarGeneracion = puedeEditar && generado != null && firmado == null;
 
             return new SolicitudInspeccionExtPanelViewModel
             {
@@ -2370,19 +2649,24 @@ namespace CapaPresentacion.Controllers
                 TienePdfGenerado = generado != null,
                 TienePdfFirmado = firmado != null,
                 PuedeEditarSolicitudInspeccionExt = puedeEditar,
-                PuedeGenerarSolicitud = puedeEditar,
-                PuedeDescargarSolicitud = puedeEditar && generado != null,
+                PuedeAgregarAccionesOrden = puedeEditar && generado == null,
+                PuedeGenerarSolicitud = puedeEditar && generado == null,
+                PuedeDescargarSolicitud = generado != null && puedeAccederPanel,
                 PuedeSubirSolicitudFirmada = puedeEditar && generado != null,
                 PuedeVerSolicitudFirmada = puedeVerFirmada,
+                PuedeRechazarGeneracionSolicitud = puedeRechazarGeneracion,
                 PuedeContinuarConOrden = puedeContinuarConOrden,
                 EsNuevaOrden = false,
                 MostrarSoloLecturaSinFirmado = requiere && !puedeEditar && !puedeVerFirmada,
                 UrlGenerarSolicitud = Url.Action("GenerarSolicitudInspeccion", "OrdenRecaudacion"),
                 UrlVerSolicitudFirmada = puedeVerFirmada ? Url.Action("VerSolicitudInspeccionFirmada", "OrdenRecaudacion", new { id = orden.Id }) : string.Empty,
-                UrlDescargarSolicitudGenerada = (puedeEditar && generado != null) ? Url.Action("DescargarSolicitudInspeccion", "OrdenRecaudacion", new { id = orden.Id }) : string.Empty,
+                UrlDescargarSolicitudGenerada = (generado != null && puedeAccederPanel) ? Url.Action("DescargarSolicitudInspeccion", "OrdenRecaudacion", new { id = orden.Id }) : string.Empty,
                 UrlSubirSolicitudFirmada = Url.Action("SubirSolicitudInspeccionFirmada", "OrdenRecaudacion"),
+                UrlRechazarGeneracionSolicitud = puedeRechazarGeneracion
+                    ? Url.Action("RechazarGeneracionSolicitudInspeccion", "OrdenRecaudacion")
+                    : string.Empty,
                 ClaseEstadoCss = ResolverClaseEstadoSolicitudInspeccion(estadoSolicitudInspeccion),
-                MensajeEstado = ResolverMensajeSolicitudInspeccionPanel(estadoSolicitudInspeccion, puedeEditar, puedeVerFirmada),
+                MensajeEstado = ResolverMensajeSolicitudInspeccionPanel(estadoSolicitudInspeccion, puedeEditar, puedeVerFirmada, puedeRechazarGeneracion),
                 MensajeSoloLectura = requiere && !puedeEditar
                     ? (puedeVerFirmada ? MensajeSolicitudInspeccionModoSoloLectura : MensajeSolicitudInspeccionSoloLecturaSinFirmado)
                     : string.Empty
@@ -2410,7 +2694,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private string ResolverMensajeSolicitudInspeccionPanel(string estadoSolicitudInspeccion, bool puedeEditar, bool puedeVerFirmada)
+        private string ResolverMensajeSolicitudInspeccionPanel(string estadoSolicitudInspeccion, bool puedeEditar, bool puedeVerFirmada, bool puedeRechazarGeneracion = false)
         {
             var estado = (estadoSolicitudInspeccion ?? string.Empty).Trim().ToUpperInvariant();
             if (!puedeEditar)
@@ -2432,7 +2716,9 @@ namespace CapaPresentacion.Controllers
                 case "VALIDADO":
                     return "La solicitud firmada ya fue validada dentro del expediente documental.";
                 case "PENDIENTE_CARGA_FIRMADA":
-                    return "La solicitud ya fue generada. Descargue el PDF, fírmelo externamente y cargue la versión firmada para continuar.";
+                    return puedeRechazarGeneracion
+                        ? MensajeSolicitudInspeccionPendienteConReapertura
+                        : MensajeSolicitudInspeccionPendienteCargaFirmada;
                 case "OBSERVADO":
                     return "La solicitud firmada fue observada. Cargue una nueva versión firmada para reemplazar el documento observado.";
                 case "REEMPLAZADO":
@@ -2599,6 +2885,23 @@ namespace CapaPresentacion.Controllers
         private bool EsConceptoInspeccionExt(string codigo)
         {
             return string.Equals((codigo ?? string.Empty).Trim(), CodigoConceptoInspeccionExt, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool OrdenPermiteAgregarAccionesInspeccionExt(OrdenRecaudacionModel orden)
+        {
+            if (orden == null || !OrdenContieneInspeccionExt(orden))
+            {
+                return true;
+            }
+
+            var solicitudId = ObtenerCodigoSolicitudOrden(orden);
+            if (solicitudId <= 0)
+            {
+                return true;
+            }
+
+            var generado = ObtenerUltimoDocumentoSolicitudInspeccion(solicitudId, TipoSolicitudInspeccionGenerada, orden.Id);
+            return generado == null;
         }
 
         private int ObtenerCodigoSolicitudOrden(OrdenRecaudacionModel orden)

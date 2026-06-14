@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Net;
-using System.Net.Mail;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -22,20 +21,20 @@ namespace CapaDatos.Services
     public interface IEmailService
     {
         Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
-            byte[] adjunto = null, string adjuntoNombre = null);
+            byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null);
     }
 
     /// <summary>
-    /// Servicio de envío de correos
+    /// Servicio de envío de correos institucional (delegado en AocrEmailService).
     /// </summary>
     public class EmailService : IEmailService
     {
-        private readonly ISecureConfigurationService _config;
+        private readonly AocrEmailService _emailService;
         private readonly ILoggingService _logger;
 
         public EmailService(ISecureConfigurationService config)
         {
-            _config = config;
+            _emailService = new AocrEmailService(config);
             _logger = LoggingServiceFactory.Create();
         }
 
@@ -43,17 +42,16 @@ namespace CapaDatos.Services
         public EmailService() : this(new SecureConfigurationService()) { }
 
         public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
-            byte[] adjunto = null, string adjuntoNombre = null)
+            byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null)
         {
             try
             {
-                var creds = _config.GetEmailCredentials();
-                var correoDirecto = new EnviarCorreo(_config);
-                var from = string.IsNullOrWhiteSpace(creds != null ? creds.FromAddress : null) ? null : creds.FromAddress;
+                var alias = AocrEmailService.NormalizarAlias(
+                    string.IsNullOrWhiteSpace(aliasRemitente) ? null : aliasRemitente);
 
                 var enviado = (adjunto != null && adjunto.Length > 0)
-                    ? correoDirecto.enviaMensajeCorreoConAdjuntoDesde(from, para, asunto, cuerpo, adjunto, adjuntoNombre, "application/octet-stream")
-                    : correoDirecto.enviaMensajeCorreoDesde(from, para, asunto, cuerpo);
+                    ? _emailService.EnviarMensajeCorreoConAdjunto(para, asunto, cuerpo, adjunto, adjuntoNombre, alias, "application/octet-stream")
+                    : _emailService.EnviarMensajeCorreo(para, asunto, cuerpo, alias);
 
                 if (enviado)
                 {
@@ -67,9 +65,9 @@ namespace CapaDatos.Services
                 return Task.FromResult(new EmailSendResult
                 {
                     Success = false,
-                    Error = string.IsNullOrWhiteSpace(correoDirecto.LastError)
+                    Error = string.IsNullOrWhiteSpace(_emailService.LastError)
                         ? "No fue posible enviar el correo."
-                        : correoDirecto.LastError
+                        : _emailService.LastError
                 });
             }
             catch (Exception ex)
@@ -121,7 +119,7 @@ namespace CapaDatos.Services
 
             try
             {
-                var resultado = EnviarAsync(correoDestino, nombreDestino, asunto, cuerpo, adjunto, adjuntoNombre).GetAwaiter().GetResult();
+                var resultado = EnviarAsync(correoDestino, nombreDestino, asunto, cuerpo, adjunto, adjuntoNombre, "AOCR - Documento emitido").GetAwaiter().GetResult();
                 if (!resultado.Success)
                 {
                     _logger.LogError("Error enviando notificacion de factura: " + (resultado.Error ?? "Error desconocido"),
@@ -197,7 +195,7 @@ namespace CapaDatos.Services
 
             try
             {
-                var resultado = EnviarAsync(correoDestino, nombreDestino, asunto, cuerpo).GetAwaiter().GetResult();
+                var resultado = EnviarAsync(correoDestino, nombreDestino, asunto, cuerpo, aliasRemitente: "DGAC - Sistema AOCR").GetAwaiter().GetResult();
                 if (!resultado.Success)
                 {
                     _logger.LogError("Error enviando notificacion de rechazo: " + (resultado.Error ?? "Error desconocido"),
@@ -359,13 +357,14 @@ namespace CapaDatos.Services
             return string.Format("Factura_{0}.pdf", limpio);
         }
     }
+
     /// <summary>
     /// Null Object para escenarios donde el servicio real no está disponible.
     /// </summary>
     public class NoOpEmailService : IEmailService
     {
         public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
-            byte[] adjunto = null, string adjuntoNombre = null)
+            byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null)
         {
             return Task.FromResult(new EmailSendResult
             {
@@ -390,7 +389,7 @@ namespace CapaDatos.Services
         }
 
         public async Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
-            byte[] adjunto = null, string adjuntoNombre = null)
+            byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null)
         {
             try
             {
@@ -403,7 +402,9 @@ namespace CapaDatos.Services
                     EsHtml = true,
                     AdjuntoNombre = adjuntoNombre,
                     AdjuntoContenido = adjunto,
-                    MaxIntentos = 3
+                    MaxIntentos = 3,
+                    Remitente = AocrEmailService.CorreoNoReply,
+                    AliasRemitente = AocrEmailService.NormalizarAlias(aliasRemitente)
                 };
 
                 var id = await _queueService.EncolarAsync(item);
@@ -424,8 +425,5 @@ namespace CapaDatos.Services
                 };
             }
         }
-
-        // Nota: los métodos de compatibilidad están en EmailService.
     }
 }
-

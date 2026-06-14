@@ -36,5 +36,8 @@ namespace CapaPresentacion.Models.ViewModels
         public int DocumentosAceptados { get; set; }
         public int DocumentosSubsanados { get; set; }
         public bool TieneDocumentosCargados { get; set; }
+        public int? CodigoInspeccion { get; set; }
+        public bool MostrarAccionInspeccion { get; set; }
+        public bool PendienteConfirmacionInspector { get; set; }
     }
 }

@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guía visual flujo RT → AOCR — Sistema AOCR</title>
+  <style>
+    :root { --brand:#2c5282; --brand2:#4299e1; --light:#ebf4ff; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Guía visual flujo RT → AOCR<br><span style="font-weight:400;font-size:1.35rem">42 capturas · 16 fases · textos UI exactos</span></h1>
+    <p class="lead">Validación pantalla por pantalla desde formulario RT hasta GeneradasFirmadas y firma DIRDAC.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/GUIA_VISUAL_FLUJO_RT_AOCR.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/GUIA_VISUAL_FLUJO_RT_AOCR.pdf</code> · Editable Word → <code>docs/export/editable/GUIA_VISUAL_FLUJO_RT_AOCR.docx</code> · Markdown → <code>docs/export/editable/GUIA_VISUAL_FLUJO_RT_AOCR.md</code></div>
+    <article class="md-body">
+<h1>Guía visual — Flujo completo RT → AOCR (16 fases)</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Trámite de referencia:</strong> solicitud <strong>#12</strong> (<code>DGAC-GOP-2026-AOCR012</code>), inspección <strong>#11</strong>, inspector <strong>id 43</strong><br><strong>Entorno capturas:</strong> <code>C:\AOCR\publicacion1</code> · navegador incógnito · <strong>Ctrl+F5</strong> antes de cada PNG</p>
+<p><strong>Manuales vinculados:</strong> <code>MANUAL_FLUJO_RT_A_AOCR.md</code> (narrativa) · <code>GUIA_VISUAL_POR_ROL.md</code> (matrices por rol) · <code>GUIA_INSPECTOR_SOLICITUD_12.md</code> (detalle inspector)</p>
+<hr>
+<h2>Leyenda</h2>
+<table>
+<thead>
+<tr>
+<th>Símbolo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>📷</td>
+<td>Archivo PNG obligatorio en <code>docs/images/{rol}/</code></td>
+</tr>
+<tr>
+<td>✅</td>
+<td>Debe verse en implementación correcta</td>
+</tr>
+<tr>
+<td>❌</td>
+<td>Defecto si aparece (o ausencia incorrecta)</td>
+</tr>
+<tr>
+<td>👁</td>
+<td>RT solo observa; no actúa</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Índice de capturas (42 archivos)</h2>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Archivo PNG</th>
+<th>Rol</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>rt/rt-formulario-emision-aocr.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>rt/rt-mis-tramites-solicitud-nueva.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>rt/rt-orden-recaudacion-nueva.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>rt/rt-orden-comprobante-cargado.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>financiero/financiero-dashboard.png</code></td>
+<td>Financiero</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>financiero/financiero-aprobar-pago.png</code></td>
+<td>Financiero</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>rt/rt-documento-subir.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>rt/rt-detalle-documentos-completos.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>rt/rt-envio-formulario-en-revision.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>coordinacion/coordinacion-revision-verificacion.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>coordinacion/coordinacion-documento-devuelto-rt.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>rt/rt-subsanar-documentos.png</code></td>
+<td>RT (rama)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>coordinacion/coordinacion-firma-aceptacion.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>rt/rt-detalle-pendiente-asignacion-rt.png</code></td>
+<td>RT 👁</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>coordinacion/coordinacion-tecnico-index.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>coordinacion/coordinacion-asignar-inspector.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>rt/rt-detalle-en-inspeccion.png</code></td>
+<td>RT 👁</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>inspector/inspector-revision-documental-bandeja.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>inspector/inspector-documentos-modo-revision-pendiente.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>ejemplos/inspector-modo-ver-incorrecto.png</code></td>
+<td>Comparativa ❌</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>inspector/inspector-documentos-despues-aceptar.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>inspector/inspector-detalle-cierre-documental.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>inspector/inspector-lv-borrador.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>inspector/inspector-lv-firmada.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>inspector/inspector-informe-borrador.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>inspector/inspector-informe-firmado-enviado.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>dirdac/dirdac-pendientes-direccion-informe.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>dirdac/dirdac-informe-aprobado.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>coordinacion/coordinacion-detalle-aocr-elaboracion.png</code></td>
+<td>Coord. 👁</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>coordinacion/coordinacion-validar-aocr.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>dirdac/dirdac-firma-aocr.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>dirdac/dirdac-estado-emitido-recibido.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>rt/rt-generadas-firmadas-bandeja.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>rt/rt-descarga-pdf-aocr-final.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>A</td>
+<td><code>rt/rt-modificacion-orden-post-requiere-inspeccion.png</code></td>
+<td>RT mod.</td>
+</tr>
+<tr>
+<td>A</td>
+<td><code>inspector/inspector-cierre-fase-nuevo-aeropuerto.png</code></td>
+<td>Inspector mod.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 1 — RT: crear solicitud (emisión)</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Usuario</strong></td>
+<td>RT / Solicitante</td>
+</tr>
+<tr>
+<td><strong>Menú</strong></td>
+<td><strong>Solicitud AOCR</strong></td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><code>/SolicitudAOCR/FormularioEmisionAOCR?tipoSolicitud=1</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml</code></td>
+</tr>
+<tr>
+<td><strong>Estado inicial</strong></td>
+<td>Borrador / pendiente pago (según orden)</td>
+</tr>
+</tbody></table>
+<p>📷 <code>rt/rt-formulario-emision-aocr.png</code> · 📷 <code>rt/rt-mis-tramites-solicitud-nueva.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Título formulario emisión</td>
+<td>✅ Visible</td>
+</tr>
+<tr>
+<td>Campos operadora, aeronaves, representante</td>
+<td>✅ Obligatorios según tipo</td>
+</tr>
+<tr>
+<td>Tras guardar → <strong>Mis trámites</strong></td>
+<td>✅ Redirección o mensaje éxito</td>
+</tr>
+<tr>
+<td><code>NumeroSolicitud</code> generado</td>
+<td>✅ Formato <code>DGAC-GOP-YYYY-AOCR###</code></td>
+</tr>
+</tbody></table>
+<p><strong>Handoff:</strong> menú <strong>Órdenes (RT)</strong> habilitado.</p>
+<hr>
+<h2>Fase 2 — RT: orden de recaudación</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>URL nueva orden</strong></td>
+<td><code>/OrdenRecaudacion/Nueva</code></td>
+</tr>
+<tr>
+<td><strong>URL detalle</strong></td>
+<td><code>/OrdenRecaudacion/Detalles/{idOrden}</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/OrdenRecaudacion/Nueva.cshtml</code>, <code>Detalles.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>rt/rt-orden-recaudacion-nueva.png</code> · 📷 <code>rt/rt-orden-comprobante-cargado.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI (<code>Detalles.cshtml</code>)</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Encabezado <em>Orden: {NumeroOrden}</em></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Botón <strong>Generar Orden</strong></td>
+<td>✅ Si borrador con total &gt; 0</td>
+</tr>
+<tr>
+<td><em>Debe registrar el comprobante antes de continuar.</em></td>
+<td>✅ Si falta comprobante</td>
+</tr>
+<tr>
+<td>Subida comprobante</td>
+<td>✅ Tipo <code>COMPROBANTE_PAGO</code></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Badge menú RT</th>
+<th>Condición</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Warning en <strong>Subir comprobante</strong></td>
+<td>Orden pendiente comprobante</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 3 — Financiero: aprobar pago</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Usuario</strong></td>
+<td>Financiero</td>
+</tr>
+<tr>
+<td><strong>Menú</strong></td>
+<td><strong>Dashboard financiero</strong> / <strong>Órdenes de recaudación</strong></td>
+</tr>
+<tr>
+<td><strong>URL bandeja</strong></td>
+<td><code>/Financiero/TodasOrdenes</code> o <code>/Financiero/Index?estado=TODAS</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/Financiero/TodasOrdenes.cshtml</code>, <code>Index.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>financiero/financiero-dashboard.png</code> · 📷 <code>financiero/financiero-aprobar-pago.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><em>Dashboard Financiero</em></td>
+<td>✅ <code>ViewBag.Title</code></td>
+</tr>
+<tr>
+<td><em>Todas las Órdenes de Recaudación</em></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Botón <strong>Aprobar</strong> / <strong>Aprobar pago</strong></td>
+<td>✅ Por fila pendiente</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>Financiero/AprobarPago/{id}</code> o <code>AprobarOrden</code></td>
+</tr>
+<tr>
+<td>Modal <em>Devolver Orden</em></td>
+<td>✅ Si rechazo</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>RT 👁</th>
+<th>Tras aprobación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Estado solicitud</td>
+<td>Hacia <strong>Documentacion Pendiente</strong></td>
+</tr>
+<tr>
+<td>Menú <strong>Documentos y expediente</strong></td>
+<td>✅ Activo</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Contador</th>
+<th>Regla</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Badge sidebar financiero</td>
+<td>= filas bandeja (<code>AocrSidebarCounterService</code>)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 4 — RT: cargar documentos y enviar</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>URL subir</strong></td>
+<td><code>/Documento/Subir?solicitudId=12</code></td>
+</tr>
+<tr>
+<td><strong>URL expediente</strong></td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=ver</code></td>
+</tr>
+<tr>
+<td><strong>URL detalle</strong></td>
+<td><code>/SolicitudAOCR/Detalle/12</code></td>
+</tr>
+<tr>
+<td><strong>POST envío</strong></td>
+<td><code>SolicitudAOCR/FormularioCompleto</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>rt/rt-documento-subir.png</code> · 📷 <code>rt/rt-detalle-documentos-completos.png</code> · 📷 <code>rt/rt-envio-formulario-en-revision.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Panel docs obligatorios faltantes</td>
+<td>✅ Vacío antes de enviar</td>
+</tr>
+<tr>
+<td>Tipos: Certificado aeronavegabilidad, Manual operaciones, OPSPECS, AOC, etc.</td>
+<td>✅ Tarjetas en detalle</td>
+</tr>
+<tr>
+<td>Tras envío — estado</td>
+<td><strong><code>En Revision</code></strong></td>
+</tr>
+<tr>
+<td>Historial</td>
+<td><em>Solicitud formal enviada al coordinador para revisión documental.</em></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Modo RT en Lista</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>modo=ver</code></td>
+<td><strong>Archivos del expediente</strong> / <strong>Solo lectura</strong> — correcto para RT</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 5 — Coordinación: revisión COO-1</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Usuario</strong></td>
+<td><code>GEN_COORDINACION</code></td>
+</tr>
+<tr>
+<td><strong>Menú</strong></td>
+<td><strong>Bandeja integral</strong> / <strong>Pendientes de revisión</strong></td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><code>/CoordinacionJefatura/RevisionVerificacion</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/CoordinacionJefatura/RevisionVerificacion.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>coordinacion/coordinacion-revision-verificacion.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Validación</th>
+<th>Detalle</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Solicitud #12 en cola</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Aceptar/devolver documentos</td>
+<td>✅ Pre-asignación</td>
+</tr>
+<tr>
+<td>Revisiones cuentan todas en BD</td>
+<td>✅ <code>ObtenerUltimasRevisionesPorSolicitud</code></td>
+</tr>
+</tbody></table>
+<h3>Rama — devolución al RT</h3>
+<p>📷 <code>coordinacion/coordinacion-documento-devuelto-rt.png</code> · 📷 <code>rt/rt-subsanar-documentos.png</code></p>
+<table>
+<thead>
+<tr>
+<th>RT</th>
+<th>URL <code>/SolicitudAOCR/Subsanar/12</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Estado</td>
+<td><strong>Observada</strong> → <strong>Subsanada</strong> tras reenvío</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>SubsanarPost</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 6 — Coordinación: firma aceptación documental</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>POST</strong></td>
+<td><code>/SolicitudAOCR/FirmarAceptacionDocumental/12</code></td>
+</tr>
+<tr>
+<td><strong>Log</strong></td>
+<td><code>[FirmarAceptacionDocumental]</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>coordinacion/coordinacion-firma-aceptacion.png</code> · 📷 <code>rt/rt-detalle-pendiente-asignacion-rt.png</code></p>
+<p>| Tipo 1/2 — estado destino | <strong><code>Pendiente Asignacion RT</code></strong> |
+| RT 👁 en Detalle | Constancia descargable |
+| ❌ Defecto | Estado → <code>Finalizado</code> solo por descargar PDF |</p>
+<hr>
+<h2>Fase 7 — Coordinación: asignar inspector</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>URL bandeja</strong></td>
+<td><code>/Tecnico/Index</code></td>
+</tr>
+<tr>
+<td><strong>URL formulario</strong></td>
+<td><code>/Tecnico/AsignarInspector?solicitudId=12&amp;tipoInspector=OPS</code></td>
+</tr>
+<tr>
+<td><strong>POST</strong></td>
+<td><code>Tecnico/AsignarInspector</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/Tecnico/Index.cshtml</code>, <code>AsignarInspector.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>coordinacion/coordinacion-tecnico-index.png</code> · 📷 <code>coordinacion/coordinacion-asignar-inspector.png</code> · 📷 <code>rt/rt-detalle-en-inspeccion.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Fila #12 estado <code>Pendiente Asignacion RT</code></td>
+<td>✅ En bandeja</td>
+</tr>
+<tr>
+<td>Tras POST — estado</td>
+<td><strong><code>En Inspeccion</code></strong></td>
+</tr>
+<tr>
+<td>Log</td>
+<td><code>[GestionInspeccion]</code></td>
+</tr>
+<tr>
+<td>RT 👁 Detalle</td>
+<td>Inspector asignado visible</td>
+</tr>
+<tr>
+<td>❌ Texto fantasma azul fijo en tabla</td>
+<td>Corregido en CSS</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 8 — Inspector: revisión documental post-asignación</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>URL bandeja</strong></td>
+<td><code>/RevisionDocumental/Index</code></td>
+</tr>
+<tr>
+<td><strong>URL acción (correcta)</strong></td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental</code></td>
+</tr>
+<tr>
+<td><strong>URL consulta (no decidir)</strong></td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=ver</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>inspector/inspector-revision-documental-bandeja.png</code> · 📷 <code>inspector/inspector-documentos-modo-revision-pendiente.png</code> · 📷 <code>ejemplos/inspector-modo-ver-incorrecto.png</code> · 📷 <code>inspector/inspector-documentos-despues-aceptar.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI modo <strong>revision</strong></th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tablaTitulo</code></td>
+<td><strong>Bandeja de revisión documental</strong></td>
+</tr>
+<tr>
+<td><code>tablaBadge</code></td>
+<td><strong>Revisión activa</strong></td>
+</tr>
+<tr>
+<td>ESTADO inicial</td>
+<td><strong>PENDIENTE</strong> (×12 docs aprox.)</td>
+</tr>
+<tr>
+<td>OBSERVACIÓN / REVISADO POR</td>
+<td><strong>Vacío</strong></td>
+</tr>
+<tr>
+<td>ACCIONES</td>
+<td><strong>Aceptar</strong> + <strong>Devolver</strong></td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Texto UI modo <strong>ver</strong></th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tablaTitulo</code></td>
+<td><strong>Archivos del expediente</strong></td>
+</tr>
+<tr>
+<td>Badge</td>
+<td><strong>Solo lectura</strong></td>
+</tr>
+<tr>
+<td>Botones Aceptar/Devolver</td>
+<td>❌ Ausentes (OK en ver)</td>
+</tr>
+</tbody></table>
+<p>| ❌ Defecto crítico | ACEPTADO + revisor id 45 en <code>modo=revision</code> sin acción inspector |</p>
+<hr>
+<h2>Fase 9 — Inspector: cierre documental</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>URL</strong></td>
+<td><code>/Inspeccion/Detalle/11</code></td>
+</tr>
+<tr>
+<td><strong>Botón</strong></td>
+<td><strong>Confirmar cierre documental</strong></td>
+</tr>
+<tr>
+<td><strong>POST</strong></td>
+<td><code>/Inspeccion/ConfirmarRevisionDocumentalInspector/11</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>inspector/inspector-detalle-cierre-documental.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Antes</th>
+<th>Mensaje bloqueo LV</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sin cierre</td>
+<td><em>&quot;...confirme el cierre documental antes de habilitar la LV/EAE...&quot;</em></td>
+</tr>
+</tbody></table>
+<p>| Después | Botón <strong>Completar LV en ventana</strong> sin candado |</p>
+<hr>
+<h2>Fase 10 — Inspector: LV/EAE</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Modal</strong></td>
+<td><code>#modalListaVerificacionOperacionalEae</code> en <code>Detalle.cshtml</code></td>
+</tr>
+<tr>
+<td><strong>POST guardar</strong></td>
+<td><code>Inspeccion/GuardarListaVerificacionOperacionalEae</code></td>
+</tr>
+<tr>
+<td><strong>POST finalizar</strong></td>
+<td><code>Inspeccion/FinalizarListaVerificacionOperacionalEae/11</code></td>
+</tr>
+<tr>
+<td><strong>POST firmar</strong></td>
+<td><code>Inspeccion/FirmarListaVerificacionOperacionalEae</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>inspector/inspector-lv-borrador.png</code> · 📷 <code>inspector/inspector-lv-firmada.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Badge UI</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><em>LV pendiente</em></td>
+<td>Sin borrador</td>
+</tr>
+<tr>
+<td><em>LV en borrador</em></td>
+<td>Guardado</td>
+</tr>
+<tr>
+<td><em>LV completada</em></td>
+<td>Finalizada sin firma</td>
+</tr>
+<tr>
+<td><em>LV firmada</em></td>
+<td>✅ Handoff informe</td>
+</tr>
+<tr>
+<td><em>BLOQUEADO POR LV/EAE</em></td>
+<td>❌ Si informe antes de LV</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 11 — Inspector: informe técnico</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Modal</strong></td>
+<td><code>GET Inspeccion/ModalInformeTecnico</code></td>
+</tr>
+<tr>
+<td><strong>POST guardar</strong></td>
+<td><code>Inspeccion/GuardarInformeTecnico</code></td>
+</tr>
+<tr>
+<td><strong>POST finalizar</strong></td>
+<td><code>Inspeccion/FinalizarInformeTecnico/{id}</code></td>
+</tr>
+<tr>
+<td><strong>POST firmar</strong></td>
+<td><code>Inspeccion/FirmarInformeInspector</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>inspector/inspector-informe-borrador.png</code> · 📷 <code>inspector/inspector-informe-firmado-enviado.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Tras firma inspector</th>
+<th>Valor BD</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>estado_informe</code></td>
+<td><code>FIRMADO_INSPECTOR</code> → <code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+<tr>
+<td>Bandeja DIRDAC</td>
+<td>Fila visible en Pendientes Dirección</td>
+</tr>
+</tbody></table>
+<p>| Mensaje auth si LV incompleta | <em>Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.</em> |</p>
+<hr>
+<h2>Fase 12 — DIRDAC: aprobar informe</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Menú</strong></td>
+<td><strong>Informe técnico y NC</strong> / <strong>Listos para firma</strong></td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><code>/Inspeccion/PendientesDireccion</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/InformeTecnico/PendientesDireccion.cshtml</code></td>
+</tr>
+<tr>
+<td><strong>POST firma</strong></td>
+<td><code>Inspeccion/FirmarInformeDirdac</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>dirdac/dirdac-pendientes-direccion-informe.png</code> · 📷 <code>dirdac/dirdac-informe-aprobado.png</code></p>
+<p>| Tras aprobación | Estado solicitud <strong><code>AOCR En Elaboracion</code></strong> |
+| RT 👁 | Seguimiento en Detalle — aún sin AOCR final |</p>
+<hr>
+<h2>Fase 13 — Generación borrador AOCR (sistema)</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Servicio</strong></td>
+<td><code>GeneracionAOCRService</code></td>
+</tr>
+<tr>
+<td><strong>Documento</strong></td>
+<td>Tipo <code>AOCR_GENERADO</code></td>
+</tr>
+<tr>
+<td><strong>Plantilla PDF</strong></td>
+<td><code>Views/Certificado/CertificadoAOCR.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>coordinacion/coordinacion-detalle-aocr-elaboracion.png</code></p>
+<p>| RT 👁 | Estado <strong><code>AOCR En Elaboracion</code></strong> |
+| Inspector | Puede ver borrador en panel inspección (según permisos) |</p>
+<hr>
+<h2>Fase 14 — Coordinación: ValidarAocr</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Menú</strong></td>
+<td><strong>AOCR y condiciones</strong> (rol Coordinación / DIRDAC)</td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><code>/CoordinacionJefatura/ValidarAocr?solicitudId=12</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/CoordinacionJefatura/ValidarAocr.cshtml</code></td>
+</tr>
+<tr>
+<td><strong>Auth</strong></td>
+<td><code>[AocrAuthorize Modulo=CoordinacionJefatura Accion=ValidarAocr]</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>coordinacion/coordinacion-validar-aocr.png</code></p>
+<p>| Tras validación formal | Estado <strong><code>AOCR En Revision</code></strong> |</p>
+<hr>
+<h2>Fase 15 — DIRDAC: firma y emisión AOCR</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Cadena estados</strong></td>
+<td><code>AOCR En Revision</code> → <code>Enviado DCAV</code> → <code>Firmado DCAV</code> → <strong><code>AOCR Emitido/Recibido</code></strong></td>
+</tr>
+<tr>
+<td><strong>Menú</strong></td>
+<td>Pendientes Dirección + ValidarAocr</td>
+</tr>
+</tbody></table>
+<p>📷 <code>dirdac/dirdac-firma-aocr.png</code> · 📷 <code>dirdac/dirdac-estado-emitido-recibido.png</code></p>
+<p>| Certificado | Firma digital <code>.p12</code> DIRDAC |
+| RT 👁 | Badge <strong>Documentos finales</strong> incrementado |</p>
+<hr>
+<h2>Fase 16 — RT: descarga documentos finales</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Menú</strong></td>
+<td><strong>Documentos finales</strong> / <strong>Finalizados</strong> / <strong>AOCR y condiciones</strong></td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><code>/SolicitudAOCR/GeneradasFirmadas</code></td>
+</tr>
+<tr>
+<td><strong>Vista</strong></td>
+<td><code>Views/SolicitudAOCR/GeneradasFirmadas.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>📷 <code>rt/rt-generadas-firmadas-bandeja.png</code> · 📷 <code>rt/rt-descarga-pdf-aocr-final.png</code></p>
+<table>
+<thead>
+<tr>
+<th>Texto UI</th>
+<th>Validación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><em>AOCR Generadas y Firmadas</em></td>
+<td>✅ <code>ViewBag.Title</code> / <code>&lt;h2&gt;</code></td>
+</tr>
+<tr>
+<td>Tarjeta resumen <em>Firmadas / finalizadas</em></td>
+<td>✅ Contador coherente</td>
+</tr>
+<tr>
+<td>Filtro búsqueda</td>
+<td>Placeholder <em>Solicitud, AOCR, explotador...</em></td>
+</tr>
+<tr>
+<td>Fila #12</td>
+<td>Estado <strong><code>AOCR Emitido/Recibido</code></strong></td>
+</tr>
+<tr>
+<td>Acción descarga PDF</td>
+<td>✅ Certificado AOCR firmado</td>
+</tr>
+</tbody></table>
+<p><strong>Done operativo RT:</strong> PDF AOCR descargado y archivado.</p>
+<hr>
+<h2>Anexo A — Modificación tipo 3 (capturas)</h2>
+<table>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>📷</th>
+<th>URL clave</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cierre nuevo aeropuerto</td>
+<td><code>inspector/inspector-cierre-fase-nuevo-aeropuerto.png</code></td>
+<td>POST <code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+</tr>
+<tr>
+<td>RT orden post <code>Requiere Inspeccion</code></td>
+<td><code>rt/rt-modificacion-orden-post-requiere-inspeccion.png</code></td>
+<td><code>/OrdenRecaudacion/Nueva</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Anexo B — Matriz visual rápida por rol</h2>
+<table>
+<thead>
+<tr>
+<th>Rol</th>
+<th>Pantallas obligatorias en manual 100%</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RT</td>
+<td>Formulario, orden, docs, envío, detalle estados, subsanar, GeneradasFirmadas</td>
+</tr>
+<tr>
+<td>Financiero</td>
+<td>Dashboard, aprobar pago</td>
+</tr>
+<tr>
+<td>Coordinación</td>
+<td>RevisionVerificacion, firma, Tecnico/Index, AsignarInspector, ValidarAocr</td>
+</tr>
+<tr>
+<td>Inspector</td>
+<td>RevisionDocumental, Lista revision/ver, Detalle, LV, Informe</td>
+</tr>
+<tr>
+<td>DIRDAC</td>
+<td>PendientesDireccion, firma AOCR</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Procedimiento de captura (equipo QA)</h2>
+<ol>
+<li>Ejecutar flujo #12 con usuarios reales por rol (ver <code>CHECKLIST_DOCUMENTACION_100.md</code>).</li>
+<li>En cada fase, capturar PNG según tabla § Índice.</li>
+<li>Guardar en <code>docs/images/{rol}/</code> con nombre exacto.</li>
+<li>Insertar en Markdown: <code>![Fase N](../images/rt/archivo.png)</code> (opcional).</li>
+<li>Regenerar exportaciones: <code>cd docs/export &amp;&amp; npm run build</code>.</li>
+</ol>
+<hr>
+<p><em>Referencia código: <code>SidebarMenuBuilder.cs</code>, <code>DocumentoController.cs</code>, <code>InspeccionController.cs</code>, <code>Financiero/Index.cshtml</code>, <code>GeneradasFirmadas.cshtml</code>, <code>ValidarAocr.cshtml</code>.</em></p>
+
+    </article>
+    <div class="footer">Guía visual flujo RT → AOCR — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

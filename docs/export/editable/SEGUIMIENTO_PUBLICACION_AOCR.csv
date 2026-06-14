@@ -1,0 +1,82 @@
+ID,Gate,Fase,Semana_Sugerida,Prioridad,Bloquea_GoLive,Tarea,Rol_Responsable,Responsable_Nombre,Fecha_Planificada,Fecha_Real,Estado,Evidencia,Notas,Referencia_Doc
+MILE-G0,,0,1,Alta,No,HITO — Fase 0 Deploy completado,Infra,,,,Pendiente,,Build + IIS + tests,HOJA_RUTA §3
+F0-01,,0,1,Alta,Sí,Build Release sin errores,Dev,,,,Pendiente,,Visual Studio Build Solution,CHECKLIST_IIS Pre-deploy
+F0-02,,0,1,Alta,Sí,Tests unitarios AOCR.Tests todos verdes,Dev,,,,Pendiente,,~95 tests Test Explorer,AOCR.Tests
+F0-03,,0,1,Alta,Sí,Publicar FolderProfile4 a publicacion1,Dev,,,,Pendiente,,Verificar timestamps DLL,MANUAL_TECNICO §10
+F0-04,,0,1,Alta,Sí,Reciclar App Pool IIS,Infra,,,,Pendiente,,Reinicio confirmado,GUIA_PRUEBAS §0.2
+F0-05,,0,1,Media,No,Ctrl+F5 / incógnito en pruebas,QA,,,,Pendiente,,Sin caché CSS/JS,GUIA_PRUEBAS §0.3
+F0-06,,0,1,Media,No,Tag Git + release notes borrador,Dev,,,,Pendiente,,v2026.06.xx,Operación estándar
+MILE-GA,Gate A,1,1,Alta,Sí,HITO — Gate A regresión 8/8,QA,,,,Pendiente,,Escenarios A-D,GUIA_PRUEBAS_POST_REPUBLICACION
+GA-A1,Gate A,1,1,Alta,Sí,Escenario A — /Tecnico sin texto azul fantasma,Coordinación,,,,Pendiente,,Captura pantalla,GUIA_PRUEBAS Esc.A
+GA-B2,Gate A,1,1,Alta,Sí,Escenario B2 — Firma coord #12 → Pendiente Asignacion RT,Coordinación,,,,Pendiente,,Log FirmarAceptacionDocumental,GUIA_PRUEBAS Esc.B2
+GA-B3,Gate A,1,1,Alta,Sí,Escenario B3 — Descarga constancia NO cierra Finalizado,RT,,,,Pendiente,,Estado antes/después PDF,GUIA_PRUEBAS Esc.B3
+GA-B4,Gate A,1,1,Alta,Sí,Escenario B4 — Asignar inspector #12 → En Inspeccion,Coordinación,,,,Pendiente,,Log GestionInspeccion,GUIA_PRUEBAS Esc.B4
+GA-C2,Gate A,1,1,Alta,Sí,Escenario C2 — Mod con aeropuertos solo cierre fase,Inspector,,,,Pendiente,,ID solicitud mod:,GUIA_PRUEBAS Esc.C2
+GA-C3,Gate A,1,1,Alta,Sí,Escenario C3 — RT panel orden OrdenRecaudacion/Nueva,RT,,,,Pendiente,,,GUIA_PRUEBAS Esc.C3
+GA-D,Gate A,1,1,Alta,Sí,Escenario D — Mod sin aeropuertos ramas CL/inspección,Inspector,,,,Pendiente,,ID solicitud mod:,GUIA_PRUEBAS Esc.D
+GA-A8,Gate A,1,1,Alta,Sí,Tests unitarios ejecutados y archivados,Dev,,,,Pendiente,,Resultado Test Explorer,HOJA_RUTA GA-A8
+MILE-GB,Gate B,2,1-2,Crítica,Sí,HITO — Gate B emisión #12 hasta AOCR emitido,PO,,,,Pendiente,,PDF RT en GeneradasFirmadas,MANUAL_FLUJO_RT_A_AOCR
+GB-E2E01,Gate B,2,1,Alta,Sí,E2E-01 RT solicitud + orden + comprobante,RT,,,,Pendiente,,Solicitud #12,HOJA_RUTA §5.1
+GB-E2E02,Gate B,2,1,Alta,Sí,E2E-02 Financiero aprobar pago,Financiero,,,,Pendiente,,,HOJA_RUTA §5.1
+GB-E2E03,Gate B,2,1,Alta,Sí,E2E-03 RT cargar docs + enviar → En Revision,RT,,,,Pendiente,,,HOJA_RUTA §5.1
+GB-COO1A,Gate B,2,2,Alta,Sí,COO-1a Revisión COO-1 + firma → Pendiente Asignacion RT,Coordinación,,,,Pendiente,,,HOJA_RUTA §5.1
+GB-COO1B,Gate B,2,2,Alta,Sí,COO-1b Asignar inspector 43 → En Inspeccion,Coordinación,,,,Pendiente,,Inspección #11,HOJA_RUTA §5.1
+GB-INS1A,Gate B,2,2,Crítica,Sí,INS-1a Revisión doc modo=revision 12 docs PENDIENTE,Inspector,,,,Pendiente,,Captura PNG fase 8,GUIA_INSPECTOR §2
+GB-INS1B,Gate B,2,2,Crítica,Sí,INS-1b Confirmar cierre documental inspección 11,Inspector,,,,Pendiente,,,GUIA_INSPECTOR §2
+GB-INS1C,Gate B,2,2,Crítica,Sí,INS-1c LV finalizada + firmada .p12,Inspector,,,,Pendiente,,Certificado inspector,MANUAL_TECNICO §16
+GB-INS1D,Gate B,2,2,Crítica,Sí,INS-1d Informe firmado → ENVIADO_A_DIRDAC,Inspector,,,,Pendiente,,,MANUAL_TECNICO §17
+GB-DIR1,Gate B,2,2,Crítica,Sí,DIR-1 DIRDAC aprobar informe → AOCR En Elaboracion,DIRDAC,,,,Pendiente,,PendientesDireccion,HOJA_RUTA §5.1
+GB-COO2,Gate B,2,2,Alta,Sí,COO-2 Coordinación ValidarAocr → AOCR En Revision,Coordinación,,,,Pendiente,,,HOJA_RUTA §5.1
+GB-DIR2,Gate B,2,2,Crítica,Sí,DIR-2 DIRDAC firma AOCR → AOCR Emitido/Recibido,DIRDAC,,,,Pendiente,,Certificado DIRDAC,HOJA_RUTA §5.1
+GB-RTFIN,Gate B,2,2,Crítica,Sí,RT-FIN Descarga PDF GeneradasFirmadas,RT,,,,Pendiente,,PDF AOCR final,HOJA_RUTA §5.1
+MILE-GC,Gate C,3,2,Alta,Sí,HITO — Gate C modificación tipo 3 5/5,QA,,,,Pendiente,,,MANUAL_TECNICO §18
+GC-C,Gate C,3,2,Alta,Sí,Escenario C — Cierre fase nuevo aeropuerto → Requiere Inspeccion,Inspector,,,,Pendiente,,ID solicitud:,HOJA_RUTA §6
+GC-CRT,Gate C,3,2,Alta,Sí,Escenario C-RT — OrdenRecaudacion/Nueva,RT,,,,Pendiente,,,HOJA_RUTA §6
+GC-DCL,Gate C,3,2,Alta,Sí,Escenario D-CL — Generar CL sin aeropuertos,Inspector,,,,Pendiente,,ID solicitud:,HOJA_RUTA §6
+GC-DINS,Gate C,3,2,Alta,Sí,Escenario D-INS — Derivar inspección sin aeropuertos,Inspector,,,,Pendiente,,ID solicitud:,HOJA_RUTA §6
+GC-CNEG,Gate C,3,2,Media,Sí,Escenario C-neg — CL con aeropuertos debe rechazar,QA,,,,Pendiente,,Mensaje §18.4,HOJA_RUTA §6
+MILE-GD,Gate D,4,2-3,Alta,Sí,HITO — Gate D NC + financiero 4/4,QA,,,,Pendiente,,,PLAN_CIERRE_POR_ROL
+GD-FIN1,Gate D,4,2,Alta,Sí,FIN-1 Pago aprobado + correo idempotente event_key,Financiero,,,,Pendiente,,1 solo correo,PLAN_CIERRE FIN-1
+GD-FIN2,Gate D,4,2,Alta,Sí,FIN-2 Contador sidebar = bandeja financiero,Financiero,,,,Pendiente,,,PLAN_CIERRE FIN-2
+GD-COO2,Gate D,4,3,Alta,Sí,COO-2 Informe no satisfactorio — aprobar NC,Coordinación,,,,Pendiente,,Caso 5,AOCR_FLUJO Caso 5
+GD-RT2,Gate D,4,3,Alta,Sí,RT-2 Subsanación bloqueada/habilitada según NC,RT,,,,Pendiente,,,PLAN_CIERRE RT-2
+MILE-GE,Gate E,5,3,Alta,Sí,HITO — Gate E endurecimiento (mínimo E1+E3+ADM-1),Dev,,,,Pendiente,,Antes prod institucional,HOJA_RUTA §8
+GE-E1,Gate E,5,3,Alta,Sí,E1/DT-1 AocrAuthorize en InspeccionController acciones críticas,Dev,,,,Pendiente,,47 Authorize legacy,MANUAL_TECNICO DT-1
+GE-E3,Gate E,5,3,Alta,Sí,E3/DT-3 Callers revisiones filtradas inspector,Dev,,,,Pendiente,,,MANUAL_TECNICO DT-3
+GE-ADM1,Gate E,5,3,Alta,Sí,ADM-1 URL sin permiso → 403 módulos críticos,QA,,,,Pendiente,,Caso 6,HOJA_RUTA §8.1
+GE-E2,Gate E,5,3-4,Media,No,E2/DT-2 ViewModels flujo en Detalle.cshtml,Dev,,,,Pendiente,,Post go-live OK,MANUAL_TECNICO DT-2
+GE-E4,Gate E,5,3-4,Media,No,E4/DT-5 Revisión PDFs institucionales Legal/DIRDAC,Dev,,,,Pendiente,,,MANUAL_TECNICO DT-5
+GE-E7,Gate E,5,3-4,Media,No,E7 Correos idempotentes todos los eventos,Dev,,,,Pendiente,,,HOJA_RUTA §8.2
+GE-E6,Gate E,5,4,Baja,No,E6/DT-4 Retirar EstadosSolicitudAOCR legacy,Dev,,,,Pendiente,,,MANUAL_TECNICO DT-4
+GE-E5,Gate E,5,4,Baja,No,E5 Casos 1-10 E2E checklist o automatizado,QA,,,,Pendiente,,,HOJA_RUTA §8.3
+GE-E10,Gate E,5,4,Baja,No,E10 FlujoCompletoTests con BD real,Dev,,,,Pendiente,,Hoy Inconclusive,FlujoCompletoTests
+GE-ADM2,Gate E,5,4,Baja,No,ADM-2 Inventario AOCR legacy documentado,Dev,,,,Pendiente,,,HOJA_RUTA §8.3
+MILE-G2,Gate 2,6,3,Crítica,Sí,HITO — Pre-prod infraestructura lista,Infra,,,,Pendiente,,Gate operación,CHECKLIST_IIS
+G2-IIS,Gate 2,6,3,Alta,Sí,IIS App Pool SSL permisos App_Data,Infra,,,,Pendiente,,,CHECKLIST_IIS
+G2-BD,Gate 2,6,3,Alta,Sí,PostgreSQL connstr + backup diario probado,Infra,,,,Pendiente,,,VARIABLES_AMBIENTE
+G2-AS400,Gate 2,6,3,Alta,Sí,AS400 ODBC credenciales en env vars,Infra,,,,Pendiente,,No secrets en Web.config,VARIABLES_AMBIENTE
+G2-SMTP,Gate 2,6,3,Crítica,Sí,SMTP prod + correo prueba + cola email,Infra,,,,Pendiente,,no_reply@,CHECKLIST_PRODUCCION §5
+G2-CERT,Gate 2,6,3,Crítica,Sí,Certificados .p12 LV informe DIRDAC vigentes,DIRDAC,,,,Pendiente,,En servidor prod,HOJA_RUTA §9.2
+G2-SEC,Gate 2,6,3,Alta,Sí,Seguridad CSRF upload headers HSTS CSP,Seguridad,,,,Pendiente,,,CHECKLIST_SEGURIDAD
+G2-OBS,Gate 2,6,3,Alta,Sí,Logs rotación health check,Infra,,,,Pendiente,,App_Data/Logs,CHECKLIST_PRODUCCION §4
+G2-RBK,Gate 2,6,3,Crítica,Sí,Backup pre-deploy + rollback probado,Infra,,,,Pendiente,,Restore test,CHECKLIST_IIS Rollback
+G2-EXT1,Gate 2,6,3,Alta,Sí,Dependencia certificados institucionales,DIRDAC/TI,,,,Pendiente,,,HOJA_RUTA §9.2
+G2-EXT2,Gate 2,6,3,Alta,Sí,Dependencia SMTP institucional prod,Infra,,,,Pendiente,,,HOJA_RUTA §9.2
+G2-EXT3,Gate 2,6,3,Alta,Sí,Dependencia esquema BD estable,DBA,,,,Pendiente,,,HOJA_RUTA §9.2
+MILE-DOC,,7,3-4,Media,No,HITO — Documentación usuario completa,PO,,,,Pendiente,,,CHECKLIST_DOCUMENTACION_100
+DOC-PDF,,7,3,Media,No,Manuales PDF distribuidos a usuarios,PO,,,,Completado,,docs/export/,CHECKLIST_DOC A7
+DOC-PNG,,7,3,Media,No,42 capturas PNG en docs/images/,QA,,,,Pendiente,,0/42 hoy,images/README
+DOC-BUILD,,7,4,Media,No,npm run build post-capturas,Dev,,,,Pendiente,,,export/README
+DOC-RN,,7,4,Media,No,Release notes usuario por rol,PO,,,,Pendiente,,,HOJA_RUTA §10
+DOC-CAP,,7,4,Media,No,Capacitación 2h RT Inspector Coord,PO,,,,Pendiente,,MANUAL_FLUJO_RT_A_AOCR,HOJA_RUTA §10
+MILE-G3,Gate 3,6,4,Crítica,Sí,HITO — CHECKLIST_PRODUCCION firmado,PO,,,,Pendiente,,116 ítems,CHECKLIST_PRODUCCION
+G3-PROD,,6,4,Crítica,Sí,Checklist producción secciones 1-5 completadas,QA,,,,Pendiente,,Seguridad integridad,CHECKLIST_PRODUCCION
+G3-QA,,6,4,Crítica,Sí,Checklist producción QA E2E §10 firmado,QA,,,,Pendiente,,,CHECKLIST_PRODUCCION §10
+G3-FIRMAS,,6,4,Crítica,Sí,Firmas Dev DBA Seguridad QA Infra PO,PO,,,,Pendiente,,,CHECKLIST_PRODUCCION firmas
+MILE-LIVE,,8,4,Crítica,Sí,HITO — Go-live institucional,Infra,,,,Pendiente,,,HOJA_RUTA §11
+GL-BKP,,8,4,Crítica,Sí,T-24h Backup BD + carpeta aplicación,Infra,,,,Pendiente,,,HOJA_RUTA §11.1
+GL-DEP,,8,4,Crítica,Sí,T-0 Publicar prod + reciclar App Pool,Infra,,,,Pendiente,,,HOJA_RUTA §11.1
+GL-SMK1,,8,4,Crítica,Sí,Smoke login todos los roles + /health,QA,,,,Pendiente,,,HOJA_RUTA §11.2
+GL-SMK2,,8,4,Alta,Sí,Smoke /Tecnico /RevisionDocumental sin 500,QA,,,,Pendiente,,,HOJA_RUTA §11.2
+GL-SMK3,,8,4,Alta,Sí,Smoke correo financiero + logs App_Data,QA,,,,Pendiente,,,HOJA_RUTA §11.2
+GL-MON,,8,4,Alta,Sí,T+1h monitoreo logs post go-live,Infra,,,,Pendiente,,,HOJA_RUTA §11.1

@@ -282,14 +282,20 @@ namespace CapaDatos.DAOs
         // =========================================================
         // REEMPLAZAR POR SOLICITUD (lo que usa tu SolicitudAOCRController)
         // =========================================================
-        public void ReemplazarPorSolicitud(int codigoSolicitud, List<AeronaveSolicitud> aeronaves, string usuario)
+        /// <summary>
+        /// Reemplaza la flota de la solicitud (borrar + insertar).
+        /// Devuelve el número de aeronaves insertadas para que el llamador
+        /// pueda confirmar la persistencia real antes de reportar éxito.
+        /// </summary>
+        public int ReemplazarPorSolicitud(int codigoSolicitud, List<AeronaveSolicitud> aeronaves, string usuario)
         {
             // 1) borrar todas las existentes
             EliminarPorSolicitud(codigoSolicitud);
 
             // 2) insertar nuevas
-            if (aeronaves == null) return;
+            if (aeronaves == null) return 0;
 
+            var insertadas = 0;
             foreach (var a in aeronaves)
             {
                 if (a == null) continue;
@@ -299,8 +305,13 @@ namespace CapaDatos.DAOs
                 a.FechaRegistro = a.FechaRegistro ?? DateTime.Now;
                 a.UsuarioRegistro = a.UsuarioRegistro ?? usuario ?? "sistema";
 
-                Crear(a, a.UsuarioRegistro);
+                if (Crear(a, a.UsuarioRegistro) > 0)
+                {
+                    insertadas++;
+                }
             }
+
+            return insertadas;
         }
 
         // =========================================================

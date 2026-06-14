@@ -475,14 +475,15 @@ namespace CapaDatos.DAOs
 
         private static bool PuedeAsignarInspector(string estadoNormalizado, Inspeccion inspeccion, SolicitudAOCR solicitud)
         {
-            if (inspeccion == null)
+            if (TieneInspectorAsignado(inspeccion, solicitud))
             {
                 return false;
             }
 
-            if (TieneInspectorAsignado(inspeccion, solicitud))
+            if (inspeccion == null)
             {
-                return false;
+                return solicitud != null
+                    && EstadoSolicitudSql.EstadoPermiteAsignacionInicial(solicitud.Estado);
             }
 
             var estado = EstadosInspeccion.NormalizarEstado(estadoNormalizado);

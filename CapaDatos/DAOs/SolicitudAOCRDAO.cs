@@ -27,59 +27,14 @@ namespace CapaDatos.DAOs
         private string ConnectionString =>
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
-        private static readonly string[] EstadosAsignacionInicialCanonicos =
-        {
-            EstadoSolicitud.PendienteAsignacionRT,
-            EstadoSolicitud.Pendiente,
-            EstadoSolicitud.EnRevision,
-            EstadoSolicitud.DocumentacionPendiente,
-            EstadoSolicitud.Subsanada,
-            EstadoSolicitud.RequiereInspeccion,
-            EstadoSolicitud.AceptacionDocumental,
-            EstadoSolicitud.DocumentacionCompleta
-        };
-
-        private static readonly string[] EstadosAsignacionInicialSql =
-        {
-            "PENDIENTE_ASIGNACION_RT",
-            "PENDIENTE ASIGNACION RT",
-            "PENDIENTE_ASIGNACION_TECNICA",
-            "PENDIENTE ASIGNACION TECNICA",
-            "PENDIENTE_ASIGNACION",
-            "PENDIENTE",
-            "EN_REVISION",
-            "EN REVISION",
-            "ENVIADO_COORDINADOR",
-            "ENVIADO COORDINADOR",
-            "EN_REVISION_COORDINADOR",
-            "EN REVISION COORDINADOR",
-            "ENVIADO",
-            "PREPARANDO",
-            "DOCUMENTACION_PENDIENTE",
-            "DOCUMENTACION PENDIENTE",
-            "ACEPTACION_DOCUMENTAL",
-            "DOCUMENTACION_COMPLETA",
-            "DOCUMENTOS_COMPLETOS",
-            "SUBSANADA",
-            "REQUIERE_INSPECCION",
-            "REQUIERE INSPECCION"
-        };
-
         private static List<string> ObtenerEstadosAsignacionInicialSql()
         {
-            return EstadosAsignacionInicialSql
-                .Concat(EstadosAsignacionInicialCanonicos)
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim().ToUpperInvariant().Replace("_", " "))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            return EstadoSolicitudSql.EstadosCoordinacionPendienteAsignacionSql.ToList();
         }
 
         private static bool EstadoPermiteAsignacionInicial(string estado)
         {
-            var estadoNormalizado = EstadoSolicitud.Normalizar(estado);
-            return EstadosAsignacionInicialCanonicos.Any(e =>
-                string.Equals(e, estadoNormalizado, StringComparison.OrdinalIgnoreCase));
+            return EstadoSolicitudSql.EstadoPermiteAsignacionInicial(estado);
         }
 
         // ============================
@@ -422,9 +377,48 @@ namespace CapaDatos.DAOs
             return lista;
         }
 
+        /// <summary>
+        /// Marca la solicitud como pendiente de asignación de inspector por Coordinación
+        /// (tras envío documental del RT/Solicitante).
+        /// </summary>
+        public void MarcarPendienteAsignacionCoordinacion(int codigoSolicitud, string usuario)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return;
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var sets = new List<string> { "updated_at = NOW()" };
+                if (columnas.Contains("pendiente_asignacion_inspector"))
+                {
+                    sets.Add("pendiente_asignacion_inspector = TRUE");
+                }
+
+                if (columnas.Contains("updated_by"))
+                {
+                    sets.Add("updated_by = @usuario");
+                }
+
+                var sql = "UPDATE aocr_tbsolicitud SET " + string.Join(", ", sets) +
+                          " WHERE codigo_solicitud = @id AND deleted_at IS NULL";
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@usuario", (object)(usuario ?? "sistema") ?? DBNull.Value);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         public List<SolicitudAOCR> ObtenerPendientesAsignacion()
         {
             var estadosPendientesAsignacion = ObtenerEstadosAsignacionInicialSql();
+            var estadosExcluidos = EstadoSolicitudSql.EstadosExcluidosBandejaCoordinacionSql.ToList();
+            var estadoCanonicoSql = EstadoSolicitudSql.CanonicalExpression("s.estado");
 
             _logger.LogInfo("[InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=" + string.Join(",", estadosPendientesAsignacion));
 
@@ -434,34 +428,57 @@ namespace CapaDatos.DAOs
                 placeholders.Add("@e" + i);
             }
 
-            const string estadoSolicitudNormalizadoSql = "REPLACE(TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')), '_', ' ')";
-
-            var sql = @"
-                                SELECT s.*
-                                FROM aocr_tbsolicitud s
-                                                                WHERE " + estadoSolicitudNormalizadoSql + @" IN (" + string.Join(", ", placeholders) + @")
-                                                                    AND s.deleted_at IS NULL
-                                                                    AND (
-                                                                        " + estadoSolicitudNormalizadoSql + @" IN ('ACEPTACION DOCUMENTAL', 'PENDIENTE ASIGNACION RT', 'PENDIENTE ASIGNACION TECNICA', 'PENDIENTE ASIGNACION', 'REQUIERE INSPECCION')
-                                                                        OR EXISTS (
-                                    SELECT 1
-                                    FROM aocr_or_orden o
-                                    WHERE COALESCE(o.codigo_solicitud::text, '') = s.codigo_solicitud::text
-                                      AND UPPER(COALESCE(o.estado, '')) IN ('FACTURADA', 'COMPLETADA', 'PAGADA')
-                                                                        )
-                                                                    )
-                                                                    AND NOT EXISTS (
-                                            SELECT 1
-                                            FROM aocr_tbinspeccion i
-                                            WHERE i.codigo_solicitud = s.codigo_solicitud
-                                                AND i.codigo_inspector IS NOT NULL
-                                                AND " + estadoSolicitudNormalizadoSql + @" <> 'ACEPTACION DOCUMENTAL'
-                                    )
-                                ORDER BY s.fecha_solicitud DESC";
+            var placeholdersExcluidos = new List<string>();
+            for (int i = 0; i < estadosExcluidos.Count; i++)
+            {
+                placeholdersExcluidos.Add("@x" + i);
+            }
 
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
+
+                var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
+                var tieneInspectorSql = EstadoSolicitudSql.ExpresionTieneInspectorEfectivo(
+                    "s",
+                    columnasSolicitud,
+                    columnasInspeccion);
+
+                var sql = @"
+                SELECT s.*
+                FROM aocr_tbsolicitud s
+                WHERE s.deleted_at IS NULL
+                  AND " + estadoCanonicoSql + @" IN (" + string.Join(", ", placeholders) + @")
+                  AND " + estadoCanonicoSql + @" NOT IN (" + string.Join(", ", placeholdersExcluidos) + @")
+                  AND NOT " + tieneInspectorSql + @"
+                  AND (
+                      COALESCE(s.pendiente_asignacion_inspector, FALSE) = TRUE
+                      OR COALESCE(s.pago_aprobado, FALSE) = TRUE
+                      OR COALESCE(s.solicitud_finalizada_rt, FALSE) = TRUE
+                      OR " + estadoCanonicoSql + @" IN (
+                          'EN REVISION',
+                          'ACEPTACION DOCUMENTAL',
+                          'PENDIENTE ASIGNACION RT',
+                          'DOCUMENTACION COMPLETA',
+                          'REQUIERE INSPECCION',
+                          'SUBSANADA'
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM aocr_tbdocumento d
+                          WHERE d.codigo_solicitud = s.codigo_solicitud
+                            AND COALESCE(d.tamano_bytes, 0) > 0
+                            AND NULLIF(TRIM(COALESCE(d.nombre_archivo, '')), '') IS NOT NULL
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM aocr_or_orden o
+                          WHERE COALESCE(o.codigo_solicitud::text, '') = s.codigo_solicitud::text
+                            AND UPPER(COALESCE(o.estado, '')) IN ('FACTURADA', 'COMPLETADA', 'PAGADA')
+                      )
+                  )
+                ORDER BY COALESCE(s.updated_at, s.fecha_solicitud, s.created_at) DESC, s.codigo_solicitud DESC";
 
                 try
                 {
@@ -484,7 +501,7 @@ namespace CapaDatos.DAOs
                         }
                     }
 
-                    const string sqlDiagnosticoInspeccion = @"
+                    var sqlDiagnosticoInspeccion = @"
                         SELECT
                             COUNT(DISTINCT s.codigo_solicitud) AS total_solicitudes,
                             COUNT(DISTINCT CASE WHEN i.codigo_inspeccion IS NOT NULL THEN s.codigo_solicitud END) AS con_inspeccion,
@@ -493,7 +510,7 @@ namespace CapaDatos.DAOs
                         FROM aocr_tbsolicitud s
                         LEFT JOIN aocr_tbinspeccion i ON i.codigo_solicitud = s.codigo_solicitud
                         WHERE s.deleted_at IS NULL
-                          AND REPLACE(TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')), '_', ' ') = ANY (@estados);";
+                          AND " + estadoCanonicoSql + @" = ANY (@estados);";
 
                     using (var cmdDiagIns = new NpgsqlCommand(sqlDiagnosticoInspeccion, cn))
                     {
@@ -521,6 +538,11 @@ namespace CapaDatos.DAOs
                     for (int i = 0; i < estadosPendientesAsignacion.Count; i++)
                     {
                         cmd.Parameters.AddWithValue(placeholders[i], estadosPendientesAsignacion[i]);
+                    }
+
+                    for (int i = 0; i < estadosExcluidos.Count; i++)
+                    {
+                        cmd.Parameters.AddWithValue(placeholdersExcluidos[i], estadosExcluidos[i]);
                     }
 
                     using (var rd = cmd.ExecuteReader())
@@ -615,6 +637,10 @@ namespace CapaDatos.DAOs
 
         public int InsertarConReturn(NpgsqlConnection cn, NpgsqlTransaction tx, SolicitudAOCR solicitud)
         {
+            if (tx == null)
+            {
+                EnsureColumnasFormularioEmision(cn);
+            }
             var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
             var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
             var correoRepresentanteTecnico = ResolverCorreoRepresentanteTecnicoCanonico(solicitud);
@@ -787,11 +813,47 @@ namespace CapaDatos.DAOs
         // ============================
         // ACTUALIZAR (COMPLETO)
         // ============================
+        /// <summary>
+        /// Garantiza que existan las columnas que persisten las secciones del
+        /// FormularioEmisionAOCR (Operaciones EAE, representante, compañía).
+        /// Sin esto, ActualizarGeneral omitía silenciosamente esos campos y el
+        /// guardado reportaba éxito sin persistir los datos.
+        /// </summary>
+        private void EnsureColumnasFormularioEmision(NpgsqlConnection cn)
+        {
+            const string sql = @"
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS resumen_operaciones_eae TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS numero_aoc VARCHAR(100) NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS aprobaciones_especiales TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS aprobaciones_especiales_otros TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS aeropuertos_ecuador TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS aeropuertos_ecuador_otros TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS companias_seleccionadas TEXT NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS codigo_oaci VARCHAR(10) NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS correo_representante_tecnico VARCHAR(200) NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS nombre_comercial VARCHAR(200) NULL;";
+
+            try
+            {
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Si el usuario de BD no tiene permisos DDL se mantiene el comportamiento
+                // condicional; la verificación post-guardado reportará el campo faltante.
+                _logger.LogWarning("[SOLICITUD_AOCR] No se pudieron asegurar columnas del formulario de emisión: " + ex.Message);
+            }
+        }
+
         public bool ActualizarGeneral(SolicitudAOCR s)
         {
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
+                EnsureColumnasFormularioEmision(cn);
                 var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
                 var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
                 var correoRepresentanteTecnico = ResolverCorreoRepresentanteTecnicoCanonico(s);
@@ -968,7 +1030,23 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     cmd.Parameters.AddWithValue("@codigo_tecnico", (object)s.CodigoTecnico ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@updated_by", (object)(s.UpdatedBy ?? "sistema"));
 
-                    return cmd.ExecuteNonQuery() > 0;
+                    var filas = cmd.ExecuteNonQuery();
+
+                    var columnasEsperadas = new[]
+                    {
+                        "resumen_operaciones_eae", "numero_aoc", "aprobaciones_especiales",
+                        "aprobaciones_especiales_otros", "aeropuertos_ecuador", "aeropuertos_ecuador_otros",
+                        "companias_seleccionadas", "codigo_oaci", "correo_representante_tecnico", "nombre_comercial"
+                    };
+                    var columnasOmitidas = columnasEsperadas.Where(c => !columnas.Contains(c)).ToList();
+
+                    _logger.LogInfo(
+                        "[SOLICITUD_AOCR][ACTUALIZAR_GENERAL] SolicitudId=" + s.CodigoSolicitud +
+                        "; FilasAfectadas=" + filas +
+                        "; ColumnasOmitidas=" + (columnasOmitidas.Count > 0 ? string.Join(",", columnasOmitidas) : "ninguna") +
+                        "; UpdatedBy=" + (s.UpdatedBy ?? "sistema"));
+
+                    return filas > 0;
                 }
             }
         }
@@ -1087,26 +1165,29 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                         var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
                         var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
                         var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
-                        var permiteAsignacionPorAceptacionDocumental =
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase);
-
-                        string estadoRecaudacion;
-                        if (!permiteAsignacionPorAceptacionDocumental && !TieneRecaudacionFinalizada(cn, tx, codigoSolicitud, out estadoRecaudacion))
-                        {
-                            _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Recaudacion no finalizada. EstadoRecaudacion=" + (estadoRecaudacion ?? "SIN_ORDEN"));
-                            mensaje = "No se puede asignar inspector hasta que la recaudación esté finalizada.";
-                            tx.Rollback();
-                            return false;
-                        }
 
                         var inspeccionExistente = ObtenerUltimaInspeccionPorSolicitud(cn, tx, codigoSolicitud);
                         var esReasignacion = inspeccionExistente != null && PermiteReasignacion(inspeccionExistente.Estado);
-
                         var estadoPermiteAsignacionInicial = EstadoPermiteAsignacionInicial(estadoAnterior);
-
                         var estadoPermiteReasignacion =
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase) &&
                             esReasignacion;
+
+                        string estadoRecaudacion;
+                        var requiereRecaudacionFinalizada =
+                            !estadoPermiteAsignacionInicial &&
+                            !estadoPermiteReasignacion;
+
+                        if (requiereRecaudacionFinalizada
+                            && !TieneRecaudacionFinalizada(cn, tx, codigoSolicitud, columnasSolicitud, out estadoRecaudacion))
+                        {
+                            _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Recaudacion no finalizada. EstadoRecaudacion=" + (estadoRecaudacion ?? "SIN_ORDEN"));
+                            mensaje = string.Equals(estadoRecaudacion, "ANULADA", StringComparison.OrdinalIgnoreCase)
+                                ? "No se puede asignar inspector: la orden de recaudación vigente está anulada. Verifique el estado de pago con Financiero."
+                                : "No se puede asignar inspector hasta que la recaudación esté finalizada.";
+                            tx.Rollback();
+                            return false;
+                        }
 
                         if (!estadoPermiteAsignacionInicial && !estadoPermiteReasignacion)
                         {
@@ -1912,9 +1993,33 @@ LIMIT 1;";
             NpgsqlConnection cn,
             NpgsqlTransaction tx,
             int codigoSolicitud,
+            IReadOnlyCollection<string> columnasSolicitud,
             out string estadoRecaudacion)
         {
             estadoRecaudacion = null;
+
+            if (SolicitudIndicaRecaudacionHabilitada(cn, tx, codigoSolicitud, columnasSolicitud, out var motivoBypass))
+            {
+                estadoRecaudacion = motivoBypass;
+                return true;
+            }
+
+            const string sqlFinalizada = @"
+                SELECT COUNT(*)
+                FROM aocr_or_orden o
+                WHERE COALESCE(o.codigo_solicitud::text, '') = @codigoSolicitud
+                  AND UPPER(COALESCE(o.estado, '')) IN ('FACTURADA', 'COMPLETADA', 'PAGADA');";
+
+            using (var cmdFinalizada = new NpgsqlCommand(sqlFinalizada, cn, tx))
+            {
+                cmdFinalizada.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud.ToString());
+                var totalFinalizadas = Convert.ToInt64(cmdFinalizada.ExecuteScalar());
+                if (totalFinalizadas > 0)
+                {
+                    estadoRecaudacion = "PAGADA";
+                    return true;
+                }
+            }
 
             const string sql = @"
                 SELECT UPPER(COALESCE(o.estado, '')) AS estado
@@ -1938,6 +2043,84 @@ LIMIT 1;";
                        || string.Equals(estadoRecaudacion, "COMPLETADA", StringComparison.OrdinalIgnoreCase)
                        || string.Equals(estadoRecaudacion, "PAGADA", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        private static bool SolicitudIndicaRecaudacionHabilitada(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int codigoSolicitud,
+            IReadOnlyCollection<string> columnasSolicitud,
+            out string motivo)
+        {
+            motivo = null;
+            var cols = new HashSet<string>(columnasSolicitud ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            var selects = new List<string>();
+
+            if (cols.Contains("pago_aprobado"))
+            {
+                selects.Add("COALESCE(pago_aprobado, FALSE) AS pago_aprobado");
+            }
+
+            if (cols.Contains("solicitud_finalizada_rt"))
+            {
+                selects.Add("COALESCE(solicitud_finalizada_rt, FALSE) AS solicitud_finalizada_rt");
+            }
+
+            if (cols.Contains("pendiente_asignacion_inspector"))
+            {
+                selects.Add("COALESCE(pendiente_asignacion_inspector, FALSE) AS pendiente_asignacion_inspector");
+            }
+
+            if (selects.Count == 0)
+            {
+                return false;
+            }
+
+            var sql = "SELECT " + string.Join(", ", selects) + " FROM aocr_tbsolicitud WHERE codigo_solicitud = @id";
+            if (cols.Contains("deleted_at"))
+            {
+                sql += " AND deleted_at IS NULL";
+            }
+
+            sql += " LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", codigoSolicitud);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    if (!rd.Read())
+                    {
+                        return false;
+                    }
+
+                    if (cols.Contains("pago_aprobado")
+                        && rd["pago_aprobado"] != DBNull.Value
+                        && Convert.ToBoolean(rd["pago_aprobado"]))
+                    {
+                        motivo = "PAGO_APROBADO";
+                        return true;
+                    }
+
+                    if (cols.Contains("solicitud_finalizada_rt")
+                        && rd["solicitud_finalizada_rt"] != DBNull.Value
+                        && Convert.ToBoolean(rd["solicitud_finalizada_rt"]))
+                    {
+                        motivo = "SOLICITUD_FINALIZADA_RT";
+                        return true;
+                    }
+
+                    if (cols.Contains("pendiente_asignacion_inspector")
+                        && rd["pendiente_asignacion_inspector"] != DBNull.Value
+                        && Convert.ToBoolean(rd["pendiente_asignacion_inspector"]))
+                    {
+                        motivo = "PENDIENTE_ASIGNACION";
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static string NormalizarTipoInspector(string tipoInspector)

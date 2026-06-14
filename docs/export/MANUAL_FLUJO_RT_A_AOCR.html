@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flujo completo RT → AOCR — Sistema AOCR</title>
+  <style>
+    :root { --brand:#0f617a; --brand2:#1296b8; --light:#eef8fb; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Flujo completo RT → AOCR<br><span style="font-weight:400;font-size:1.35rem">Desde el RT hasta la emisión final</span></h1>
+    <p class="lead">16 fases institucionales: RT, financiero, coordinación, inspector, DIRDAC y descarga final en GeneradasFirmadas.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/MANUAL_FLUJO_RT_A_AOCR.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/MANUAL_FLUJO_RT_A_AOCR.pdf</code> · Editable Word → <code>docs/export/editable/MANUAL_FLUJO_RT_A_AOCR.docx</code> · Markdown → <code>docs/export/editable/MANUAL_FLUJO_RT_A_AOCR.md</code></div>
+    <article class="md-body">
+<h1>Manual del flujo completo — Desde el RT hasta la AOCR emitida</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Enfoque:</strong> narrativa institucional <strong>desde la perspectiva del Representante Técnico (RT)</strong>, indicando en cada paso qué rol actúa, qué estado debe verse en <code>SolicitudAOCR/Detalle/{id}</code> y cuándo el RT puede volver a intervenir.</p>
+<p><strong>Trámite de referencia:</strong> solicitud <strong>#12</strong> (<code>DGAC-GOP-2026-AOCR012</code>), inspección <strong>#11</strong>, tipo <strong>1</strong> (emisión).</p>
+<p><strong>Complementos:</strong> <a href="GUIA_VISUAL_FLUJO_RT_AOCR.md"><code>GUIA_VISUAL_FLUJO_RT_AOCR.md</code></a> (42 capturas por fase) · <code>MANUAL_USUARIO_AOCR.md</code> · <code>GUIA_INSPECTOR_SOLICITUD_12.md</code> · <code>MANUAL_TECNICO_AOCR.md</code> (§16–§18) · <a href="CHECKLIST_DOCUMENTACION_100.md"><code>CHECKLIST_DOCUMENTACION_100.md</code></a></p>
+<hr>
+<h2>0. Cómo leer este manual</h2>
+<table>
+<thead>
+<tr>
+<th>Columna / bloque</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Estado solicitud</strong></td>
+<td>Texto exacto en columna <code>estado</code> de <code>aocr_tbsolicitud</code></td>
+</tr>
+<tr>
+<td><strong>Rol activo</strong></td>
+<td>Quién debe actuar ahora</td>
+</tr>
+<tr>
+<td><strong>Qué ve el RT</strong></td>
+<td>Pantallas y mensajes desde <code>Mis trámites</code> o <code>Detalle</code></td>
+</tr>
+<tr>
+<td><strong>Acción institucional</strong></td>
+<td>URL y POST del rol responsable</td>
+</tr>
+<tr>
+<td><strong>Handoff</strong></td>
+<td>Condición para pasar al siguiente rol</td>
+</tr>
+</tbody></table>
+<p>El RT <strong>no</strong> interviene en revisión técnica post-asignación, LV, informe ni firma DIRDAC; sí debe <strong>seguir el estado</strong> y actuar cuando el trámite vuelve a su bandeja (subsanación, nueva orden de recaudación en modificación, descarga final).</p>
+<blockquote>
+<p><strong>Importante:</strong> en la tabla §2, <strong>«No» en participación RT ≠ paso fallido</strong>. Indica que en esa fase el responsable es otro rol (Inspector, Coordinación o DIRDAC).</p>
+</blockquote>
+<hr>
+<h2>1. Mapa del recorrido (emisión tipo 1/2)</h2>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph RT[&quot;Representante Técnico&quot;]
+        A1[Crear solicitud] --&gt; A2[Orden recaudación + comprobante]
+        A2 --&gt; A3[Cargar documentos]
+        A3 --&gt; A4[Enviar a revisión]
+    end
+
+    subgraph FIN[&quot;Financiero&quot;]
+        B1[Aprobar pago]
+    end
+
+    subgraph COO[&quot;Coordinación&quot;]
+        C1[Revisión documental COO-1]
+        C2[Firmar aceptación documental]
+        C3[Asignar inspector]
+    end
+
+    subgraph INS[&quot;Inspector&quot;]
+        D1[Revisión documental post-asignación]
+        D2[Confirmar cierre documental]
+        D3[LV/EAE firmada]
+        D4[Informe firmado → DIRDAC]
+    end
+
+    subgraph DIR[&quot;DIRDAC&quot;]
+        E1[Aprobar informe]
+        E2[Revisar / firmar AOCR]
+    end
+
+    subgraph CIERRE[&quot;Cierre&quot;]
+        F1[AOCR Emitido/Recibido]
+        F2[RT descarga documentos finales]
+    end
+
+    A2 --&gt; B1 --&gt; A3
+    A4 --&gt; C1 --&gt; C2 --&gt; C3
+    C3 --&gt; D1 --&gt; D2 --&gt; D3 --&gt; D4
+    D4 --&gt; E1 --&gt; E2
+    E2 --&gt; F1 --&gt; F2
+</code></pre>
+<p><strong>Duración típica en estados (emisión):</strong></p>
+<pre><code class="language-text">(RT) Solicitud creada
+  → Pago Pendiente / Validado          [Financiero]
+  → Documentacion Pendiente            [RT carga docs]
+  → En Revision                        [Coordinación COO-1]
+  → Pendiente Asignacion RT            [Coordinación asigna]
+  → En Inspeccion                      [Inspector]
+  → AOCR En Elaboracion                [post-aprobación informe DIRDAC]
+  → AOCR En Revision                   [Coordinación ValidarAocr]
+  → Enviado DCAV → Firmado DCAV        [DIRDAC firma]
+  → AOCR Emitido/Recibido              [RT descarga]
+  → Finalizado                         [cierre operativo]
+</code></pre>
+<hr>
+<h2>2. Tabla resumen — 16 fases y roles</h2>
+<h3>Leyenda columna «Participación RT»</h3>
+<table>
+<thead>
+<tr>
+<th>Símbolo</th>
+<th>Significado</th>
+<th><strong>No es</strong> un error del sistema</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Sí</strong></td>
+<td>El RT debe hacer acciones en esa fase</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Observa</strong></td>
+<td>El RT solo consulta estado (Mis trámites / Detalle)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>No</strong></td>
+<td>Otra institución actúa; el RT <strong>espera</strong> sin tareas pendientes</td>
+<td>❌ <strong>No</strong> significa fallo ni paso incompleto</td>
+</tr>
+</tbody></table>
+<p>Las fases 8–11 y 13–14 llevan <strong>No</strong> porque corresponden a <strong>Inspector</strong>, <strong>DIRDAC</strong> o <strong>Coordinación</strong> — el RT no revisa documentos post-asignación, no firma LV/informe ni valida AOCR.</p>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Rol activo</th>
+<th>Estado clave (antes → después)</th>
+<th>Participación RT</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1</strong></td>
+<td>RT</td>
+<td>— → solicitud creada / pendiente pago</td>
+<td><strong>Sí</strong> — crea formulario</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>RT</td>
+<td>— → orden + comprobante cargado</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Financiero</td>
+<td>Pago Pendiente → Validado</td>
+<td><strong>Observa</strong> — solo seguimiento</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>RT</td>
+<td>Documentacion Pendiente → <strong>En Revision</strong></td>
+<td><strong>Sí</strong> — carga y envía docs</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Coordinación</td>
+<td>En Revision (COO-1)</td>
+<td><strong>Observa</strong> — puede recibir observación</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Coordinación</td>
+<td>→ <strong>Pendiente Asignacion RT</strong></td>
+<td><strong>Observa</strong> — constancia descargable*</td>
+</tr>
+<tr>
+<td><strong>7</strong></td>
+<td>Coordinación</td>
+<td>→ <strong>En Inspeccion</strong></td>
+<td><strong>Observa</strong> — espera inspección</td>
+</tr>
+<tr>
+<td><strong>8</strong></td>
+<td>Inspector</td>
+<td>En Inspeccion — revisión doc.</td>
+<td><strong>No</strong> — actúa el inspector</td>
+</tr>
+<tr>
+<td><strong>9</strong></td>
+<td>Inspector</td>
+<td>Cierre documental confirmado</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td><strong>10</strong></td>
+<td>Inspector</td>
+<td>LV/EAE finalizada y firmada</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td><strong>11</strong></td>
+<td>Inspector</td>
+<td>Informe → <strong>ENVIADO_A_DIRDAC</strong></td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td><strong>12</strong></td>
+<td>DIRDAC</td>
+<td>→ <strong>AOCR En Elaboracion</strong></td>
+<td><strong>Observa</strong></td>
+</tr>
+<tr>
+<td><strong>13</strong></td>
+<td>Inspector / sistema</td>
+<td>Generación borrador AOCR</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td><strong>14</strong></td>
+<td>Coordinación</td>
+<td>→ <strong>AOCR En Revision</strong></td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td><strong>15</strong></td>
+<td>DIRDAC</td>
+<td>→ <strong>AOCR Emitido/Recibido</strong></td>
+<td><strong>Observa</strong></td>
+</tr>
+<tr>
+<td><strong>16</strong></td>
+<td>RT</td>
+<td>Descarga documentos finales</td>
+<td><strong>Sí</strong> — <code>GeneradasFirmadas</code></td>
+</tr>
+</tbody></table>
+<p>*Descargar la constancia de aceptación documental <strong>no</strong> cierra el trámite en <code>Finalizado</code>.</p>
+<hr>
+<h2>Fase 1 — RT: iniciar la solicitud</h2>
+<p>📷 <code>images/rt/rt-formulario-emision-aocr.png</code> · <code>images/rt/rt-mis-tramites-solicitud-nueva.png</code> — ver <a href="GUIA_VISUAL_FLUJO_RT_AOCR.md">GUIA_VISUAL_FLUJO_RT_AOCR.md</a> § Fase 1</p>
+<h3>Menú y rutas</h3>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Menú lateral RT</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Emisión nueva</td>
+<td><strong>Solicitud AOCR</strong></td>
+<td><code>/SolicitudAOCR/FormularioEmisionAOCR?tipoSolicitud=1</code></td>
+</tr>
+<tr>
+<td>Renovación</td>
+<td><strong>Renovación AOCR</strong></td>
+<td><code>...?tipoSolicitud=2</code></td>
+</tr>
+<tr>
+<td>Modificación CL</td>
+<td><strong>Condiciones y limitaciones</strong></td>
+<td><code>...?tipoSolicitud=3</code></td>
+</tr>
+<tr>
+<td>Seguimiento</td>
+<td><strong>Mis trámites</strong></td>
+<td><code>/SolicitudAOCR/MisSolicitudes</code></td>
+</tr>
+</tbody></table>
+<h3>Procedimiento RT</h3>
+<ol>
+<li>Completar el formulario institucional (operadora, aeronaves, representante legal, etc.).</li>
+<li>Guardar borrador si aún no tiene orden de recaudación.</li>
+<li>Al finalizar el formulario inicial, el sistema crea o reutiliza la fila en <code>aocr_tbsolicitud</code>.</li>
+</ol>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Redirección a <strong>Mis trámites</strong> o mensaje de éxito con código de solicitud (ej. <code>DGAC-GOP-2026-AOCR012</code>).</li>
+<li>En <strong>Detalle</strong>, estado inicial compatible con pago pendiente o documentación pendiente según reglas de <code>AocrPostPagoWorkflowService</code>.</li>
+</ul>
+<h3>Handoff → Fase 2</h3>
+<p>El RT debe generar la <strong>orden de recaudación</strong> antes de cargar documentación formal (menú <strong>Órdenes (RT)</strong> → <strong>Nueva</strong>).</p>
+<hr>
+<h2>Fase 2 — RT: orden de recaudación y comprobante</h2>
+<h3>Menú y rutas</h3>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Menú</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Nueva orden</td>
+<td><strong>Órdenes (RT)</strong></td>
+<td><code>/OrdenRecaudacion/Nueva</code></td>
+</tr>
+<tr>
+<td>Mis órdenes</td>
+<td><strong>Mis órdenes</strong></td>
+<td><code>/OrdenRecaudacion/Index</code></td>
+</tr>
+<tr>
+<td>Subir comprobante</td>
+<td><strong>Subir comprobante</strong></td>
+<td><code>/OrdenRecaudacion/Index</code> → detalle orden</td>
+</tr>
+</tbody></table>
+<h3>Procedimiento RT</h3>
+<ol>
+<li>Crear orden vinculada a la solicitud (<code>OrdenRecaudacion/Nueva</code>).</li>
+<li>Realizar el pago institucional fuera del sistema (si aplica).</li>
+<li>Cargar <strong>comprobante de pago</strong> (<code>COMPROBANTE_PAGO</code>) en la orden o en el detalle de recaudación.</li>
+<li>Verificar que la orden aparezca como enviada a revisión financiera.</li>
+</ol>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Badge <strong>warning</strong> en menú de órdenes si hay comprobante pendiente.</li>
+<li>Detalle orden: estado pendiente de aprobación financiera.</li>
+</ul>
+<h3>Handoff → Fase 3</h3>
+<p>La orden pasa a bandeja del <strong>Financiero</strong>. El RT espera notificación o refresca <strong>Mis trámites</strong>.</p>
+<hr>
+<h2>Fase 3 — Financiero: aprobar el pago</h2>
+<blockquote>
+<p><strong>Rol activo:</strong> Financiero — el RT solo observa.</p>
+</blockquote>
+<h3>Procedimiento Financiero</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>/Financiero/TodasOrdenes</code> o <code>/Financiero/Dashboard</code></td>
+</tr>
+<tr>
+<td>Detalle</td>
+<td><code>/Financiero/DetalleOrden/{idOrden}</code></td>
+</tr>
+<tr>
+<td>Aprobar</td>
+<td><code>/Financiero/AprobarPago/{id}</code> o <code>AprobarPagoConFactura</code></td>
+</tr>
+<tr>
+<td>Rechazar</td>
+<td><code>/Financiero/RechazarOrden/{id}?motivo=...</code></td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT tras aprobación</h3>
+<ul>
+<li>Estado solicitud avanza hacia <strong>Documentacion Pendiente</strong> (habilitado para carga documental).</li>
+<li>Menú <strong>Documentos y expediente</strong> activo.</li>
+<li>Correo institucional (canal <code>AocrEmailFlujoService</code>, evento idempotente).</li>
+</ul>
+<h3>Handoff → Fase 4</h3>
+<p>Pago validado → RT debe cargar <strong>todos</strong> los tipos documentales obligatorios del trámite.</p>
+<hr>
+<h2>Fase 4 — RT: cargar documentación y enviar a coordinación</h2>
+<h3>Menú y rutas</h3>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Menú</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Subir archivos</td>
+<td><strong>Documentos y expediente</strong></td>
+<td><code>/Documento/Subir?solicitudId={id}</code></td>
+</tr>
+<tr>
+<td>Ver expediente</td>
+<td>Idem</td>
+<td><code>/Documento/Lista?solicitudId={id}&amp;modo=ver</code></td>
+</tr>
+<tr>
+<td>Detalle trámite</td>
+<td><strong>Mis trámites</strong> → fila</td>
+<td><code>/SolicitudAOCR/Detalle/{id}</code></td>
+</tr>
+<tr>
+<td>Envío formal</td>
+<td>Formulario completo / botón enviar en detalle</td>
+<td><code>POST SolicitudAOCR/FormularioCompleto</code></td>
+</tr>
+</tbody></table>
+<h3>Procedimiento RT</h3>
+<ol>
+<li>Subir cada tipo documental requerido (certificado aeronavegabilidad, manual operaciones, OPSPECS, AOC, etc.).</li>
+<li>Verificar panel de documentos obligatorios faltantes en <strong>Detalle</strong> (lista vacía = listo).</li>
+<li>Ejecutar <strong>envío formal</strong> al coordinador (<code>FormularioCompleto</code> con <code>requiereEnvioCoordinador</code>).</li>
+<li>Confirmar transición a <strong><code>En Revision</code></strong>.</li>
+</ol>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Estado: <strong><code>En Revision</code></strong></li>
+<li>Historial: <em>&quot;Solicitud formal enviada al coordinador para revisión documental.&quot;</em></li>
+<li>Ya <strong>no</strong> puede editar libremente todos los campos; subsanaciones futuras pasan por flujo de observación.</li>
+</ul>
+<h3>Documentos excluidos del conteo documental</h3>
+<p><code>SOLICITUD_INSPECCION_EXT</code> no cuenta para revisión documental institucional (<code>SolicitudAocrInfraBL.DebeIncluirEnRevisionDocumental</code>).</p>
+<h3>Handoff → Fase 5</h3>
+<p>Coordinación recibe la solicitud en <strong>Bandeja integral</strong> / <strong>Pendientes de revisión</strong> (<code>CoordinacionJefatura/RevisionVerificacion</code>).</p>
+<hr>
+<h2>Fase 5 — Coordinación: revisión documental pre-asignación (COO-1)</h2>
+<blockquote>
+<p><strong>Rol activo:</strong> Coordinación — RT en espera (puede ser observado).</p>
+</blockquote>
+<h3>Condición en código</h3>
+<p><code>EsRevisionDocumentalPreAsignacion</code> = sin inspector asignado + estado ∈ <code>{ En Revision, Documentacion Pendiente, Subsanada }</code>.</p>
+<h3>Procedimiento Coordinación</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Ruta / acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>/CoordinacionJefatura/RevisionVerificacion</code></td>
+</tr>
+<tr>
+<td>Revisar docs</td>
+<td>Desde detalle o bandeja — aceptar/devolver por documento</td>
+</tr>
+<tr>
+<td>Devolver a RT</td>
+<td>Documento → estado <strong>Observada</strong> en solicitud</td>
+</tr>
+</tbody></table>
+<h3>Si el RT recibe observaciones (rama lateral)</h3>
+<table>
+<thead>
+<tr>
+<th>Paso RT</th>
+<th>Ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ver observados</td>
+<td><strong>Observados y devueltos</strong> → <code>MisSolicitudes</code></td>
+</tr>
+<tr>
+<td>Subsanar</td>
+<td><code>/SolicitudAOCR/Subsanar/{id}</code></td>
+</tr>
+<tr>
+<td>Reenviar</td>
+<td><code>POST SubsanarPost</code> → estado <strong><code>Subsanada</code></strong> → vuelve a coordinación</td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT en flujo feliz</h3>
+<ul>
+<li>Estado permanece <strong><code>En Revision</code></strong> hasta firma coordinador.</li>
+<li>Sin mensaje de observación activa.</li>
+</ul>
+<h3>Handoff → Fase 6</h3>
+<p>Coordinación completa revisión COO-1 y ejecuta firma de aceptación documental.</p>
+<hr>
+<h2>Fase 6 — Coordinación: firmar aceptación documental</h2>
+<h3>Procedimiento</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>POST</strong></td>
+<td><code>/SolicitudAOCR/FirmarAceptacionDocumental/{id}</code></td>
+</tr>
+<tr>
+<td><strong>Autorización</strong></td>
+<td><code>[AocrAuthorize Modulo=CoordinacionJefatura Accion=FirmarAceptacionDocumental]</code></td>
+</tr>
+<tr>
+<td><strong>Servicio</strong></td>
+<td><code>RevisionDocumentalService.PrepararFirmaAceptacionDocumental</code></td>
+</tr>
+<tr>
+<td><strong>Log</strong></td>
+<td><code>[FirmarAceptacionDocumental]</code></td>
+</tr>
+</tbody></table>
+<h3>Estado destino</h3>
+<table>
+<thead>
+<tr>
+<th>Tipo solicitud</th>
+<th>Estado después de firmar</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1</strong> Emisión</td>
+<td><strong><code>Pendiente Asignacion RT</code></strong></td>
+</tr>
+<tr>
+<td><strong>2</strong> Renovación</td>
+<td><strong><code>Pendiente Asignacion RT</code></strong></td>
+</tr>
+<tr>
+<td><strong>3</strong> Modificación</td>
+<td><strong><code>Firmado Coordinador</code></strong> (ver Anexo A)</td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT (tipo 1/2)</h3>
+<ul>
+<li>Estado: <strong><code>Pendiente Asignacion RT</code></strong></li>
+<li>Puede descargar PDF constancia de aceptación documental desde <strong>Detalle</strong>.</li>
+<li><strong>Importante:</strong> esa descarga <strong>no</strong> cambia el estado a <code>Finalizado</code>.</li>
+</ul>
+<h3>Handoff → Fase 7</h3>
+<p>Coordinación debe <strong>asignar inspector</strong> — el RT no puede acelerar este paso.</p>
+<hr>
+<h2>Fase 7 — Coordinación: asignar inspector</h2>
+<h3>Procedimiento</h3>
+<ol>
+<li><code>/Tecnico/Index</code> — bandeja <code>CoordinacionBandejaService.ObtenerPendientesAsignacion()</code>.</li>
+<li>Enlace: <code>/Tecnico/AsignarInspector?solicitudId=12&amp;tipoInspector=OPS</code>.</li>
+<li><strong>POST</strong> <code>Tecnico/AsignarInspector</code> con:<ul>
+<li><code>inspectorPrincipal</code> (cédula/login del catálogo)</li>
+<li><code>fechaInspeccion</code>, <code>horaInspeccion</code></li>
+<li><code>tipoInspector</code>: <code>OPS</code> | <code>AIR</code> | <code>TODOS</code></li>
+</ul>
+</li>
+<li>Autorización: <code>[AocrAuthorize Modulo=Tecnico Accion=AsignarInspector]</code>.</li>
+</ol>
+<h3>Resultado institucional</h3>
+<table>
+<thead>
+<tr>
+<th>Artefacto</th>
+<th>Valor esperado (#12)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Estado solicitud</td>
+<td><strong><code>En Inspeccion</code></strong></td>
+</tr>
+<tr>
+<td>Inspección</td>
+<td><code>aocr_tbinspeccion</code> — ej. codigo <strong>11</strong></td>
+</tr>
+<tr>
+<td>Inspector</td>
+<td>ej. codigo <strong>43</strong></td>
+</tr>
+<tr>
+<td>Log</td>
+<td><code>[GestionInspeccion]</code></td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT</h3>
+<ul>
+<li><strong>Detalle</strong>: estado <strong><code>En Inspeccion</code></strong>, enlace a inspección si la UI lo muestra.</li>
+<li>El RT <strong>no</strong> revisa documentos en esta fase; eso es exclusivo del inspector asignado.</li>
+</ul>
+<h3>Handoff → Fase 8</h3>
+<p>Inspector recibe fila en <code>/RevisionDocumental/Index</code> y <code>/Inspeccion/Index</code>.</p>
+<hr>
+<h2>Fase 8 — Inspector: revisión documental post-asignación</h2>
+<blockquote>
+<p><strong>Rol activo:</strong> Inspector — RT no interviene.</p>
+</blockquote>
+<h3>Regla crítica para el RT (expectativa)</h3>
+<p>Las revisiones del coordinador (COO-1, revisor id 45 en prueba #12) <strong>no</strong> sustituyen la decisión del inspector. En pantalla del inspector cada documento debe iniciar en <strong>PENDIENTE</strong> hasta que él acepte o devuelva.</p>
+<h3>Procedimiento Inspector</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>/RevisionDocumental/Index</code></td>
+</tr>
+<tr>
+<td>Revisar (correcto)</td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental</code></td>
+</tr>
+<tr>
+<td>Aceptar doc</td>
+<td><code>POST Documento/AceptarDocumentoSolicitud</code></td>
+</tr>
+<tr>
+<td>Devolver doc</td>
+<td><code>POST Documento/DevolverDocumentoSolicitud</code> (motivo ≥ 10 caracteres)</td>
+</tr>
+</tbody></table>
+<h3>Textos UI que confirman modo correcto</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Título tabla</td>
+<td><strong>Bandeja de revisión documental</strong></td>
+</tr>
+<tr>
+<td>Badge</td>
+<td><strong>Revisión activa</strong></td>
+</tr>
+<tr>
+<td>Estado fila</td>
+<td><strong>PENDIENTE</strong> → <strong>ACEPTADO</strong></td>
+</tr>
+<tr>
+<td>Modo incorrecto</td>
+<td><code>modo=ver</code> → <strong>Archivos del expediente</strong> / <strong>Solo lectura</strong></td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Estado sigue <strong><code>En Inspeccion</code></strong>.</li>
+<li>Si inspector devuelve documento, RT podría recibir notificación y entrar en rama subsanación (Fase 5 lateral).</li>
+</ul>
+<h3>Handoff → Fase 9</h3>
+<p>Todos los documentos aceptados por el inspector + botón <strong>Confirmar fase documental</strong> visible en bandeja.</p>
+<hr>
+<h2>Fase 9 — Inspector: confirmar cierre documental</h2>
+<h3>Procedimiento</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pantalla</td>
+<td><code>/Inspeccion/Detalle/11</code></td>
+</tr>
+<tr>
+<td>Botón UI</td>
+<td><strong>Confirmar cierre documental</strong></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/Inspeccion/ConfirmarRevisionDocumentalInspector/11</code></td>
+</tr>
+</tbody></table>
+<h3>Persistencia</h3>
+<ul>
+<li><code>aocr_tbinspeccion.estado_documental</code> → <code>EN_REVISION</code> (u equivalente aprobado)</li>
+<li>Comentario: <em>&quot;Inspector confirmó revisión documental&quot;</em></li>
+</ul>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Sin cambio de estado solicitud (<code>En Inspeccion</code>).</li>
+<li>Habilita internamente LV/EAE e informe para el inspector.</li>
+</ul>
+<h3>Handoff → Fase 10</h3>
+<p>Inspector puede abrir modal LV/EAE sin candado <strong>BLOQUEADO POR LV/EAE</strong>.</p>
+<hr>
+<h2>Fase 10 — Inspector: Lista de Verificación LV/EAE</h2>
+<h3>Secuencia obligatoria</h3>
+<table>
+<thead>
+<tr>
+<th>Orden</th>
+<th>POST</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>Inspeccion/GuardarListaVerificacionOperacionalEae</code></td>
+<td>Borrador en <code>aocr_tblv_operacional_eae</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>Inspeccion/FinalizarListaVerificacionOperacionalEae/{id}</code></td>
+<td><code>finalizado=true</code>, PDF generado</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>Inspeccion/FirmarListaVerificacionOperacionalEae</code></td>
+<td><code>firmado_tecnico=true</code> (.p12)</td>
+</tr>
+</tbody></table>
+<h3>Precondición</h3>
+<p><code>RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv</code> + cierre documental confirmado (§ Fase 9).</p>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Estado solicitud: <strong><code>En Inspeccion</code></strong>.</li>
+<li>Progreso invisible salvo consulta en detalle de inspección (si tiene permiso de lectura).</li>
+</ul>
+<h3>Handoff → Fase 11</h3>
+<p>Badge UI inspector: <strong>LV firmada</strong> → habilita informe técnico.</p>
+<hr>
+<h2>Fase 11 — Inspector: informe técnico y envío a DIRDAC</h2>
+<h3>Secuencia</h3>
+<table>
+<thead>
+<tr>
+<th>Orden</th>
+<th>POST</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>Inspeccion/GuardarInformeTecnico</code></td>
+<td><code>estado_informe=BORRADOR_INFORME</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>Inspeccion/FinalizarInformeTecnico/{id}</code></td>
+<td>PDF informe</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>Inspeccion/FirmarInformeInspector</code></td>
+<td><code>FIRMADO_INSPECTOR</code> + <strong><code>ENVIADO_A_DIRDAC</code></strong></td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Estado puede permanecer <strong><code>En Inspeccion</code></strong> hasta aprobación dirección.</li>
+<li>Correo/notificación interna a DIRDAC (<code>INFORME_TECNICO_ENVIADO_REVISION_DIRECCION</code>).</li>
+</ul>
+<h3>Handoff → Fase 12</h3>
+<p>Informe aparece en <code>/Inspeccion/PendientesDireccion</code> para rol <strong>DIRDAC</strong>.</p>
+<hr>
+<h2>Fase 12 — DIRDAC: aprobar informe técnico</h2>
+<blockquote>
+<p><strong>Rol activo:</strong> DIRDAC (<code>DireccionJefaturaTecnica</code>).</p>
+</blockquote>
+<h3>Procedimiento</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>/Inspeccion/PendientesDireccion</code></td>
+</tr>
+<tr>
+<td>Vista</td>
+<td><code>Views/InformeTecnico/PendientesDireccion.cshtml</code></td>
+</tr>
+<tr>
+<td>Aprobar / firmar informe</td>
+<td>Acciones en <code>InspeccionController</code> (<code>FirmarInformeDirdac</code>, revisión dirección)</td>
+</tr>
+</tbody></table>
+<h3>Estado solicitud tras aprobación</h3>
+<p>→ <strong><code>AOCR En Elaboracion</code></strong></p>
+<h3>Qué ve el RT</h3>
+<ul>
+<li><strong>Detalle</strong>: estado avanzó a fase AOCR.</li>
+<li>Mensaje de trámite en elaboración institucional; RT aún <strong>no</strong> descarga AOCR final.</li>
+</ul>
+<h3>Handoff → Fases 13–14</h3>
+<p>Sistema / inspector generan borrador AOCR; coordinación valida formalmente.</p>
+<hr>
+<h2>Fase 13 — Generación del documento AOCR</h2>
+<h3>Servicio</h3>
+<p><code>GeneracionAOCRService</code> — evalúa:</p>
+<ol>
+<li>Documentación aprobada (fase documental completa).</li>
+<li>Informe aprobado por dirección (<code>ObtenerInformeAprobado</code>).</li>
+<li>LV finalizada y firmada.</li>
+<li>Estado solicitud en fase AOCR.</li>
+</ol>
+<h3>Qué ocurre</h3>
+<ul>
+<li>Se crea documento tipo <code>AOCR_GENERADO</code> en expediente.</li>
+<li>PDF institucional vía plantilla <code>Views/Certificado/CertificadoAOCR.cshtml</code> (dos páginas).</li>
+</ul>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Aún sin descarga final; estado <strong><code>AOCR En Elaboracion</code></strong>.</li>
+</ul>
+<hr>
+<h2>Fase 14 — Coordinación: validación formal AOCR</h2>
+<h3>Procedimiento</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Menú DIRDAC/Coord.</td>
+<td><strong>AOCR y condiciones</strong></td>
+</tr>
+<tr>
+<td>Ruta</td>
+<td><code>/CoordinacionJefatura/ValidarAocr?solicitudId={id}</code></td>
+</tr>
+<tr>
+<td>Autorización</td>
+<td><code>[AocrAuthorize Modulo=CoordinacionJefatura Accion=ValidarAocr]</code></td>
+</tr>
+</tbody></table>
+<p>Coordinación revisa texto, condiciones y limitaciones antes del envío a firma DIRDAC.</p>
+<h3>Estado destino</h3>
+<p>→ <strong><code>AOCR En Revision</code></strong></p>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Seguimiento en <strong>Mis trámites</strong> — trámite en revisión final institucional.</li>
+</ul>
+<hr>
+<h2>Fase 15 — DIRDAC: firma y emisión AOCR</h2>
+<h3>Cadena de estados</h3>
+<pre><code class="language-text">AOCR En Revision
+  → Enviado DCAV      (envío a firma dirección)
+  → Firmado DCAV      (firma digital DIRDAC)
+  → AOCR Emitido/Recibido
+</code></pre>
+<h3>Menú DIRDAC</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta</th>
+<th>Ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Listos para firma</td>
+<td><code>/Inspeccion/PendientesDireccion</code></td>
+</tr>
+<tr>
+<td>AOCR y condiciones</td>
+<td><code>/CoordinacionJefatura/ValidarAocr</code></td>
+</tr>
+</tbody></table>
+<h3>Qué ve el RT</h3>
+<ul>
+<li>Estado: <strong><code>AOCR Emitido/Recibido</code></strong></li>
+<li>Badge en menú <strong>Documentos finales</strong> / <strong>Finalizados</strong> incrementado.</li>
+</ul>
+<h3>Handoff → Fase 16</h3>
+<p>Documentos PDF institucionales disponibles para descarga RT.</p>
+<hr>
+<h2>Fase 16 — RT: descargar documentos finales</h2>
+<p>📷 <code>images/rt/rt-generadas-firmadas-bandeja.png</code> · <code>images/rt/rt-descarga-pdf-aocr-final.png</code> — ver <a href="GUIA_VISUAL_FLUJO_RT_AOCR.md">GUIA_VISUAL_FLUJO_RT_AOCR.md</a> § Fase 16</p>
+<h3>Menú y rutas</h3>
+<table>
+<thead>
+<tr>
+<th>Menú lateral</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Documentos finales</strong></td>
+<td><code>/SolicitudAOCR/GeneradasFirmadas</code></td>
+</tr>
+<tr>
+<td><strong>Finalizados</strong></td>
+<td>Idem</td>
+</tr>
+<tr>
+<td><strong>AOCR y condiciones</strong> (vista RT)</td>
+<td>Idem</td>
+</tr>
+</tbody></table>
+<h3>Procedimiento RT</h3>
+<ol>
+<li>Abrir <strong>GeneradasFirmadas</strong>.</li>
+<li>Filtrar por número de solicitud o estado <strong><code>AOCR Emitido/Recibido</code></strong>.</li>
+<li>Descargar:<ul>
+<li>Certificado AOCR (PDF firmado)</li>
+<li>Condiciones y limitaciones (si aplica)</li>
+<li>Constancias vinculadas según tipo de trámite</li>
+</ul>
+</li>
+<li>Archivar en expediente operador.</li>
+</ol>
+<h3>Cierre operativo</h3>
+<p>El estado <strong><code>Finalizado</code></strong> lo alcanza el trámite por transiciones institucionales posteriores (<code>Firmado DCAV</code> → <code>Finalizado</code> en flujos CL); para emisión AOCR el hito operativo del RT es <strong><code>AOCR Emitido/Recibido</code></strong> con PDF descargado.</p>
+<hr>
+<h2>Anexo A — Modificación tipo 3 (desvío desde Fase 6)</h2>
+<p>Tras firma coordinador en tipo <strong>3</strong>, el estado es <strong><code>Firmado Coordinador</code></strong>, no <code>Pendiente Asignacion RT</code>.</p>
+<pre><code class="language-text">Firmado Coordinador
+  ├─ Sin aeropuertos nuevos → Generar CL  O  Derivar inspección
+  └─ Con AeropuertosEcuador → Inspector: CerrarFaseDocumentalNuevoAeropuertoModificacion
+         → Requiere Inspeccion
+         → RT: OrdenRecaudacion/Nueva (Fase 2 repetida)
+         → Financiero → … → Fases 7–16 (flujo inspección estándar)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>Rol</th>
+<th>Acción POST</th>
+<th>Estado destino</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Nuevo aeropuerto</td>
+<td>Inspector</td>
+<td><code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>Sin aeropuerto — CL</td>
+<td>Inspector</td>
+<td><code>GenerarCondicionesLimitacionesModificacion</code></td>
+<td><code>Generado Condiciones y Limitaciones</code></td>
+</tr>
+<tr>
+<td>Sin aeropuerto — inspección</td>
+<td>Inspector</td>
+<td><code>MarcarRequiereInspeccionModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+</tbody></table>
+<p><strong>Qué hace el RT en <code>Requiere Inspeccion</code>:</strong> panel en <strong>Detalle</strong> con enlace <strong><code>OrdenRecaudacion/Nueva</code></strong> (<code>RtDebeSolicitarInspeccionNuevoAeropuerto</code>).</p>
+<p>Rama CL sin inspección cierra en firma DIRDAC de condiciones (<code>Enviado DCAV</code> → descarga CL), no AOCR de emisión.</p>
+<hr>
+<h2>Anexo B — Informe no satisfactorio (NC)</h2>
+<p>Si el inspector marca informe <strong>no satisfactorio</strong>:</p>
+<ol>
+<li>Coordinación aprueba plan de NC (<code>CoordinacionJefatura/DashboardInspeccion</code>).</li>
+<li>RT subsana documentación <strong>solo cuando</strong> coordinación habilita la subsanación.</li>
+<li>Puede requerirse <strong>nueva inspección</strong> u orden de recaudación adicional.</li>
+</ol>
+<p>El RT debe monitorear <strong>Observados y devueltos</strong> y <strong>Subsanaciones</strong> en el menú lateral.</p>
+<hr>
+<h2>Anexo C — Qué puede hacer el RT en cada estado</h2>
+<table>
+<thead>
+<tr>
+<th>Estado solicitud</th>
+<th>Acciones RT disponibles</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Documentacion Pendiente</td>
+<td>Subir docs, completar formulario</td>
+</tr>
+<tr>
+<td>En Revision</td>
+<td>Consulta detalle; subsanar si <strong>Observada</strong></td>
+</tr>
+<tr>
+<td>Observada / Subsanada</td>
+<td><strong>Subsanar</strong> documentos devueltos</td>
+</tr>
+<tr>
+<td>Pendiente Asignacion RT</td>
+<td>Solo seguimiento; esperar asignación</td>
+</tr>
+<tr>
+<td>En Inspeccion</td>
+<td>Seguimiento; no revisa docs post-asignación</td>
+</tr>
+<tr>
+<td>Requiere Inspeccion (mod.)</td>
+<td><strong>OrdenRecaudacion/Nueva</strong></td>
+</tr>
+<tr>
+<td>AOCR En Elaboracion / En Revision</td>
+<td>Seguimiento</td>
+</tr>
+<tr>
+<td>AOCR Emitido/Recibido</td>
+<td><strong>GeneradasFirmadas</strong> — descarga</td>
+</tr>
+<tr>
+<td>Finalizado</td>
+<td>Consulta histórica</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Checklist trazabilidad — solicitud #12 (emisión)</h2>
+<p>Use esta lista para validar el recorrido completo con usuarios reales de cada rol:</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Fase</th>
+<th>Rol</th>
+<th>Evidencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>1–2</td>
+<td>RT</td>
+<td>Solicitud #12 creada + orden recaudación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>3</td>
+<td>Financiero</td>
+<td>Pago aprobado</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>4</td>
+<td>RT</td>
+<td>Estado <code>En Revision</code> tras envío docs</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>6</td>
+<td>Coordinación</td>
+<td><code>[FirmarAceptacionDocumental]</code> → <code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>7</td>
+<td>Coordinación</td>
+<td><code>[GestionInspeccion]</code> → <code>En Inspeccion</code>, inspector 43</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>8</td>
+<td>Inspector</td>
+<td>12 docs <strong>PENDIENTE</strong> en <code>modo=revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>9</td>
+<td>Inspector</td>
+<td>Cierre documental inspección #11</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>10</td>
+<td>Inspector</td>
+<td>LV firmada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>11</td>
+<td>Inspector</td>
+<td>Informe <code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>12</td>
+<td>DIRDAC</td>
+<td>Aprobación informe → <code>AOCR En Elaboracion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>14</td>
+<td>Coordinación</td>
+<td><code>ValidarAocr</code> → <code>AOCR En Revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>15</td>
+<td>DIRDAC</td>
+<td><code>AOCR Emitido/Recibido</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>16</td>
+<td>RT</td>
+<td>PDF descargado desde <code>GeneradasFirmadas</code></td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Última actualización: 2026-06-11 — alineado a <code>SidebarMenuBuilder.cs</code>, <code>SolicitudAOCRController</code>, <code>RevisionDocumentalService</code>, <code>InspeccionController</code>, <code>GeneracionAOCRService</code>, <code>CoordinacionJefaturaController</code>.</em></p>
+
+    </article>
+    <div class="footer">Flujo completo RT → AOCR — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

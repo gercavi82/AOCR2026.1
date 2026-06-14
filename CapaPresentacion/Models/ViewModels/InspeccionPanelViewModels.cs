@@ -31,7 +31,7 @@ namespace CapaPresentacion.Models.ViewModels
             TextoAccesoRevisionBloqueada = "Revisión documental";
             TextoAyudaRevisionBloqueada = "Habilitada únicamente cuando el expediente esté en una etapa documental previa a inspección.";
             ContainerClass = string.Empty;
-            AbrirEnNuevaPestana = true;
+            AbrirEnNuevaPestana = false;
         }
     }
 

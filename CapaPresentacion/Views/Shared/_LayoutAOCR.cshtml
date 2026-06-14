@@ -39,6 +39,19 @@
         var aocrCssInstHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-institucional.css");
         var aocrCssDtHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-datatables.css");
         var aocrCssResponsiveHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-responsive.css");
+        var aocrCssDocumentCardsHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-document-cards.css");
+        var aocrModalsCssHref = string.Empty;
+        try
+        {
+            var aocrModalsCssPath = Server.MapPath("~/Content/aocr-modals.css");
+            if (!string.IsNullOrWhiteSpace(aocrModalsCssPath) && System.IO.File.Exists(aocrModalsCssPath))
+            {
+                aocrModalsCssHref = Url.Content("~/Content/aocr-modals.css") + "?v=" + frontVersion;
+            }
+        }
+        catch
+        {
+        }
         var aocrSidebarCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-sidebar.css");
         var aocrContrastCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-contrast.css");
         var aocrPdfViewerCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css");
@@ -93,6 +106,11 @@
     <link href="@aocrCssInstHref" rel="stylesheet" />
     <link href="@aocrCssDtHref" rel="stylesheet" />
     <link href="@aocrCssResponsiveHref" rel="stylesheet" />
+    <link href="@aocrCssDocumentCardsHref" rel="stylesheet" />
+    @if (!string.IsNullOrWhiteSpace(aocrModalsCssHref))
+    {
+        <link href="@aocrModalsCssHref" rel="stylesheet" type="text/css" />
+    }
     <link href="@aocrSidebarCssHref" rel="stylesheet" />
     <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
 
@@ -181,6 +199,126 @@
 
     @RenderSection("Styles", required: false)
     <link href="@aocrContrastCssHref" rel="stylesheet" />
+    <style>
+        /* Modales AOCR — inline obligatorio (evita error MIME/404 si el CSS externo no está publicado en IIS) */
+        :root {
+            --aocr-modal-z-backdrop: 10490;
+            --aocr-modal-z-modal: 10500;
+            --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 236px);
+            --aocr-modal-sidebar-total-offset: var(--aocr-sidebar-total-width, 522px);
+            --aocr-modal-sidebar-mini-offset: 4.6rem;
+        }
+
+        body.aocr-body .main-sidebar.aocr-sidebar,
+        body.aocr-body .main-sidebar,
+        body.aocr-body .sidebar,
+        body.aocr-body .aocr-subnav-panel {
+            z-index: 1020 !important;
+        }
+
+        body.aocr-body .main-header.navbar,
+        body.aocr-body .aocr-topbar {
+            z-index: 1010 !important;
+        }
+
+        body.aocr-body .modal-backdrop,
+        body.aocr-body .modal-backdrop.show {
+            z-index: var(--aocr-modal-z-backdrop) !important;
+        }
+
+        body.aocr-body .modal,
+        body.aocr-body .modal.show {
+            z-index: var(--aocr-modal-z-modal) !important;
+        }
+
+        @@media (min-width: 992px) {
+            body.aocr-body .modal {
+                padding-left: var(--aocr-modal-sidebar-offset);
+            }
+
+            body.aocr-body.aocr-subnav-open .modal {
+                padding-left: var(--aocr-modal-sidebar-total-offset);
+            }
+
+            body.aocr-body.sidebar-mini.sidebar-collapse .modal,
+            body.aocr-body.sidebar-collapse .modal {
+                padding-left: var(--aocr-modal-sidebar-mini-offset);
+            }
+        }
+
+        body.aocr-body .modal-dialog {
+            margin: 1.75rem auto !important;
+            max-width: 980px;
+            width: calc(100% - 2rem);
+        }
+
+        body.aocr-body .modal-dialog-centered {
+            min-height: calc(100% - 3.5rem);
+        }
+
+        body.aocr-body .modal-content {
+            border: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+        }
+
+        body.aocr-body .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+        }
+
+        body.aocr-body .modal-header .modal-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        body.aocr-body .modal-body {
+            padding: 22px;
+        }
+
+        body.aocr-body .modal-footer {
+            padding: 16px 22px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        body.aocr-body .modal textarea.form-control {
+            width: 100%;
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        body.aocr-body .aocr-modal-anulacion .alert-warning {
+            margin-bottom: 0;
+        }
+
+        @@media (max-width: 991.98px) {
+            body.aocr-body .modal {
+                padding-left: 0 !important;
+            }
+        }
+
+        @@media (max-width: 768px) {
+            body.aocr-body .modal-dialog {
+                width: calc(100% - 1rem);
+                margin: 0.75rem auto !important;
+            }
+
+            body.aocr-body .modal-footer {
+                flex-direction: column-reverse;
+            }
+
+            body.aocr-body .modal-footer .btn {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed aocr-body">
@@ -449,6 +587,8 @@
         </footer>
     </div>
 
+    @RenderSection("PageModals", required: false)
+
     <!-- Diagnostico global: no silencia promesas, registra causa y contexto. -->
     <script>
     window.addEventListener('unhandledrejection', function(e) {
@@ -648,6 +788,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
             crossorigin="anonymous"></script>
+    <script src="@aocrUtilsUrl"></script>
 
     <!-- 3. Loader optimizado que espera jQuery -->
     <script>
@@ -688,14 +829,6 @@
 
         // Iniciar chequeo
         checkJQuery();
-
-        // Utilidades AOCR (escape helpers) - cargadas localmente para evitar depender de CDN en páginas que usan Layout=null
-        (function(){
-            var s = document.createElement('script');
-            s.src = '@aocrUtilsUrl';
-            s.async = false;
-            document.head.appendChild(s);
-        })();
 
         function loadDataTables() {
             // DataTables ya se carga estáticamente en <head> — solo notificar que está listo

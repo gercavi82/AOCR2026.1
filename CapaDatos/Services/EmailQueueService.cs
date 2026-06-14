@@ -57,6 +57,8 @@ namespace CapaDatos.Services
         public string TipoNotificacion { get; set; }
         public int MaxIntentos { get; set; }
         public List<EmailAttachmentItem> Adjuntos { get; set; }
+        public string Remitente { get; set; }
+        public string AliasRemitente { get; set; }
     }
 
     public class EmailAttachmentItem
@@ -184,6 +186,12 @@ namespace CapaDatos.Services
             {
                 item.Para = "no-reply@invalid.local";
             }
+
+            item.Remitente = AocrEmailService.NormalizarRemitenteInstitucional(item.Remitente);
+            item.AliasRemitente = AocrEmailService.NormalizarAlias(
+                string.IsNullOrWhiteSpace(item.AliasRemitente)
+                    ? AocrEmailService.ResolverAliasPorTipoNotificacion(item.TipoNotificacion)
+                    : item.AliasRemitente);
 
             item.Cuerpo = EmailTemplateRenderer.EnsureStandardLayout(
                 item.Asunto,
@@ -833,13 +841,19 @@ namespace CapaDatos.Services
                     }
                 }
 
+                var aliasRemitente = AocrEmailService.NormalizarAlias(
+                    string.IsNullOrWhiteSpace(item.AliasRemitente)
+                        ? AocrEmailService.ResolverAliasPorTipoNotificacion(item.TipoNotificacion)
+                        : item.AliasRemitente);
+
                 var result = await _emailService.EnviarAsync(
                     item.Para,
                     item.ParaNombre,
                     item.Asunto,
                     item.Cuerpo,
                     adjuntoContenido,
-                    adjuntoNombre);
+                    adjuntoNombre,
+                    aliasRemitente);
 
                 if (result.Success)
                 {

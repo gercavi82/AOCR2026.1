@@ -110,6 +110,7 @@ namespace CapaNegocio.Services
                         i.codigo_inspeccion,
                         i.codigo_solicitud,
                         i.codigo_inspector,
+                        COALESCE(s.estado, '') AS estado_solicitud,
                         COALESCE(s.pago_aprobado, FALSE) AS pago_aprobado,
                         COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) AS modulo_habilitado,
                         COALESCE(s.pendiente_carga_documental_rt, TRUE) AS pendiente_documentos,
@@ -126,6 +127,7 @@ namespace CapaNegocio.Services
                 bool moduloHabilitado = false;
                 bool pendienteDocumentos = true;
                 string estadoOrden = string.Empty;
+                string estadoSolicitud = string.Empty;
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
@@ -140,6 +142,7 @@ namespace CapaNegocio.Services
 
                         codigoSolicitud = rd["codigo_solicitud"] == DBNull.Value ? 0 : Convert.ToInt32(rd["codigo_solicitud"]);
                         var inspector = rd["codigo_inspector"] == DBNull.Value ? 0 : Convert.ToInt32(rd["codigo_inspector"]);
+                        estadoSolicitud = rd["estado_solicitud"] == DBNull.Value ? string.Empty : rd["estado_solicitud"].ToString();
                         pagoAprobado = rd["pago_aprobado"] != DBNull.Value && Convert.ToBoolean(rd["pago_aprobado"]);
                         moduloHabilitado = rd["modulo_habilitado"] != DBNull.Value && Convert.ToBoolean(rd["modulo_habilitado"]);
                         pendienteDocumentos = rd["pendiente_documentos"] != DBNull.Value && Convert.ToBoolean(rd["pendiente_documentos"]);
@@ -155,6 +158,11 @@ namespace CapaNegocio.Services
 
                 var ordenPagada = EstadoOrden.EsPagado(estadoOrden);
                 var tieneDocumentos = TieneDocumentosHabilitantes(cn, codigoSolicitud);
+                if (EsFlujoPostAsignacionCoordinador(estadoSolicitud, inspector: true) && tieneDocumentos)
+                {
+                    return true;
+                }
+
                 if (ordenPagada && (!pagoAprobado || !moduloHabilitado))
                 {
                     SincronizarSolicitudPagadaDesdeOrden(cn, codigoSolicitud);
@@ -658,19 +666,20 @@ namespace CapaNegocio.Services
         {
             try
             {
-                var item = new EmailQueueItem
+                var emailFlujo = new AocrEmailFlujoService(new EmailQueueService(_connectionString));
+                var encolado = emailFlujo.EncolarSiNoDuplicadoAsync(
+                    tipo,
+                    codigoSolicitud,
+                    ordenId > 0 ? (int?)ordenId : null,
+                    para,
+                    asunto,
+                    cuerpo,
+                    eventKey).GetAwaiter().GetResult();
+
+                if (!encolado)
                 {
-                    Para = para,
-                    ParaNombre = nombre,
-                    Asunto = asunto,
-                    Cuerpo = cuerpo,
-                    Estado = "PENDIENTE",
-                    SolicitudId = codigoSolicitud,
-                    OrdenId = ordenId > 0 ? (int?)ordenId : null,
-                    TipoNotificacion = tipo,
-                    EventKey = eventKey
-                };
-                new EmailQueueService(_connectionString).EncolarAsync(item).GetAwaiter().GetResult();
+                    _logger.LogInfo("AocrPostPagoWorkflowService.EncolarCorreo: correo omitido por duplicado. Tipo=" + tipo + ", Solicitud=" + codigoSolicitud);
+                }
             }
             catch (Exception ex)
             {
@@ -681,7 +690,7 @@ namespace CapaNegocio.Services
         private static List<Usuario> ObtenerCoordinadores()
         {
             var result = new Dictionary<int, Usuario>();
-            foreach (var rol in new[] { "CoordinadorInspecciones", "Coordinador", "JefaturaTecnica", "Administrador" })
+            foreach (var rol in new[] { "CoordinadorInspecciones", "Coordinador", "Coordinacion", "JefaturaTecnica", "Administrador" })
             {
                 foreach (var usuario in UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
                 {
@@ -858,6 +867,28 @@ namespace CapaNegocio.Services
         {
             var value = rd[name];
             return value != DBNull.Value && Convert.ToBoolean(value);
+        }
+
+        private static bool EsFlujoPostAsignacionCoordinador(string estadoSolicitud, bool inspector)
+        {
+            if (string.IsNullOrWhiteSpace(estadoSolicitud))
+            {
+                return false;
+            }
+
+            if (!inspector)
+            {
+                return false;
+            }
+
+            var canonico = EstadoSolicitud.Normalizar(estadoSolicitud);
+            return string.Equals(canonico, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase);
         }
 
         private class PagoAprobadoContext

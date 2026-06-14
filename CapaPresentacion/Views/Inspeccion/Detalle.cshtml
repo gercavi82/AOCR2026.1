@@ -131,6 +131,10 @@
         {
             mensajeBloqueoRevisionDocumentalInspector = mensajeBloqueoRevisionDocumentalInspectorBase;
         }
+        else if (estadoRevisionDocumental.DocumentacionAprobada)
+        {
+            mensajeBloqueoRevisionDocumentalInspector = "Revise la documentación cargada y confirme el cierre documental antes de habilitar la LV/EAE y el informe técnico.";
+        }
         else if (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental))
         {
             mensajeBloqueoRevisionDocumentalInspector = estadoRevisionDocumental.MensajeBloqueoDocumental;
@@ -208,11 +212,23 @@
     var urlDetalleSolicitudBase = Model != null && Model.CodigoSolicitud > 0
         ? Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })
         : string.Empty;
-    var urlVerDocumentacionSolicitud = !string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
-        ? urlDetalleSolicitudBase + "#documentos-rt-historial"
+    var urlVerDocumentacionSolicitud = Model != null && Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new
+        {
+            solicitudId = Model.CodigoSolicitud,
+            modo = "ver",
+            origen = "inspeccion-detalle",
+            inspeccionId = Model.CodigoInspeccion
+        })
         : string.Empty;
-    var urlRevisionDocumentalSolicitud = !string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
-        ? urlDetalleSolicitudBase + "#revision-documental"
+    var urlRevisionDocumentalSolicitud = Model != null && Model.CodigoSolicitud > 0 && (esInspector || esAdministrador)
+        ? Url.Action("Lista", "Documento", new
+        {
+            solicitudId = Model.CodigoSolicitud,
+            modo = "revision",
+            origen = "inspeccion-detalle",
+            inspeccionId = Model.CodigoInspeccion
+        })
         : string.Empty;
     var accesosDocumentalesInspeccionVm = new CapaPresentacion.Models.ViewModels.DocumentoWorkflowActionsVm
     {
@@ -2694,7 +2710,7 @@
                                 EstaFirmada = listaVerificacionFirmada,
                                 UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
                                 UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
-                                UrlDocumentosSolicitud = urlRevisionDocumentalSolicitud,
+                                UrlDocumentosSolicitud = urlVerDocumentacionSolicitud,
                                 AccesosDocumentales = accesosDocumentalesInspeccionVm,
                                 MensajeBloqueoEdicion = !puedeAbrirLvEae ? mensajeBloqueoLvEae : string.Empty,
                                 PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador),

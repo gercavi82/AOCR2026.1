@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual técnico — Sistema AOCR</title>
+  <style>
+    :root { --brand:#1e3a5f; --brand2:#2d5a87; --light:#eef2f7; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Manual técnico<br><span style="font-weight:400;font-size:1.35rem">Sistema AOCR — auditoría de implementación</span></h1>
+    <p class="lead">Arquitectura, servicios de flujo, revisión documental, LV/EAE (§16), informe técnico (§17), modificación tipo 3 (§18), despliegue y checklist QA.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/MANUAL_TECNICO_AOCR.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/MANUAL_TECNICO_AOCR.pdf</code> · Editable Word → <code>docs/export/editable/MANUAL_TECNICO_AOCR.docx</code> · Markdown → <code>docs/export/editable/MANUAL_TECNICO_AOCR.md</code></div>
+    <article class="md-body">
+<h1>Manual técnico — Sistema AOCR</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Público:</strong> desarrolladores, QA, arquitectos, soporte de producción<br><strong>Objetivo:</strong> documentar la implementación real del flujo AOCR para auditar si el código cumple las reglas institucionales.</p>
+<p><strong>Documentos relacionados:</strong> <code>MANUAL_USUARIO_AOCR.md</code> · <code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> · <code>ARQUITECTURA_DATOS.md</code></p>
+<hr>
+<h2>0. Referencia de verificación — solicitud #12</h2>
+<table>
+<thead>
+<tr>
+<th>Artefacto</th>
+<th>Valor / ubicación código</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Solicitud</td>
+<td><code>CodigoSolicitud=12</code>, <code>NumeroSolicitud=DGAC-GOP-2026-AOCR012</code></td>
+</tr>
+<tr>
+<td>Inspección</td>
+<td><code>CodigoInspeccion=11</code> → <code>Inspeccion/Detalle/11</code></td>
+</tr>
+<tr>
+<td>Inspector</td>
+<td><code>CodigoTecnico=43</code> / <code>CodigoInspector=43</code> en <code>aocr_tbinspeccion</code></td>
+</tr>
+<tr>
+<td>Revisor COO-1 (histórico)</td>
+<td><code>codigo_usuario_revisor=45</code> en <code>aocr_tbrevision_documental</code> — <strong>excluido</strong> por <code>FiltrarDetallesRevisionPorInspector</code></td>
+</tr>
+<tr>
+<td>Script dev que generó COO-1</td>
+<td><code>scripts/dev/advance_solicitud12_coo1.sql</code> — no ejecutar en prod</td>
+</tr>
+<tr>
+<td>Publicación</td>
+<td><code>FolderProfile4</code> → <code>C:\AOCR\publicacion1</code></td>
+</tr>
+<tr>
+<td>Log</td>
+<td><code>CapaPresentacion/App_Data/Logs/AOCR_YYYYMMDD.log</code></td>
+</tr>
+</tbody></table>
+<p><strong>Prueba mínima post-fix revisión inspector:</strong></p>
+<pre><code class="language-http">GET /Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental
+→ ViewBag.EsFaseInspectorDocumental=true
+→ ViewBag.PuedeRevisarDocumentos=true (inspector 43)
+→ EstadoRevisionVisible=PENDIENTE (sin fila revisor 43 en aocr_tbrevision_documental)
+</code></pre>
+<hr>
+<h2>1. Stack y estructura del repositorio</h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Tecnología</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Runtime</td>
+<td>.NET Framework 4.8</td>
+</tr>
+<tr>
+<td>Web</td>
+<td>ASP.NET MVC 5</td>
+</tr>
+<tr>
+<td>BD principal</td>
+<td>PostgreSQL (Npgsql)</td>
+</tr>
+<tr>
+<td>Legacy lectura</td>
+<td>DB2/AS400 vía ODBC</td>
+</tr>
+<tr>
+<td>Servidor</td>
+<td>IIS 10+</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>MSTest (<code>AOCR.Tests</code>)</td>
+</tr>
+</tbody></table>
+<pre><code>AOCR/
+├── CapaPresentacion/     # MVC: controladores, vistas, filtros, helpers
+├── CapaNegocio/          # Reglas de negocio, servicios de flujo
+├── CapaDatos/            # DAOs, constantes SQL, acceso PostgreSQL/AS400
+├── CapaModelo/           # Entidades de dominio
+├── CapaUtilidades/       # Helpers transversales
+├── AOCR.Tests/           # Tests unitarios de regresión
+├── docs/                 # Documentación
+└── scripts/              # SQL, seeds de prueba, deployment
+</code></pre>
+<h3>1.1 Cadena de dependencias (flujo de estado)</h3>
+<pre><code>EstadoSolicitud / EstadoSolicitudSql     ← persistencia canónica
+         ↓
+AocrEstadoService                      ← normalización C#
+         ↓
+AocrFlujoService                       ← transiciones y matriz rol×acción
+         ↓
+SolicitudEstadoTransitionBL            ← cambio de estado + historial + correo
+AocrAuthorizationService               ← permisos por módulo/acción/recurso
+*BandejaService / AocrSidebarCounterService ← bandejas = contadores
+</code></pre>
+<hr>
+<h2>2. Capas y responsabilidades</h2>
+<h3>2.1 CapaPresentacion</h3>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Ubicación</th>
+<th>Responsabilidad</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Controladores MVC</td>
+<td><code>Controllers/*.cs</code></td>
+<td>Orquestación HTTP, ViewBag, JSON AJAX</td>
+</tr>
+<tr>
+<td>Autorización UI</td>
+<td><code>Filters/SecurityFilters.cs</code>, <code>[AocrAuthorize]</code></td>
+<td>Bloqueo 403 antes de ejecutar acción</td>
+</tr>
+<tr>
+<td>Menú lateral</td>
+<td><code>Helpers/SidebarMenuBuilder.cs</code></td>
+<td>Navegación por rol + badges</td>
+</tr>
+<tr>
+<td>Contexto usuario</td>
+<td><code>Services/AocrUserContextService.cs</code></td>
+<td>Rol activo, compañía RT, IDs</td>
+</tr>
+<tr>
+<td>Vistas</td>
+<td><code>Views/**</code></td>
+<td>Presentación; <strong>no debe</strong> ser única fuente de reglas de estado</td>
+</tr>
+</tbody></table>
+<p><strong>Controladores críticos del flujo:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Controlador</th>
+<th>Flujo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SolicitudAOCRController</code></td>
+<td>CRUD solicitud, firma aceptación documental, modificación AOCR</td>
+</tr>
+<tr>
+<td><code>DocumentoController</code></td>
+<td>Listado, revisión documental por documento</td>
+</tr>
+<tr>
+<td><code>TecnicoController</code></td>
+<td>Bandeja coordinación, asignación inspector</td>
+</tr>
+<tr>
+<td><code>InspeccionController</code></td>
+<td>LV, informe, cierre documental inspector</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalController</code></td>
+<td>Bandeja revisión documental inspector</td>
+</tr>
+<tr>
+<td><code>OrdenRecaudacionController</code></td>
+<td>Órdenes y pagos</td>
+</tr>
+<tr>
+<td><code>CoordinacionJefaturaController</code></td>
+<td>Revisión formal AOCR</td>
+</tr>
+</tbody></table>
+<h3>2.2 CapaNegocio — servicios de flujo</h3>
+<table>
+<thead>
+<tr>
+<th>Servicio</th>
+<th>Archivo</th>
+<th>Función</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AocrFlujoService</code></td>
+<td><code>Services/AocrFlujoService.cs</code></td>
+<td>Matriz transiciones; <code>RolPuedeEjecutarAccion</code></td>
+</tr>
+<tr>
+<td><code>AocrEstadoService</code></td>
+<td><code>Services/AocrEstadoService.cs</code></td>
+<td>Claves institucionales ↔ estados C#</td>
+</tr>
+<tr>
+<td><code>AocrAuthorizationService</code></td>
+<td><code>Services/AocrAuthorizationService.cs</code></td>
+<td>Permisos LV, informe, AOCR, revisión documental</td>
+</tr>
+<tr>
+<td><code>AocrFlujoValidacionService</code></td>
+<td><code>Services/AocrFlujoValidacionService.cs</code></td>
+<td>Cadena LV → Informe → AOCR</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalService</code></td>
+<td><code>Services/RevisionDocumentalService.cs</code></td>
+<td>Cierre documental, firma aceptación, validaciones checklist</td>
+</tr>
+<tr>
+<td><code>SolicitudAocrInfraBL</code></td>
+<td><code>SolicitudAocrInfraBL.cs</code></td>
+<td>Estado documental agregado, filtro revisiones inspector</td>
+</tr>
+<tr>
+<td><code>AocrPostPagoWorkflowService</code></td>
+<td><code>Services/AocrPostPagoWorkflowService.cs</code></td>
+<td>Post-pago, bypass post-asignación coordinador</td>
+</tr>
+<tr>
+<td><code>AocrModificationWorkflowService</code></td>
+<td><code>Services/AocrModificationWorkflowService.cs</code></td>
+<td>Rama modificación / nuevo aeropuerto</td>
+</tr>
+<tr>
+<td><code>CoordinacionBandejaService</code></td>
+<td><code>Services/CoordinacionBandejaService.cs</code></td>
+<td>Bandeja coordinación</td>
+</tr>
+<tr>
+<td><code>InspectorBandejaService</code></td>
+<td><code>Services/InspectorBandejaService.cs</code></td>
+<td>Bandeja inspecciones</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalBandejaService</code></td>
+<td><code>Services/RevisionDocumentalBandejaService.cs</code></td>
+<td>Bandeja revisión documental inspector</td>
+</tr>
+<tr>
+<td><code>AocrSidebarCounterService</code></td>
+<td><code>Services/AocrSidebarCounterService.cs</code></td>
+<td>Contadores = queries de bandeja</td>
+</tr>
+<tr>
+<td><code>AocrEmailFlujoService</code></td>
+<td><code>Services/AocrEmailFlujoService.cs</code></td>
+<td>Correos idempotentes por <code>event_key</code></td>
+</tr>
+</tbody></table>
+<h3>2.3 CapaDatos</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Función</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>EstadoConstants.cs</code> / <code>EstadoSolicitudSql.cs</code></td>
+<td>Paridad estados C# ↔ SQL</td>
+</tr>
+<tr>
+<td><code>SolicitudAOCRDAO.cs</code></td>
+<td>CRUD solicitud, bandejas, asignación inspector</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalDAO.cs</code></td>
+<td>Tabla revisiones por documento + historial</td>
+</tr>
+<tr>
+<td><code>InspeccionDAO.cs</code></td>
+<td>Inspecciones por inspector (filtros post-asignación)</td>
+</tr>
+<tr>
+<td><code>DocumentoDAO.cs</code></td>
+<td>Metadatos y estado de archivos</td>
+</tr>
+<tr>
+<td><code>OrdenRecaudacionDAO</code></td>
+<td>Órdenes, pagos, historial</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>3. Modelo de estados (referencia)</h2>
+<p>Claves institucionales (<code>AocrEstadoService.NormalizarClaveInstitucional</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Clave</th>
+<th>Estado persistido</th>
+<th>Responsable bandeja</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>DOCUMENTACION_EN_CARGA</code></td>
+<td>Pendiente</td>
+<td>RT</td>
+</tr>
+<tr>
+<td><code>EN_REVISION_COORDINADOR</code></td>
+<td>En Revision</td>
+<td>Coordinador</td>
+</tr>
+<tr>
+<td><code>PENDIENTE_ASIGNACION_INSPECTOR</code></td>
+<td>Pendiente Asignacion RT</td>
+<td>Coordinador</td>
+</tr>
+<tr>
+<td><code>INSPECTOR_ASIGNADO</code> / <code>EN_INSPECCION</code></td>
+<td>En Inspeccion</td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td><code>AOCR_EN_ELABORACION</code></td>
+<td>AOCR En Elaboracion</td>
+<td>Inspector/Coord.</td>
+</tr>
+<tr>
+<td><code>AOCR_ENVIADO_DIRDAC</code></td>
+<td>Enviado DCAV</td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td><code>DOCUMENTOS_FINALES_DISPONIBLES</code></td>
+<td>AOCR Emitido</td>
+<td>RT</td>
+</tr>
+<tr>
+<td><code>CERRADO</code></td>
+<td>Finalizado</td>
+<td>Historial</td>
+</tr>
+</tbody></table>
+<p><strong>Reglas eliminadas en esta iteración:</strong></p>
+<ul>
+<li>Descargar PDF de aceptación documental <strong>no</strong> transiciona a <code>Finalizado</code>.</li>
+<li><code>Firmado Coordinador</code> <strong>no</strong> transiciona directamente a <code>Finalizado</code>.</li>
+</ul>
+<p>Fuente: <code>EstadoConstants.cs</code>, <code>AocrFlujoService.cs</code>, tests <code>EstadoSolicitudTransitionMatrixTests</code>.</p>
+<hr>
+<h2>4. Revisión documental — diseño e implementación</h2>
+<h3>4.1 Dos fases distintas (regla de negocio)</h3>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Condición</th>
+<th>Revisor</th>
+<th>Fuente revisiones</th>
+<th>Inferencia desde <code>documento.estado</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Pre-asignación (COO-1)</strong></td>
+<td>Sin inspector asignado + estado <code>En Revision</code> / <code>Documentacion Pendiente</code> / <code>Subsanada</code></td>
+<td>Coordinador / Inspector rol</td>
+<td><code>ObtenerUltimasRevisionesPorSolicitud</code></td>
+<td><strong>Sí</strong> — <code>Aprobado</code> cuenta como aceptado</td>
+</tr>
+<tr>
+<td><strong>Post-asignación (inspector)</strong></td>
+<td><code>TieneInspectorAsignado()</code> = true</td>
+<td>Inspector asignado</td>
+<td><code>ObtenerUltimasRevisionesInspectorPorSolicitud</code></td>
+<td><strong>No</strong> — sin revisión del inspector = pendiente</td>
+</tr>
+</tbody></table>
+<p>Detección pre-asignación:</p>
+<pre><code class="language-csharp">// SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion
+// true si NO hay inspector y estado ∈ { EnRevision, DocumentacionPendiente, Subsanada }
+</code></pre>
+<h3>4.2 Filtrado de revisiones del inspector</h3>
+<pre><code class="language-csharp">// SolicitudAocrInfraBL.ObtenerIdsInspectorAsignados
+// IDs: solicitud.CodigoTecnico + inspeccion.CodigoInspector
+
+// FiltrarDetallesRevisionPorInspector
+// Solo detalles donde CodigoUsuarioRevisor ∈ idsInspector
+</code></pre>
+<p>Las revisiones del coordinador (usuario 45, observación COO-1) <strong>permanecen en BD</strong> pero <strong>se excluyen</strong> del cálculo de estado en fase inspector.</p>
+<h3>4.3 Cálculo de estado documental agregado</h3>
+<p><code>SolicitudAocrInfraBL.ObtenerEstadoRevisionDocumental</code>:</p>
+<ol>
+<li>Agrupa documentos vigentes por tipo (última versión).</li>
+<li>Si hay inspector asignado → usa revisiones filtradas por inspector.</li>
+<li>Por cada documento, <code>ObtenerDecisionRevisionDocumental(doc, revisiones, faseInspector)</code>:<ul>
+<li>Con revisión explícita → usa la decisión registrada.</li>
+<li>En fase inspector <strong>sin</strong> revisión → retorna vacío (pendiente), <strong>ignora</strong> <code>documento.Estado = Aprobado</code>.</li>
+</ul>
+</li>
+<li>Deriva flags: <code>TienePendientes</code>, <code>DocumentacionAprobada</code>, <code>MensajeBloqueoDocumental</code>.</li>
+<li><code>ConfigurarFlujoDocumental</code> asigna responsable <code>INSPECTOR</code> / <code>COORDINADOR</code> / <code>RT</code>.</li>
+</ol>
+<h3>4.4 Presentación — DocumentoController</h3>
+<table>
+<thead>
+<tr>
+<th>Método</th>
+<th>Comportamiento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AplicarContextoRevisionDocumental</code></td>
+<td>En fase inspector sin revisión: limpia <code>DecisionRevision</code>, <code>ObservacionRevision</code>, <code>NombreUsuarioRevisor</code></td>
+</tr>
+<tr>
+<td><code>ObtenerEstadoDocumentoVisible(doc, faseInspector)</code></td>
+<td>Si <code>faseInspector</code> y sin decisión → <strong>PENDIENTE</strong> (no infiere desde <code>doc.Estado</code>)</td>
+</tr>
+<tr>
+<td><code>PuedeRevisarDocumentosSolicitud</code></td>
+<td>Inspector asignado puede revisar post-asignación</td>
+</tr>
+<tr>
+<td><code>ProcesarRevisionDocumentoSolicitud</code></td>
+<td>Registra decisión + observación del usuario actual en <code>RevisionDocumentalDAO</code></td>
+</tr>
+</tbody></table>
+<p><strong>Modos de lista:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parámetro <code>modo</code></th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>revision</code> / <code>revisar</code></td>
+<td>Habilita botones Aceptar/Devolver si <code>PuedeRevisarDocumentosSolicitud</code></td>
+</tr>
+<tr>
+<td><code>ver</code> / (default)</td>
+<td>Solo lectura — badge “Solo lectura”</td>
+</tr>
+</tbody></table>
+<p>Vista <code>Documento/Lista.cshtml</code>:</p>
+<ul>
+<li><code>ViewBag.EsFaseInspectorDocumental</code> evita fallback a <code>doc.Observaciones</code> / <code>doc.ValidadoPor</code> del coordinador.</li>
+<li>Columnas observación/revisor muestran solo datos de revisión del inspector en fase post-asignación.</li>
+</ul>
+<h3>4.5 Cierre documental del inspector</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Método / acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UI</td>
+<td>Botón “Confirmar cierre documental” en <code>Inspeccion/Detalle.cshtml</code></td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td><code>POST Inspeccion/ConfirmarRevisionDocumentalInspector</code></td>
+</tr>
+<tr>
+<td>Validación</td>
+<td><code>RevisionDocumentalService.InspectorConfirmoCierreDocumental()</code></td>
+</tr>
+<tr>
+<td>Precondición LV</td>
+<td><code>RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv()</code></td>
+</tr>
+<tr>
+<td>Autorización</td>
+<td><code>AocrAuthorizationService</code> — LV bloqueada sin confirmación explícita</td>
+</tr>
+</tbody></table>
+<p>Confirmación explícita: <code>inspeccion.estado_documental = EN_REVISION</code> o comentario <em>&quot;Inspector confirmó revisión documental&quot;</em>.</p>
+<h3>4.6 Bandeja revisión documental</h3>
+<p><code>RevisionDocumentalBandejaService.ObtenerItemsBandejaInspector</code>:</p>
+<ul>
+<li>Une solicitudes pendientes del DAO + inspecciones del inspector (<code>InspeccionDAO.ListarPorInspector</code>).</li>
+<li>Excluye ítems donde documentación aprobada <strong>y</strong> inspector ya confirmó cierre.</li>
+<li>Contador sidebar: <code>AocrSidebarCounterService</code> delega al mismo servicio.</li>
+</ul>
+<hr>
+<h2>5. Cadena operativa post-documental (resumen)</h2>
+<pre><code>ConfirmarRevisionDocumentalInspector (#11)
+  → Guardar/Finalizar/Firmar ListaVerificacionOperacionalEae
+  → Guardar/Finalizar/FirmarInformeInspector → ENVIADO_A_DIRDAC
+  → PendientesDireccion (aprobación DIRDAC)
+  → AOCR En Elaboracion → ValidarAocr → firma DCAV
+</code></pre>
+<p>Detalle de implementación: <strong>§16 (LV/EAE)</strong>, <strong>§17 (Informe técnico)</strong>, <strong>§18 (Modificación tipo 3)</strong>.</p>
+<hr>
+<h2>6. Autorización</h2>
+<h3>6.1 Mecanismos</h3>
+<table>
+<thead>
+<tr>
+<th>Mecanismo</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>[Authorize(Roles = &quot;...&quot;)]</code></td>
+<td>Legacy — aún presente en partes de <code>InspeccionController</code></td>
+</tr>
+<tr>
+<td><code>[AocrAuthorize(...)]</code></td>
+<td>Canónico — módulo, acción, recurso solicitud</td>
+</tr>
+<tr>
+<td><code>AocrPresentacionAuthorizationHelper</code></td>
+<td>Validación en acciones sin atributo</td>
+</tr>
+<tr>
+<td><code>AocrAuthorizationService</code></td>
+<td>Reglas de negocio (inspector asignado, fase documental, LV)</td>
+</tr>
+</tbody></table>
+<h3>6.2 Matriz rol × acción (backend)</h3>
+<p>Implementada en <code>AocrFlujoService.RolPuedeEjecutarAccion</code> — ver tabla completa en <code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> §4.</p>
+<p><strong>Regla de auditoría:</strong> toda acción visible en UI debe tener validación equivalente en controlador o servicio. Buscar acciones solo protegidas por <code>if</code> en Razor = brecha.</p>
+<h3>6.3 Brechas conocidas (Nivel E — pendiente)</h3>
+<ul>
+<li><code>InspeccionController</code>: híbrido <code>[Authorize(Roles)]</code> + servicios nuevos.</li>
+<li><code>Detalle.cshtml</code>, <code>_FormularioEmisionAOCR.cshtml</code>: botones aún parcialmente en Razor (Fase 7).</li>
+</ul>
+<hr>
+<h2>7. Bandejas y contadores</h2>
+<p><strong>Regla institucional:</strong> <code>SidebarMenuBuilder</code> → <code>AocrSidebarCounterService</code> debe usar <strong>la misma query</strong> que la bandeja del rol.</p>
+<table>
+<thead>
+<tr>
+<th>Rol</th>
+<th>Servicio bandeja</th>
+<th>Contador</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Coordinación</td>
+<td><code>CoordinacionBandejaService</code></td>
+<td><code>ObtenerContadoresCoordinacion</code></td>
+</tr>
+<tr>
+<td>Inspector inspecciones</td>
+<td><code>InspectorBandejaService</code></td>
+<td><code>ObtenerContadoresInspector</code></td>
+</tr>
+<tr>
+<td>Inspector revisión doc.</td>
+<td><code>RevisionDocumentalBandejaService</code></td>
+<td>Incluido en contador inspector</td>
+</tr>
+<tr>
+<td>Financiero</td>
+<td><code>OrdenRecaudacionDAO</code> + <code>FinancialOrderStateHelper</code></td>
+<td><code>ObtenerContadoresFinanciero</code></td>
+</tr>
+<tr>
+<td>DIRDAC</td>
+<td><code>DireccionBandejaService</code></td>
+<td><code>ObtenerContadoresDireccion</code></td>
+</tr>
+<tr>
+<td>RT</td>
+<td>Lógica RT en sidebar</td>
+<td><code>ObtenerContadoresRt</code></td>
+</tr>
+</tbody></table>
+<p><strong>Prueba:</strong> comparar número del badge vs <code>COUNT(*)</code> de filas en pantalla de bandeja.</p>
+<hr>
+<h2>8. Persistencia relevante</h2>
+<h3>8.1 Tablas principales (PostgreSQL)</h3>
+<table>
+<thead>
+<tr>
+<th>Tabla / entidad</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>aocr_tbsolicitud</code></td>
+<td>Cabecera solicitud, estado, <code>tipo_solicitud</code>, <code>codigo_tecnico</code>, <code>AeropuertosEcuador</code></td>
+</tr>
+<tr>
+<td>Documentos (DAO <code>DocumentoDAO</code>)</td>
+<td>Archivos, <code>estado</code>, <code>validado_por</code>, observaciones</td>
+</tr>
+<tr>
+<td><code>aocr_tbrevision_documental</code></td>
+<td>Decisiones por documento (<code>decision</code>, <code>observacion</code>, <code>codigo_usuario_revisor</code>, <code>fecha_revision</code>)</td>
+</tr>
+<tr>
+<td><code>aocr_tbhistorial_documental</code></td>
+<td>Eventos <code>DOCUMENTO_ACEPTADO</code>, <code>DOCUMENTO_DEVUELTO</code>, etc.</td>
+</tr>
+<tr>
+<td><code>aocr_tbinspeccion</code></td>
+<td>Inspector, <code>estado_documental</code>, <code>comentarios</code>, estado inspección</td>
+</tr>
+<tr>
+<td><code>aocr_tblv_operacional_eae</code></td>
+<td>LV/EAE por inspección (<code>finalizado</code>, <code>firmado_tecnico</code>, <code>estado_lista</code>, <code>items_json</code>)</td>
+</tr>
+<tr>
+<td><code>aocr_tbinforme_inspeccion</code></td>
+<td>Informe técnico (<code>finalizado</code>, <code>firmado_inspector</code>, <code>estado_informe</code>, <code>resultado</code>)</td>
+</tr>
+<tr>
+<td>Órdenes recaudación / pagos</td>
+<td>Flujo financiero</td>
+</tr>
+</tbody></table>
+<h3>8.2 Scripts de prueba</h3>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Propósito</th>
+<th>⚠️</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>scripts/dev/advance_solicitud12_coo1.sql</code></td>
+<td>Simula revisión COO-1 en solicitud #12</td>
+<td>No usar en producción; genera revisiones coordinador</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>9. Correos y notificaciones</h2>
+<table>
+<thead>
+<tr>
+<th>Servicio</th>
+<th>Idempotencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AocrEmailFlujoService</code></td>
+<td>Por <code>event_key</code> de flujo</td>
+</tr>
+<tr>
+<td><code>AocrPostPagoWorkflowService</code></td>
+<td>Migrado a flujo idempotente</td>
+</tr>
+<tr>
+<td><code>SolicitudAocrCorreoService</code></td>
+<td>Deduplicación por evento</td>
+</tr>
+</tbody></table>
+<p>Canal institucional: <code>no_reply@</code> (validar SMTP en entorno publicado).</p>
+<hr>
+<h2>10. Build, publicación y verificación</h2>
+<h3>10.1 Compilar</h3>
+<pre><code class="language-powershell">&amp; &quot;C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe&quot; `
+  &quot;AOCR.sln&quot; /t:Build /p:Configuration=Release
+</code></pre>
+<h3>10.2 Publicar a IIS (perfil FolderProfile4)</h3>
+<pre><code class="language-powershell">&amp; &quot;...\MSBuild.exe&quot; &quot;CapaPresentacion\CapaPresentacion.csproj&quot; `
+  /t:WebPublish /p:Configuration=Release /p:PublishProfile=FolderProfile4
+</code></pre>
+<p>Destino: <code>C:\AOCR\publicacion1</code></p>
+<h3>10.3 Post-deploy</h3>
+<ol>
+<li>Reciclar Application Pool IIS.</li>
+<li>Ctrl+F5 en navegador.</li>
+<li>Verificar timestamps en <code>bin\CapaDatos.dll</code>, <code>CapaNegocio.dll</code>, <code>CapaPresentacion.dll</code>.</li>
+<li>Ejecutar <code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code> (escenarios A–D).</li>
+<li>Cadena inspector: <code>GUIA_INSPECTOR_SOLICITUD_12.md</code>.</li>
+</ol>
+<h3>10.4 Logs</h3>
+<pre><code>publicacion1\App_Data\Logs\AOCR_YYYYMMDD.log
+</code></pre>
+<p>Marcadores útiles: <code>[DOC_FLOW]</code>, <code>[DOC_SOLICITUD]</code>, <code>[GestionInspeccion]</code>, <code>[AUTH]</code>.</p>
+<hr>
+<h2>11. Tests unitarios de regresión</h2>
+<pre><code class="language-powershell">vstest.console AOCR.Tests\bin\Release\AOCR.Tests.dll
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Archivo test</th>
+<th>Qué valida</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AocrEstadoServiceTests</code></td>
+<td>Normalización estados</td>
+</tr>
+<tr>
+<td><code>AocrFlujoServiceTests</code></td>
+<td>Transiciones, FirmadoCoordinador</td>
+</tr>
+<tr>
+<td><code>EstadoSolicitudTransitionMatrixTests</code></td>
+<td>Sin atajo a Finalizado</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalFirmaPlanningTests</code></td>
+<td>Destino firma por tipo 1/2/3</td>
+</tr>
+<tr>
+<td><code>AocrModificationNuevoAeropuertoTests</code></td>
+<td>Rama nuevo aeropuerto</td>
+</tr>
+<tr>
+<td><code>AocrModificationAuthorizationTests</code></td>
+<td>Permisos cierre fase mod.</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalBandejaServiceTests</code></td>
+<td>Bandeja inspector</td>
+</tr>
+<tr>
+<td><code>CoordinacionBandejaEstadoTests</code></td>
+<td>Bandeja coordinación</td>
+</tr>
+<tr>
+<td><code>OperationalFlowCharacterizationTests</code></td>
+<td>Cableado servicio ↔ controlador</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>12. Checklist técnico — ¿La implementación es correcta?</h2>
+<p>Use este checklist al revisar código o QA técnico.</p>
+<h3>12.1 Revisión documental inspector</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Criterio</th>
+<th>Archivo / método</th>
+<th>✅</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>T1</td>
+<td>Con inspector asignado, sin revisión inspector → doc pendiente</td>
+<td><code>ObtenerDecisionRevisionDocumental(..., faseInspector:true)</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>T2</td>
+<td>Revisiones coordinador excluidas del conteo</td>
+<td><code>FiltrarDetallesRevisionPorInspector</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>T3</td>
+<td>UI no muestra ValidadoPor coordinador en fase inspector</td>
+<td><code>Lista.cshtml</code> + <code>AplicarContextoRevisionDocumental</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>T4</td>
+<td><code>modo=revision</code> habilita Aceptar/Devolver al inspector asignado</td>
+<td><code>DocumentoController.PuedeRevisarDocumentosSolicitud</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>T5</td>
+<td>LV bloqueada hasta confirmación cierre</td>
+<td><code>RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>T6</td>
+<td>Bandeja revisión documental lista solicitudes asignadas</td>
+<td><code>RevisionDocumentalBandejaService</code></td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<h3>12.2 Flujo emisión (solicitud #12)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Criterio</th>
+<th>Verificación concreta</th>
+<th>✅</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>E1</td>
+<td>Firma coord. → <code>Pendiente Asignacion RT</code></td>
+<td><code>FirmarAceptacionDocumental/12</code> + log <code>[FirmarAceptacionDocumental]</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>E2</td>
+<td>Asignación → <code>En Inspeccion</code></td>
+<td><code>Tecnico/AsignarInspector</code> + <code>aocr_tbinspeccion.codigo_inspector=43</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>E3</td>
+<td>Post-asignación sin bloqueo pago</td>
+<td><code>PuedeInspectorIniciarRevisionDocumental(11)</code> = true</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>E4</td>
+<td>LV §16 + Informe §17 completos</td>
+<td>Tablas <code>aocr_tblv_operacional_eae</code> + <code>aocr_tbinforme_inspeccion</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>E5</td>
+<td>Informe → <code>ENVIADO_A_DIRDAC</code></td>
+<td><code>FirmarInformeInspector/11</code> + bandeja <code>PendientesDireccion</code></td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<h3>12.3 Modificación tipo 3</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Criterio</th>
+<th>Verificación concreta</th>
+<th>✅</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>M1</td>
+<td>Con aeropuertos → solo cierre fase</td>
+<td><code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code> → <code>Requiere Inspeccion</code> §18.5</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Sin aeropuertos → CL o inspección</td>
+<td><code>GenerarCondicionesLimitacionesModificacion</code> <strong>xor</strong> <code>MarcarRequiereInspeccionModificacion</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Post <code>Requiere Inspeccion</code> → orden RT</td>
+<td>Panel <code>RtDebeSolicitarInspeccionNuevoAeropuerto</code> + <code>OrdenRecaudacion/Nueva</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>Bloqueo CL con aeropuertos</td>
+<td><code>PrepararGeneracionCondicionesLimitaciones</code> retorna error §18.4</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>Firma coord. tipo 3</td>
+<td>Destino <code>Firmado Coordinador</code> (<code>RevisionDocumentalFirmaPlanningTests</code>)</td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<h3>12.4 Plataforma</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Criterio</th>
+<th>✅</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1</td>
+<td>Contador sidebar = bandeja por rol</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>URL sin permiso → 403</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>Correo post-pago idempotente</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>Tests §11 pasan en CI/local</td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<p><strong>Implementación correcta (mínimo operativo):</strong> T1–T6 + E1–E4 ✅ en entorno publicado con prueba manual solicitud #12.</p>
+<p><strong>Implementación completa (100%):</strong> todos los niveles A–E de <code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> §12.</p>
+<hr>
+<h2>13. Diagrama de componentes — revisión documental</h2>
+<pre><code class="language-mermaid">flowchart TB
+    subgraph UI
+        RD[RevisionDocumental/Index]
+        DL[Documento/Lista modo=revision]
+        ID[Inspeccion/Detalle]
+    end
+
+    subgraph Controllers
+        RDC[RevisionDocumentalController]
+        DC[DocumentoController]
+        IC[InspeccionController]
+    end
+
+    subgraph Negocio
+        SAI[SolicitudAocrInfraBL]
+        RDS[RevisionDocumentalService]
+        RDB[RevisionDocumentalBandejaService]
+        AAS[AocrAuthorizationService]
+    end
+
+    subgraph Datos
+        RDD[RevisionDocumentalDAO]
+        SD[SolicitudAOCRDAO]
+        DD[DocumentoDAO]
+    end
+
+    RD --&gt; RDC --&gt; RDB --&gt; SAI
+    DL --&gt; DC --&gt; SAI
+    DC --&gt; RDD
+    ID --&gt; IC --&gt; RDS --&gt; SAI
+    IC --&gt; AAS
+    SAI --&gt; RDD
+    SAI --&gt; SD
+    SAI --&gt; DD
+</code></pre>
+<hr>
+<h2>16. Lista de Verificación LV/EAE — implementación</h2>
+<h3>16.1 Alcance y persistencia</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Valor en código</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Tabla PostgreSQL</td>
+<td><code>public.aocr_tblv_operacional_eae</code></td>
+</tr>
+<tr>
+<td>DAO</td>
+<td><code>ListaVerificacionOperacionalEaeDAO</code></td>
+</tr>
+<tr>
+<td>Modelo</td>
+<td><code>ListaVerificacionOperacionalEae</code></td>
+</tr>
+<tr>
+<td>Vista modal</td>
+<td><code>Views/Inspeccion/Detalle.cshtml</code> → modal <code>#modalListaVerificacionOperacionalEae</code></td>
+</tr>
+<tr>
+<td>Panel parcial</td>
+<td><code>Views/Inspeccion/_ListaVerificacionOperacionalEaePanel.cshtml</code></td>
+</tr>
+</tbody></table>
+<p><strong>Clave foránea:</strong> <code>codigo_inspeccion</code> → inspección <strong>#11</strong> (solicitud #12).</p>
+<p><strong>Columnas de control de fase:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Columna BD</th>
+<th>Propiedad C#</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>finalizado</code></td>
+<td><code>Finalizado</code></td>
+<td>PDF LV generado (<code>FinalizarListaVerificacionOperacionalEae</code>)</td>
+</tr>
+<tr>
+<td><code>firmado_tecnico</code></td>
+<td><code>FirmadoTecnico</code></td>
+<td>Certificado <code>.p12</code> aplicado</td>
+</tr>
+<tr>
+<td><code>estado_lista</code></td>
+<td><code>EstadoLista</code></td>
+<td>Ej. <code>BORRADOR</code>, estado post-firma</td>
+</tr>
+<tr>
+<td><code>items_json</code></td>
+<td><code>ItemsJson</code></td>
+<td>Criterios cumplimiento/implementación</td>
+</tr>
+<tr>
+<td><code>ruta_pdf</code> / <code>ruta_documento_firmado</code></td>
+<td>Rutas en <code>App_Data/Documentos/...</code></td>
+<td></td>
+</tr>
+</tbody></table>
+<h3>16.2 Precondiciones (orden enforced)</h3>
+<p>Para <strong>cualquier</strong> acción LV el inspector asignado debe cumplir, en este orden:</p>
+<ol>
+<li><code>AocrPostPagoWorkflowService.PuedeInspectorIniciarRevisionDocumental(codigoInspeccion)</code> — bypass post-asignación coordinador.</li>
+<li><code>SolicitudAocrInfraBL.ObtenerEstadoRevisionDocumental</code> → <code>DocumentacionAprobada = true</code> (decisiones del <strong>inspector</strong>, no COO-1).</li>
+<li><code>InspectorTieneRevisionDocumentalConfirmada(inspeccion)</code> → delega a <code>RevisionDocumentalService.InspectorConfirmoCierreDocumental</code>:<ul>
+<li><code>aocr_tbinspeccion.estado_documental</code> ∈ <code>{ EN_REVISION, ACEPTADA, APROBADO }</code>, <strong>o</strong></li>
+<li><code>comentarios</code> contiene <em>&quot;Inspector confirmó revisión documental&quot;</em>.</li>
+</ul>
+</li>
+<li><code>AocrAuthorizationService.PuedeInspectorAbrirLv</code> → alias de <code>PuedeInspectorAbrirInspeccion</code> → <code>RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv</code>.</li>
+</ol>
+<p><strong>Escritura al confirmar cierre</strong> (<code>InspeccionController.ConfirmarRevisionDocumentalInspector</code>):</p>
+<pre><code class="language-csharp">inspeccion.EstadoDocumental = &quot;EN_REVISION&quot;;
+inspeccion.Comentarios += &quot; | Inspector confirmó revisión documental.&quot;;
+// _inspeccionBL.Actualizar(inspeccion, usuarioId);
+</code></pre>
+<h3>16.3 Endpoints HTTP</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Método</th>
+<th>Ruta</th>
+<th><code>[AocrAuthorize]</code></th>
+<th>Validación adicional</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Guardar borrador</td>
+<td>POST</td>
+<td><code>Inspeccion/GuardarListaVerificacionOperacionalEae</code></td>
+<td><code>GuardarListaVerificacionOperacionalEae</code></td>
+<td><code>InspectorTieneRevisionDocumentalConfirmada</code></td>
+</tr>
+<tr>
+<td>Finalizar PDF</td>
+<td>POST</td>
+<td><code>Inspeccion/FinalizarListaVerificacionOperacionalEae/{id}</code></td>
+<td><code>FinalizarListaVerificacionOperacionalEae</code></td>
+<td>Idem + <code>lista.Finalizado</code> antes de firmar</td>
+</tr>
+<tr>
+<td>Firmar</td>
+<td>POST</td>
+<td><code>Inspeccion/FirmarListaVerificacionOperacionalEae</code></td>
+<td><code>FirmarListaVerificacionOperacionalEae</code></td>
+<td>Idem + <code>lista.Finalizado == true</code> + certificado</td>
+</tr>
+</tbody></table>
+<p><strong>Mensajes de error exactos (controller):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Condición</th>
+<th>HTTP</th>
+<th>Texto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sin cierre documental</td>
+<td>403</td>
+<td><em>&quot;No se puede iniciar la inspección porque la fase documental aún no ha sido finalizada.&quot;</em> (<code>ObtenerMensajeBloqueoRevisionDocumentalInspector</code>)</td>
+</tr>
+<tr>
+<td>LV no finalizada al firmar</td>
+<td>409</td>
+<td><em>&quot;Debe finalizar la lista de verificación operacional EAE antes de firmarla.&quot;</em></td>
+</tr>
+<tr>
+<td>Flujo EAE no aplica</td>
+<td>409</td>
+<td><em>&quot;La lista de verificación operacional EAE no aplica para esta inspección.&quot;</em> (<code>UsaFlujoListaVerificacionOperacionalEae</code>)</td>
+</tr>
+</tbody></table>
+<p><strong>Autorización denegada (<code>AocrAuthorizationService</code>):</strong> rol debe ser <code>InspectorTecnico</code> o <code>Administrador</code>; usuario debe ser inspector asignado en <code>aocr_tbinspeccion</code>.</p>
+<h3>16.4 Textos UI (<code>Detalle.cshtml</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Estado LV</th>
+<th>Texto badge</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pendiente</td>
+<td><em>LV pendiente</em></td>
+</tr>
+<tr>
+<td>Borrador</td>
+<td><em>LV en borrador</em></td>
+</tr>
+<tr>
+<td>Finalizada sin firma</td>
+<td><em>LV completada</em></td>
+</tr>
+<tr>
+<td>Firmada</td>
+<td><em>LV firmada</em></td>
+</tr>
+</tbody></table>
+<p>Botón habilitado: <strong>Completar LV en ventana</strong> / <strong>Abrir ventana LV</strong> (si <code>listaVerificacionFirmada</code>).<br>Botón bloqueado: <strong>Abrir LV/EAE</strong> con candado + <em>&quot;BLOQUEADO POR LV/EAE&quot;</em> en panel informe.</p>
+<h3>16.5 Verificación QA — inspección #11</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Consulta / acción</th>
+<th>Esperado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LV1</td>
+<td>Sin <code>ConfirmarRevisionDocumentalInspector</code> → POST Guardar LV</td>
+<td>403</td>
+</tr>
+<tr>
+<td>LV2</td>
+<td>Tras confirmar cierre → Guardar LV</td>
+<td>200, fila en <code>aocr_tblv_operacional_eae</code></td>
+</tr>
+<tr>
+<td>LV3</td>
+<td>Finalizar LV</td>
+<td><code>finalizado=true</code>, <code>ruta_pdf</code> poblada</td>
+</tr>
+<tr>
+<td>LV4</td>
+<td>Firmar LV</td>
+<td><code>firmado_tecnico=true</code>, <code>fecha_firma</code> poblada</td>
+</tr>
+<tr>
+<td>LV5</td>
+<td><code>AocrFlujoValidacionService.PuedeGenerarInformeTecnico(11)</code></td>
+<td><code>true</code> solo si LV4 OK</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>17. Informe técnico — implementación</h2>
+<h3>17.1 Alcance y persistencia</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Valor en código</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Tabla</td>
+<td><code>public.aocr_tbinforme_inspeccion</code></td>
+</tr>
+<tr>
+<td>DAO</td>
+<td><code>InspeccionInformeDAO</code></td>
+</tr>
+<tr>
+<td>Modelo</td>
+<td><code>InspeccionInformeTecnico</code></td>
+</tr>
+<tr>
+<td>Modal UI</td>
+<td><code>GET Inspeccion/ModalInformeTecnico</code> → <code>Views/Inspeccion/_ModalInformeTecnico.cshtml</code> (vía <code>Detalle.cshtml</code>)</td>
+</tr>
+<tr>
+<td>Bandeja DIRDAC</td>
+<td><code>GET Inspeccion/PendientesDireccion</code> → <code>Views/InformeTecnico/PendientesDireccion.cshtml</code></td>
+</tr>
+</tbody></table>
+<p><strong>Columnas de control:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Columna</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>finalizado</code></td>
+<td>PDF informe generado (<code>FinalizarInformeTecnico</code>)</td>
+</tr>
+<tr>
+<td><code>firmado_inspector</code></td>
+<td>Firma inspector completada</td>
+</tr>
+<tr>
+<td><code>firmado_dirdac</code></td>
+<td>Firma/aprobación dirección</td>
+</tr>
+<tr>
+<td><code>estado_informe</code></td>
+<td>Máquina de estados (ver §17.4)</td>
+</tr>
+<tr>
+<td><code>resultado</code></td>
+<td>Satisfactorio / No satisfactorio</td>
+</tr>
+<tr>
+<td><code>no_conformidades</code></td>
+<td>Obligatorio si no satisfactorio</td>
+</tr>
+<tr>
+<td><code>fecha_envio_dirdac</code></td>
+<td>Tras <code>FirmarInformeInspector</code> con <code>autoEnviarADirdac=true</code></td>
+</tr>
+</tbody></table>
+<h3>17.2 Precondiciones por acción</h3>
+<p><strong>Abrir / guardar informe</strong> (<code>GuardarInformeTecnico</code>, <code>ModalInformeTecnico</code>):</p>
+<ol>
+<li><code>InspectorTieneRevisionDocumentalConfirmada</code> — mismo criterio que LV §16.2.</li>
+<li><code>AocrAuthorizationService.PuedeInspectorGenerarInforme</code>:<ul>
+<li><code>PuedeInspectorAbrirInspeccion</code> (cierre documental + fase operativa).</li>
+<li><code>AocrFlujoValidacionService.PuedeGenerarInformeTecnico</code>:<pre><code class="language-csharp">var lista = _listaVerificacionDao.ObtenerUltimaPorInspeccion(codigoInspeccion);
+return lista != null &amp;&amp; lista.Finalizado &amp;&amp; lista.FirmadoTecnico;
+</code></pre>
+</li>
+<li>Informe inexistente o <code>EstadoInforme == BORRADOR_INFORME</code>.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Mensaje auth si LV no lista:</strong> <em>&quot;Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.&quot;</em> (<code>AocrAuthorizationService.ValidarRecurso</code>).</p>
+<p><strong>Finalizar informe</strong> (<code>FinalizarInformeTecnico/{id}</code>):</p>
+<ul>
+<li>Mismas precondiciones + contenido mínimo en formulario.</li>
+<li>Llama <code>InspeccionInformeDAO.MarcarFinalizado</code> → <code>finalizado=true</code>, genera PDF en disco.</li>
+</ul>
+<p><strong>Firmar informe inspector</strong> (<code>FirmarInformeInspector</code>):</p>
+<ul>
+<li><code>AocrFlujoValidacionService.PuedeFirmarInformeTecnico</code>:<ul>
+<li><code>informe.Finalizado == true</code></li>
+<li><code>informe.FirmadoInspector == false</code></li>
+<li><code>resultado</code> no vacío</li>
+<li>Si no satisfactorio: <code>NoConformidades</code> u <code>Observaciones</code> no vacíos</li>
+</ul>
+</li>
+<li><code>ValidarPrecondicionListaVerificacionOperacionalEae</code> — LV finalizada y firmada.</li>
+<li>Ejecuta <code>FirmarInformePorRol(..., &quot;INSPECTOR&quot;, &quot;FIRMADO_INSPECTOR&quot;, autoEnviarADirdac: true)</code>.</li>
+</ul>
+<h3>17.3 Envío automático a DIRDAC</h3>
+<p>Tras firma inspector (<code>FirmarInformePorRol</code>):</p>
+<pre><code class="language-csharp">_informeDAO.MarcarEnviadoADirdac(..., &quot;ENVIADO_A_DIRDAC&quot;, usuarioId);
+// evento correo: INFORME_TECNICO_ENVIADO_REVISION_DIRECCION
+</code></pre>
+<p><strong>Estado informe post-firma inspector:</strong> <code>FIRMADO_INSPECTOR</code> → transición a <code>ENVIADO_A_DIRDAC</code>.</p>
+<p>El inspector <strong>no</strong> genera AOCR en esta etapa (<code>GeneracionAOCRService</code> exige informe aprobado por dirección).</p>
+<h3>17.4 Máquina de estados <code>estado_informe</code></h3>
+<table>
+<thead>
+<tr>
+<th>Valor</th>
+<th>Cuándo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>BORRADOR_INFORME</code></td>
+<td>Tras primer guardado</td>
+</tr>
+<tr>
+<td><code>FIRMADO_INSPECTOR</code></td>
+<td>Post <code>FirmarInformeInspector</code></td>
+</tr>
+<tr>
+<td><code>ENVIADO_A_DIRDAC</code></td>
+<td>Auto-envío a bandeja dirección</td>
+</tr>
+<tr>
+<td><code>ENVIADO_A_COORDINADOR</code></td>
+<td>Flujo coordinación (devoluciones)</td>
+</tr>
+<tr>
+<td><code>DEVUELTO_COORDINADOR</code></td>
+<td>Devolución desde coordinación</td>
+</tr>
+</tbody></table>
+<p><strong>Bandeja DIRDAC:</strong> <code>InspeccionInformeDAO.ListarPendientesFirmaDirdac()</code> — filtra <code>firmado_inspector=true</code> y <code>firmado_dirdac=false</code>.</p>
+<p><strong>Autorización dirección:</strong> <code>AocrAuthorizationService.PuedeDirectorRevisarInforme(codigoInforme, userId)</code>.</p>
+<h3>17.5 Resultado satisfactorio / NC</h3>
+<p>Detección en <code>AocrFlujoValidacionService</code>:</p>
+<pre><code class="language-csharp">// Satisfactorio: contiene &quot;SATISFACT&quot; y NO &quot;NO SATISFACT&quot;
+// No satisfactorio: &quot;NO SATISFACT&quot;, &quot;NO_SATISFACT&quot;, &quot;NO SATISFACTORIO&quot;
+</code></pre>
+<p>Rama NC (Caso 5 — pendiente prueba manual completa): coordinación aprueba NC → RT subsana → nueva inspección. Servicios: <code>CoordinacionBandejaService</code>, panel <code>#pane-observaciones</code> en <code>DashboardInspeccion</code>.</p>
+<h3>17.6 Generación AOCR (post-informe)</h3>
+<p><code>GeneracionAOCRService.Evaluar</code> exige:</p>
+<ol>
+<li>Documentación aprobada (<code>RevisionDocumentalService.ObtenerEstadoFaseDocumental</code>).</li>
+<li>Estado solicitud en fase AOCR (<code>EstadoSolicitudPermiteGeneracion</code>).</li>
+<li><code>ObtenerInformeAprobado(codigoSolicitud)</code> — informe con aprobación institucional DIRDAC.</li>
+</ol>
+<p><strong>Motivo típico de bloqueo:</strong> <em>&quot;El Informe Técnico ya debe estar aprobado por Dirección/DIRDAC y la solicitud debe encontrarse en fase AOCR para generar la AOCR.&quot;</em></p>
+<h3>17.7 Verificación QA — inspección #11</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Acción</th>
+<th>Esperado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>INF1</td>
+<td>Abrir informe sin LV firmada</td>
+<td>403 / mensaje LV</td>
+</tr>
+<tr>
+<td>INF2</td>
+<td>Guardar borrador</td>
+<td>Fila <code>aocr_tbinforme_inspeccion</code>, <code>estado_informe=BORRADOR_INFORME</code></td>
+</tr>
+<tr>
+<td>INF3</td>
+<td>FinalizarInformeTecnico/11</td>
+<td><code>finalizado=true</code>, PDF en <code>App_Data</code></td>
+</tr>
+<tr>
+<td>INF4</td>
+<td>FirmarInformeInspector</td>
+<td><code>firmado_inspector=true</code>, <code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+<tr>
+<td>INF5</td>
+<td>PendientesDireccion</td>
+<td>Informe #12 visible para rol DIRDAC</td>
+</tr>
+<tr>
+<td>INF6</td>
+<td>Tras aprobación DIRDAC</td>
+<td>Solicitud → <code>AOCR En Elaboracion</code></td>
+</tr>
+</tbody></table>
+<p><strong>Logs:</strong> <code>[GestionInspeccion] GuardarInformeTecnico</code>, <code>FinalizarInformeTecnico</code>, <code>FirmarInformeInspector</code>, <code>INFORME_TECNICO_ENVIADO_REVISION_DIRECCION</code>.</p>
+<hr>
+<h2>18. Modificación tipo 3 — implementación</h2>
+<h3>18.1 Identificación</h3>
+<pre><code class="language-csharp">// AocrModificationWorkflowService.EsSolicitudModificacion
+solicitud.TipoSolicitud.GetValueOrDefault() == 3
+
+// Formulario RT
+GET SolicitudAOCR/FormularioEmisionAOCR?tipoSolicitud=3
+</code></pre>
+<p><strong>Detección nuevo aeropuerto:</strong></p>
+<pre><code class="language-csharp">TieneNuevoAeropuertoDeclarado(solicitud)
+  = TipoSolicitud == 3
+    AND (AeropuertosEcuador no vacío OR AeropuertosEcuadorOtros no vacío)
+</code></pre>
+<p>Campos en <code>aocr_tbsolicitud</code>: <code>AeropuertosEcuador</code>, <code>AeropuertosEcuadorOtros</code>.</p>
+<h3>18.2 Punto de entrada institucional</h3>
+<p>Tras firma coordinador en modificación:</p>
+<ul>
+<li><code>POST SolicitudAOCR/FirmarAceptacionDocumental/{id}</code> con <code>tipoSolicitud=3</code></li>
+<li>Destino: <strong><code>Firmado Coordinador</code></strong> (no <code>Pendiente Asignacion RT</code>)</li>
+<li>Servicio: <code>RevisionDocumentalService.ResolverEstadoDestinoFirmaAceptacionDocumental(3)</code> → <code>EstadoSolicitud.FirmadoCoordinador</code></li>
+</ul>
+<p>Desde <strong><code>Firmado Coordinador</code></strong> o <strong><code>Aceptacion Documental</code></strong> el inspector resuelve en panel <code>SolicitudAOCR/Detalle/{id}</code> — sección <em>Resolución de modificación</em> (<code>Detalle.cshtml</code>).</p>
+<h3>18.3 Ramas y acciones POST</h3>
+<table>
+<thead>
+<tr>
+<th>Rama</th>
+<th>Condición</th>
+<th>Acción POST</th>
+<th>Servicio</th>
+<th>Estado destino</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>A — CL directo</strong></td>
+<td>Sin aeropuertos nuevos</td>
+<td><code>GenerarCondicionesLimitacionesModificacion</code></td>
+<td><code>EjecutarGeneracionCondicionesLimitaciones</code></td>
+<td><code>Generado Condiciones y Limitaciones</code></td>
+</tr>
+<tr>
+<td><strong>B — Derivar inspección</strong></td>
+<td>Sin aeropuertos nuevos</td>
+<td><code>MarcarRequiereInspeccionModificacion</code></td>
+<td><code>EjecutarRequiereInspeccion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td><strong>C — Nuevo aeropuerto</strong></td>
+<td><code>TieneNuevoAeropuertoDeclarado</code></td>
+<td><code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>EjecutarCierreFaseDocumentalNuevoAeropuerto</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+</tbody></table>
+<p><strong>Autorización acciones inspector (A, B, C):</strong> <code>[Authorize(Roles = &quot;Inspector,Administrador&quot;)]</code> — pendiente migración a <code>[AocrAuthorize]</code> (deuda DT-1).</p>
+<p><strong>Transición de estado:</strong> <code>SolicitudEstadoTransitionBL.CambiarEstadoConReglasAocr</code> + validación <code>AocrFinalWorkflowService.UsuarioPuedeTransicionarEstadoAocr</code>.</p>
+<h3>18.4 Mensajes de rechazo exactos (<code>Preparar*</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Método</th>
+<th>Condición fallo</th>
+<th>Mensaje</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PrepararRequiereInspeccion</code></td>
+<td>Con aeropuertos</td>
+<td><em>&quot;La modificación declara inclusión de nuevo aeropuerto. Debe usar el cierre institucional de fase documental...&quot;</em></td>
+</tr>
+<tr>
+<td><code>PrepararGeneracionCondicionesLimitaciones</code></td>
+<td>Con aeropuertos</td>
+<td><em>&quot;...no puede cerrarse con Condiciones y Limitaciones directas. Debe derivar al módulo de solicitud de inspección.&quot;</em></td>
+</tr>
+<tr>
+<td><code>PrepararCierreFaseDocumentalNuevoAeropuerto</code></td>
+<td>Sin aeropuertos</td>
+<td><em>&quot;El cierre de fase documental por nuevo aeropuerto solo aplica cuando la modificación declara aeropuertos en Ecuador.&quot;</em></td>
+</tr>
+<tr>
+<td>Cualquiera</td>
+<td>Estado ≠ <code>Aceptacion Documental</code></td>
+<td><em>&quot;Solo puede ... cuando la documentación de la modificación ya fue aceptada.&quot;</em></td>
+</tr>
+</tbody></table>
+<h3>18.5 Flujo post-<code>Requiere Inspeccion</code> (rama C y B)</h3>
+<ol>
+<li>Estado solicitud = <strong><code>Requiere Inspeccion</code></strong></li>
+<li>UI RT: <code>AocrModificationWorkflowService.RtDebeSolicitarInspeccionNuevoAeropuerto</code> → panel con enlace <strong><code>OrdenRecaudacion/Nueva</code></strong></li>
+<li>RT genera orden + comprobante → financiero aprueba</li>
+<li>Coordinación asigna inspector (<code>Tecnico/AsignarInspector</code>) → flujo estándar §5–§17 (emisión/inspección)</li>
+</ol>
+<p><strong>Observación persistida rama C:</strong></p>
+<p><em>&quot;Cierre de fase documental por inclusión de nuevo aeropuerto. El RT debe solicitar inspección mediante orden de recaudación.&quot;</em></p>
+<h3>18.6 Flujo CL sin inspección (rama A)</h3>
+<pre><code>Generado Condiciones y Limitaciones
+  → POST RevisarCondicionesLimitacionesModificacion (Coordinación)
+  → En Revision Coordinador Final
+  → POST envío DCAV (PrepararEnvioDcavCondicionesLimitaciones)
+  → Enviado DCAV
+  → firma DIRDAC → descarga SolicitudAOCR/DescargarCondicionesLimitacionesModificacion
+</code></pre>
+<p><strong>Coordinación:</strong> <code>[Authorize(Roles = &quot;Coordinador,CoordinadorInspecciones,Coordinacion,Administrador&quot;)]</code> en <code>RevisarCondicionesLimitacionesModificacion</code>.</p>
+<h3>18.7 Helpers UI en <code>Detalle.cshtml</code></h3>
+<table>
+<thead>
+<tr>
+<th>Flag ViewModel / helper</th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>EsResolucionModificacionConNuevoAeropuerto</code></td>
+<td>Muestra solo botón cierre fase documental</td>
+</tr>
+<tr>
+<td><code>RtDebeSolicitarInspeccionNuevoAeropuerto</code></td>
+<td>Muestra enlace orden recaudación</td>
+</tr>
+<tr>
+<td>Panel bifurcado sin aeropuertos</td>
+<td>Botones CL + derivar inspección</td>
+</tr>
+</tbody></table>
+<p>Fuente: <code>AocrModificationWorkflowService.EsResolucionModificacionConNuevoAeropuerto</code> y <code>RtDebeSolicitarInspeccionNuevoAeropuerto</code>.</p>
+<h3>18.8 Tests unitarios</h3>
+<table>
+<thead>
+<tr>
+<th>Archivo</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>AocrModificationNuevoAeropuertoTests</code></td>
+<td>Planes <code>PrepararCierreFaseDocumentalNuevoAeropuerto</code>, bloqueos CL/inspección</td>
+</tr>
+<tr>
+<td><code>AocrModificationAuthorizationTests</code></td>
+<td>Autorización acción cierre fase</td>
+</tr>
+<tr>
+<td><code>RevisionDocumentalFirmaPlanningTests</code></td>
+<td>Firma tipo 3 → <code>FirmadoCoordinador</code></td>
+</tr>
+</tbody></table>
+<h3>18.9 Verificación QA — Escenarios C y D (guía post-republicación)</h3>
+<table>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>Solicitud</th>
+<th>Acción inspector</th>
+<th>Estado final</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>C</strong> — con aeropuertos</td>
+<td>Mod. tipo 3 con <code>AeropuertosEcuador</code></td>
+<td>Solo <code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td><strong>D</strong> — sin aeropuertos</td>
+<td>Mod. tipo 3 campos vacíos</td>
+<td><code>GenerarCondicionesLimitacionesModificacion</code> <strong>o</strong> <code>MarcarRequiereInspeccionModificacion</code></td>
+<td><code>Generado CL</code> o <code>Requiere Inspeccion</code></td>
+</tr>
+</tbody></table>
+<p><strong>Validación negativa Escenario C:</strong> intentar <code>MarcarRequiereInspeccionModificacion</code> con aeropuertos declarados → TempData warning con mensaje §18.4.</p>
+<hr>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Descripción</th>
+<th>Fase plan</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DT-1</td>
+<td>Autorización híbrida en <code>InspeccionController</code></td>
+<td>4</td>
+</tr>
+<tr>
+<td>DT-2</td>
+<td>Lógica botones en Razor (<code>Detalle.cshtml</code>)</td>
+<td>7</td>
+</tr>
+<tr>
+<td>DT-3</td>
+<td><code>RevisionDocumentalService.ObtenerDecisionRevisionDocumental</code> privado aún infiere desde <code>doc.Estado</code> — callers deben pasar revisiones filtradas</td>
+<td>Refactor</td>
+</tr>
+<tr>
+<td>DT-4</td>
+<td>Legacy <code>EstadosSolicitudAOCR.cs</code>, <code>EstadoOrdenService</code></td>
+<td>8</td>
+</tr>
+<tr>
+<td>DT-5</td>
+<td>PDFs institucionales sin revisión formal</td>
+<td>9</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>15. Referencia rápida de archivos clave</h2>
+<table>
+<thead>
+<tr>
+<th>Tema</th>
+<th>Archivos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Estados</td>
+<td><code>CapaDatos/Constants/EstadoConstants.cs</code>, <code>EstadoSolicitudSql.cs</code></td>
+</tr>
+<tr>
+<td>Flujo</td>
+<td><code>CapaNegocio/Services/AocrFlujoService.cs</code></td>
+</tr>
+<tr>
+<td>Revisión documental</td>
+<td><code>SolicitudAocrInfraBL.cs</code>, <code>DocumentoController.cs</code>, <code>RevisionDocumentalService.cs</code></td>
+</tr>
+<tr>
+<td>Inspección / LV / Informe</td>
+<td><code>InspeccionController.cs</code>, <code>AocrFlujoValidacionService.cs</code>, <code>ListaVerificacionOperacionalEaeDAO.cs</code>, <code>InspeccionInformeDAO.cs</code></td>
+</tr>
+<tr>
+<td>Modificación</td>
+<td><code>AocrModificationWorkflowService.cs</code>, <code>SolicitudAOCRController.cs</code> (acciones §18.3)</td>
+</tr>
+<tr>
+<td>Bandejas</td>
+<td><code>*BandejaService.cs</code>, <code>AocrSidebarCounterService.cs</code></td>
+</tr>
+<tr>
+<td>UI documentos</td>
+<td><code>Views/Documento/Lista.cshtml</code></td>
+</tr>
+<tr>
+<td>UI inspección</td>
+<td><code>Views/Inspeccion/Detalle.cshtml</code></td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Última actualización: 2026-06-11</em></p>
+
+    </article>
+    <div class="footer">Manual técnico — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

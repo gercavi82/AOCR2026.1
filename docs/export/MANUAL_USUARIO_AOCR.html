@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual de usuario — Sistema AOCR</title>
+  <style>
+    :root { --brand:#0f617a; --brand2:#1296b8; --light:#eef8fb; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Manual de usuario<br><span style="font-weight:400;font-size:1.35rem">Sistema AOCR — implementación actual</span></h1>
+    <p class="lead">Roles, menús, estados, revisión documental inspector vs coordinador, LV, informe, modificación tipo 3 y checklist solicitud #12.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/MANUAL_USUARIO_AOCR.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/MANUAL_USUARIO_AOCR.pdf</code> · Editable Word → <code>docs/export/editable/MANUAL_USUARIO_AOCR.docx</code> · Markdown → <code>docs/export/editable/MANUAL_USUARIO_AOCR.md</code></div>
+    <article class="md-body">
+<h1>Manual de usuario — Sistema AOCR (implementación actual)</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Basado en:</strong> <code>CapaPresentacion</code>, <code>CapaNegocio</code>, <code>CapaDatos</code> del repositorio AOCR<br><strong>No es documentación genérica:</strong> cada ruta, estado, menú y mensaje citado corresponde al código desplegado.</p>
+<p><strong>Complementos:</strong> <a href="MANUAL_FLUJO_RT_A_AOCR.md"><code>MANUAL_FLUJO_RT_A_AOCR.md</code></a> (recorrido RT→AOCR por fases) · <code>MANUAL_TECNICO_AOCR.md</code> (§16 LV · §17 Informe · §18 Mod. tipo 3) · <code>GUIA_VISUAL_POR_ROL.md</code> · <code>GUIA_INSPECTOR_SOLICITUD_12.md</code></p>
+<hr>
+<h2>0. Caso de prueba institucional documentado</h2>
+<p>Use la solicitud <strong>#12</strong> para validar el flujo emisión post-asignación:</p>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor de referencia (entorno <code>dgac_des</code>)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Código interno</td>
+<td><code>12</code></td>
+</tr>
+<tr>
+<td>Número institucional</td>
+<td><code>DGAC-GOP-2026-AOCR012</code></td>
+</tr>
+<tr>
+<td>Operadora (ejemplo)</td>
+<td>AMERICAN AIRLINES INC.</td>
+</tr>
+<tr>
+<td>Estado esperado tras asignación</td>
+<td><code>En Inspeccion</code> (<code>EstadoSolicitud.EnInspeccion</code>)</td>
+</tr>
+<tr>
+<td>Inspección vinculada</td>
+<td><code>CodigoInspeccion = 11</code></td>
+</tr>
+<tr>
+<td>Inspector asignado</td>
+<td><code>CodigoTecnico</code> / <code>CodigoInspector = 43</code> (ej. CATOTA TORRES)</td>
+</tr>
+<tr>
+<td>Coordinación (COO-1 histórico)</td>
+<td>Usuario revisor id <code>45</code> — <strong>no cuenta</strong> como decisión del inspector</td>
+</tr>
+<tr>
+<td>Documentos en revisión</td>
+<td>12 tipos (excluye <code>SOLICITUD_INSPECCION_EXT</code> del conteo documental)</td>
+</tr>
+<tr>
+<td>Publicación IIS</td>
+<td><code>C:\AOCR\publicacion1</code> (perfil <code>FolderProfile4</code>)</td>
+</tr>
+<tr>
+<td>Log aplicación</td>
+<td><code>CapaPresentacion/App_Data/Logs/AOCR_YYYYMMDD.log</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>1. Roles canónicos en pantalla</h2>
+<p>El menú lateral usa roles <strong>unificados</strong> (<code>RoleGroupingHelper</code>), no los nombres crudos de BD:</p>
+<table>
+<thead>
+<tr>
+<th>Rol unificado (sesión)</th>
+<th>Roles crudos que mapean</th>
+<th>Usuario prueba habitual</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Coordinacion</code></td>
+<td><code>CoordinadorInspecciones</code>, <code>GEN_COORDINACION</code> (forzado)</td>
+<td><code>GEN_COORDINACION</code></td>
+</tr>
+<tr>
+<td><code>InspectorTecnico</code></td>
+<td><code>Inspector</code>, <code>InspectorTecnico</code>, <code>EvaluadorTecnico</code>, <code>TECNICO</code></td>
+<td>Inspector id 43</td>
+</tr>
+<tr>
+<td><code>Solicitante</code></td>
+<td>RT / operador</td>
+<td>Propietario solicitud</td>
+</tr>
+<tr>
+<td><code>Financiero</code></td>
+<td>Perfil financiero</td>
+<td>Revisor de órdenes</td>
+</tr>
+<tr>
+<td><code>DireccionJefaturaTecnica</code></td>
+<td>DIRDAC / dirección</td>
+<td>Bandeja <code>PendientesDireccion</code></td>
+</tr>
+<tr>
+<td><code>Administrador</code></td>
+<td>Acceso total</td>
+<td>Soporte / QA</td>
+</tr>
+</tbody></table>
+<p><strong>Selector de rol:</strong> si el usuario tiene varios perfiles unificados, debe elegir uno antes de operar; el menú se construye en <code>SidebarMenuBuilder.Build()</code>.</p>
+<hr>
+<h2>2. Menú lateral — rutas reales por perfil</h2>
+<p>Textos y destinos extraídos de <code>SidebarMenuBuilder.cs</code>:</p>
+<h3>2.1 Coordinación (<code>Coordinacion</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta menú</th>
+<th>Controller</th>
+<th>Action</th>
+<th>Badge (servicio)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja integral</td>
+<td><code>CoordinacionJefatura</code></td>
+<td><code>DashboardInspeccion</code></td>
+<td><code>CoordinacionBandejaService</code> → <code>CoordinatorDocumentalQueue</code></td>
+</tr>
+<tr>
+<td>Pendientes de revisión</td>
+<td><code>CoordinacionJefatura</code></td>
+<td><code>RevisionVerificacion</code></td>
+<td>Idem</td>
+</tr>
+<tr>
+<td><em>(Grupo Solicitud)</em> Revisión documental</td>
+<td><code>CoordinacionJefatura</code></td>
+<td><code>RevisionVerificacion</code></td>
+<td>Cola documental coordinador</td>
+</tr>
+<tr>
+<td>Inspecciones</td>
+<td><code>Inspeccion</code></td>
+<td><code>Index</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p><strong>Asignación de inspector (no está como ítem suelto):</strong> se accede desde la bandeja de coordinación hacia<br><code>/Tecnico/Index</code> → <code>/Tecnico/AsignarInspector?solicitudId={id}&amp;tipoInspector=OPS|AIR|TODOS</code></p>
+<h3>2.2 Inspector (<code>InspectorTecnico</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta menú</th>
+<th>Controller</th>
+<th>Action</th>
+<th>Badge</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dashboard técnico</td>
+<td><code>Dashboard</code></td>
+<td><code>Inspector</code></td>
+<td><code>InspectorPendingRevision</code></td>
+</tr>
+<tr>
+<td>Revisión documental</td>
+<td><code>RevisionDocumental</code></td>
+<td><code>Index</code></td>
+<td><code>RevisionDocumentalBandejaService.ContarBandejaInspector</code></td>
+</tr>
+<tr>
+<td>Pendientes de revisión</td>
+<td><code>RevisionDocumental</code></td>
+<td><code>Index</code></td>
+<td>Idem</td>
+</tr>
+<tr>
+<td>Inspecciones</td>
+<td><code>Inspeccion</code></td>
+<td><code>Index</code></td>
+<td><code>InspectorBandejaService</code></td>
+</tr>
+<tr>
+<td>Lista de Verificación LV/EAE</td>
+<td><code>Inspeccion</code></td>
+<td><code>Index</code></td>
+<td><code>?vista=operativa</code></td>
+</tr>
+<tr>
+<td>Informe técnico y NC</td>
+<td><code>Inspeccion</code></td>
+<td><code>Index</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3>2.3 RT / Solicitante</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta menú</th>
+<th>Controller</th>
+<th>Action</th>
+<th>Parámetros</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Solicitud AOCR</td>
+<td><code>SolicitudAOCR</code></td>
+<td><code>FormularioEmisionAOCR</code></td>
+<td><code>tipoSolicitud=1</code></td>
+</tr>
+<tr>
+<td>Renovación AOCR</td>
+<td><code>SolicitudAOCR</code></td>
+<td><code>FormularioEmisionAOCR</code></td>
+<td><code>tipoSolicitud=2</code></td>
+</tr>
+<tr>
+<td>Condiciones y limitaciones</td>
+<td><code>SolicitudAOCR</code></td>
+<td><code>FormularioEmisionAOCR</code></td>
+<td><code>tipoSolicitud=3</code></td>
+</tr>
+<tr>
+<td>Órdenes (RT)</td>
+<td><code>OrdenRecaudacion</code></td>
+<td><code>Nueva</code> / <code>Detalles</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Mis trámites</td>
+<td><code>SolicitudAOCR</code></td>
+<td><code>MisSolicitudes</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Documentos y expediente</td>
+<td><code>Documento</code></td>
+<td><code>Subir</code> / <code>Lista</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3>2.4 Financiero</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta menú</th>
+<th>Controller</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dashboard financiero</td>
+<td><code>Financiero</code></td>
+<td><code>Dashboard</code></td>
+</tr>
+<tr>
+<td>Órdenes de recaudación</td>
+<td><code>Financiero</code></td>
+<td><code>TodasOrdenes</code></td>
+</tr>
+<tr>
+<td>Aprobar pago</td>
+<td><code>Financiero</code></td>
+<td><code>AprobarPago</code> / <code>AprobarPagoConFactura</code></td>
+</tr>
+</tbody></table>
+<h3>2.5 DIRDAC (<code>DireccionJefaturaTecnica</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Etiqueta menú</th>
+<th>Controller</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dashboard dirección</td>
+<td><code>CoordinacionJefatura</code></td>
+<td><code>DashboardGerencial</code></td>
+</tr>
+<tr>
+<td>Informe técnico y NC</td>
+<td><code>Inspeccion</code></td>
+<td><code>PendientesDireccion</code></td>
+</tr>
+<tr>
+<td>Listos para firma</td>
+<td><code>Inspeccion</code></td>
+<td><code>PendientesDireccion</code></td>
+</tr>
+<tr>
+<td>AOCR y condiciones</td>
+<td><code>CoordinacionJefatura</code></td>
+<td><code>ValidarAocr</code></td>
+</tr>
+</tbody></table>
+<p><strong>Regla de contadores:</strong> el número del badge debe igualar las filas de la bandeja del mismo servicio (<code>AocrSidebarCounterService</code>).</p>
+<hr>
+<h2>3. Tipos de solicitud y campo <code>tipoSolicitud</code></h2>
+<table>
+<thead>
+<tr>
+<th>Valor</th>
+<th>Formulario</th>
+<th>Destino tras firma coordinador (<code>RevisionDocumentalService.ResolverEstadoDestinoFirmaAceptacionDocumental</code>)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>1</code></td>
+<td><code>SolicitudAOCR/FormularioEmisionAOCR?tipoSolicitud=1</code></td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>...?tipoSolicitud=2</code></td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>...?tipoSolicitud=3</code></td>
+<td><code>Firmado Coordinador</code> → panel modificación en <code>Detalle.cshtml</code></td>
+</tr>
+</tbody></table>
+<p>Constantes: <code>CapaDatos/Constants/EstadoConstants.cs</code> → clase <code>EstadoSolicitud</code>.</p>
+<hr>
+<h2>4. Estados de solicitud relevantes (texto persistido)</h2>
+<p>Estos son los valores <strong>exactos</strong> en columna estado de <code>aocr_tbsolicitud</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Estado C#</th>
+<th>Texto en BD / UI</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>EnRevision</code></td>
+<td><code>En Revision</code></td>
+</tr>
+<tr>
+<td><code>DocumentacionPendiente</code></td>
+<td><code>Documentacion Pendiente</code></td>
+</tr>
+<tr>
+<td><code>Observada</code></td>
+<td><code>Observada</code></td>
+</tr>
+<tr>
+<td><code>Subsanada</code></td>
+<td><code>Subsanada</code></td>
+</tr>
+<tr>
+<td><code>AceptacionDocumental</code></td>
+<td><code>Aceptacion Documental</code></td>
+</tr>
+<tr>
+<td><code>PendienteAsignacionRT</code></td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td><code>EnInspeccion</code></td>
+<td><code>En Inspeccion</code></td>
+</tr>
+<tr>
+<td><code>RequiereInspeccion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td><code>GeneradoCondicionesLimitaciones</code></td>
+<td><code>Generado Condiciones y Limitaciones</code></td>
+</tr>
+<tr>
+<td><code>FirmadoCoordinador</code></td>
+<td><code>Firmado Coordinador</code></td>
+</tr>
+<tr>
+<td><code>AOCR_EnElaboracion</code></td>
+<td><code>AOCR En Elaboracion</code></td>
+</tr>
+<tr>
+<td><code>AOCR_EnRevision</code></td>
+<td><code>AOCR En Revision</code></td>
+</tr>
+<tr>
+<td><code>EnviadoDcav</code></td>
+<td><code>Enviado DCAV</code></td>
+</tr>
+<tr>
+<td><code>FirmadoDcav</code></td>
+<td><code>Firmado DCAV</code></td>
+</tr>
+<tr>
+<td><code>AOCR_EmitidoRecibido</code></td>
+<td><code>AOCR Emitido/Recibido</code></td>
+</tr>
+<tr>
+<td><code>Finalizado</code></td>
+<td><code>Finalizado</code></td>
+</tr>
+</tbody></table>
+<p><strong>Regla verificada en código:</strong> descargar PDF de aceptación documental <strong>no</strong> ejecuta transición a <code>Finalizado</code> (<code>SolicitudAOCRController</code> — sin atajo post-descarga).</p>
+<hr>
+<h2>5. Flujo emisión (tipo 1/2) — secuencia verificable</h2>
+<pre><code class="language-text">RT: SolicitudAOCR/FormularioEmisionAOCR (tipo 1 o 2)
+  → OrdenRecaudacion/Nueva + comprobante
+Financiero: Financiero/AprobarPago → estado avanza a carga documental
+RT: Documento/Subir + envío desde SolicitudAOCR/Detalle/{id}
+  → estado En Revision
+Coordinación: CoordinacionJefatura/RevisionVerificacion (pre-asignación)
+  → SolicitudAOCR/FirmarAceptacionDocumental/{id}
+  → Pendiente Asignacion RT
+Coordinación: Tecnico/Index → Tecnico/AsignarInspector (POST)
+  → En Inspeccion + registro en aocr_tbinspeccion
+Inspector: RevisionDocumental/Index → Documento/Lista?modo=revision
+  → Inspeccion/ConfirmarRevisionDocumentalInspector/{idInspeccion}
+  → LV (Guardar/Finalizar/FirmarListaVerificacionOperacionalEae)
+  → Informe (Guardar/Finalizar/FirmarInformeInspector) → FIRMADO_INSPECTOR
+DIRDAC: Inspeccion/PendientesDireccion → aprobación
+Coordinación: CoordinacionJefatura/ValidarAocr
+DIRDAC: firma AOCR → AOCR Emitido/Recibido
+RT: SolicitudAOCR/GeneradasFirmadas
+</code></pre>
+<hr>
+<h2>6. Revisión documental — dos fases (regla central del sistema)</h2>
+<h3>6.1 Fase A — Coordinación <strong>pre-asignación</strong> (COO-1)</h3>
+<p><strong>Condición código:</strong> <code>SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion</code> = true cuando:</p>
+<ul>
+<li><strong>No</strong> hay inspector asignado (<code>TieneInspectorAsignado</code> = false), y</li>
+<li>Estado ∈ <code>{ En Revision, Documentacion Pendiente, Subsanada }</code>.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Aspecto</th>
+<th>Comportamiento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pantalla</td>
+<td><code>CoordinacionJefatura/RevisionVerificacion</code> o revisión desde <code>SolicitudAOCR/Detalle</code></td>
+</tr>
+<tr>
+<td>Revisiones que cuentan</td>
+<td>Todas en <code>aocr_tbrevision_documental</code> (<code>ObtenerUltimasRevisionesPorSolicitud</code>)</td>
+</tr>
+<tr>
+<td>Inferencia <code>documento.estado = Aprobado</code></td>
+<td><strong>Sí</strong> cuenta como ACEPTADO si no hay fila en revisiones</td>
+</tr>
+<tr>
+<td>Observación típica prueba</td>
+<td><em>&quot;Revision documental institucional pre-asignacion (COO-1)&quot;</em> (script dev o coordinador)</td>
+</tr>
+</tbody></table>
+<h3>6.2 Fase B — Inspector <strong>post-asignación</strong></h3>
+<p><strong>Condición código:</strong> <code>RequiereDecisionDocumentalInspector(codigoSolicitud)</code> = <code>TieneInspectorAsignado</code> (campo <code>CodigoTecnico</code> en solicitud <strong>o</strong> <code>CodigoInspector</code> en inspección).</p>
+<table>
+<thead>
+<tr>
+<th>Aspecto</th>
+<th>Comportamiento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>/RevisionDocumental/Index</code> — servicio <code>RevisionDocumentalBandejaService</code></td>
+</tr>
+<tr>
+<td>Pantalla de decisión</td>
+<td><code>/Documento/Lista?solicitudId={id}&amp;modo=revision&amp;origen=revision-documental</code></td>
+</tr>
+<tr>
+<td>Revisiones que cuentan</td>
+<td>Solo donde <code>codigo_usuario_revisor</code> ∈ <code>{CodigoTecnico, CodigoInspector}</code></td>
+</tr>
+<tr>
+<td>Inferencia desde <code>Aprobado</code> en BD</td>
+<td><strong>No</strong> — sin revisión del inspector → <strong>PENDIENTE</strong></td>
+</tr>
+<tr>
+<td>Revisor / observación en UI</td>
+<td>Solo datos de revisión del inspector (<code>ViewBag.EsFaseInspectorDocumental</code>)</td>
+</tr>
+</tbody></table>
+<p><strong>Endpoints AJAX de decisión</strong> (<code>DocumentoController</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>URL</th>
+<th>Validación observación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Aceptar</td>
+<td><code>POST Documento/AceptarDocumentoSolicitud</code></td>
+<td>Devolución N/A</td>
+</tr>
+<tr>
+<td>Devolver</td>
+<td><code>POST Documento/DevolverDocumentoSolicitud</code></td>
+<td>Motivo ≥ 10 caracteres</td>
+</tr>
+<tr>
+<td>Reabrir</td>
+<td><code>POST Documento/ReabrirDocumentoSolicitud</code></td>
+<td>Solo Coordinación / Admin</td>
+</tr>
+</tbody></table>
+<p>Persistencia: <code>RevisionDocumentalDAO.RegistrarRevision</code> → tabla <code>aocr_tbrevision_documental</code>.</p>
+<h3>6.3 Textos exactos de la pantalla <code>Documento/Lista</code></h3>
+<p>Definidos en <code>Views/Documento/Lista.cshtml</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Modo</th>
+<th><code>ViewBag.ModoDocumentos</code></th>
+<th>Título tabla</th>
+<th>Badge capacidad</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Consulta</td>
+<td><code>ver</code></td>
+<td><strong>Archivos del expediente</strong></td>
+<td><strong>Solo lectura</strong></td>
+</tr>
+<tr>
+<td>Revisión</td>
+<td><code>revision</code></td>
+<td><strong>Bandeja de revisión documental</strong></td>
+<td><strong>Revisión activa</strong> (si <code>PuedeRevisarDocumentos=true</code>)</td>
+</tr>
+</tbody></table>
+<p><strong>Error frecuente validado:</strong> abrir <code>modo=ver</code> desde <code>Inspeccion/Detalle</code> (enlace consulta) muestra expediente <strong>sin</strong> botones Aceptar/Devolver — es correcto para consulta, incorrecto para decidir.</p>
+<h3>6.4 Acciones en bandeja <code>RevisionDocumental/Index</code></h3>
+<p>Según estado de cada fila (<code>RevisionDocumentalSolicitudRowViewModel</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Condición</th>
+<th>Botón</th>
+<th>Destino</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Documentos pendientes de decisión</td>
+<td><strong>Revisar documentación</strong></td>
+<td><code>Documento/Lista?modo=revision</code></td>
+</tr>
+<tr>
+<td>Todos aceptados, falta confirmación</td>
+<td><strong>Confirmar fase documental</strong></td>
+<td><code>Inspeccion/Detalle/{CodigoInspeccion}</code></td>
+</tr>
+<tr>
+<td>Cierre confirmado</td>
+<td><strong>Continuar en LV/EAE</strong></td>
+<td><code>Inspeccion/Detalle/{CodigoInspeccion}</code></td>
+</tr>
+</tbody></table>
+<p>Códigos de fila: <code>EN_REVISION_DOCUMENTAL</code>, <code>PENDIENTE_CONFIRMACION_INSPECTOR</code>, <code>LISTO_INSPECCION_CAMPO</code>.</p>
+<hr>
+<h2>7. Coordinación — procedimiento preciso</h2>
+<h3>7.1 Firma aceptación documental</h3>
+<ul>
+<li><strong>Ruta:</strong> <code>POST SolicitudAOCR/FirmarAceptacionDocumental/{id}</code></li>
+<li><strong>Autorización:</strong> <code>[AocrAuthorize(Modulo = &quot;CoordinacionJefatura&quot;, Accion = &quot;FirmarAceptacionDocumental&quot;)]</code></li>
+<li><strong>Servicio:</strong> <code>RevisionDocumentalService.PrepararFirmaAceptacionDocumental</code></li>
+<li><strong>Log:</strong> <code>[FirmarAceptacionDocumental]</code> en log de aplicación</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Tipo</th>
+<th>Estado destino exacto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 / 2</td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>Firmado Coordinador</code></td>
+</tr>
+</tbody></table>
+<h3>7.2 Asignar inspector</h3>
+<ol>
+<li><code>/Tecnico/Index</code> — datos: <code>CoordinacionBandejaService.ObtenerPendientesAsignacion()</code></li>
+<li><code>/Tecnico/AsignarInspector?solicitudId=12&amp;tipoInspector=OPS</code></li>
+<li><strong>POST</strong> <code>Tecnico/AsignarInspector</code> con:<ul>
+<li><code>inspectorPrincipal</code> (cédula/login del catálogo <code>UsuarioInternoRTBL.ListarInspectoresAsignables</code>)</li>
+<li><code>fechaInspeccion</code>, <code>horaInspeccion</code></li>
+<li>Filtros: <code>OPS</code> | <code>AIR</code> | <code>TODOS</code></li>
+</ul>
+</li>
+<li><strong>Autorización:</strong> <code>[AocrAuthorize(Modulo = &quot;Tecnico&quot;, Accion = &quot;AsignarInspector&quot;)]</code></li>
+<li><strong>Log éxito:</strong> <code>[GestionInspeccion]</code></li>
+<li><strong>Estado esperado solicitud #12:</strong> <code>En Inspeccion</code></li>
+</ol>
+<hr>
+<h2>8. Inspector — procedimiento preciso (solicitud #12)</h2>
+<h3>8.1 Revisión documental</h3>
+<ol>
+<li>Login usuario inspector id <strong>43</strong>.</li>
+<li>Menú <strong>Revisión documental</strong> → <code>/RevisionDocumental/Index</code>.</li>
+<li>Fila <code>DGAC-GOP-2026-AOCR012</code> → <strong>Revisar documentación</strong>.</li>
+<li>URL resultante:<pre><code>/Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental
+</code></pre>
+</li>
+<li>Verificar <strong>12 filas</strong> (aprox.) con:<ul>
+<li>Estado: badge gris <strong>PENDIENTE</strong></li>
+<li>Observación: vacía</li>
+<li>Revisado por: vacío</li>
+<li>Botones: <strong>Aceptar</strong> / <strong>Devolver</strong></li>
+</ul>
+</li>
+<li>Tras aceptar cada documento:<ul>
+<li><code>POST Documento/AceptarDocumentoSolicitud</code></li>
+<li>Revisor = nombre del inspector en sesión (no <code>GERMAN ALBERTO</code> / id 45)</li>
+</ul>
+</li>
+<li>Log: <code>[DOC_FLOW]</code>, <code>[DOC_SOLICITUD]</code></li>
+</ol>
+<h3>8.2 Confirmar cierre documental</h3>
+<ol>
+<li><code>/Inspeccion/Detalle/11</code></li>
+<li>Botón: <strong>Confirmar cierre documental</strong> (<code>Views/Inspeccion/Detalle.cshtml</code> línea ~3388)</li>
+<li><strong>POST</strong> <code>Inspeccion/ConfirmarRevisionDocumentalInspector/11</code></li>
+<li><strong>Autorización:</strong> <code>[AocrAuthorize(Modulo = &quot;Inspeccion&quot;, Accion = &quot;ConfirmarRevisionDocumentalInspector&quot;)]</code></li>
+<li>Confirmación registrada si:<ul>
+<li><code>inspeccion.estado_documental</code> ∈ <code>{ EN_REVISION, ACEPTADA, APROBADO }</code>, <strong>o</strong></li>
+<li><code>inspeccion.Comentarios</code> contiene <em>&quot;Inspector confirmó revisión documental&quot;</em></li>
+<li>(<code>RevisionDocumentalService.InspectorConfirmoCierreDocumental</code>)</li>
+</ul>
+</li>
+</ol>
+<p><strong>Mensaje UI si LV bloqueada:</strong> <em>&quot;Revise la documentación cargada y confirme el cierre documental antes de habilitar la LV/EAE y el informe técnico.&quot;</em></p>
+<h3>8.3 LV/EAE</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Acción HTTP</th>
+<th>Atributo AocrAuthorize</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Guardar borrador</td>
+<td><code>POST Inspeccion/GuardarListaVerificacionOperacionalEae</code></td>
+<td><code>GuardarListaVerificacionOperacionalEae</code></td>
+</tr>
+<tr>
+<td>Finalizar PDF</td>
+<td><code>POST Inspeccion/FinalizarListaVerificacionOperacionalEae/{id}</code></td>
+<td><code>FinalizarListaVerificacionOperacionalEae</code></td>
+</tr>
+<tr>
+<td>Firmar</td>
+<td><code>POST Inspeccion/FirmarListaVerificacionOperacionalEae</code></td>
+<td><code>FirmarListaVerificacionOperacionalEae</code></td>
+</tr>
+</tbody></table>
+<p>Precondición: <code>RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv</code> = fase documental aprobada <strong>+</strong> cierre confirmado.</p>
+<p><strong>Textos UI bloqueo:</strong> <em>&quot;BLOQUEADO POR LV/EAE&quot;</em>, <em>&quot;Debe finalizar y firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico.&quot;</em></p>
+<h3>8.4 Informe técnico</h3>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Acción HTTP</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Guardar</td>
+<td><code>POST Inspeccion/GuardarInformeTecnico</code></td>
+<td>Borrador</td>
+</tr>
+<tr>
+<td>Finalizar</td>
+<td><code>POST Inspeccion/FinalizarInformeTecnico/{id}</code></td>
+<td>PDF generado</td>
+</tr>
+<tr>
+<td>Firmar inspector</td>
+<td><code>POST Inspeccion/FirmarInformeInspector</code></td>
+<td><code>FIRMADO_INSPECTOR</code> + envío DIRDAC</td>
+</tr>
+</tbody></table>
+<p>Modal: <code>GET Inspeccion/ModalInformeTecnico</code> · PDF en <code>App_Data/Documentos/...</code></p>
+<hr>
+<h2>9. Financiero — procedimiento preciso</h2>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Ruta</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja</td>
+<td><code>Financiero/TodasOrdenes</code> o <code>Financiero/Index?estado=TODAS</code></td>
+<td>Badge = <code>FinancialPendingReviewOrders</code></td>
+</tr>
+<tr>
+<td>Detalle</td>
+<td><code>Financiero/DetalleOrden/{id}</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Aprobar</td>
+<td><code>Financiero/AprobarPago/{id}</code> o <code>AprobarPagoConFactura</code></td>
+<td>Correo vía <code>AocrEmailFlujoService</code> (idempotente por <code>event_key</code>)</td>
+</tr>
+<tr>
+<td>Rechazar</td>
+<td><code>Financiero/RechazarOrden/{id}?motivo=...</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p><strong>Validación contador:</strong> sidebar badge financiero = filas en bandeja con mismo filtro <code>FinancialOrderStateHelper</code>.</p>
+<hr>
+<h2>10. DIRDAC — procedimiento preciso</h2>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Ruta</th>
+<th>Efecto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja informes</td>
+<td><code>Inspeccion/PendientesDireccion</code></td>
+<td>Informes con <code>FIRMADO_INSPECTOR</code></td>
+</tr>
+<tr>
+<td>Aprobar informe</td>
+<td>Acción en bandeja (controlador <code>InspeccionController</code>)</td>
+<td>Solicitud → <code>AOCR En Elaboracion</code> / revisión según tipo</td>
+</tr>
+<tr>
+<td>Validar AOCR</td>
+<td><code>CoordinacionJefatura/ValidarAocr</code></td>
+<td>Revisión formal coordinación</td>
+</tr>
+<tr>
+<td>Firma DIRDAC</td>
+<td><code>Inspeccion/FirmarInformeDirdac</code> (informe) + flujo firma AOCR</td>
+<td><code>Enviado DCAV</code> → <code>Firmado DCAV</code> → <code>AOCR Emitido/Recibido</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>11. Documentos incluidos en conteo documental</h2>
+<p><code>SolicitudAocrInfraBL.DebeIncluirEnRevisionDocumental</code> excluye <strong>solo</strong> <code>SOLICITUD_INSPECCION_EXT</code>.</p>
+<p>Tipos canónicos reconocidos (entre otros):</p>
+<ul>
+<li><code>COMPROBANTE_PAGO</code></li>
+<li><code>CERTIFICADO_AERONAVEGABILIDAD</code></li>
+<li><code>MANUAL_OPERACIONES</code></li>
+<li><code>OPSPECS_ESPECIFICACIONES_OPERACIONALES</code></li>
+<li><code>COPIA_AOC_VALIDA</code></li>
+<li><code>CERTIFICADO_RUIDO_AERONAVES_EAE</code></li>
+<li><code>PERMISO_OPERACION_CNAC</code></li>
+<li><code>COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR</code></li>
+</ul>
+<p>Se toma la <strong>última versión</strong> por tipo (<code>Version</code>, <code>FechaCarga</code>, <code>CodigoDocumento</code>).</p>
+<hr>
+<h2>12. Modificación tipo 3 — ramas exactas</h2>
+<p>Detección: <code>AocrModificationWorkflowService.TieneNuevoAeropuertoDeclarado</code> (campo <code>AeropuertosEcuador</code> no vacío).</p>
+<table>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>Acción permitida</th>
+<th>Controlador</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Con aeropuertos nuevos</td>
+<td>Solo <code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>SolicitudAOCRController</code></td>
+</tr>
+<tr>
+<td>Sin aeropuertos</td>
+<td>Generar CL <strong>o</strong> derivar inspección</td>
+<td>Panel <code>Detalle.cshtml</code></td>
+</tr>
+<tr>
+<td>Tras <code>Requiere Inspeccion</code></td>
+<td>RT crea orden</td>
+<td><code>OrdenRecaudacion/Nueva</code></td>
+</tr>
+</tbody></table>
+<p>Bloqueos: <code>PrepararGeneracionCondicionesLimitaciones</code> rechaza si hay nuevo aeropuerto.</p>
+<hr>
+<h2>13. Errores — síntoma, causa en código, acción</h2>
+<table>
+<thead>
+<tr>
+<th>Síntoma en UI</th>
+<th>Causa en implementación</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Docs ACEPTADO + revisor coordinador sin actuar inspector</td>
+<td><code>modo=ver</code> o inferencia antigua desde <code>documento.ValidadoPor</code></td>
+<td>Usar <code>modo=revision</code>; republicar DLLs recientes</td>
+</tr>
+<tr>
+<td>Badge <strong>Solo lectura</strong></td>
+<td><code>ViewBag.ModoDocumentos = ver</code></td>
+<td>Entrar por <code>RevisionDocumental/Index</code></td>
+</tr>
+<tr>
+<td>Bandeja revisión vacía</td>
+<td>Sin asignación o <code>InspeccionDAO</code> sin filas para inspector 43</td>
+<td>Coordinación: <code>Tecnico/AsignarInspector</code></td>
+</tr>
+<tr>
+<td>LV candado</td>
+<td><code>InspectorConfirmoCierreDocumental</code> = false</td>
+<td>Confirmar cierre en <code>Inspeccion/Detalle/11</code></td>
+</tr>
+<tr>
+<td>HTTP 403 en LV/Informe</td>
+<td><code>ValidarAutorizacionFlujoInspeccion</code> — usuario ≠ inspector asignado</td>
+<td>Verificar <code>CodigoInspector</code> en inspección #11</td>
+</tr>
+<tr>
+<td>Asignación error 500</td>
+<td>Desalineación bandeja/recaudación (corregido en <code>SolicitudAOCRDAO</code>)</td>
+<td>Ver log <code>[AOCR][ASIGNACION_INSPECTOR]</code></td>
+</tr>
+</tbody></table>
+<p><strong>Marcadores log:</strong></p>
+<pre><code class="language-text">[DOC_FLOW] Accion=BANDEJA_INSPECTOR
+[DOC_SOLICITUD] solicitudId=12; modo=revision
+[FirmarAceptacionDocumental]
+[GestionInspeccion]
+[AUTH] Acceso bloqueado
+</code></pre>
+<hr>
+<h2>14. Checklist validación — solicitud #12</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Prueba exacta</th>
+<th>Evidencia</th>
+<th>☐</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>GEN_COORDINACION</code> → <code>Tecnico/AsignarInspector?solicitudId=12</code> sin error</td>
+<td>Log <code>[GestionInspeccion]</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Estado solicitud = <code>En Inspeccion</code></td>
+<td><code>SolicitudAOCR/Detalle/12</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Inspector 43 → <code>RevisionDocumental/Index</code> muestra #12</td>
+<td>≥1 fila</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>Documento/Lista?solicitudId=12&amp;modo=revision</code> — 12 docs <strong>PENDIENTE</strong></td>
+<td>Captura</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Columnas observación/revisor vacías antes de decidir</td>
+<td>Captura</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Aceptar 1 doc → revisor = inspector 43</td>
+<td>Fila actualizada</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Todos aceptados → botón <strong>Confirmar fase documental</strong> en bandeja</td>
+<td><code>RevisionDocumental/Index</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>ConfirmarRevisionDocumentalInspector/11</code> → LV sin candado</td>
+<td><code>Inspeccion/Detalle/11</code></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>9</td>
+<td>LV finalizada + firmada</td>
+<td>Badge <em>LV firmada</em></td>
+<td>☐</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Informe → <code>FirmarInformeInspector</code> → <code>FIRMADO_INSPECTOR</code></td>
+<td>Panel informe</td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>15. Glosario (términos del código)</h2>
+<table>
+<thead>
+<tr>
+<th>Término</th>
+<th>Definición en AOCR</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>COO-1</td>
+<td>Revisión pre-asignación; revisiones con revisor ≠ inspector asignado</td>
+</tr>
+<tr>
+<td><code>aocr_tbrevision_documental</code></td>
+<td>Tabla de decisiones por documento</td>
+</tr>
+<tr>
+<td><code>FlujoDocumentalCodigo</code></td>
+<td>Ej. <code>EN_REVISION_INSPECTOR</code>, <code>PENDIENTE_CONFIRMACION_INSPECTOR</code></td>
+</tr>
+<tr>
+<td><code>EsFaseInspectorDocumental</code></td>
+<td><code>ViewBag</code> en <code>Documento/Lista</code> cuando hay inspector asignado</td>
+</tr>
+<tr>
+<td>Post-asignación coordinador</td>
+<td><code>AocrPostPagoWorkflowService.EsFlujoPostAsignacionCoordinador</code> — no exige pago RT si ya asignó coordinación</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Última actualización: 2026-06-11 — alineado a código en <code>CapaPresentacion/Controllers/DocumentoController.cs</code>, <code>RevisionDocumentalController.cs</code>, <code>InspeccionController.cs</code>, <code>TecnicoController.cs</code>, <code>CapaNegocio/SolicitudAocrInfraBL.cs</code>.</em></p>
+
+    </article>
+    <div class="footer">Manual de usuario — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

@@ -8,6 +8,11 @@
 @using CapaPresentacion.Helpers
 @{
     Layout = null;
+
+    // Devuelve el texto plano de un valor que pudo quedar persistido con
+    // entidades HTML (&quot;, &#237;, etc.) por codificaciones repetidas.
+    Func<string, string> AocrTextoPlano = valor => FormularioEmisionTextHelper.NormalizarTextoPlano(valor);
+
     var sol = Model != null ? Model.Solicitud : null;
     var esModificacion = sol != null && sol.TipoSolicitud.HasValue && sol.TipoSolicitud.Value == 3;
     var codigoSolicitud = sol != null ? sol.CodigoSolicitud : 0;
@@ -45,11 +50,18 @@
             .Split(new[] { ',', ';', '|'}, StringSplitOptions.RemoveEmptyEntries)
             .Select(v => v.Trim().ToUpperInvariant()),
         StringComparer.OrdinalIgnoreCase);
-    var tipoOperacionNormalizado = ((sol != null ? sol.TipoOperacion : "") ?? "").ToUpperInvariant();
-    var marcaOpsRegulares = tipoOperacionNormalizado.Contains("REGULAR");
-    var marcaOpsNoRegulares = tipoOperacionNormalizado.Contains("NO REGULAR");
-    var marcaPasajeros = tipoOperacionNormalizado.Contains("PASAJEROS");
-    var marcaCarga = tipoOperacionNormalizado.Contains("CARGA");
+    // Se compara por token (separados por '|') para evitar que "Ops No Regulares"
+    // marque también "Operaciones Regulares" al recargar el formulario.
+    var tiposOperacionTokens = new HashSet<string>(
+        (((sol != null ? sol.TipoOperacion : "") ?? "")
+            .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    var marcaOpsRegulares = tiposOperacionTokens.Contains("OPS REGULARES");
+    var marcaOpsNoRegulares = tiposOperacionTokens.Contains("OPS NO REGULARES");
+    var marcaPasajeros = tiposOperacionTokens.Any(t => t.Contains("PASAJEROS"));
+    var marcaCarga = tiposOperacionTokens.Contains("CARGA");
+    var tipoSolicitudActual = sol != null && sol.TipoSolicitud.HasValue ? sol.TipoSolicitud.Value : 1;
     var modoSubsanacionObservada = Model != null && Model.EsModoSubsanacionObservada;
     var documentosPendientesInputIdsJson = JsonConvert.SerializeObject(Model != null ? (Model.DocumentosPendientesSubsanacionInputIds ?? new List<string>()) : new List<string>());
     var documentosPendientesEtiquetasTexto = string.Join(", ", Model != null ? (Model.DocumentosPendientesSubsanacionEtiquetas ?? new List<string>()) : new List<string>());
@@ -321,7 +333,13 @@
     }
 </style>
 
-<div class="container-fluid py-4 aocr-wizard">
+<div id="formularioEmisionAOCR" class="container-fluid py-4 aocr-wizard">
+    <div id="aocr-formulario-emision-config" class="d-none"
+         data-url-guardar-progreso="@Url.Action("GuardarProgreso", "SolicitudAOCR")"
+         data-url-guardar-flota="@Url.Action("GuardarFlota", "SolicitudAOCR")"
+         data-url-formulario-completo="@Url.Action("FormularioCompleto", "SolicitudAOCR")"
+         data-url-seleccionar-compania="@Url.Action("SeleccionarCompania", "Account")"
+         data-url-login="@Url.Action("Login", "Account")"></div>
     <div class="row">
         <div class="col-md-3 mb-4">
             <div class="card shadow-sm wizard-sidebar">
@@ -359,15 +377,16 @@
                                     <form id="formExplotador">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" id="codigoSolicitud" name="Solicitud.CodigoSolicitud" value="@codigoSolicitud" />
-                                        <input type="hidden" id="nombreOperador" value="@HttpUtility.HtmlEncode(sol != null ? sol.NombreOperador : "")" />
-                                        <input type="hidden" id="telefonoOperador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Telefono : "")" />
-                                        <input type="hidden" id="rucOperador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Ruc : "")" />
-                                        <input type="hidden" id="razonSocial" value="@HttpUtility.HtmlEncode(sol != null ? sol.RazonSocial : "")" />
-                                        <input type="hidden" id="tipoOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.TipoOperacion : "")" />
-                                        <input type="hidden" id="descripcionOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.DescripcionOperacion : "")" />
-                                        <input type="hidden" id="observacionesGenerales" value="@HttpUtility.HtmlEncode(sol != null ? sol.ObservacionesGenerales : "")" />
+                                        <input type="hidden" id="tipoSolicitudActual" name="Solicitud.TipoSolicitud" value="@tipoSolicitudActual" />
+                                        <input type="hidden" id="nombreOperador" value="@AocrTextoPlano(sol != null ? sol.NombreOperador : "")" />
+                                        <input type="hidden" id="telefonoOperador" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" />
+                                        <input type="hidden" id="rucOperador" value="@AocrTextoPlano(sol != null ? sol.Ruc : "")" />
+                                        <input type="hidden" id="razonSocial" value="@AocrTextoPlano(sol != null ? sol.RazonSocial : "")" />
+                                        <input type="hidden" id="tipoOperacion" value="@AocrTextoPlano(sol != null ? sol.TipoOperacion : "")" />
+                                        <input type="hidden" id="descripcionOperacion" value="@AocrTextoPlano(sol != null ? sol.DescripcionOperacion : "")" />
+                                        <input type="hidden" id="observacionesGenerales" value="@AocrTextoPlano(sol != null ? sol.ObservacionesGenerales : "")" />
                                         <input type="hidden" id="esSolicitudModificacion" value="@(esModificacion ? "1" : "0")" />
-                                        <input type="hidden" id="companiasSeleccionadasRaw" value="@HttpUtility.HtmlEncode(companiaSeleccionadaRaw)" />
+                                        <input type="hidden" id="companiasSeleccionadasRaw" value="@AocrTextoPlano(companiaSeleccionadaRaw)" />
 
                                         <div class="bg-light p-3 rounded mb-4 border">
                                             <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-user-shield"></i> Representante Técnico</h6>
@@ -375,11 +394,11 @@
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
                                                     <label for="nombreRepresentante">Nombre del Representante Técnico</label>
-                                                    <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante técnico" value="@HttpUtility.HtmlEncode(nombreRepresentanteTecnico)" >
+                                                    <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante técnico" value="@AocrTextoPlano(nombreRepresentanteTecnico)" >
                                                 </div>
                                                 <div class="form-group col-md-6">
                                                     <label for="rucRepresentante">Cédula / RUC</label>
-                                                    <input type="text" class="form-control" id="rucRepresentante" placeholder="Cédula o RUC del usuario" value="@HttpUtility.HtmlEncode(identificacionUsuario)" readonly>
+                                                    <input type="text" class="form-control" id="rucRepresentante" placeholder="Cédula o RUC del usuario" value="@AocrTextoPlano(identificacionUsuario)" readonly>
                                                 </div>
                                             </div>
 
@@ -389,18 +408,18 @@
                                                     <div class="input-group-prepend">
                                                         <span class="input-group-text"><i class="fas fa-home"></i></span>
                                                     </div>
-                                                    <input type="text" class="form-control" id="direccionEcuador" placeholder="Ingrese direccion en Ecuador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Direccion : "")" >
+                                                    <input type="text" class="form-control" id="direccionEcuador" placeholder="Ingrese direccion en Ecuador" value="@AocrTextoPlano(sol != null ? sol.Direccion : "")" >
                                                 </div>
                                             </div>
 
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
                                                     <label for="telefonoEcuador">Telefono en Ecuador</label>
-                                                    <input type="text" class="form-control" id="telefonoEcuador" placeholder="Ingrese telefono en Ecuador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
+                                                    <input type="text" class="form-control" id="telefonoEcuador" placeholder="Ingrese telefono en Ecuador" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
                                                 </div>
                                                 <div class="form-group col-md-6">
                                                     <label for="emailEcuador">Correo del Representante Técnico</label>
-                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@HttpUtility.HtmlEncode(correoRepresentanteTecnico)" >
+                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@AocrTextoPlano(correoRepresentanteTecnico)" >
                                                 </div>
                                             </div>
                                         </div>
@@ -414,7 +433,7 @@
                                                     <input type="text"
                                                            class="form-control"
                                                            id="companiaActivaVista"
-                                                           value="@HttpUtility.HtmlEncode(companiaActivaTexto)"
+                                                           value="@AocrTextoPlano(companiaActivaTexto)"
                                                            readonly />
                                                 </div>
 
@@ -423,12 +442,12 @@
                                                     <input type="text"
                                                            class="form-control"
                                                            id="companiaActivaCodigoVista"
-                                                           value="@HttpUtility.HtmlEncode(codigoOaciInicial)"
+                                                           value="@AocrTextoPlano(codigoOaciInicial)"
                                                            readonly />
                                                 </div>
                                                 <input type="hidden"
                                                        id="codigoOaci"
-                                                       value="@HttpUtility.HtmlEncode(codigoOaciInicial)" />
+                                                       value="@AocrTextoPlano(codigoOaciInicial)" />
                                             </div>
                                         </div>
 
@@ -436,12 +455,12 @@
                                             <h6 class="text-primary font-weight-bold mb-3">Base Principal de Operaciones</h6>
                                             <div class="form-group">
                                                 <label for="razonSocialCompania">Razon social de la compania *</label>
-                                                <input type="text" class="form-control" id="razonSocialCompania" placeholder="Ingrese razon social de la compania" value="@HttpUtility.HtmlEncode(sol != null ? sol.RazonSocial : "")" >
+                                                <input type="text" class="form-control" id="razonSocialCompania" placeholder="Ingrese razon social de la compania" value="@AocrTextoPlano(sol != null ? sol.RazonSocial : "")" >
                                             </div>
 
                                             <div class="form-group">
                                                 <label for="nombreCompania">Nombre comercial de la compania *</label>
-                                                <input type="text" class="form-control" id="nombreCompania" placeholder="Ingrese nombre comercial de la compania" value="@HttpUtility.HtmlEncode(sol != null ? (sol.NombreComercial ?? sol.NombreOperador) : companiaActivaTexto)" >
+                                                <input type="text" class="form-control" id="nombreCompania" placeholder="Ingrese nombre comercial de la compania" value="@AocrTextoPlano(sol != null ? (sol.NombreComercial ?? sol.NombreOperador) : companiaActivaTexto)" >
                                                 <small class="form-text text-muted mt-2">
                                                     Los datos de la compania no son correctos?
                                                     <a href="#" id="btnInformacionCompania" class="text-danger font-weight-bold ml-1"><i class="fas fa-exclamation-triangle"></i> Reportar aqui</a>
@@ -450,17 +469,17 @@
 
                                             <div class="form-group">
                                                 <label for="direccionCompania">Direccion de la Compania</label>
-                                                <input type="text" class="form-control" id="direccionCompania" placeholder="Ingrese direccion de la compania" value="@HttpUtility.HtmlEncode(sol != null ? sol.Direccion : "")" >
+                                                <input type="text" class="form-control" id="direccionCompania" placeholder="Ingrese direccion de la compania" value="@AocrTextoPlano(sol != null ? sol.Direccion : "")" >
                                             </div>
 
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
                                                     <label for="telefonoCompania">Telefono</label>
-                                                    <input type="text" class="form-control" id="telefonoCompania" placeholder="Ingrese telefono" value="@HttpUtility.HtmlEncode(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
+                                                    <input type="text" class="form-control" id="telefonoCompania" placeholder="Ingrese telefono" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
                                                 </div>
                                                 <div class="form-group col-md-6">
                                                     <label for="correoCompania">Correo Electronico</label>
-                                                    <input type="email" class="form-control" id="correoCompania" placeholder="Ingrese correo" value="@HttpUtility.HtmlEncode(sol != null ? sol.Email : "")" >
+                                                    <input type="email" class="form-control" id="correoCompania" placeholder="Ingrese correo" value="@AocrTextoPlano(sol != null ? sol.Email : "")" >
                                                 </div>
                                             </div>
                                         </div>
@@ -468,7 +487,7 @@
                                     </form>
                                 </div>
                                 <div class="text-right mt-3">
-                                    <button type="button" id="btnGuardarExplotador" class="btn btn-primary shadow" onclick="guardarPestana('explotador')">
+                                    <button type="button" id="btnGuardarExplotador" class="btn btn-primary shadow">
                                         <i class="fas fa-save"></i> Guardar datos del representante
                                     </button>
                                 </div>
@@ -579,7 +598,7 @@
                                     </div>
                                     <div class="form-group mb-0 mt-2" id="aprobacionOtrosContenedor" style="display:none;">
                                         <label for="aprobacionOtrosDetalle">Detalle otros</label>
-                                        <input type="text" class="form-control" id="aprobacionOtrosDetalle" maxlength="250" value="@HttpUtility.HtmlEncode(sol != null ? sol.AprobacionesEspecialesOtros : "")" placeholder="Detalle de aprobaciones especiales adicionales" />
+                                        <input type="text" class="form-control" id="aprobacionOtrosDetalle" maxlength="250" value="@AocrTextoPlano(sol != null ? sol.AprobacionesEspecialesOtros : "")" placeholder="Detalle de aprobaciones especiales adicionales" />
                                     </div>
                                 </div>
 
@@ -611,7 +630,7 @@
                                 <label for="numeroAOC" class="col-sm-4 col-form-label font-weight-bold">Número de AOC:</label>
                                 <div class="col-sm-8">
                                     <input type="text" class="form-control" id="numeroAOC" maxlength="100"
-                                           value="@HttpUtility.HtmlEncode(sol != null ? sol.NumeroAOC : "")"
+                                           value="@AocrTextoPlano(sol != null ? sol.NumeroAOC : "")"
                                            placeholder="Ingrese el número de AOC de la compañía">
                                     <small class="form-text text-muted">Número del Certificate of Air Operator (AOC) vigente.</small>
                                 </div>
@@ -650,7 +669,7 @@
                             <div class="form-group">
                                 <label for="resumenOperaciones" class="font-weight-bold">Resumen descriptivo de operaciones en los aeropuertos del Ecuador (aprobaciones especiales y procedimientos en tierra)</label>
                                 <textarea class="form-control" id="resumenOperaciones" rows="5" maxlength="2000"
-                                    placeholder="Indique: 1) Qué compañías de servicios de escala brindarán asistencia en tierra a sus aeronaves en los aeropuertos de Ecuador. 2) Si en su operación hacia y desde Ecuador operarán con aprobaciones especiales (RVSM, RNAV, ETOPS, etc.).">@HttpUtility.HtmlEncode(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
+                                    placeholder="Indique: 1) Qué compañías de servicios de escala brindarán asistencia en tierra a sus aeronaves en los aeropuertos de Ecuador. 2) Si en su operación hacia y desde Ecuador operarán con aprobaciones especiales (RVSM, RNAV, ETOPS, etc.).">@AocrTextoPlano(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
                                 <div class="alert alert-light border-left border-info mt-2 py-2 px-3" style="font-size:0.85em;">
                                     <i class="fas fa-info-circle text-info mr-1"></i>
                                     <strong>Guía:</strong> Incluya: las compañías de servicios de escala (handling) que brindarán asistencia en tierra a sus aeronaves en cada aeropuerto del Ecuador; y si aplican aprobaciones especiales como <em>RVSM, RNAV, ETOPS, MNPS, CAT II/III</em>, etc.
@@ -685,14 +704,14 @@
                                             <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
                                         </div>
                                         <div class="mt-2" id="aeropuertoOtrosContenedor" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@HttpUtility.HtmlEncode(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
+                                            <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
                                         </div>
                                     </div>
                                 </div>
 
                             </div>
                             <div class="text-right mt-3">
-                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow" onclick="guardarPestana('operaciones')">
+                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow">
                                     <i class="fas fa-save"></i> Guardar Operaciones
                                 </button>
                             </div>
@@ -1437,10 +1456,6 @@
             lector.readAsArrayBuffer(archivo);
         });
 
-        $('#btnGuardarListadoAeronaves').off('click').on('click', function () {
-            guardarFlota();
-        });
-
         $('#aprobacionOTROS').on('change', function () {
             $('#aprobacionOtrosContenedor').toggle(this.checked);
         });
@@ -1984,157 +1999,351 @@
         $('#codigoOaci').on('input', function(){
             this.value = (this.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
         });
+    if (window.AOCR && AOCR.resetAocrUiGuardado) {
+      AOCR.resetAocrUiGuardado('form-init');
+    }
   });
 </script>
 
 <script>
   // ============================================================
-  // Guardado por pestaña — llama a GuardarProgreso (sin docs)
-  // ============================================================
-  function guardarPestana(seccion) {
-    var datosMapeados = mapearCamposVM();
-    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
-
-    var camposBase = {
-      CodigoSolicitud: codigoSolicitud,
-      NombreOperador:  datosMapeados.NombreOperador  || '',
-      RazonSocial:     datosMapeados.RazonSocial     || '',
-      NombreComercial: datosMapeados.NombreComercial || '',
-      CodigoOaci:      datosMapeados.CodigoOaci      || '',
-      CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
-      Estado: 'BORRADOR',
-      TipoSolicitud: 1
-    };
-
-    if (seccion === 'explotador') {
-      camposBase.RepresentanteLegal        = datosMapeados.RepresentanteLegal        || '';
-      camposBase.CedulaRepresentante       = datosMapeados.CedulaRepresentante       || '';
-      camposBase.CorreoRepresentanteTecnico= datosMapeados.CorreoRepresentanteTecnico|| '';
-      camposBase.Direccion                 = datosMapeados.Direccion                 || '';
-      camposBase.Telefono                  = datosMapeados.Telefono                  || '';
-      camposBase.Email                     = datosMapeados.Email                     || '';
-      camposBase.Ruc                       = datosMapeados.Ruc                       || '';
-    } else if (seccion === 'operaciones') {
-      camposBase.TipoOperacion             = datosMapeados.TipoOperacion             || '';
-      camposBase.DescripcionOperacion      = datosMapeados.DescripcionOperacion      || '';
-      camposBase.ResumenOperacionesEae     = datosMapeados.ResumenOperacionesEae     || '';
-      camposBase.NumeroAOC                 = datosMapeados.NumeroAOC                 || '';
-      camposBase.AprobacionesEspeciales    = datosMapeados.AprobacionesEspeciales    || '';
-      camposBase.AprobacionesEspecialesOtros = datosMapeados.AprobacionesEspecialesOtros || '';
-      camposBase.AeropuertosEcuador        = datosMapeados.AeropuertosEcuador        || '';
-      camposBase.AeropuertosEcuadorOtros   = datosMapeados.AeropuertosEcuadorOtros   || '';
+  function extraerMensajeRespuestaAocr(respuesta, xhr) {
+    if (respuesta) {
+      return respuesta.message || respuesta.mensaje || null;
     }
+    if (xhr && xhr.responseJSON) {
+      return xhr.responseJSON.message || xhr.responseJSON.mensaje || null;
+    }
+    if (xhr && xhr.responseText) {
+      try {
+        var parsed = JSON.parse(xhr.responseText);
+        return parsed.message || parsed.mensaje || null;
+      } catch (e) { }
+    }
+    return null;
+  }
 
-    var token = $('input[name="__RequestVerificationToken"]').val() || '';
-    var btnId = seccion === 'explotador' ? '#btnGuardarExplotador' : '#btnGuardarOperaciones';
-    $(btnId).prop('disabled', true);
-    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: function(){ Swal.showLoading(); } });
+  // ============================================================
+  // Loader / bloqueo — delega en AOCR.showAocrLoader (sin Swal modal)
+  // ============================================================
+  function mostrarOverlayGuardadoAocr(titulo) {
+    if (window.AOCR && AOCR.showAocrLoader) {
+      AOCR.lockAocrForm('#formularioEmisionAOCR');
+      AOCR.showAocrLoader(titulo || 'Guardando...');
+    }
+  }
 
-    $.ajax({
-      url: '@Url.Action("GuardarProgreso", "SolicitudAOCR")',
-      type: 'POST',
-      contentType: 'application/json; charset=utf-8',
-      headers: { 'RequestVerificationToken': token },
-      data: JSON.stringify({ seccion: seccion, solicitud: camposBase }),
-      success: function(r) {
-        Swal.close();
-        if (r && r.success) {
-          if (r.id && r.id > 0) {
-            $('#codigoSolicitud').val(r.id);
-          }
-          Swal.fire({ icon: 'success', title: 'Guardado', text: r.mensaje || 'Sección guardada.', timer: 2000, showConfirmButton: false });
-        } else {
-          Swal.fire({ icon: 'error', title: 'Error', text: (r && r.mensaje) ? r.mensaje : 'No se pudo guardar.' });
-        }
-      },
-      error: function(xhr) {
-        Swal.close();
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión (' + xhr.status + ').' });
-      },
-      complete: function() {
-        $(btnId).prop('disabled', false);
+  function cerrarOverlayGuardadoAocr(origen) {
+    if (window.AOCR && AOCR.resetAocrUiGuardado) {
+      AOCR.resetAocrUiGuardado(origen || 'guardado');
+    }
+  }
+
+  function mostrarNotificacionGuardadoAocr(tipo, titulo, texto) {
+    if (typeof Swal === 'undefined') {
+      return;
+    }
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: tipo || 'success',
+      title: titulo || 'Guardado',
+      text: texto || '',
+      showConfirmButton: false,
+      timer: 2500,
+      timerProgressBar: true,
+      didOpen: function (toast) {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
       }
     });
+  }
+
+  function finalizarGuardadoPestanaAocr(origen, exito, mensaje, snapshot, seccion) {
+    if (exito) {
+      if (snapshot) {
+        try {
+          aplicarDatosPersistidosAocr(snapshot, seccion);
+        } catch (e) {
+          console.warn('[AOCR_GUARDAR][pestana] No se pudo refrescar la UI con datos persistidos:', e);
+        }
+      }
+      mostrarNotificacionGuardadoAocr('success', 'Guardado', mensaje || 'Sección guardada correctamente.');
+    } else {
+      mostrarNotificacionGuardadoAocr('error', 'Error', mensaje || 'No se pudo guardar la información.');
+    }
+  }
+
+  function decodificarTextoPlanoAocr(texto) {
+    if (!texto) { return ''; }
+    var actual = String(texto);
+    var textarea = document.createElement('textarea');
+    for (var i = 0; i < 6; i++) {
+      textarea.innerHTML = actual;
+      var decodificado = textarea.value;
+      if (decodificado === actual) { break; }
+      actual = decodificado;
+    }
+    return actual;
+  }
+
+  function aplicarTipoOperacionPersistido(tipoOperacion) {
+    var tokens = (tipoOperacion || '').split('|').map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('#opsRegulares').prop('checked', tokens.indexOf('OPS REGULARES') !== -1);
+    $('#opsNoRegulares').prop('checked', tokens.indexOf('OPS NO REGULARES') !== -1);
+    $('#pasajeros').prop('checked', tokens.some(function (t) { return t.indexOf('PASAJEROS') !== -1; }));
+    $('#carga').prop('checked', tokens.indexOf('CARGA') !== -1);
+    var tipos = [];
+    if ($('#opsRegulares').is(':checked')) { tipos.push('Ops Regulares'); }
+    if ($('#opsNoRegulares').is(':checked')) { tipos.push('Ops No Regulares'); }
+    if ($('#pasajeros').is(':checked')) { tipos.push('Pasajeros/Carga/Correo'); }
+    if ($('#carga').is(':checked')) { tipos.push('Carga'); }
+    $('#tipoOperacion').val(tipos.join(' | '));
+  }
+
+  function aplicarAprobacionesPersistidas(valorCsv) {
+    var tokens = (valorCsv || '').split(/[,;|]/).map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('.aprobacion-especial').each(function () {
+      var val = (($(this).val() || '').trim().toUpperCase());
+      $(this).prop('checked', tokens.indexOf(val) !== -1);
+    });
+    if ($('#aprobacionOTROS').is(':checked')) {
+      $('#aprobacionOtrosContenedor').show();
+    } else {
+      $('#aprobacionOtrosContenedor').hide();
+    }
+  }
+
+  function aplicarAeropuertosPersistidos(valorCsv, detalleOtros) {
+    var tokens = (valorCsv || '').split(/[,;|]/).map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('.aeropuerto-ecuador').each(function () {
+      var val = (($(this).val() || '').trim().toUpperCase());
+      $(this).prop('checked', tokens.indexOf(val) !== -1);
+    });
+    if ($('#aeropuertoOtros').is(':checked')) {
+      $('#aeropuertoOtrosContenedor').show();
+      $('#aeropuertoOtrosDetalle').val(decodificarTextoPlanoAocr(detalleOtros || ''));
+    } else {
+      $('#aeropuertoOtrosContenedor').hide();
+    }
+  }
+
+  function aplicarDatosPersistidosAocr(solicitud, seccion) {
+    if (!solicitud) { return; }
+    var sec = (seccion || '').toLowerCase();
+    console.log('[AOCR_GUARDAR] aplicando datos persistidos en formulario. Seccion=' + sec, solicitud);
+
+    if (sec === 'explotador') {
+      if (solicitud.RepresentanteLegal != null) { $('#nombreRepresentante').val(decodificarTextoPlanoAocr(solicitud.RepresentanteLegal)); }
+      if (solicitud.CedulaRepresentante != null) { $('#rucRepresentante').val(decodificarTextoPlanoAocr(solicitud.CedulaRepresentante)); }
+      if (solicitud.CorreoRepresentanteTecnico != null) { $('#emailEcuador').val(decodificarTextoPlanoAocr(solicitud.CorreoRepresentanteTecnico)); }
+      if (solicitud.Direccion != null) { $('#direccionEcuador').val(decodificarTextoPlanoAocr(solicitud.Direccion)); }
+      if (solicitud.Telefono != null) { $('#telefonoEcuador').val(decodificarTextoPlanoAocr(solicitud.Telefono)); }
+    }
+
+    if (sec === 'operaciones') {
+      if (solicitud.NumeroAOC != null) { $('#numeroAOC').val(decodificarTextoPlanoAocr(solicitud.NumeroAOC)); }
+      if (solicitud.TipoOperacion != null) { aplicarTipoOperacionPersistido(solicitud.TipoOperacion); }
+      var resumen = decodificarTextoPlanoAocr(solicitud.ResumenOperacionesEae || solicitud.DescripcionOperacion || '');
+      $('#resumenOperaciones').val(resumen);
+      $('#descripcionOperacion').val(resumen);
+      if (solicitud.AeropuertosEcuador != null) {
+        aplicarAeropuertosPersistidos(solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros);
+      }
+    }
+  }
+
+  function asegurarUiDesbloqueadaAocr(origen) {
+    cerrarOverlayGuardadoAocr(origen);
+  }
+
+  // Detecta cuando el backend devolvió HTML (login, selección de compañía,
+  // página de error) en lugar de JSON.
+  function respuestaPareceHtmlAocr(xhr) {
+    var texto = (xhr && xhr.responseText ? xhr.responseText : '').trim().toLowerCase();
+    return texto.indexOf('<!doctype') === 0 || texto.indexOf('<html') === 0;
+  }
+
+  function extraerPayloadJsonAocr(xhr) {
+    if (xhr && xhr.responseJSON && typeof xhr.responseJSON === 'object') { return xhr.responseJSON; }
+    if (xhr && xhr.responseText) {
+      try { return JSON.parse(xhr.responseText); } catch (e) { }
+    }
+    return null;
+  }
+
+  // Maneja de forma uniforme las respuestas de sesión expirada / compañía
+  // activa perdida / respuesta HTML inesperada. Devuelve true si manejó el caso.
+  function manejarSesionOCompaniaAocr(xhr, origen) {
+    var payload = extraerPayloadJsonAocr(xhr);
+
+    if (payload && payload.requiresCompanySelection) {
+      var urlCompania = payload.redirectUrl || '@Url.Action("SeleccionarCompania", "Account")';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Compañía activa requerida',
+        text: payload.message || 'Debe seleccionar una compañía activa antes de continuar. Será redirigido para seleccionarla.',
+        confirmButtonText: 'Seleccionar compañía',
+        allowOutsideClick: false,
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function () { window.location.href = urlCompania; });
+      return true;
+    }
+
+    if ((payload && payload.requiresLogin) || (xhr && xhr.status === 401)) {
+      var urlLogin = (payload && payload.redirectUrl) || '@Url.Action("Login", "Account")';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sesión expirada',
+        text: (payload && payload.message) || 'Su sesión expiró. Debe iniciar sesión nuevamente.',
+        confirmButtonText: 'Ir a iniciar sesión',
+        allowOutsideClick: false,
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function () { window.location.href = urlLogin; });
+      return true;
+    }
+
+    if (respuestaPareceHtmlAocr(xhr)) {
+      console.error('[AOCR_GUARDAR][' + origen + '] El servidor devolvió HTML en lugar de JSON. Primeros 300 caracteres:',
+        (xhr.responseText || '').substring(0, 300));
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sesión o compañía no disponible',
+        text: 'El servidor respondió con una redirección (sesión o compañía activa perdida). Recargue la página para continuar.',
+        confirmButtonText: 'Recargar página',
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function (resultado) {
+        if (resultado && resultado.isConfirmed) { window.location.reload(); }
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  // Mantiene la URL del navegador apuntando a la solicitud realmente guardada,
+  // para que al recargar (F5) el GET cargue los mismos datos persistidos.
+  function sincronizarUrlConSolicitud(solicitudId) {
+    if (!solicitudId || solicitudId <= 0 || !window.history || !window.history.replaceState) {
+      return;
+    }
+    try {
+      var tipoSolicitud = parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1;
+      var nuevaUrl = '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")' +
+        '?tipoSolicitud=' + tipoSolicitud + '&oid=' + solicitudId;
+      if (window.location.pathname.toLowerCase().indexOf('formularioemisionaocr') !== -1) {
+        window.history.replaceState(null, '', nuevaUrl);
+      }
+    } catch (e) { /* no bloquear el flujo de guardado por errores de history */ }
+  }
+
+  // Payloads para AocrFormularioEmision.js
+  function buildGuardarProgresoPayload(seccion) {
+    var datosMapeados = mapearCamposVM();
+    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+    var camposBase = {
+      CodigoSolicitud: codigoSolicitud,
+      NombreOperador: datosMapeados.NombreOperador || '',
+      RazonSocial: datosMapeados.RazonSocial || '',
+      NombreComercial: datosMapeados.NombreComercial || '',
+      CodigoOaci: datosMapeados.CodigoOaci || '',
+      CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
+      Estado: 'BORRADOR',
+      TipoSolicitud: parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1
+    };
+    if (seccion === 'explotador') {
+      camposBase.RepresentanteLegal = datosMapeados.RepresentanteLegal || '';
+      camposBase.CedulaRepresentante = datosMapeados.CedulaRepresentante || '';
+      camposBase.CorreoRepresentanteTecnico = datosMapeados.CorreoRepresentanteTecnico || '';
+      camposBase.Direccion = datosMapeados.Direccion || '';
+      camposBase.Telefono = datosMapeados.Telefono || '';
+      camposBase.Email = datosMapeados.Email || '';
+      camposBase.Ruc = datosMapeados.Ruc || '';
+    } else if (seccion === 'operaciones') {
+      var resumenOperaciones = datosMapeados.ResumenOperacionesEae || datosMapeados.DescripcionOperacion || '';
+      camposBase.TipoOperacion = datosMapeados.TipoOperacion || '';
+      camposBase.DescripcionOperacion = resumenOperaciones;
+      camposBase.ResumenOperacionesEae = resumenOperaciones;
+      camposBase.NumeroAOC = datosMapeados.NumeroAOC || '';
+      camposBase.AeropuertosEcuador = datosMapeados.AeropuertosEcuador || '';
+      camposBase.AeropuertosEcuadorOtros = datosMapeados.AeropuertosEcuadorOtros || '';
+    }
+    return { seccion: seccion, solicitud: camposBase };
+  }
+
+  function buildGuardarFlotaPayload() {
+    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+    var aeronaves = obtenerAeronavesDesdeTabla();
+    if (codigoSolicitud <= 0) {
+      return { error: 'Primero debe guardar la solicitud para obtener un código válido.' };
+    }
+    if (aeronaves.length === 0) {
+      return { error: 'Debe ingresar al menos una aeronave válida antes de guardar.' };
+    }
+    return { payload: { CodigoSolicitud: codigoSolicitud, Aeronaves: aeronaves } };
+  }
+
+  function refrescarFlotaEnTabla(aeronaves) {
+    var $tbody = $('#tablaAeronaves tbody');
+    $tbody.empty();
+    if (!aeronaves || !aeronaves.length) {
+      if (typeof actualizarContador === 'function') { actualizarContador(); }
+      if (typeof updateChecklist === 'function') { updateChecklist(); }
+      return;
+    }
+    aeronaves.forEach(function (a) {
+      var marca = (a.Marca || a.marca || '').trim();
+      var modelo = (a.Modelo || a.modelo || '').trim();
+      var serie = (a.Serie || a.serie || '').trim();
+      var matricula = (a.Matricula || a.matricula || '').trim();
+      var configuracion = (a.Configuracion || a.configuracion || '').trim();
+      var etapaRuido = (a.EtapaRuido || a.etapaRuido || '').trim();
+      if (!matricula) { return; }
+      var $tr = $('<tr>');
+      $tr.append($('<td>').text(marca));
+      $tr.append($('<td>').text(modelo));
+      $tr.append($('<td>').text(serie));
+      $tr.append($('<td>').text(matricula));
+      $tr.append($('<td>').text(configuracion));
+      $tr.append($('<td>').text(etapaRuido));
+      var $tdAcc = $('<td>').addClass('text-center');
+      $tdAcc.append($('<button>').attr('type', 'button').addClass('btn btn-outline-danger btn-sm btnEliminarAeronave')
+        .append($('<i>').addClass('fas fa-trash-alt')));
+      $tr.append($tdAcc);
+      $tbody.append($tr);
+    });
+    if (typeof actualizarContador === 'function') { actualizarContador(); }
+    if (typeof updateChecklist === 'function') { updateChecklist(); }
+  }
+
+  function guardarPestana(seccion) {
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarProgreso(seccion);
+    }
   }
 
   function guardarFlota() {
-    const codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
-    const aeronaves = obtenerAeronavesDesdeTabla();
-
-    if (codigoSolicitud <= 0) {
-      Swal.fire({
-        title: 'Guardar Flota',
-        text: 'Primero debe guardar la solicitud para obtener un codigo valido.',
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
-      return;
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarFlota();
     }
-
-    if (aeronaves.length === 0) {
-      Swal.fire({
-        title: 'Guardar Flota',
-        text: 'Debe ingresar al menos una aeronave valida antes de guardar.',
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
-      return;
-    }
-
-    const token = $('input[name="__RequestVerificationToken"]').val();
-    const payload = {
-      CodigoSolicitud: codigoSolicitud,
-      Aeronaves: aeronaves
-    };
-
-    $('#btnGuardarListadoAeronaves').prop('disabled', true);
-    Swal.fire({ title: 'Guardando flota...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
-
-    $.ajax({
-      url: '@Url.Action("GuardarFlota", "SolicitudAOCR")',
-      type: 'POST',
-      data: JSON.stringify(payload),
-      contentType: 'application/json; charset=utf-8',
-      dataType: 'json',
-      timeout: 30000,
-      beforeSend: function (xhr) {
-        if (token) {
-          xhr.setRequestHeader('RequestVerificationToken', token);
-        }
-      }
-    }).done(function (response) {
-      if (response && response.success) {
-        Swal.fire({
-          title: 'Flota guardada',
-          text: response.message || 'La flota se guardo correctamente.',
-          icon: 'success',
-          confirmButtonText: 'OK'
-        });
-      } else {
-        Swal.fire({
-          title: 'No se pudo guardar la flota',
-          text: (response && response.message) ? response.message : 'Error no controlado.',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
-    }).fail(function (xhr, status, error) {
-      const mensaje = status === 'timeout'
-        ? 'La solicitud tardo demasiado tiempo. Intente nuevamente.'
-        : ('Error al guardar flota: ' + (error || xhr.statusText || 'desconocido'));
-      Swal.fire({
-        title: 'Error',
-        text: mensaje,
-        icon: 'error',
-        confirmButtonText: 'OK'
-      });
-    }).always(function () {
-      $('#btnGuardarListadoAeronaves').prop('disabled', false);
-      Swal.close();
-    });
   }
 
   function guardarFormulario(){
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarSolicitud();
+    }
+    guardarFormularioCore();
+  }
+
+  function guardarFormularioCore(moduloFe){
     var aeronaves = obtenerAeronavesDesdeTabla();
 
         if (!esTelefonoNumericoValido($('#telefonoEcuador').val() || $('#telefonoCompania').val())) {
@@ -2204,7 +2413,7 @@
         CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
         ObservacionesGenerales: datosMapeados.ObservacionesGenerales || '',
         Estado: 'BORRADOR',
-        TipoSolicitud: 1
+        TipoSolicitud: parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1
       },
       Banco: $('#banco').val() || '',
       NumeroComprobante: $('#numeroComprobante').val() || '',
@@ -2287,9 +2496,17 @@
       }
     });
 
-    // Mostrar loading y deshabilitar boton
-    $('#btnGuardarListadoAeronaves').prop('disabled', true);
-    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    if (window._aocrGuardadoFormularioEnCurso) {
+      console.log('[AOCR_GUARDAR][formulario] Guardado ya en curso; se ignora el doble click.');
+      return;
+    }
+    window._aocrGuardadoFormularioEnCurso = true;
+    console.log('[AOCR_GUARDAR][formulario] Inicio guardado completo de la solicitud.');
+    if (moduloFe && moduloFe.showLoader) {
+      moduloFe.showLoader('Guardando solicitud...');
+    } else {
+      mostrarOverlayGuardadoAocr('Guardando...');
+    }
 
     $.ajax({
       url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
@@ -2299,43 +2516,65 @@
       contentType: false,
       dataType: 'json',
       timeout: 30000,
+      aocrSkipAuthRedirect: true,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
       beforeSend: function () {
           $('#btnGuardarListadoAeronaves').prop('disabled', true);
       },
       success: function (r, textStatus, xhr) {
-        console.log('=== RESPUESTA EXITOSA ===');
-        console.log('Status:', xhr.status);
-        console.log('Content-Type:', xhr.getResponseHeader('Content-Type'));
-        console.log('Response Headers:', xhr.getAllResponseHeaders());
-        console.log('Raw Response:', xhr.responseText);
-        console.log('Parsed Response:', r);
+        console.log('[AOCR_GUARDAR][formulario] Respuesta backend recibida. Status:', xhr.status, 'Payload:', r);
 
-        if (typeof r === 'object' && r !== null) {
-          if (r.success === true) {
-            Swal.fire({
-              title: 'Exito',
-              text: r.mensaje || 'Solicitud guardada correctamente',
-              icon: 'success',
-              confirmButtonText: 'OK'
-            }).then(() => {
-              if (r.id && r.id > 0) {
-                window.location.href = '@Url.Action("Detalle", "SolicitudAOCR")/' + r.id;
-              } else {
-                window.location.href = '@Url.Action("MisSolicitudes", "SolicitudAOCR")';
-              }
-            });
+        try {
+          if (typeof r === 'object' && r !== null) {
+            if (r.success === true) {
+              console.log('[AOCR_GUARDAR][formulario] success ejecutado correctamente.');
+              Swal.fire({
+                title: 'Exito',
+                text: r.mensaje || 'Solicitud guardada correctamente',
+                icon: 'success',
+                confirmButtonText: 'OK'
+              }).then(() => {
+                if (r.id && r.id > 0) {
+                  window.location.href = '@Url.Action("Detalle", "SolicitudAOCR")/' + r.id;
+                } else {
+                  window.location.href = '@Url.Action("MisSolicitudes", "SolicitudAOCR")';
+                }
+              });
+            } else if (r.requiresCompanySelection || r.requiresLogin) {
+              manejarSesionOCompaniaAocr({ responseJSON: r, status: xhr ? xhr.status : 0 }, 'formulario');
+            } else {
+              console.log('[AOCR_GUARDAR][formulario] Success es false:', r.mensaje);
+              Swal.fire({
+                title: 'Error',
+                text: r.mensaje || 'Error al guardar la solicitud',
+                icon: 'error',
+                didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+              });
+            }
           } else {
-            console.log('Success es false:', r.mensaje);
-            Swal.fire({ title: 'Error', text: r.mensaje || 'Error al guardar la solicitud', icon: 'error' });
+            console.error('[AOCR_GUARDAR][formulario] Respuesta no es JSON valido:', typeof r, r);
+            Swal.fire({
+              title: 'Error',
+              text: 'El servidor respondio con un formato invalido.',
+              icon: 'error',
+              didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+            });
           }
-        } else {
-          console.error('Respuesta no es JSON valido:', typeof r, r);
-          Swal.fire('Error', 'El servidor respondio con un formato invalido.', 'error');
+        } catch (e) {
+          console.error('[AOCR_GUARDAR][formulario] Excepción posterior al guardado:', e);
+          asegurarUiDesbloqueadaAocr('formulario');
+          Swal.fire({
+            icon: 'info',
+            title: 'Guardado',
+            text: 'La información se guardó, pero ocurrió un error al actualizar la pantalla. Puede continuar trabajando.',
+            didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+          });
         }
       },
       error: function (xhr, status, error) {
-        console.error('Error AJAX:', { status: xhr.status, statusText: xhr.statusText, error: error });
-        console.error('Respuesta del servidor:', xhr.responseText);
+        console.error('[AOCR_GUARDAR][formulario] error ejecutado:', { status: xhr.status, statusText: xhr.statusText, error: error });
+
+        if (manejarSesionOCompaniaAocr(xhr, 'formulario')) { return; }
 
         let payload = null;
         if (xhr && xhr.responseJSON && typeof xhr.responseJSON === 'object') {
@@ -2384,15 +2623,43 @@
           console.error('SQLSTATE backend:', payload.sqlState);
         }
 
-        Swal.fire('Error', mensajeError, 'error');
+        Swal.fire({
+          title: 'Error',
+          text: mensajeError,
+          icon: 'error',
+          didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+        });
       },
       complete: function () {
-        $('#btnGuardarListadoAeronaves').prop('disabled', false);
-        Swal.close();
+        window._aocrGuardadoFormularioEnCurso = false;
+        if (moduloFe && moduloFe.hideLoader) {
+          moduloFe.hideLoader('formulario-complete');
+        } else if (window.AOCR && AOCR.resetAocrUiGuardado) {
+          AOCR.resetAocrUiGuardado('formulario-complete');
+        }
       }
     });
   }
+
+  window.AocrFormularioEmisionHooks = {
+    buildGuardarProgresoPayload: function (seccion) {
+      return { payload: buildGuardarProgresoPayload(seccion) };
+    },
+    buildGuardarFlotaPayload: buildGuardarFlotaPayload,
+    setCodigoSolicitud: function (id) { $('#codigoSolicitud').val(id); },
+    sincronizarUrl: sincronizarUrlConSolicitud,
+    aplicarDatosPersistidos: aplicarDatosPersistidosAocr,
+    refrescarFlotaEnTabla: refrescarFlotaEnTabla,
+    actualizarResumenFlota: function () {
+      if (typeof actualizarContador === 'function') { actualizarContador(); }
+      if (typeof updateChecklist === 'function') { updateChecklist(); }
+    },
+    ejecutarGuardarSolicitudCompleta: function (mod) {
+      guardarFormularioCore(mod);
+    }
+  };
 </script>
+<script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-formulario-emision.js")"></script>
 
 
 

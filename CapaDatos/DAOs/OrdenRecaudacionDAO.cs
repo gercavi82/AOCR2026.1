@@ -1435,9 +1435,9 @@ namespace CapaDatos.DAOs
             return null;
         }
 
-        public bool TieneAprobacionFinancieraSolicitud(int codigoSolicitud)
+        public bool TieneAprobacionFinancieraSolicitud(int codigoSolicitud, int codigoUsuario = 0)
         {
-            if (codigoSolicitud <= 0)
+            if (codigoSolicitud <= 0 && codigoUsuario <= 0)
             {
                 return false;
             }
@@ -1458,21 +1458,34 @@ namespace CapaDatos.DAOs
                                     OR p.codigo_solicitud IN (
                                         SELECT o.id
                                         FROM aocr_or_orden o
-                                        WHERE o.codigo_solicitud = @codigoSolicitud
+                                        WHERE TRIM(COALESCE(o.codigo_solicitud::text, '')) = @codigoSolicitudText
                                     )
+                                    OR (@codigoUsuario > 0 AND p.codigo_solicitud IN (
+                                        SELECT o.id
+                                        FROM aocr_or_orden o
+                                        WHERE o.codigo_usuario::text = @codigoUsuarioText
+                                    ))
                                 )
                                 AND UPPER(TRIM(COALESCE(p.estado, ''))) IN ('VALIDADO', 'APROBADO')
                             )
                             OR EXISTS (
                                 SELECT 1
                                 FROM aocr_or_orden o
-                                WHERE o.codigo_solicitud = @codigoSolicitud
+                                WHERE (
+                                    TRIM(COALESCE(o.codigo_solicitud::text, '')) = @codigoSolicitudText
+                                    OR (@codigoUsuario > 0 AND o.codigo_usuario::text = @codigoUsuarioText)
+                                )
                                 AND UPPER(TRIM(COALESCE(o.estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')
                             );";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        cmd.Parameters.AddWithValue("@codigoSolicitudText", codigoSolicitud.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario);
+                        cmd.Parameters.AddWithValue("@codigoUsuarioText", codigoUsuario > 0
+                            ? codigoUsuario.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                            : string.Empty);
                         var result = cmd.ExecuteScalar();
                         return result != null && result != DBNull.Value && Convert.ToBoolean(result);
                     }
@@ -4032,7 +4045,7 @@ namespace CapaDatos.DAOs
                             EXISTS (
                                 SELECT 1
                                 FROM aocr_or_orden o
-                                WHERE o.codigo_usuario::text = @codigoUsuario
+                                WHERE o.codigo_usuario::text = @codigoUsuarioText
                                   AND UPPER(TRIM(COALESCE(o.estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')
                             )
                             OR EXISTS (
@@ -4040,20 +4053,20 @@ namespace CapaDatos.DAOs
                                 FROM aocr_tbpago p
                                 WHERE UPPER(TRIM(COALESCE(p.estado, ''))) IN ('VALIDADO', 'APROBADO')
                                   AND (
-                                      p.codigo_solicitud IN (
-                                          SELECT o.id
+                                      p.codigo_solicitud::text IN (
+                                          SELECT o.id::text
                                           FROM aocr_or_orden o
-                                          WHERE o.codigo_usuario::text = @codigoUsuario
+                                          WHERE o.codigo_usuario::text = @codigoUsuarioText
                                       )
-                                      OR p.codigo_solicitud IN (
-                                          SELECT s.codigo_solicitud
+                                      OR p.codigo_solicitud::text IN (
+                                          SELECT s.codigo_solicitud::text
                                           FROM aocr_tbsolicitud s
-                                          WHERE s.codigo_usuario = @codigoUsuarioInt
+                                          WHERE s.codigo_usuario::text = @codigoUsuarioText
                                       )
-                                      OR p.codigo_solicitud IN (
-                                          SELECT o.codigo_solicitud
+                                      OR p.codigo_solicitud::text IN (
+                                          SELECT o.codigo_solicitud::text
                                           FROM aocr_or_orden o
-                                          WHERE o.codigo_usuario::text = @codigoUsuario
+                                          WHERE o.codigo_usuario::text = @codigoUsuarioText
                                             AND o.codigo_solicitud IS NOT NULL
                                       )
                                   )
@@ -4061,8 +4074,7 @@ namespace CapaDatos.DAOs
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
-                        cmd.Parameters.AddWithValue("@codigoUsuarioInt", codigoUsuario);
+                        cmd.Parameters.AddWithValue("@codigoUsuarioText", codigoUsuario.ToString(System.Globalization.CultureInfo.InvariantCulture));
                         var result = cmd.ExecuteScalar();
                         return result != null && result != DBNull.Value && Convert.ToBoolean(result);
                     }
@@ -4134,6 +4146,111 @@ namespace CapaDatos.DAOs
             {
                 _logger.LogError(ex, "Error en TieneOrdenPendienteComprobante");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene el código de solicitud vinculado a la orden de recaudación más reciente del usuario.
+        /// </summary>
+        public int? ObtenerCodigoSolicitudOrdenRecienteUsuario(int codigoUsuario, bool soloOrdenGenerada = false)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var filtroEstado = soloOrdenGenerada
+                        ? "AND UPPER(TRIM(COALESCE(o.estado, ''))) NOT IN ('BORRADOR', 'ANULADA')"
+                        : "AND UPPER(TRIM(COALESCE(o.estado, ''))) <> 'ANULADA'";
+
+                    var sql = @"
+                        SELECT o.codigo_solicitud
+                        FROM aocr_or_orden o
+                        WHERE o.codigo_usuario::text = @codigoUsuario
+                          AND NULLIF(TRIM(COALESCE(o.codigo_solicitud::text, '')), '') IS NOT NULL
+                          " + filtroEstado + @"
+                        ORDER BY o.fecha_creacion DESC NULLS LAST, o.id DESC
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        var scalar = cmd.ExecuteScalar();
+                        if (scalar == null || scalar == DBNull.Value)
+                        {
+                            return null;
+                        }
+
+                        var codigo = ParseIntOrDefault(scalar.ToString());
+                        return codigo > 0 ? (int?)codigo : null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerCodigoSolicitudOrdenRecienteUsuario");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Resuelve el estado de la orden por vínculo directo con la solicitud o, en su defecto, por usuario RT.
+        /// </summary>
+        public string ObtenerUltimoEstadoOrdenPorSolicitudOUsuario(int codigoSolicitud, int codigoUsuario)
+        {
+            if (codigoSolicitud <= 0 && codigoUsuario <= 0)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"
+                        SELECT COALESCE(o.estado, '')
+                        FROM aocr_or_orden o
+                        WHERE UPPER(TRIM(COALESCE(o.estado, ''))) <> 'ANULADA'
+                          AND (
+                              (@codigoSolicitud > 0 AND TRIM(COALESCE(o.codigo_solicitud::text, '')) = @codigoSolicitudText)
+                              OR (@codigoUsuario > 0 AND o.codigo_usuario::text = @codigoUsuarioText)
+                          )
+                        ORDER BY
+                            CASE
+                                WHEN @codigoSolicitud > 0
+                                     AND TRIM(COALESCE(o.codigo_solicitud::text, '')) = @codigoSolicitudText THEN 0
+                                ELSE 1
+                            END,
+                            o.fecha_creacion DESC NULLS LAST,
+                            o.id DESC
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        cmd.Parameters.AddWithValue("@codigoSolicitudText", codigoSolicitud > 0
+                            ? codigoSolicitud.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                            : string.Empty);
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario);
+                        cmd.Parameters.AddWithValue("@codigoUsuarioText", codigoUsuario > 0
+                            ? codigoUsuario.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                            : string.Empty);
+
+                        var scalar = cmd.ExecuteScalar();
+                        return scalar == null || scalar == DBNull.Value ? string.Empty : scalar.ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerUltimoEstadoOrdenPorSolicitudOUsuario");
+                return string.Empty;
             }
         }
 

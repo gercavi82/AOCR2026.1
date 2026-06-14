@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checklist documentación 100% — Sistema AOCR</title>
+  <style>
+    :root { --brand:#2c5282; --brand2:#4299e1; --light:#ebf4ff; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Checklist documentación 100%<br><span style="font-weight:400;font-size:1.35rem">Artefactos · capturas · E2E · export</span></h1>
+    <p class="lead">Lista maestra para cerrar documentación, PNG, prueba manual #12 y exportaciones PDF/DOCX.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/CHECKLIST_DOCUMENTACION_100.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/CHECKLIST_DOCUMENTACION_100.pdf</code> · Editable Word → <code>docs/export/editable/CHECKLIST_DOCUMENTACION_100.docx</code> · Markdown → <code>docs/export/editable/CHECKLIST_DOCUMENTACION_100.md</code></div>
+    <article class="md-body">
+<h1>Checklist documentación y validación al 100%</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Objetivo:</strong> marcar ✅ cuando existan <strong>documento</strong>, <strong>captura PNG</strong>, <strong>prueba manual</strong> y <strong>export PDF/DOCX</strong> para el flujo emisión solicitud #12 (RT → AOCR).</p>
+<p><strong>Regla global:</strong> documentación 100% = este checklist + niveles A–E en <code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> §12.</p>
+<hr>
+<h2>A. Artefactos documentales</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Artefacto</th>
+<th>Contenido</th>
+<th>Export</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>A1</td>
+<td><a href="MANUAL_FLUJO_RT_A_AOCR.md">MANUAL_FLUJO_RT_A_AOCR.md</a> — 16 fases narrativas</td>
+<td><code>export/MANUAL_FLUJO_RT_A_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A2</td>
+<td><a href="GUIA_VISUAL_FLUJO_RT_AOCR.md">GUIA_VISUAL_FLUJO_RT_AOCR.md</a> — textos UI + 42 PNG</td>
+<td><code>export/GUIA_VISUAL_FLUJO_RT_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A3</td>
+<td><a href="MANUAL_USUARIO_AOCR.md">MANUAL_USUARIO_AOCR.md</a></td>
+<td><code>export/MANUAL_USUARIO_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A4</td>
+<td><a href="MANUAL_TECNICO_AOCR.md">MANUAL_TECNICO_AOCR.md</a> §16–§18</td>
+<td><code>export/MANUAL_TECNICO_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A5</td>
+<td><a href="GUIA_INSPECTOR_SOLICITUD_12.md">GUIA_INSPECTOR_SOLICITUD_12.md</a></td>
+<td><code>export/GUIA_INSPECTOR_SOLICITUD_12.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A6</td>
+<td><a href="GUIA_VISUAL_POR_ROL.md">GUIA_VISUAL_POR_ROL.md</a></td>
+<td><code>export/GUIA_VISUAL_POR_ROL.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A7</td>
+<td>Regenerar todos: <code>cd docs/export &amp;&amp; npm run build</code></td>
+<td>Carpeta <code>export/editable/</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>B. Capturas PNG por fase (42)</h2>
+<p>Convención: <code>docs/images/{rol}/{archivo}.png</code> — lista completa en <a href="images/README.md">images/README.md</a>.</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Fase</th>
+<th>Archivo</th>
+<th>Rol</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>1</td>
+<td><code>rt/rt-formulario-emision-aocr.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>1</td>
+<td><code>rt/rt-mis-tramites-solicitud-nueva.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>2</td>
+<td><code>rt/rt-orden-recaudacion-nueva.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>2</td>
+<td><code>rt/rt-orden-comprobante-cargado.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>3</td>
+<td><code>financiero/financiero-dashboard.png</code></td>
+<td>Financiero</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>3</td>
+<td><code>financiero/financiero-aprobar-pago.png</code></td>
+<td>Financiero</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>4</td>
+<td><code>rt/rt-documento-subir.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>4</td>
+<td><code>rt/rt-detalle-documentos-completos.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>4</td>
+<td><code>rt/rt-envio-formulario-en-revision.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>5</td>
+<td><code>coordinacion/coordinacion-revision-verificacion.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>5</td>
+<td><code>coordinacion/coordinacion-documento-devuelto-rt.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>5</td>
+<td><code>rt/rt-subsanar-documentos.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>6</td>
+<td><code>coordinacion/coordinacion-firma-aceptacion.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>6</td>
+<td><code>rt/rt-detalle-pendiente-asignacion-rt.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>7</td>
+<td><code>coordinacion/coordinacion-tecnico-index.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>7</td>
+<td><code>coordinacion/coordinacion-asignar-inspector.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>7</td>
+<td><code>rt/rt-detalle-en-inspeccion.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>8</td>
+<td><code>inspector/inspector-revision-documental-bandeja.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>8</td>
+<td><code>inspector/inspector-documentos-modo-revision-pendiente.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>8</td>
+<td><code>ejemplos/inspector-modo-ver-incorrecto.png</code></td>
+<td>QA</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>8</td>
+<td><code>inspector/inspector-documentos-despues-aceptar.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>9</td>
+<td><code>inspector/inspector-detalle-cierre-documental.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>10</td>
+<td><code>inspector/inspector-lv-borrador.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>10</td>
+<td><code>inspector/inspector-lv-firmada.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>11</td>
+<td><code>inspector/inspector-informe-borrador.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>11</td>
+<td><code>inspector/inspector-informe-firmado-enviado.png</code></td>
+<td>Inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>12</td>
+<td><code>dirdac/dirdac-pendientes-direccion-informe.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>12</td>
+<td><code>dirdac/dirdac-informe-aprobado.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>13</td>
+<td><code>coordinacion/coordinacion-detalle-aocr-elaboracion.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>14</td>
+<td><code>coordinacion/coordinacion-validar-aocr.png</code></td>
+<td>Coordinación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>15</td>
+<td><code>dirdac/dirdac-firma-aocr.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>15</td>
+<td><code>dirdac/dirdac-estado-emitido-recibido.png</code></td>
+<td>DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>16</td>
+<td><code>rt/rt-generadas-firmadas-bandeja.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>16</td>
+<td><code>rt/rt-descarga-pdf-aocr-final.png</code></td>
+<td>RT</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A</td>
+<td><code>rt/rt-modificacion-orden-post-requiere-inspeccion.png</code></td>
+<td>RT mod.</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A</td>
+<td><code>inspector/inspector-cierre-fase-nuevo-aeropuerto.png</code></td>
+<td>Inspector mod.</td>
+</tr>
+</tbody></table>
+<p><strong>Done capturas:</strong> 34/34 obligatorias emisión + 2 modificación = <strong>36 mínimo</strong> (42 con variantes listadas).</p>
+<hr>
+<h2>C. Prueba manual end-to-end (solicitud #12)</h2>
+<p>Ejecutar en orden con usuarios reales. Evidencia: log + captura + estado BD.</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Fase</th>
+<th>Rol</th>
+<th>Criterio</th>
+<th>Evidencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E2E-01</td>
+<td>1–2</td>
+<td>RT</td>
+<td>Solicitud + orden creadas</td>
+<td>Detalle #12</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-02</td>
+<td>3</td>
+<td>Financiero</td>
+<td>Pago aprobado</td>
+<td>Log financiero</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-03</td>
+<td>4</td>
+<td>RT</td>
+<td>Estado <code>En Revision</code></td>
+<td>Historial envío</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-04</td>
+<td>6</td>
+<td>Coordinación</td>
+<td><code>[FirmarAceptacionDocumental]</code></td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-05</td>
+<td>7</td>
+<td>Coordinación</td>
+<td><code>[GestionInspeccion]</code></td>
+<td><code>En Inspeccion</code>, insp. #11</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-06</td>
+<td>8</td>
+<td>Inspector</td>
+<td>12 docs PENDIENTE <code>modo=revision</code></td>
+<td>PNG fase 8</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-07</td>
+<td>9</td>
+<td>Inspector</td>
+<td>Cierre documental confirmado</td>
+<td>comentario inspección</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-08</td>
+<td>10</td>
+<td>Inspector</td>
+<td>LV firmada</td>
+<td><code>aocr_tblv_operacional_eae</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-09</td>
+<td>11</td>
+<td>Inspector</td>
+<td>Informe <code>ENVIADO_A_DIRDAC</code></td>
+<td><code>aocr_tbinforme_inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-10</td>
+<td>12</td>
+<td>DIRDAC</td>
+<td>→ <code>AOCR En Elaboracion</code></td>
+<td>PendientesDireccion</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-11</td>
+<td>14</td>
+<td>Coordinación</td>
+<td>ValidarAocr → <code>AOCR En Revision</code></td>
+<td>PNG fase 14</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-12</td>
+<td>15</td>
+<td>DIRDAC</td>
+<td>→ <code>AOCR Emitido/Recibido</code></td>
+<td>PNG fase 15</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-13</td>
+<td>16</td>
+<td>RT</td>
+<td>PDF descargado GeneradasFirmadas</td>
+<td>PNG fase 16</td>
+</tr>
+</tbody></table>
+<p><strong>Done E2E:</strong> E2E-01 → E2E-13 ✅</p>
+<hr>
+<h2>D. Validaciones técnicas críticas (código)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Criterio</th>
+<th>Referencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>T1</td>
+<td>Sin revisión inspector → PENDIENTE</td>
+<td><code>MANUAL_TECNICO_AOCR.md</code> T1</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T2</td>
+<td>Revisiones COO-1 excluidas post-asignación</td>
+<td>T2</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T3</td>
+<td><code>modo=revision</code> vs <code>modo=ver</code></td>
+<td>T4</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T4</td>
+<td>LV bloqueada hasta cierre documental</td>
+<td>T5</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T5</td>
+<td>Informe exige LV firmada</td>
+<td>§17</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T6</td>
+<td>Descarga constancia ≠ Finalizado</td>
+<td><code>MANUAL_USUARIO_AOCR.md</code> §4</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T7</td>
+<td>Tests unitarios pasan</td>
+<td><code>vstest.console AOCR.Tests.dll</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>E. Exportaciones editables</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Entregable</th>
+<th>Ruta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>PDF flujo RT→AOCR</td>
+<td><code>docs/export/MANUAL_FLUJO_RT_A_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>PDF guía visual flujo</td>
+<td><code>docs/export/GUIA_VISUAL_FLUJO_RT_AOCR.pdf</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Word editable flujo</td>
+<td><code>docs/export/editable/MANUAL_FLUJO_RT_A_AOCR.docx</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Word guía visual</td>
+<td><code>docs/export/editable/GUIA_VISUAL_FLUJO_RT_AOCR.docx</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Markdown copia</td>
+<td><code>docs/export/editable/*.md</code></td>
+</tr>
+</tbody></table>
+<p>Comando: <code>cd docs\export</code> → <code>npm run build</code></p>
+<hr>
+<h2>F. Resumen ejecutivo — % completitud</h2>
+<table>
+<thead>
+<tr>
+<th>Bloque</th>
+<th>Items</th>
+<th>Cómo medir</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Documentos A</strong></td>
+<td>7</td>
+<td>Archivos <code>.md</code> + PDF regenerados</td>
+</tr>
+<tr>
+<td><strong>Capturas B</strong></td>
+<td>36–42</td>
+<td>PNG en <code>docs/images/</code></td>
+</tr>
+<tr>
+<td><strong>E2E C</strong></td>
+<td>13</td>
+<td>Prueba manual #12</td>
+</tr>
+<tr>
+<td><strong>Técnico D</strong></td>
+<td>7</td>
+<td>Tests + checklist técnico</td>
+</tr>
+<tr>
+<td><strong>Export E</strong></td>
+<td>5</td>
+<td>Carpeta <code>export/</code></td>
+</tr>
+</tbody></table>
+<p><strong>100% documentación + flujo emisión</strong> = A7 ✅ + B (36 PNG) ✅ + C (E2E-13) ✅ + D ✅ + E ✅</p>
+<p><strong>100% plataforma global</strong> = lo anterior + niveles C–E en <code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code> §12 (modificación, NC, deuda técnica E1–E10).</p>
+<hr>
+<h2>G. Orden de trabajo recomendado</h2>
+<pre><code class="language-text">1. npm run build (docs/export) — artefactos A + E
+2. Recorrer fases 1→16 en publicacion1 — capturas B + prueba C
+3. Ejecutar AOCR.Tests — bloque D
+4. Marcar AOCR_FLUJO_INTEGRAL §12 niveles B–E
+5. Entregar paquete: export/*.pdf + export/editable/*.docx + images/
+</code></pre>
+<hr>
+<p><em>Última actualización: 2026-06-11</em></p>
+
+    </article>
+    <div class="footer">Checklist documentación 100% — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

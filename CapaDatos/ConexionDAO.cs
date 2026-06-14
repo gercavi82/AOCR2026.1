@@ -7,7 +7,8 @@ namespace CapaDatos.DAOs
     public class ConexionDAO
     {
         private static readonly string _cs =
-            ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
+            ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
+            ?? "Host=127.0.0.1;Port=5432;Database=aocr_test;Username=test;Password=test;Timeout=5;";
 
         // ✅ Agregado: para compatibilidad con InspeccionDAO
         public static string CadenaConexion => _cs;

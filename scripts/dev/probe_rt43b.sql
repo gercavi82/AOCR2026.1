@@ -1,0 +1,1 @@
+﻿SELECT id, usuario_id, tecnico_id, codigo_usuario, identificacion, activo FROM aocr_usuario_interno_rt WHERE usuario_id=43 OR tecnico_id=43 OR codigo_usuario='1709565459' OR identificacion='1709565459' LIMIT 10;

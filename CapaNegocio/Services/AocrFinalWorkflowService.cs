@@ -479,6 +479,7 @@ namespace CapaNegocio.Services
                     "Inspector",
                     "Coordinador",
                     "CoordinadorInspecciones",
+                    "Coordinacion",
                     "JefaturaTecnica",
                     "DIRDAC",
                     "Direccion",
@@ -488,7 +489,7 @@ namespace CapaNegocio.Services
 
             if (destino == EstadoSolicitud.AceptacionDocumental)
             {
-                return TieneAlgunRol(roles, "Inspector", "Coordinador", "CoordinadorInspecciones");
+                return TieneAlgunRol(roles, "Inspector", "Coordinador", "CoordinadorInspecciones", "Coordinacion");
             }
 
             if (destino == EstadoSolicitud.Subsanada)
@@ -510,7 +511,7 @@ namespace CapaNegocio.Services
 
             if (destino == EstadoSolicitud.EnRevisionCoordinadorFinal || destino == EstadoSolicitud.EnviadoDcav)
             {
-                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones");
+                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones", "Coordinacion");
             }
 
             if (destino == EstadoSolicitud.FirmadoDcav)
@@ -520,12 +521,12 @@ namespace CapaNegocio.Services
 
             if (destino == EstadoSolicitud.PendienteAsignacionRT)
             {
-                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones");
+                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones", "Coordinacion");
             }
 
             if (destino == EstadoSolicitud.FirmadoCoordinador)
             {
-                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones");
+                return TieneAlgunRol(roles, "Coordinador", "CoordinadorInspecciones", "Coordinacion");
             }
 
             if (destino == EstadoSolicitud.Finalizado)
@@ -535,7 +536,7 @@ namespace CapaNegocio.Services
 
             if (destino == EstadoSolicitud.EnInspeccion || destino == EstadoSolicitud.AOCR_EnElaboracion)
             {
-                return TieneAlgunRol(roles, "Inspector", "Coordinador", "CoordinadorInspecciones");
+                return TieneAlgunRol(roles, "Inspector", "Coordinador", "CoordinadorInspecciones", "Coordinacion");
             }
 
             if (destino == EstadoSolicitud.AOCR_EnRevision || destino == EstadoSolicitud.AOCR_Validado)

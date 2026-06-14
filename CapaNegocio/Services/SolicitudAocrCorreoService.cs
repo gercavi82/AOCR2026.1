@@ -58,9 +58,7 @@ namespace CapaNegocio.Services
                 foreach (var destinatario in destinatarios)
                 {
                     var tipoNotificacion = "SOLICITUD_" + (evento ?? string.Empty).Trim().ToUpperInvariant();
-                    var eventKey = EsEventoConIdempotenciaFuerteHabilitada(evento)
-                        ? BuildAocrEventKey(evento, solicitud.CodigoSolicitud, codigoHistorial, correlationId, destinatario.Email)
-                        : null;
+                    var eventKey = BuildAocrEventKey(evento, solicitud.CodigoSolicitud, codigoHistorial, correlationId, destinatario.Email);
 
                     if (!string.IsNullOrWhiteSpace(eventKey))
                     {
@@ -128,7 +126,7 @@ namespace CapaNegocio.Services
             return _policyService.ResolverDestinatarios(solicitud, null, plantilla.GruposDestinatarios);
         }
 
-        internal static string BuildAocrEventKey(
+        public static string BuildAocrEventKey(
             string evento,
             int solicitudId,
             int? codigoHistorial,
@@ -172,7 +170,12 @@ namespace CapaNegocio.Services
                     destinatarioNormalizado);
             }
 
-            return null;
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "AOCR:{0}:{1}:{2}",
+                eventoNormalizado,
+                solicitudId,
+                destinatarioNormalizado);
         }
 
         private static bool EsEventoConIdempotenciaFuerteHabilitada(string evento)

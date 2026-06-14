@@ -394,6 +394,12 @@
                                 case "PENDIENTE_CARGA_DOCUMENTAL":
                                     chipClass = "rd-chip rd-chip--waiting";
                                     break;
+                                case "LISTO_INSPECCION_CAMPO":
+                                    chipClass = "rd-chip rd-chip--review";
+                                    break;
+                                case "PENDIENTE_CONFIRMACION_INSPECTOR":
+                                    chipClass = "rd-chip rd-chip--waiting";
+                                    break;
                             }
 
                             <tr>
@@ -425,9 +431,24 @@
                                 </td>
                                 <td data-column-label="Acción">
                                     <div class="rd-actions">
-                                        <a href="@(Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud }) + "#revision-documental")" class="btn btn-outline-primary btn-sm">
-                                            <i class="fas fa-folder-open"></i> Revisar documentación
-                                        </a>
+                                        @if (item.MostrarAccionInspeccion && item.CodigoInspeccion.HasValue && item.CodigoInspeccion.Value > 0)
+                                        {
+                                            <a href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion.Value })" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plane-departure"></i> Continuar en LV/EAE
+                                            </a>
+                                        }
+                                        else if (item.PendienteConfirmacionInspector && item.CodigoInspeccion.HasValue && item.CodigoInspeccion.Value > 0)
+                                        {
+                                            <a href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion.Value })" class="btn btn-warning btn-sm">
+                                                <i class="fas fa-file-circle-check"></i> Confirmar fase documental
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="@Url.Action("Lista", "Documento", new { solicitudId = item.CodigoSolicitud, modo = "revision", origen = "revision-documental" })" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-folder-open"></i> Revisar documentación
+                                            </a>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -441,7 +462,7 @@
             <div class="rd-empty">
                 <i class="fas fa-file-circle-check"></i>
                 <p class="mb-1"><strong>No hay solicitudes pendientes de revisión documental para el Inspector actual.</strong></p>
-                <p class="mb-0">Cuando el RT cargue o subsane documentos habilitantes en expedientes asignados, aparecerán aquí antes de habilitar la fase de inspección.</p>
+                <p class="mb-0">Si el coordinador ya le asignó una solicitud con documentación aprobada, revise también la bandeja de <a href="@Url.Action("Index", "Inspeccion")">Inspecciones</a>. Las asignaciones con documentos pendientes de decisión aparecerán aquí automáticamente.</p>
             </div>
         }
     </section>

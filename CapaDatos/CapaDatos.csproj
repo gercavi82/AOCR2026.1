@@ -333,6 +333,7 @@
     <Compile Include="Entidades\EventoTrazabilidad.cs" />
     <Compile Include="DAOs\TrazabilidadDAO.cs" />
     <Compile Include="Constants\EstadoConstants.cs" />
+    <Compile Include="Constants\EstadoSolicitudSql.cs" />
     <Compile Include="Infrastructure\ILoggerService.cs" />
     <Compile Include="Infrastructure\NLogLoggerService.cs" />
     <Compile Include="Infrastructure\PagoMapper.cs" />
@@ -366,6 +367,7 @@
     <Compile Include="Repositories\SolicitudRepository.cs" />
     <Compile Include="Repositories\ISolicitudRepository.cs" />
     <Compile Include="Services\AuditService.cs" />
+    <Compile Include="Services\AocrEmailService.cs" />
     <Compile Include="Services\EnviarCorreo.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\GestionTecnicaNotificationService.cs" />

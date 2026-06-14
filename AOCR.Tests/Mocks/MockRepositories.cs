@@ -159,7 +159,7 @@ namespace AOCR.Tests.Mocks
         public bool SimularFallo { get; set; }
 
         public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
-            byte[] adjunto = null, string adjuntoNombre = null)
+            byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null)
         {
             if (SimularFallo)
             {

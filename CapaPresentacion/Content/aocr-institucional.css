@@ -72,6 +72,42 @@ body.aocr-body .content-wrapper h6 {
     letter-spacing: 0;
 }
 
+/* Encabezados de tarjeta oscuros/institucionales: texto claro legible */
+body.aocr-body .content-wrapper .card-header.bg-dark,
+body.aocr-body .content-wrapper .card-header.bg-primary,
+body.aocr-body .content-wrapper .card-header.bg-success,
+body.aocr-body .content-wrapper .card-header.bg-danger,
+body.aocr-body .content-wrapper .card-header.bg-info,
+body.aocr-body .content-wrapper .card-header.text-white,
+body.aocr-body .card-header.bg-dark,
+body.aocr-body .card-header.text-white {
+    color: #ffffff;
+}
+
+body.aocr-body .content-wrapper .card-header.bg-dark h1,
+body.aocr-body .content-wrapper .card-header.bg-dark h2,
+body.aocr-body .content-wrapper .card-header.bg-dark h3,
+body.aocr-body .content-wrapper .card-header.bg-dark h4,
+body.aocr-body .content-wrapper .card-header.bg-dark h5,
+body.aocr-body .content-wrapper .card-header.bg-dark h6,
+body.aocr-body .content-wrapper .card-header.text-white h1,
+body.aocr-body .content-wrapper .card-header.text-white h2,
+body.aocr-body .content-wrapper .card-header.text-white h3,
+body.aocr-body .content-wrapper .card-header.text-white h4,
+body.aocr-body .content-wrapper .card-header.text-white h5,
+body.aocr-body .content-wrapper .card-header.text-white h6,
+body.aocr-body .card-header.bg-dark .card-title,
+body.aocr-body .card-header.text-white .card-title {
+    color: #ffffff !important;
+}
+
+body.aocr-body .content-wrapper .card-header.bg-dark i,
+body.aocr-body .content-wrapper .card-header.text-white i,
+body.aocr-body .card-header.bg-dark .card-title i,
+body.aocr-body .card-header.text-white .card-title i {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
 body.aocr-body .content-wrapper p,
 body.aocr-body .content-wrapper label,
 body.aocr-body .content-wrapper td,
@@ -2888,3 +2924,37 @@ table.dataTable {
     max-width: none;
     width: 100%;
 }
+/* ============================================================
+   CORRECCIÓN: texto blanco en tarjeta oscura de Orden / PDF
+   ============================================================ */
+
+body.aocr-body .aocr-pdf-card,
+body.aocr-body .aocr-order-pdf-card,
+body.aocr-body .orden-pdf-card,
+body.aocr-body .documento-pdf-card {
+    background: #343a40 !important;
+    color: #ffffff !important;
+}
+
+    body.aocr-body .aocr-pdf-card *,
+    body.aocr-body .aocr-order-pdf-card *,
+    body.aocr-body .orden-pdf-card *,
+    body.aocr-body .documento-pdf-card * {
+        color: #ffffff !important;
+        text-shadow: none !important;
+    }
+
+    body.aocr-body .aocr-pdf-card a,
+    body.aocr-body .aocr-order-pdf-card a,
+    body.aocr-body .orden-pdf-card a,
+    body.aocr-body .documento-pdf-card a {
+        color: #ffffff !important;
+        text-decoration: none;
+    }
+
+    body.aocr-body .aocr-pdf-card i,
+    body.aocr-body .aocr-order-pdf-card i,
+    body.aocr-body .orden-pdf-card i,
+    body.aocr-body .documento-pdf-card i {
+        color: #ffffff !important;
+    }

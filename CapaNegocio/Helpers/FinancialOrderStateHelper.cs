@@ -1,7 +1,7 @@
 using System;
 using CapaDatos.Constants;
 
-namespace CapaPresentacion.Helpers
+namespace CapaNegocio.Helpers
 {
     public static class FinancialOrderStateHelper
     {

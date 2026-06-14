@@ -91,14 +91,34 @@ namespace CapaDatos.Services
 
             return new EmailCredentials
             {
-                SmtpServer = GetConfigOrEnv("Email:SmtpServer", "AOCR_EMAIL_SERVER"),
-                SmtpPort = int.TryParse(portStr, out int port) ? port : 587,
+                SmtpServer = FirstNonEmpty(
+                    GetConfigOrEnv("Email:SmtpServer", "AOCR_EMAIL_SERVER"),
+                    GetConfigOrEnv("SmtpServer", "AOCR_SMTP_SERVER"),
+                    AocrEmailService.IpSmtp),
+                SmtpPort = int.TryParse(portStr, out int port) ? port : 25,
                 Username = GetConfigOrEnv("Email:Username", "AOCR_EMAIL_USERNAME"),
                 Password = GetConfigOrEnv("Email:Password", "AOCR_EMAIL_PASSWORD"),
-                UseSsl = bool.TryParse(useSslStr, out bool ssl) ? ssl : true,
-                FromAddress = GetConfigOrEnv("Email:FromAddress", "AOCR_EMAIL_FROM"),
-                FromName = GetConfigOrEnv("Email:FromName", "AOCR_EMAIL_FROMNAME")
+                UseSsl = bool.TryParse(useSslStr, out bool ssl) ? ssl : false,
+                FromAddress = FirstNonEmpty(
+                    GetConfigOrEnv("Email:FromAddress", "AOCR_EMAIL_FROM"),
+                    AocrEmailService.CorreoNoReply),
+                FromName = FirstNonEmpty(
+                    GetConfigOrEnv("Email:FromName", "AOCR_EMAIL_FROMNAME"),
+                    AocrEmailService.AliasDefault)
             };
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values ?? new string[0])
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return null;
         }
 
         private string GetConfigOrEnv(string configKey, string envKey)

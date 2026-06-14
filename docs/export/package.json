@@ -1,0 +1,12 @@
+{
+  "name": "aocr-docs-export",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-docs.mjs"
+  },
+  "dependencies": {
+    "@turbodocx/html-to-docx": "^1.21.0",
+    "marked": "^18.0.5"
+  }
+}

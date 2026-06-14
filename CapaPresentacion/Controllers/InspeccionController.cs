@@ -32,7 +32,7 @@ using ResultadoOperacion = CapaNegocio.Services.ResultadoOperacion;
 
 namespace CapaPresentacion.Controllers
 {
-    [AocrAuthorize]
+    [AocrAuthorize(Modulo = "Inspeccion")]
     public class InspeccionController : Controller
     {
         private readonly HallazgoBL _hallazgoBL;
@@ -59,6 +59,8 @@ namespace CapaPresentacion.Controllers
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
         private const string ROL_COORD_ALIAS = "Coordinador";
+        // Rol unificado/forzado de la cuenta institucional GEN_COORDINACION.
+        private const string ROL_COORD_GRUPO = "Coordinacion";
         private const string ROL_INSPECTOR = "Inspector";
         private const string ROL_JEFATURA = "JefaturaTecnica";
         private const string ROL_JEFE = "Jefe";
@@ -72,7 +74,7 @@ namespace CapaPresentacion.Controllers
         private const string ROL_SOLICITANTE = "Solicitante";
 
         private const string ROLES_COORDINACION_Y_JEFATURA =
-            ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_LEGAL + "," + ROL_COORD_LEGAL + "," + ROL_COORDINADOR_LEGAL + "," + ROL_ADMIN;
+            ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_LEGAL + "," + ROL_COORD_LEGAL + "," + ROL_COORDINADOR_LEGAL + "," + ROL_ADMIN;
         private const string ROLES_GESTION_INSPECCION =
             ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
@@ -220,6 +222,7 @@ namespace CapaPresentacion.Controllers
             return UsuarioTieneAlMenosUnRol(
                 ROL_COORD,
                 ROL_COORD_ALIAS,
+                ROL_COORD_GRUPO,
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
@@ -240,6 +243,7 @@ namespace CapaPresentacion.Controllers
             return UsuarioTieneAlMenosUnRol(
                 ROL_COORD,
                 ROL_COORD_ALIAS,
+                ROL_COORD_GRUPO,
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
@@ -295,6 +299,7 @@ namespace CapaPresentacion.Controllers
                 rolesSesion,
                 ROL_COORD,
                 ROL_COORD_ALIAS,
+                ROL_COORD_GRUPO,
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
@@ -585,6 +590,17 @@ namespace CapaPresentacion.Controllers
             return false;
         }
 
+        private bool ValidarAutorizacionFlujoInspeccion(int codigoInspeccion, string accion, out string motivo, int? codigoInforme = null)
+        {
+            return AocrPresentacionAuthorizationHelper.EsPermitido(
+                HttpContext,
+                "Inspeccion",
+                accion,
+                out motivo,
+                codigoInspeccion: codigoInspeccion > 0 ? codigoInspeccion : (int?)null,
+                codigoInforme: codigoInforme);
+        }
+
         private static bool InspectorTextoCoincide(string valorAsignado, string codigoUsuarioSesion)
         {
             return !string.IsNullOrWhiteSpace(valorAsignado)
@@ -672,6 +688,7 @@ namespace CapaPresentacion.Controllers
         // ✅ LISTADO (POR ROL)
         // ============================================================
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "Index")]
         public ActionResult Index(string vista = null, string estado = null)
         {
             var esBandejaInspector = EsRolInspectorSeleccionado();
@@ -705,20 +722,24 @@ namespace CapaPresentacion.Controllers
 
                 if (esBandejaInspector)
                 {
-                    var inspeccionesHabilitadas = new List<Inspeccion>();
+                    var inspeccionesHabilitadasPorId = new Dictionary<int, bool>();
                     foreach (var inspeccion in inspeccionesAsignadas)
                     {
-                        if (inspeccion != null && _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion))
+                        if (inspeccion == null || inspeccion.CodigoInspeccion <= 0)
                         {
-                            inspeccionesHabilitadas.Add(inspeccion);
+                            continue;
                         }
-                        else
+
+                        var habilitada = _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion);
+                        inspeccionesHabilitadasPorId[inspeccion.CodigoInspeccion] = habilitada;
+                        if (!habilitada)
                         {
                             inspeccionesNoHabilitadas++;
                         }
                     }
 
-                    lista = inspeccionesHabilitadas;
+                    lista = inspeccionesAsignadas;
+                    ViewBag.InspeccionesHabilitadasPorId = inspeccionesHabilitadasPorId;
                 }
                 else
                 {
@@ -784,6 +805,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ DETALLE
         // ============================================================
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "Detalle")]
         [AocrAuthorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult Detalle(string id)
         {
@@ -988,7 +1010,7 @@ namespace CapaPresentacion.Controllers
             ViewBag.InspectorAsignadoNombre = ResolverInspectorAsignadoNombre(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
 
             solicitudDetalle = ViewBag.Solicitud as SolicitudAOCR;
-            ViewBag.RevisionDocumentalInspectorConfirmada = _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitudDetalle);
+            ViewBag.RevisionDocumentalInspectorConfirmada = InspectorTieneRevisionDocumentalConfirmada(inspeccion);
             ViewBag.MensajeBloqueoRevisionDocumentalInspector = _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitudDetalle);
 
             try
@@ -1032,6 +1054,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "ModalInformeTecnico", CodigoInspeccionParameter = "codigoInspeccion")]
         [AocrAuthorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult ModalInformeTecnico(int codigoInspeccion)
         {
@@ -1176,6 +1199,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "RevisionDireccion", CodigoInformeParameter = "codigoInforme")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         public ActionResult RevisionDireccion(int codigoInforme)
         {
@@ -1300,7 +1324,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ CREAR (GET)
         // ============================================================
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         public ActionResult Crear(int codigoSolicitud)
         {
             if (codigoSolicitud <= 0) return new HttpStatusCodeResult(400, "Código de solicitud inválido.");
@@ -1313,7 +1337,7 @@ namespace CapaPresentacion.Controllers
         // ✅ CREAR (POST)
         // ============================================================
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Crear(Inspeccion model, string tipoInspector = "OPS")
         {
@@ -1350,7 +1374,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ EDITAR (GET)
         // ============================================================
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         public ActionResult Editar(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -1367,7 +1391,7 @@ namespace CapaPresentacion.Controllers
         // ✅ EDITAR (POST)
         // ============================================================
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Editar(Inspeccion model, string tipoInspector = "TODOS")
         {
@@ -1405,6 +1429,7 @@ namespace CapaPresentacion.Controllers
         // ✅ CAMBIAR ESTADO
         // ============================================================
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "CambiarEstado", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         [ValidateAntiForgeryToken]
         public ActionResult CambiarEstado(int id, string estado, string returnUrl = null)
@@ -1551,6 +1576,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ VER INFORME (ÚNICO) - SEGURO
         // ============================================================
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerInforme", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerInforme(int id)
         {
@@ -1558,6 +1584,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarInforme", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult DescargarInforme(int id)
         {
@@ -1565,6 +1592,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerListaVerificacionOperacionalEae(int id)
         {
@@ -1572,6 +1600,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult DescargarListaVerificacionOperacionalEae(int id)
         {
@@ -1579,6 +1608,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerAdjuntoInformeTecnico", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerAdjuntoInformeTecnico(int id, string archivo)
         {
@@ -1586,6 +1616,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarAdjuntoInformeTecnico", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult DescargarAdjuntoInformeTecnico(int id, string archivo)
         {
@@ -1593,6 +1624,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerLvEaeOficial", CodigoInspeccionParameter = "codigoInspeccion")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerLvEaeOficial(int codigoInspeccion)
         {
@@ -1600,6 +1632,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarLvEaeOficial", CodigoInspeccionParameter = "codigoInspeccion")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult DescargarLvEaeOficial(int codigoInspeccion)
         {
@@ -2063,6 +2096,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "ConfirmarRevisionDocumentalInspector", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult ConfirmarRevisionDocumentalInspector(int id)
@@ -2070,6 +2104,12 @@ namespace CapaPresentacion.Controllers
             if (id <= 0)
             {
                 return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            string motivoAuth;
+            if (!ValidarAutorizacionFlujoInspeccion(id, "ConfirmarRevisionDocumentalInspector", out motivoAuth))
+            {
+                return new HttpStatusCodeResult(403, motivoAuth ?? "No autorizado para confirmar la revisión documental.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -2120,6 +2160,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "GuardarInformeTecnico")]
         [AocrAuthorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         [ValidateInput(false)]
@@ -2144,6 +2185,12 @@ namespace CapaPresentacion.Controllers
                 if (id <= 0)
                 {
                     return DevolverResultadoModalInformeTecnico(400, "ID inválido.");
+                }
+
+                string motivoAuth;
+                if (!ValidarAutorizacionFlujoInspeccion(id, "GuardarInformeTecnico", out motivoAuth))
+                {
+                    return DevolverResultadoModalInformeTecnico(403, motivoAuth ?? "No autorizado para editar el informe técnico.");
                 }
 
                 var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -2539,6 +2586,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FinalizarInformeTecnico", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FinalizarInformeTecnico(int id)
@@ -2546,6 +2594,12 @@ namespace CapaPresentacion.Controllers
             if (id <= 0)
             {
                 return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            string motivoAuth;
+            if (!ValidarAutorizacionFlujoInspeccion(id, "FinalizarInformeTecnico", out motivoAuth))
+            {
+                return new HttpStatusCodeResult(403, motivoAuth ?? "No autorizado para finalizar el informe técnico.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -2650,6 +2704,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "GuardarListaVerificacionOperacionalEae")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         [ValidateInput(false)]
@@ -2696,6 +2751,12 @@ namespace CapaPresentacion.Controllers
                 if (id <= 0)
                 {
                     return DevolverResultadoListaVerificacionOperacionalEae(400, "ID inválido.");
+                }
+
+                string motivoAuthLv;
+                if (!ValidarAutorizacionFlujoInspeccion(id, "GuardarListaVerificacionOperacionalEae", out motivoAuthLv))
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(403, motivoAuthLv ?? "No autorizado para editar la lista de verificación operacional.");
                 }
 
                 var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -2920,6 +2981,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FinalizarListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FinalizarListaVerificacionOperacionalEae(int id)
@@ -2928,6 +2990,12 @@ namespace CapaPresentacion.Controllers
             if (id <= 0)
             {
                 return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            string motivoAuth;
+            if (!ValidarAutorizacionFlujoInspeccion(id, "FinalizarListaVerificacionOperacionalEae", out motivoAuth))
+            {
+                return new HttpStatusCodeResult(403, motivoAuth ?? "No autorizado para finalizar la lista de verificación.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -3004,6 +3072,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FirmarListaVerificacionOperacionalEae")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarListaVerificacionOperacionalEae(int? id, string passwordCertificado)
@@ -3022,6 +3091,12 @@ namespace CapaPresentacion.Controllers
             if (codigoInspeccion <= 0)
             {
                 return DevolverResultadoListaVerificacionOperacionalEae(400, "ID inválido.");
+            }
+
+            string motivoAuthFirmaLv;
+            if (!ValidarAutorizacionFlujoInspeccion(codigoInspeccion, "FirmarListaVerificacionOperacionalEae", out motivoAuthFirmaLv))
+            {
+                return DevolverResultadoListaVerificacionOperacionalEae(403, motivoAuthFirmaLv ?? "No autorizado para firmar la lista de verificación operacional.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
@@ -3299,6 +3374,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FirmarInformeInspector")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarInformeInspector(int? id, string passwordCertificado)
@@ -3316,6 +3392,12 @@ namespace CapaPresentacion.Controllers
             if (codigoInspeccion <= 0)
             {
                 return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            string motivoAuthFirmaInforme;
+            if (!ValidarAutorizacionFlujoInspeccion(codigoInspeccion, "FirmarInformeInspector", out motivoAuthFirmaInforme))
+            {
+                return new HttpStatusCodeResult(403, motivoAuthFirmaInforme ?? "No autorizado para firmar el informe técnico.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
@@ -3339,7 +3421,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROLES_FIRMA_DIRDAC)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROLES_FIRMA_DIRDAC)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarADirdac(int id)
         {
@@ -3400,7 +3482,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult CoordinadorAprobar(int id)
         {
@@ -3431,7 +3513,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult CoordinadorDevolver(int id, string observacionDevolucion)
         {
@@ -3498,6 +3580,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "AprobarDecisionFinalDireccion", CodigoInformeParameter = "codigoInforme")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         [ValidateAntiForgeryToken]
         public ActionResult AprobarDecisionFinalDireccion(int codigoInforme, string observacionDireccion)
@@ -3512,6 +3595,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DevolverDecisionFinalDireccion", CodigoInformeParameter = "codigoInforme")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         [ValidateAntiForgeryToken]
         public ActionResult DevolverDecisionFinalDireccion(int codigoInforme, string observacionDireccion)
@@ -3526,6 +3610,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FirmarDireccion", CodigoInformeParameter = "codigoInforme")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarDireccion(int codigoInforme, string passwordCertificado)
@@ -3750,6 +3835,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "RechazarInformeDirdac", CodigoInspeccionParameter = "id")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         [ValidateAntiForgeryToken]
         public ActionResult RechazarInformeDirdac(int id, string observacionRechazo)
@@ -3762,6 +3848,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ SUBIR INFORME - SEGURO (PDF)
         // ============================================================
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "SubirInforme", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult SubirInforme(int id)
@@ -3909,7 +3996,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ PLANIFICACIÓN (GET ÚNICO)
         // ============================================================
         [HttpGet]
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         public ActionResult Planificacion(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -3929,7 +4016,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ PLANIFICACIÓN (POST ÚNICO)
         // ============================================================
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Planificacion(
             int codigoInspeccion,
@@ -3991,7 +4078,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult SolicitarViaticos(int id, decimal? monto, string observacion = "")
         {
@@ -4119,7 +4206,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_SOLICITANTE + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_SOLICITANTE + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Subsanar(int id, string observacion = "")
         {
@@ -4132,7 +4219,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Revalidar(int id, bool aprobada, string observacion = "")
         {
@@ -4145,7 +4232,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult SolicitarNueva(int id, string observacion = "")
         {
@@ -4158,7 +4245,8 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "AprobarNcSubsanacionDocumental", CodigoInspeccionParameter = "id")]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult AprobarNcSubsanacionDocumental(int id, string observacion = "")
         {
@@ -4171,6 +4259,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "RegistrarNoConforme", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult RegistrarNoConforme(int id, string descripcion, string criticidad = "MEDIA")
@@ -4215,7 +4304,7 @@ namespace CapaPresentacion.Controllers
 
         private bool InspectorTieneRevisionDocumentalConfirmada(Inspeccion inspeccion)
         {
-            return _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion);
+            return RevisionDocumentalService.InspectorConfirmoCierreDocumental(inspeccion);
         }
 
         private bool PuedeInspectorAccederDetalleDocumental(Inspeccion inspeccion, SolicitudAOCR solicitudDetalle, out string mensaje)
@@ -6301,7 +6390,7 @@ namespace CapaPresentacion.Controllers
                 && !informeEnviadoADirdac
                 && !InformeEstaDevueltoParaCorreccion(informe)
                 && !informeAprobadoDireccion;
-            var puedeReintentarNotificacionDirdac = (EsAdmin() || UsuarioTieneAlMenosUnRol(ROL_COORD, ROL_COORD_ALIAS) || esRolDireccionOJefatura)
+            var puedeReintentarNotificacionDirdac = (EsAdmin() || UsuarioTieneAlMenosUnRol(ROL_COORD, ROL_COORD_ALIAS, ROL_COORD_GRUPO) || esRolDireccionOJefatura)
                 && informe != null
                 && informe.Finalizado
                 && informeEnviadoADirdac
@@ -6454,7 +6543,8 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFE,
                 ROL_INSPECTOR,
                 ROL_COORD,
-                ROL_COORD_ALIAS
+                ROL_COORD_ALIAS,
+                ROL_COORD_GRUPO
             };
 
             foreach (var rol in rolesConocidos)
@@ -6639,7 +6729,7 @@ namespace CapaPresentacion.Controllers
                 && !informeEnviadoADirdac
                 && !InformeEstaDevueltoParaCorreccion(informe)
                 && !informeAprobadoDireccion;
-            var puedeReintentarNotificacionDirdac = (EsAdmin() || UsuarioTieneAlMenosUnRol(ROL_COORD, ROL_COORD_ALIAS, ROL_JEFATURA, ROL_JEFE, ROL_DIRECCION, ROL_DIRECTOR))
+            var puedeReintentarNotificacionDirdac = (EsAdmin() || UsuarioTieneAlMenosUnRol(ROL_COORD, ROL_COORD_ALIAS, ROL_COORD_GRUPO, ROL_JEFATURA, ROL_JEFE, ROL_DIRECCION, ROL_DIRECTOR))
                 && informe.Finalizado
                 && informeEnviadoADirdac
                 && !notificacionFormalDirdac
@@ -8558,6 +8648,7 @@ namespace CapaPresentacion.Controllers
                 if (User.IsInRole(ROL_ADMIN)) roles.Add(ROL_ADMIN);
                 if (User.IsInRole(ROL_COORD)) roles.Add(ROL_COORD);
                 if (User.IsInRole(ROL_COORD_ALIAS)) roles.Add(ROL_COORD_ALIAS);
+                if (User.IsInRole(ROL_COORD_GRUPO)) roles.Add(ROL_COORD_GRUPO);
                 if (User.IsInRole(ROL_INSPECTOR)) roles.Add(ROL_INSPECTOR);
                 if (User.IsInRole(ROL_JEFATURA)) roles.Add(ROL_JEFATURA);
                 if (User.IsInRole(ROL_JEFE)) roles.Add(ROL_JEFE);

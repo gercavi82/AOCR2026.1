@@ -27,6 +27,8 @@
         window.alert(message);
     }
 
+    window.AOCR.notify = notify;
+
     function toPlainError(reason, fallbackMessage) {
         if (reason instanceof Error) {
             return reason;
@@ -446,7 +448,416 @@
         return $opt;
     };
 
+    window.AOCR.confirmarGeneracionSolicitudInspeccion = function (onConfirm) {
+        var titulo = 'Confirmar generación de Solicitud de Inspecciones';
+        var html = '<div style="text-align:left;">' +
+            '<p><strong>Está por generar el PDF definitivo de la Solicitud de Inspecciones.</strong></p>' +
+            '<p>Si continúa, la solicitud quedará <strong>cerrada</strong> y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.</p>' +
+            '<p>Si aún necesita agregar más acciones, seleccione <strong>“No, seguir agregando acciones”</strong> para regresar y completar la orden antes de generar el documento.</p>' +
+            '<p><strong>¿Desea generar el PDF definitivo con la información actual?</strong></p>' +
+            '</div>';
+
+        function ejecutarSiConfirma() {
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+        }
+
+        try {
+            if (window.Swal && typeof window.Swal.fire === 'function') {
+                return window.Swal.fire({
+                    title: titulo,
+                    html: html,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, generar PDF definitivo',
+                    cancelButtonText: 'No, seguir agregando acciones',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#0d6efd',
+                    reverseButtons: true,
+                    focusCancel: true,
+                    customClass: {
+                        popup: 'aocr-swal-advertencia-inspeccion',
+                        htmlContainer: 'aocr-swal-advertencia-inspeccion__content'
+                    }
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        ejecutarSiConfirma();
+                    }
+                });
+            }
+        } catch (e) {
+            // Continuar con confirm nativo.
+        }
+
+        var mensajePlano = 'Está por generar el PDF definitivo de la Solicitud de Inspecciones.\n\n' +
+            'Si continúa, la solicitud quedará cerrada y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.\n\n' +
+            '¿Desea generar el PDF definitivo con la información actual?';
+
+        if (window.confirm(mensajePlano)) {
+            ejecutarSiConfirma();
+        }
+    };
+
+    window.AOCR.confirmarRechazoGeneracionSolicitudInspeccion = function (onConfirm) {
+        var titulo = 'Rechazar generación y seguir agregando acciones';
+        var html = '<div style="text-align:left;">' +
+            '<p>Está por <strong>rechazar la generación actual</strong> de la Solicitud de Inspecciones.</p>' +
+            '<p>El PDF generado quedará invalidado y podrá volver a agregar acciones, conceptos o inspecciones a la orden.</p>' +
+            '<p><strong>Esta opción no está disponible si ya cargó la solicitud firmada.</strong></p>' +
+            '<p>¿Desea continuar?</p>' +
+            '</div>';
+
+        function ejecutarSiConfirma() {
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+        }
+
+        try {
+            if (window.Swal && typeof window.Swal.fire === 'function') {
+                return window.Swal.fire({
+                    title: titulo,
+                    html: html,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, rechazar generación',
+                    cancelButtonText: 'No, mantener PDF generado',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
+                    focusCancel: true
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        ejecutarSiConfirma();
+                    }
+                });
+            }
+        } catch (e) {
+            // Continuar con confirm nativo.
+        }
+
+        if (window.confirm('¿Desea rechazar la generación actual y seguir agregando acciones a la orden?')) {
+            ejecutarSiConfirma();
+        }
+    };
+
+    window.AOCR.informarGeneracionSolicitudInspeccion = window.AOCR.confirmarGeneracionSolicitudInspeccion;
+
+    window.AOCR.installAocrModalPortal = function () {
+        if (window.__aocrModalPortalInstalled) {
+            return;
+        }
+        window.__aocrModalPortalInstalled = true;
+
+        var modalZIndex = '10500';
+        var backdropZIndex = '10490';
+
+        function moverModalesAlBody() {
+            var modales = document.querySelectorAll('.modal');
+            for (var i = 0; i < modales.length; i++) {
+                if (modales[i].parentElement !== document.body) {
+                    document.body.appendChild(modales[i]);
+                }
+            }
+        }
+
+        function aplicarStackingModal() {
+            var backdrops = document.querySelectorAll('.modal-backdrop');
+            for (var i = 0; i < backdrops.length; i++) {
+                backdrops[i].style.zIndex = backdropZIndex;
+            }
+
+            var modalesVisibles = document.querySelectorAll('.modal.show');
+            for (var j = 0; j < modalesVisibles.length; j++) {
+                modalesVisibles[j].style.zIndex = modalZIndex;
+            }
+        }
+
+        document.addEventListener('show.bs.modal', function (event) {
+            var modal = event.target;
+            if (!modal || !modal.classList || !modal.classList.contains('modal')) {
+                return;
+            }
+
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+
+            modal.style.zIndex = modalZIndex;
+        }, true);
+
+        document.addEventListener('shown.bs.modal', aplicarStackingModal, true);
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', moverModalesAlBody);
+        } else {
+            moverModalesAlBody();
+        }
+    };
+
+    window.AOCR.abrirModalAocr = function (selectorOrElement) {
+        var modal = typeof selectorOrElement === 'string'
+            ? document.querySelector(selectorOrElement)
+            : selectorOrElement;
+
+        if (!modal) {
+            return null;
+        }
+
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        modal.style.zIndex = '10500';
+
+        if (window.bootstrap && bootstrap.Modal) {
+            return bootstrap.Modal.getOrCreateInstance(modal).show();
+        }
+
+        return null;
+    };
+
+    // -------------------------------------------------------------------------
+    // Loader / bloqueo de formulario AOCR (idempotente, sin SweetAlert2)
+    // -------------------------------------------------------------------------
+    window.AOCR._loader = window.AOCR._loader || { depth: 0, formLockDepth: 0, element: null };
+
+    window.AOCR.injectLoaderStyles = function () {
+        if (document.getElementById('aocr-loader-styles')) {
+            return;
+        }
+        var style = document.createElement('style');
+        style.id = 'aocr-loader-styles';
+        style.textContent = [
+            '#aocr-global-loader{display:none;position:fixed;inset:0;z-index:19990;',
+            'align-items:center;justify-content:center;background:rgba(248,250,252,.72);',
+            'backdrop-filter:blur(1px);pointer-events:none;}',
+            '#aocr-global-loader.is-visible{display:flex;pointer-events:auto;}',
+            '.aocr-global-loader-panel{text-align:center;padding:1.25rem 1.5rem;border-radius:12px;',
+            'background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.12);min-width:220px;}',
+            '.aocr-global-loader-spinner{width:42px;height:42px;margin:0 auto .75rem;',
+            'border:3px solid #d1d5db;border-top-color:#0c7c86;border-radius:50%;',
+            'animation:aocr-spin .8s linear infinite;}',
+            '@keyframes aocr-spin{to{transform:rotate(360deg);}}',
+            '.aocr-global-loader-text{margin:0;color:#374151;font-weight:600;font-size:.95rem;}',
+            '.aocr-formulario-bloqueado{pointer-events:auto;}'
+        ].join('');
+        document.head.appendChild(style);
+    };
+
+    window.AOCR.ensureLoaderElement = function () {
+        this.injectLoaderStyles();
+        if (this._loader.element) {
+            return this._loader.element;
+        }
+        var el = document.getElementById('aocr-global-loader');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'aocr-global-loader';
+            el.setAttribute('aria-hidden', 'true');
+            el.setAttribute('role', 'status');
+            el.innerHTML = '<div class="aocr-global-loader-panel">' +
+                '<div class="aocr-global-loader-spinner" aria-hidden="true"></div>' +
+                '<p class="aocr-global-loader-text">Procesando...</p></div>';
+            document.body.appendChild(el);
+        }
+        this._loader.element = el;
+        return el;
+    };
+
+    window.AOCR.showAocrLoader = function (message) {
+        var el = this.ensureLoaderElement();
+        var textEl = el.querySelector('.aocr-global-loader-text');
+        if (textEl) {
+            textEl.textContent = message || 'Procesando...';
+        }
+        this._loader.depth = (this._loader.depth || 0) + 1;
+        el.classList.add('is-visible');
+        el.setAttribute('aria-hidden', 'false');
+        if (window.console && console.log) {
+            console.log('[AOCR_LOADER] show depth=' + this._loader.depth + ' msg=' + (message || ''));
+        }
+    };
+
+  /**
+   * Oculta el loader AOCR. Idempotente: { force: true } resetea el contador.
+   * @param {string} origen
+   * @param {{ force?: boolean }} opciones
+   */
+    window.AOCR.hideAocrLoader = function (origen, opciones) {
+        opciones = opciones || {};
+        if (opciones.force) {
+            this._loader.depth = 0;
+        } else if (this._loader.depth > 0) {
+            this._loader.depth--;
+        }
+        var el = this._loader.element || document.getElementById('aocr-global-loader');
+        if (el && this._loader.depth <= 0) {
+            this._loader.depth = 0;
+            el.classList.remove('is-visible');
+            el.setAttribute('aria-hidden', 'true');
+        }
+        this.liberarOverlayUi({ forzarCierre: true });
+        if (window.console && console.log) {
+            console.log('[AOCR_LOADER] hide origen=' + (origen || '') + ' depth=' + this._loader.depth);
+        }
+    };
+
+    window.AOCR.lockAocrForm = function (selector) {
+        this._loader.formLockDepth = (this._loader.formLockDepth || 0) + 1;
+        var root = selector ? (typeof selector === 'string' ? document.querySelector(selector) : selector) : null;
+        var btnSel = '#btnGuardarExplotador,#btnGuardarOperaciones,#btnGuardarListadoAeronaves,#btnGuardarFormulario';
+        if (window.jQuery) {
+            window.jQuery(btnSel).prop('disabled', true);
+            if (root) {
+                window.jQuery(root).addClass('aocr-formulario-bloqueado');
+            }
+        }
+    };
+
+    window.AOCR.unlockAocrForm = function (selector) {
+        if (this._loader.formLockDepth > 0) {
+            this._loader.formLockDepth--;
+        }
+        if (this._loader.formLockDepth > 0) {
+            return;
+        }
+        this._loader.formLockDepth = 0;
+        var root = selector ? (typeof selector === 'string' ? document.querySelector(selector) : selector) : null;
+        var btnSel = '#btnGuardarExplotador,#btnGuardarOperaciones,#btnGuardarListadoAeronaves,#btnGuardarFormulario';
+        if (window.jQuery) {
+            window.jQuery(btnSel).prop('disabled', false);
+            if (root) {
+                window.jQuery(root).removeClass('aocr-formulario-bloqueado');
+            }
+        }
+    };
+
+    window.AOCR.resetAocrUiGuardado = function (origen) {
+        this.hideAocrLoader(origen || 'reset', { force: true });
+        this.unlockAocrForm('#formularioEmisionAOCR');
+        this.liberarOverlayUi({ forzarCierre: true });
+    };
+
+    /**
+     * AJAX JSON seguro para formulario AOCR: siempre cierra loader en complete.
+     */
+    window.AOCR.ajaxJsonSeguro = function (options) {
+        options = options || {};
+        var $ = window.jQuery;
+        var origen = options.origen || 'ajax';
+        var formSelector = options.formSelector || '#formularioEmisionAOCR';
+
+        if (!$) {
+            return Promise.reject(new Error('jQuery no está disponible.'));
+        }
+
+        console.log('[AOCR_GUARDAR][' + origen + '] inicio guardado');
+        if (options.payload !== undefined) {
+            console.log('[AOCR_GUARDAR][' + origen + '] payload:', options.payload);
+        }
+
+        window.AOCR.lockAocrForm(formSelector);
+        window.AOCR.showAocrLoader(options.loaderMessage || 'Guardando...');
+
+        var ajaxOpts = {
+            url: options.url,
+            type: options.type || 'POST',
+            dataType: 'json',
+            timeout: options.timeout || 30000,
+            aocrSkipAuthRedirect: true,
+            headers: Object.assign({ 'X-Requested-With': 'XMLHttpRequest' }, options.headers || {}),
+            data: options.data,
+            processData: options.processData,
+            contentType: options.contentType
+        };
+
+        if (options.beforeSend) {
+            ajaxOpts.beforeSend = options.beforeSend;
+        }
+
+        return new Promise(function (resolve, reject) {
+            $.ajax(ajaxOpts)
+                .done(function (data, textStatus, xhr) {
+                    console.log('[AOCR_GUARDAR][' + origen + '] respuesta backend:', data);
+                    var raw = xhr && xhr.responseText ? xhr.responseText : '';
+                    if (typeof data === 'string' || (raw && window.AOCR.isLoginMarkup(raw))) {
+                        reject({ tipo: 'html', xhr: xhr, data: data });
+                        return;
+                    }
+                    if (raw && raw.trim().charAt(0) === '<' && raw.toLowerCase().indexOf('<html') >= 0) {
+                        reject({ tipo: 'html', xhr: xhr, data: data });
+                        return;
+                    }
+                    console.log('[AOCR_GUARDAR][' + origen + '] success ejecutado');
+                    resolve({ data: data, xhr: xhr });
+                })
+                .fail(function (xhr, status, error) {
+                    console.error('[AOCR_GUARDAR][' + origen + '] error ejecutado:', status, error);
+                    reject({ tipo: 'error', xhr: xhr, status: status, error: error });
+                })
+                .always(function () {
+                    console.log('[AOCR_GUARDAR][' + origen + '] complete/finally ejecutado');
+                    window.AOCR.hideAocrLoader(origen + '-complete', { force: true });
+                    window.AOCR.unlockAocrForm(formSelector);
+                    console.log('[AOCR_GUARDAR][' + origen + '] overlay ocultado; formulario desbloqueado');
+                });
+        });
+    };
+
+    /**
+     * Limpia overlays huérfanos de SweetAlert2/Bootstrap que dejan la UI bloqueada.
+     * @param {{ forzarCierre?: boolean }} opciones
+     */
+    window.AOCR.liberarOverlayUi = function (opciones) {
+        opciones = opciones || {};
+        var forzarCierre = opciones.forzarCierre === true;
+        var body = document.body;
+
+        if (forzarCierre && typeof Swal !== 'undefined') {
+            try { Swal.close(); } catch (e) { }
+        }
+
+        if (!body) {
+            return;
+        }
+
+        body.classList.remove('swal2-shown', 'swal2-height-auto', 'modal-open');
+        body.style.removeProperty('overflow');
+        body.style.removeProperty('padding-right');
+
+        var containers = document.querySelectorAll('body > .swal2-container');
+        for (var i = 0; i < containers.length; i++) {
+            if (forzarCierre || containers.length > 1) {
+                if (containers[i].parentNode) {
+                    containers[i].parentNode.removeChild(containers[i]);
+                }
+            }
+        }
+
+        if (forzarCierre) {
+            containers = document.querySelectorAll('body > .swal2-container');
+            for (var j = 0; j < containers.length; j++) {
+                if (containers[j].parentNode) {
+                    containers[j].parentNode.removeChild(containers[j]);
+                }
+            }
+        }
+    };
+
+    window.AOCR.installAocrModalPortal();
     window.AOCR.installGlobalDiagnostics();
     window.AOCR.installGlobalHttpHandlers();
+
+    function limpiarUiAlCargarAocr() {
+        window.AOCR.resetAocrUiGuardado('global-init');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', limpiarUiAlCargarAocr);
+    } else {
+        limpiarUiAlCargarAocr();
+    }
 
 })(window);

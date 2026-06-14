@@ -102,6 +102,35 @@ namespace CapaNegocio.Services
             return EstaFaseDocumentalAprobada(inspeccion.CodigoSolicitud);
         }
 
+        /// <summary>
+        /// El inspector completó explícitamente la fase documental (Confirmar cierre documental).
+        /// Distinto de <see cref="EstaInspeccionHabilitadaParaEjecucion"/>, que solo valida precondiciones técnicas.
+        /// </summary>
+        public static bool InspectorConfirmoCierreDocumental(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            var estadoDocumental = (inspeccion.EstadoDocumental ?? string.Empty).Trim();
+            if (string.Equals(estadoDocumental, "EN_REVISION", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoDocumental, "ACEPTADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoDocumental, "APROBADO", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var comentarios = inspeccion.Comentarios ?? string.Empty;
+            return comentarios.IndexOf("Inspector confirmó revisión documental", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public bool PuedeInspectorAbrirFaseOperativaLv(Inspeccion inspeccion, SolicitudAOCR solicitud = null)
+        {
+            return EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitud)
+                && InspectorConfirmoCierreDocumental(inspeccion);
+        }
+
         public bool EsEstadoSolicitudCompatibleInspeccion(string estadoSolicitud)
         {
             var estado = (estadoSolicitud ?? string.Empty).Trim();
@@ -277,6 +306,16 @@ namespace CapaNegocio.Services
             IDictionary<int, Tuple<string, string>> revisiones,
             string observacion)
         {
+            return PrepararFirmaAceptacionDocumental(estadoActual, documentos, revisiones, observacion, tipoSolicitud: null);
+        }
+
+        public RevisionDocumentalFirmaPlan PrepararFirmaAceptacionDocumental(
+            string estadoActual,
+            IEnumerable<Documento> documentos,
+            IDictionary<int, Tuple<string, string>> revisiones,
+            string observacion,
+            int? tipoSolicitud)
+        {
             if (!string.Equals(EstadoSolicitud.Normalizar(estadoActual ?? string.Empty), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
             {
                 return new RevisionDocumentalFirmaPlan
@@ -302,11 +341,26 @@ namespace CapaNegocio.Services
             return new RevisionDocumentalFirmaPlan
             {
                 EsValido = true,
-                EstadoDestino = EstadoSolicitud.FirmadoCoordinador,
+                EstadoDestino = ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud),
                 ObservacionEstado = string.IsNullOrWhiteSpace(observacion)
                     ? "Aceptación documental firmada por coordinación."
                     : observacion.Trim()
             };
+        }
+
+        public static string ResolverEstadoDestinoFirmaAceptacionDocumental(int? tipoSolicitud)
+        {
+            if (!tipoSolicitud.HasValue)
+            {
+                return EstadoSolicitud.FirmadoCoordinador;
+            }
+
+            if (tipoSolicitud == 1 || tipoSolicitud == 2)
+            {
+                return EstadoSolicitud.PendienteAsignacionRT;
+            }
+
+            return EstadoSolicitud.FirmadoCoordinador;
         }
 
         private static string CombinarObservacionCierre(string observacionBase, string observacionCoordinador)

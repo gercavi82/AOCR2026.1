@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pendientes publicación AOCR — Sistema AOCR</title>
+  <style>
+    :root { --brand:#2c5282; --brand2:#4299e1; --light:#ebf4ff; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Pendientes publicación AOCR<br><span style="font-weight:400;font-size:1.35rem">Todo lo que falta — consolidado</span></h1>
+    <p class="lead">Bloqueantes, Gates A–E, infraestructura, checklist prod, deuda técnica y plan 4 semanas.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/PENDIENTES_PUBLICACION_AOCR.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/PENDIENTES_PUBLICACION_AOCR.pdf</code> · Editable Word → <code>docs/export/editable/PENDIENTES_PUBLICACION_AOCR.docx</code> · Markdown → <code>docs/export/editable/PENDIENTES_PUBLICACION_AOCR.md</code></div>
+    <article class="md-body">
+<h1>Pendientes para publicación oficial — Sistema AOCR</h1>
+<p><strong>Versión:</strong> 2026-06-11<br><strong>Entorno piloto:</strong> <code>C:\AOCR\publicacion1</code> · DLLs <strong>11-jun-2026</strong><br><strong>Caso de prueba:</strong> solicitud <strong>#12</strong> (<code>DGAC-GOP-2026-AOCR012</code>), inspección <strong>#11</strong>, inspector <strong>id 43</strong></p>
+<hr>
+<h2>Resumen ejecutivo</h2>
+<table>
+<thead>
+<tr>
+<th>Pregunta</th>
+<th>Respuesta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>¿Código del flujo emisión implementado?</td>
+<td><strong>Sí</strong> (~85%) — fixes recientes desplegados</td>
+</tr>
+<tr>
+<td>¿Probado E2E hasta AOCR emitido?</td>
+<td><strong>No</strong> — cadena COO→INS→DIR incompleta en #12</td>
+</tr>
+<tr>
+<td>¿Listo para producción institucional?</td>
+<td><strong>No</strong> — faltan Gates A–E + checklist prod + infra</td>
+</tr>
+<tr>
+<td>¿Listo para piloto QA interno?</td>
+<td><strong>Sí</strong>, tras reciclar IIS y ejecutar Gate A</td>
+</tr>
+</tbody></table>
+<p><strong>Regla de cierre del proyecto:</strong> 100% = Niveles <strong>A + B + C + D + E</strong> + dependencias externas + <code>CHECKLIST_PRODUCCION.md</code> firmado.</p>
+<p><strong>Duración orientativa para cierre:</strong> 10–15 días hábiles.</p>
+<hr>
+<h2>Estado por área</h2>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>% estimado</th>
+<th>Bloquea go-live</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Código flujo emisión (tipo 1/2)</td>
+<td>85%</td>
+<td>Parcial</td>
+</tr>
+<tr>
+<td>Prueba E2E #12 → AOCR RT</td>
+<td>40%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Modificación tipo 3 (C/D)</td>
+<td>Código OK · prueba ☐</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Rama NC / informe insatisfactorio</td>
+<td>20%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Endurecimiento plataforma (Nivel E)</td>
+<td>35%</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Documentación escrita</td>
+<td>90%</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Capturas PNG (42)</td>
+<td>0%</td>
+<td>No (entrega usuario)</td>
+</tr>
+<tr>
+<td>Checklist producción (116 ítems)</td>
+<td>0% firmado</td>
+<td><strong>Sí</strong></td>
+</tr>
+<tr>
+<td>Deploy publicacion1</td>
+<td>Republicado</td>
+<td>Verificar IIS reciclado</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Tres gates obligatorios antes de prod</h2>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Pregunta</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1 Funcional</strong></td>
+<td>¿Trámite emisión llegó de RT a AOCR emitido con todos los roles?</td>
+<td>☐</td>
+</tr>
+<tr>
+<td><strong>2 Operación</strong></td>
+<td>¿Servidor prod: SMTP, certificados, BD, backups, IIS?</td>
+<td>☐</td>
+</tr>
+<tr>
+<td><strong>3 Gobernanza</strong></td>
+<td>¿QA + Infra + PO firmaron checklist producción?</td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Bloqueantes absolutos (no prod sin esto)</h2>
+<ol>
+<li><strong>Gate B completo</strong> — solicitud #12 (u otra emisión) hasta PDF AOCR descargado por RT en <code>GeneradasFirmadas</code></li>
+<li><strong>Gate A</strong> — 8 escenarios post-republicación (<code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code>)</li>
+<li><strong>Reciclar IIS</strong> + verificar DLL/CSS actuales en servidor de prueba</li>
+<li><strong><code>CHECKLIST_PRODUCCION.md</code></strong> — mínimo seguridad + QA E2E + firmas</li>
+<li><strong>SMTP + certificados <code>.p12</code></strong> vigentes en servidor destino (LV, informe, DIRDAC)</li>
+<li><strong>Backup y rollback</strong> probados antes del go-live</li>
+</ol>
+<hr>
+<h2>Importante (prod con plan de remediación)</h2>
+<ol start="7">
+<li>Gate C — modificación tipo 3 (escenarios C y D)  </li>
+<li>Gate D — informe no satisfactorio (NC) + financiero idempotente  </li>
+<li>Gate E1 — autorización unificada en <code>InspeccionController</code> (DT-1)  </li>
+<li>42 capturas PNG para manuales usuario (<code>docs/images/</code>)</li>
+</ol>
+<hr>
+<h2>Mejora continua (post go-live mes 1)</h2>
+<ol start="11">
+<li>DT-2 — ViewModels flujo en Razor (<code>Detalle.cshtml</code>)  </li>
+<li>DT-4 — retirar legacy <code>EstadosSolicitudAOCR</code>  </li>
+<li>Test integración BD (<code>FlujoCompletoTests</code> hoy <code>Inconclusive</code>)  </li>
+<li>E7 — correos idempotentes en todos los eventos de flujo</li>
+</ol>
+<hr>
+<h2>Fase 0 — Deploy (0,5 día) · Dev + Infra</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Tarea</th>
+<th>Verificación</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Build Release sin errores</td>
+<td>Visual Studio</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Tests unitarios ~95 verdes</td>
+<td><code>AOCR.Tests</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Publicar <code>FolderProfile4</code> → publicacion1</td>
+<td>Timestamps DLL</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Reciclar App Pool IIS</td>
+<td>Reinicio confirmado</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Ctrl+F5 / incógnito en pruebas</td>
+<td>Sin caché CSS</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Tag Git + release notes</td>
+<td><code>v2026.06.xx</code></td>
+</tr>
+</tbody></table>
+<p><strong>Archivos críticos en publicación:</strong></p>
+<pre><code>bin\CapaDatos.dll · CapaNegocio.dll · CapaPresentacion.dll
+Content\aocr-contrast.css · aocr-datatables.css
+Views\Documento\Lista.cshtml · RevisionDocumental\Index.cshtml
+Views\Inspeccion\Detalle.cshtml · Tecnico\Index.cshtml · SolicitudAOCR\Detalle.cshtml
+</code></pre>
+<hr>
+<h2>Gate A — Regresión (1 día) · QA + Coordinación</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Escenario</th>
+<th>Rol</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>A1</td>
+<td>Fix visual <code>/Tecnico</code></td>
+<td>Coordinación</td>
+<td>Sin texto azul fantasma</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B2</td>
+<td>Firma coord. emisión #12</td>
+<td>Coordinación</td>
+<td>→ <code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B3</td>
+<td>Descarga constancia</td>
+<td>RT</td>
+<td><strong>No</strong> → <code>Finalizado</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>B4</td>
+<td>Asignación inspector #12</td>
+<td>Coordinación</td>
+<td>→ <code>En Inspeccion</code> · log <code>[GestionInspeccion]</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C2</td>
+<td>Mod. con aeropuertos</td>
+<td>Inspector</td>
+<td>Solo cierre → <code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C3</td>
+<td>RT orden post mod.</td>
+<td>RT</td>
+<td><code>/OrdenRecaudacion/Nueva</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>D</td>
+<td>Mod. sin aeropuertos</td>
+<td>Inspector</td>
+<td>Ramas CL / inspección</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>A8</td>
+<td>Tests unitarios</td>
+<td>Dev</td>
+<td>Todos pasan</td>
+</tr>
+</tbody></table>
+<p><strong>Salida Gate A:</strong> 8/8 ✅ · Guía: <code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code></p>
+<hr>
+<h2>Gate B — Emisión completa #12 (2–3 días) · CRÍTICO</h2>
+<p>Cadena obligatoria solicitud <strong>#12</strong> hasta <strong><code>AOCR Emitido/Recibido</code></strong>:</p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Rol</th>
+<th>Acción</th>
+<th>Estado destino</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E2E-01</td>
+<td>RT</td>
+<td>Solicitud + orden + comprobante</td>
+<td>Pago pendiente</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-02</td>
+<td>Financiero</td>
+<td>Aprobar pago</td>
+<td>Docs habilitados</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E2E-03</td>
+<td>RT</td>
+<td>Cargar docs + enviar</td>
+<td><code>En Revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-1a</td>
+<td>Coordinación</td>
+<td>Revisión COO-1 + firma</td>
+<td><code>Pendiente Asignacion RT</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-1b</td>
+<td>Coordinación</td>
+<td>Asignar inspector 43</td>
+<td><code>En Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1a</td>
+<td>Inspector</td>
+<td><code>modo=revision</code> — docs <strong>PENDIENTE</strong></td>
+<td>Decisiones inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1b</td>
+<td>Inspector</td>
+<td>Confirmar cierre documental #11</td>
+<td>LV habilitada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1c</td>
+<td>Inspector</td>
+<td>LV finalizada + firmada (.p12)</td>
+<td><code>firmado_tecnico=true</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>INS-1d</td>
+<td>Inspector</td>
+<td>Informe firmado</td>
+<td><code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>DIR-1</td>
+<td>DIRDAC</td>
+<td>Aprobar informe</td>
+<td><code>AOCR En Elaboracion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-2</td>
+<td>Coordinación</td>
+<td><code>ValidarAocr</code></td>
+<td><code>AOCR En Revision</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>DIR-2</td>
+<td>DIRDAC</td>
+<td>Firma AOCR</td>
+<td><code>AOCR Emitido/Recibido</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>RT-FIN</td>
+<td>RT</td>
+<td><code>GeneradasFirmadas</code> — descarga PDF</td>
+<td>Cierre RT</td>
+</tr>
+</tbody></table>
+<p><strong>Puntos de fallo a vigilar:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Síntoma</th>
+<th>Causa probable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Docs ACEPTADO sin acción inspector</td>
+<td>URL debe ser <code>modo=revision</code>, no <code>modo=ver</code></td>
+</tr>
+<tr>
+<td>Bandeja revisión vacía</td>
+<td>Sin asignación en <code>aocr_tbinspeccion</code></td>
+</tr>
+<tr>
+<td>LV candado</td>
+<td>Cierre documental no confirmado</td>
+</tr>
+<tr>
+<td>Informe bloqueado</td>
+<td>LV no firmada</td>
+</tr>
+<tr>
+<td>AOCR no genera</td>
+<td>Informe no aprobado DIRDAC</td>
+</tr>
+</tbody></table>
+<p><strong>Guías:</strong> <code>GUIA_INSPECTOR_SOLICITUD_12.md</code> · <code>MANUAL_FLUJO_RT_A_AOCR.md</code></p>
+<hr>
+<h2>Gate C — Modificación tipo 3 (1 día)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Escenario</th>
+<th>Acción</th>
+<th>Estado final</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>C</td>
+<td>Inspector: <code>CerrarFaseDocumentalNuevoAeropuertoModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C-RT</td>
+<td>RT: <code>OrdenRecaudacion/Nueva</code></td>
+<td>Orden creada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>D-CL</td>
+<td>Inspector: <code>GenerarCondicionesLimitacionesModificacion</code></td>
+<td><code>Generado CL</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>D-INS</td>
+<td>Inspector: <code>MarcarRequiereInspeccionModificacion</code></td>
+<td><code>Requiere Inspeccion</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>C-neg</td>
+<td>CL con aeropuertos → debe <strong>rechazar</strong></td>
+<td>Mensaje §18.4</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Gate D — NC + Financiero (1–2 días)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Qué probar</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>FIN-1</td>
+<td>Pago aprobado + <strong>un solo</strong> correo por <code>event_key</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>FIN-2</td>
+<td>Contador sidebar financiero = filas bandeja</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>COO-2</td>
+<td>Informe no satisfactorio → coordinación aprueba NC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>RT-2</td>
+<td>RT no subsana antes de NC; sí después de aprobación</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Gate E — Endurecimiento técnico (3–5 días dev)</h2>
+<h3>Prioridad alta (antes de prod)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Entregable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E1 / DT-1</td>
+<td><code>[AocrAuthorize]</code> en acciones críticas <code>InspeccionController</code> (47 <code>[Authorize]</code> legacy)</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E3 / DT-3</td>
+<td>Callers de revisión documental siempre filtran por inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>ADM-1</td>
+<td>URL sin permiso → 403 en módulos críticos</td>
+</tr>
+</tbody></table>
+<h3>Prioridad media (mes 1 post go-live)</h3>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>ID</th>
+<th>Entregable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>E2 / DT-2</td>
+<td>Botones flujo → <code>SolicitudAocrFlujoViewModel</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E4 / DT-5</td>
+<td>Revisión PDFs AOCR/CL con Legal</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E7</td>
+<td>Correos idempotentes globales</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>E6 / DT-4</td>
+<td>Retirar <code>EstadosSolicitudAOCR</code> legacy</td>
+</tr>
+</tbody></table>
+<h3>Prioridad baja</h3>
+<p>| ☐ | E5 | Casos 1–10 E2E checklist |
+| ☐ | E10 | <code>FlujoCompletoTests</code> con BD real |
+| ☐ | ADM-2 | Inventario AOCR legacy |</p>
+<hr>
+<h2>Pre-producción — Infraestructura (Fase 6)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Categoría</th>
+<th>Pendiente</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>IIS</td>
+<td>App Pool .NET 4.8, SSL prod, permisos <code>App_Data</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>BD</td>
+<td><code>AOCR_CONNSTR_POSTGRESQL</code>, backup diario probado</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>AS400</td>
+<td>ODBC + credenciales en variables de entorno</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Email</td>
+<td>SMTP prod + cola <code>email_queue</code> + prueba envío</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Certificados</td>
+<td><code>.p12</code> LV, informe inspector, firma DIRDAC en servidor</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Seguridad</td>
+<td>CSRF, upload, headers HSTS/CSP</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Observabilidad</td>
+<td>Logs, rotación, <code>/health</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Rollback</td>
+<td>Backup pre-deploy + restore probado</td>
+</tr>
+</tbody></table>
+<p><strong>Dependencias externas:</strong></p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Responsable</th>
+<th>Dependencia</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>DIRDAC / TI</td>
+<td>Certificados digitales vigentes</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Infra</td>
+<td>SMTP <code>no_reply@</code> en prod</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>DBA</td>
+<td>Esquema BD estable</td>
+</tr>
+</tbody></table>
+<p><strong>Documentos:</strong> <code>CHECKLIST_IIS.md</code> · <code>CHECKLIST_PRODUCCION.md</code> · <code>VARIABLES_AMBIENTE.md</code> · <code>CHECKLIST_SEGURIDAD.md</code></p>
+<hr>
+<h2>Documentación pendiente (Fase 7)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Entregable</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☑</td>
+<td>Manuales PDF en <code>docs/export/</code></td>
+<td>Generados</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>42 capturas PNG <code>docs/images/</code></td>
+<td><strong>0/42</strong></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Regenerar PDF post-capturas</td>
+<td>Pendiente</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Release notes usuario</td>
+<td>Pendiente</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Capacitación RT / Inspector / Coord. (2h)</td>
+<td>Pendiente</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Seguimiento CSV completado</td>
+<td><code>SEGUIMIENTO_PUBLICACION_AOCR.csv</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Go-live — Día D (Fase 8)</h2>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Momento</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>T-24h</td>
+<td>Backup BD + carpeta aplicación</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T-1h</td>
+<td>Publicar Release → prod</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T-0</td>
+<td>Reciclar App Pool</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T+15m</td>
+<td>Smoke: login todos los roles + <code>/health</code></td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T+30m</td>
+<td>Smoke: <code>/Tecnico</code>, <code>/RevisionDocumental</code> sin 500</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>T+1h</td>
+<td>Monitoreo logs 1 hora</td>
+</tr>
+</tbody></table>
+<p><strong>Smoke test mínimo:</strong></p>
+<table>
+<thead>
+<tr>
+<th>☐</th>
+<th>Prueba</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Login RT, Coordinación, Inspector, Financiero, DIRDAC</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Sidebar contadores sin error</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Correo financiero de prueba</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Log en <code>App_Data/Logs</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Deuda técnica documentada</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Descripción</th>
+<th>Prioridad</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DT-1</td>
+<td>Autorización híbrida <code>InspeccionController</code></td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>DT-2</td>
+<td>Lógica botones en Razor</td>
+<td>Media</td>
+</tr>
+<tr>
+<td>DT-3</td>
+<td><code>RevisionDocumentalService</code> — callers deben filtrar revisiones</td>
+<td>Alta</td>
+</tr>
+<tr>
+<td>DT-4</td>
+<td>Legacy <code>EstadosSolicitudAOCR</code> duplicado</td>
+<td>Media</td>
+</tr>
+<tr>
+<td>DT-5</td>
+<td>PDFs institucionales sin revisión formal</td>
+<td>Media</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Checklist producción — resumen (116 ítems)</h2>
+<p>Categorías sin marcar en <code>CHECKLIST_PRODUCCION.md</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Categoría</th>
+<th>Ítems aprox.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Seguridad (auth, CSRF, secrets, upload)</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Integridad datos (transacciones, SQL)</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Manejo errores + headers</td>
+<td>14</td>
+</tr>
+<tr>
+<td>Observabilidad + auditoría</td>
+<td>11</td>
+</tr>
+<tr>
+<td>Resiliencia (correo, PDF)</td>
+<td>11</td>
+</tr>
+<tr>
+<td>Backups + monitoreo</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Despliegue + tests</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Documentación</td>
+<td>8</td>
+</tr>
+<tr>
+<td>QA E2E</td>
+<td>10</td>
+</tr>
+<tr>
+<td><strong>Firmas aprobación</strong></td>
+<td>Dev · DBA · Seguridad · QA · Infra · PO</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Plan 4 semanas sugerido</h2>
+<table>
+<thead>
+<tr>
+<th>Semana</th>
+<th>Objetivo</th>
+<th>Hitos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1</strong></td>
+<td>Deploy + Gate A + inicio Gate B</td>
+<td>MILE-G0, MILE-GA, COO-1, INS-1a</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Cerrar Gate B + Gate C/D</td>
+<td>MILE-GB, MILE-GC, MILE-GD</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Gate E mínimo + infra pre-prod</td>
+<td>MILE-GE, MILE-G2, capturas PNG</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Checklist prod + go-live</td>
+<td>MILE-G3, MILE-LIVE</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Próximo paso inmediato</h2>
+<pre><code class="language-text">1. Reciclar IIS en publicacion1
+2. Ejecutar Gate A (8 escenarios) — GUIA_PRUEBAS_POST_REPUBLICACION.md
+3. Si B4 OK → Gate B inspector 43 solicitud #12 — GUIA_INSPECTOR_SOLICITUD_12.md
+</code></pre>
+<p><strong>Seguimiento:</strong> <code>docs/export/editable/SEGUIMIENTO_PUBLICACION_AOCR.csv</code></p>
+<hr>
+<h2>Índice documentación</h2>
+<table>
+<thead>
+<tr>
+<th>Documento</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>HOJA_RUTA_PUBLICACION.md</code></td>
+<td>Hoja de ruta detallada</td>
+</tr>
+<tr>
+<td><code>PENDIENTES_PUBLICACION_AOCR.md</code></td>
+<td>Este documento</td>
+</tr>
+<tr>
+<td><code>GUIA_PRUEBAS_POST_REPUBLICACION.md</code></td>
+<td>Gate A escenarios</td>
+</tr>
+<tr>
+<td><code>GUIA_INSPECTOR_SOLICITUD_12.md</code></td>
+<td>Gate B inspector</td>
+</tr>
+<tr>
+<td><code>MANUAL_FLUJO_RT_A_AOCR.md</code></td>
+<td>16 fases RT→AOCR</td>
+</tr>
+<tr>
+<td><code>CHECKLIST_PRODUCCION.md</code></td>
+<td>116 ítems gobernanza</td>
+</tr>
+<tr>
+<td><code>AOCR_FLUJO_INTEGRAL_MATRICES.md</code></td>
+<td>Definición done §12</td>
+</tr>
+<tr>
+<td><code>SEGUIMIENTO_PUBLICACION_AOCR.csv</code></td>
+<td>Seguimiento Excel</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Documento consolidado AOCR · 2026-06-11 · No apto para go-live hasta Gates 1–3 completos.</em></p>
+
+    </article>
+    <div class="footer">Pendientes publicación AOCR — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

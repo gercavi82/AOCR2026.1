@@ -33,9 +33,15 @@ namespace CapaNegocio.Services
 
     public class AocrModificationWorkflowService
     {
+        public const string MensajeRechazoClConInspeccionRequerida =
+            "La modificación incluye nuevos aeropuertos o condiciones que requieren inspección. Debe completar el flujo de inspección antes de generar Condiciones y Limitaciones.";
+
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBl = new SolicitudEstadoTransitionBL();
-        private readonly AocrFinalWorkflowService _aocrFinalWorkflowService = new AocrFinalWorkflowService();
+        private AocrFinalWorkflowService _aocrFinalWorkflowService;
+
+        private AocrFinalWorkflowService AocrFinalWorkflow =>
+            _aocrFinalWorkflowService ?? (_aocrFinalWorkflowService = new AocrFinalWorkflowService());
 
         public AocrModificacionWorkflowResult EjecutarRequiereInspeccion(
             int solicitudId,
@@ -71,6 +77,34 @@ namespace CapaNegocio.Services
                 "La modificación quedó lista para revisión final de Condiciones y Limitaciones.");
         }
 
+        public AocrModificacionWorkflowResult EjecutarCierreFaseDocumentalNuevoAeropuerto(
+            int solicitudId,
+            string observacion,
+            int usuarioId,
+            IEnumerable<string> rolesActuales,
+            bool usuarioAutenticado)
+        {
+            return EjecutarCambioEstadoModificacion(
+                solicitudId,
+                observacion,
+                usuarioId,
+                rolesActuales,
+                usuarioAutenticado,
+                PrepararCierreFaseDocumentalNuevoAeropuerto,
+                "Se cerró la fase documental. El RT debe generar la orden de recaudación con solicitud de inspección para el nuevo aeropuerto.");
+        }
+
+        public static bool TieneNuevoAeropuertoDeclarado(SolicitudAOCR solicitud)
+        {
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                return false;
+            }
+
+            return !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuador)
+                || !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuadorOtros);
+        }
+
         public AocrModificationWorkflowPlan PrepararRequiereInspeccion(SolicitudAOCR solicitud, string observacion)
         {
             if (solicitud == null)
@@ -83,9 +117,16 @@ namespace CapaNegocio.Services
                 return CrearPlanError("warning", "La solicitud indicada no corresponde a una modificación AOCR.");
             }
 
-            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!EsEstadoResolucionModificacionPermitido(solicitud.Estado))
             {
-                return CrearPlanError("warning", "Solo puede derivar a inspección una modificación con documentación ya aceptada.");
+                return CrearPlanError("warning", "Solo puede derivar a inspección una modificación con documentación ya aceptada y firma de coordinación registrada.");
+            }
+
+            if (TieneNuevoAeropuertoDeclarado(solicitud))
+            {
+                return CrearPlanError(
+                    "warning",
+                    "La modificación declara inclusión de nuevo aeropuerto. Debe usar el cierre institucional de fase documental para derivar al módulo de solicitud de inspección.");
             }
 
             return CrearPlanExito(
@@ -93,6 +134,38 @@ namespace CapaNegocio.Services
                 string.IsNullOrWhiteSpace(observacion)
                     ? "El inspector determinó que la modificación requiere derivación al módulo de inspección."
                     : observacion.Trim());
+        }
+
+        public AocrModificationWorkflowPlan PrepararCierreFaseDocumentalNuevoAeropuerto(SolicitudAOCR solicitud, string observacion)
+        {
+            if (solicitud == null)
+            {
+                return CrearPlanError("warning", "La solicitud indicada no existe.");
+            }
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                return CrearPlanError("warning", "La solicitud indicada no corresponde a una modificación AOCR.");
+            }
+
+            if (!TieneNuevoAeropuertoDeclarado(solicitud))
+            {
+                return CrearPlanError(
+                    "warning",
+                    "El cierre de fase documental por nuevo aeropuerto solo aplica cuando la modificación declara aeropuertos en Ecuador.");
+            }
+
+            if (!EsEstadoResolucionModificacionPermitido(solicitud.Estado))
+            {
+                return CrearPlanError("warning", "Solo puede cerrar la fase documental cuando la modificación ya tiene documentación aceptada y firma de coordinación registrada.");
+            }
+
+            var observacionBase = "Cierre de fase documental por inclusión de nuevo aeropuerto. El RT debe solicitar inspección mediante orden de recaudación.";
+            var observacionFinal = string.IsNullOrWhiteSpace(observacion)
+                ? observacionBase
+                : observacionBase + " " + observacion.Trim();
+
+            return CrearPlanExito(EstadoSolicitud.RequiereInspeccion, observacionFinal);
         }
 
         public AocrModificationWorkflowPlan PrepararGeneracionCondicionesLimitaciones(SolicitudAOCR solicitud, string observacion)
@@ -107,9 +180,14 @@ namespace CapaNegocio.Services
                 return CrearPlanError("warning", "La solicitud indicada no corresponde a una modificación AOCR.");
             }
 
-            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!EsEstadoResolucionModificacionPermitido(solicitud.Estado))
             {
-                return CrearPlanError("warning", "Solo puede generar Condiciones y Limitaciones cuando la documentación de la modificación ya fue aceptada.");
+                return CrearPlanError("warning", "Solo puede generar Condiciones y Limitaciones cuando la documentación de la modificación ya fue aceptada y firmada por coordinación.");
+            }
+
+            if (TieneNuevoAeropuertoDeclarado(solicitud))
+            {
+                return CrearPlanError("warning", MensajeRechazoClConInspeccionRequerida);
             }
 
             return CrearPlanExito(
@@ -172,6 +250,28 @@ namespace CapaNegocio.Services
             return solicitud != null && solicitud.TipoSolicitud.GetValueOrDefault() == 3;
         }
 
+        public static bool EsResolucionModificacionConNuevoAeropuerto(SolicitudAOCR solicitud, string estadoNormalizado)
+        {
+            return TieneNuevoAeropuertoDeclarado(solicitud)
+                && EsEstadoResolucionModificacionPermitido(estadoNormalizado);
+        }
+
+        public static bool EsEstadoResolucionModificacionPermitido(string estado)
+        {
+            var normalizado = EstadoSolicitud.Normalizar(estado ?? string.Empty);
+            return string.Equals(normalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool RtDebeSolicitarInspeccionNuevoAeropuerto(SolicitudAOCR solicitud, string estadoNormalizado)
+        {
+            return TieneNuevoAeropuertoDeclarado(solicitud)
+                && string.Equals(
+                    EstadoSolicitud.Normalizar(estadoNormalizado ?? string.Empty),
+                    EstadoSolicitud.RequiereInspeccion,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
         private AocrModificacionWorkflowResult EjecutarCambioEstadoModificacion(
             int solicitudId,
             string observacion,
@@ -219,7 +319,7 @@ namespace CapaNegocio.Services
                 estadoDestino,
                 plan.ObservacionEstado,
                 usuarioId,
-                destino => _aocrFinalWorkflowService.UsuarioPuedeTransicionarEstadoAocr(destino, rolesActuales ?? Enumerable.Empty<string>(), usuarioAutenticado),
+                destino => AocrFinalWorkflow.UsuarioPuedeTransicionarEstadoAocr(destino, rolesActuales ?? Enumerable.Empty<string>(), usuarioAutenticado),
                 out mensajeCambio);
 
             if (!ok)

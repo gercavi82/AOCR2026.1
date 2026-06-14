@@ -341,17 +341,20 @@
     </Compile>
     <Compile Include="Helpers\AuthTicketRoleDataHelper.cs" />
     <Compile Include="Helpers\CompaniaActivaSessionHelper.cs" />
+    <Compile Include="Helpers\CompaniaActivaRecoveryHelper.cs" />
+    <Compile Include="Helpers\FormularioEmisionTextHelper.cs" />
     <Compile Include="Helpers\AssetVersionHelper.cs" />
     <Compile Include="Helpers\AocrBandejaEstadoHelper.cs" />
+    <Compile Include="Helpers\AocrPresentacionAuthorizationHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
-    <Compile Include="Helpers\FinancialOrderStateHelper.cs" />
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Helpers\OrdenRecaudacionPagoHelper.cs" />
     <Compile Include="Helpers\PdfFileNameHelper.cs" />
     <Compile Include="Helpers\RoleGroupingHelper.cs" />
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
+    <Compile Include="Helpers\DocumentoTarjetaPresentacionHelper.cs" />
     <Compile Include="Helpers\SidebarMenuBuilder.cs" />
     <Compile Include="Helpers\SidebarPermissionHelper.cs" />
     <Compile Include="Helpers\VisibleTextHelper.cs" />
@@ -385,6 +388,8 @@
     <Compile Include="Models\ViewModels\ListaVerificacionOperacionalEaePdfViewModel.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\ViewModels\SolicitudInspeccionExtPanelViewModel.cs" />
+    <Compile Include="Models\ViewModels\DocumentoTarjetaViewModel.cs" />
+    <Compile Include="Models\ViewModels\SolicitudAocrFlujoViewModel.cs" />
     <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
     <Compile Include="Models\ViewModels\SidebarMenuContextViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
@@ -405,6 +410,7 @@
     <Compile Include="Models\SeleccionCompaniaViewModel.cs" />
     <Compile Include="Models\SolicitudAOCRViewModel.cs" />
     <Compile Include="Models\Placeholders.cs" />
+    <Compile Include="Services\AocrUserContextService.cs" />
     <Compile Include="Services\InspectorDashboardService.cs" />
     <Compile Include="Services\SidebarMenuService.cs" />
     <Compile Include="Services\SelectPdfStub.cs" />
@@ -418,7 +424,9 @@
     <Content Include="Content\aocr-datatables.css" />
     <Content Include="Content\aocr-informe-tecnico.css" />
     <Content Include="Content\aocr-responsive.css" />
+    <Content Include="Content\aocr-document-cards.css" />
     <Content Include="Content\aocr-sidebar.css" />
+    <Content Include="Content\aocr-modals.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
     <Content Include="Content\pdf-eae-oficial.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.js" />
@@ -623,6 +631,7 @@
     <Content Include="Scripts\aocr-informe-tecnico-modal.js" />
       <Content Include="Scripts\aocr-lv-eae-flujo-automatico.js" />
     <Content Include="Scripts\aocr-utils.js" />
+    <Content Include="Scripts\aocr-formulario-emision.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
     <Content Include="Content\dist\js\pages\dashboard.js" />
@@ -3057,6 +3066,7 @@
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
     <Content Include="Views\Health\Dashboard.cshtml" />
     <Content Include="Views\Shared\_PageHeader.cshtml" />
+    <Content Include="Views\Shared\_DocumentoTarjeta.cshtml" />
     <Content Include="Views\Shared\_HeroPanel.cshtml" />
     <Content Include="Views\Shared\_MetricCard.cshtml" />
     <Content Include="Views\Shared\_EmptyState.cshtml" />

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
@@ -12,6 +13,7 @@ using CapaUtilidades;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using System.Web.Routing;
+using Newtonsoft.Json.Linq;
 using AocrAuthorizationContextType = CapaNegocio.Services.AocrAuthorizationContext;
 using AocrAuthorizationResultType = CapaNegocio.Services.AocrAuthorizationResult;
 using AocrAuthorizationServiceType = CapaNegocio.Services.AocrAuthorizationService;
@@ -166,6 +168,33 @@ namespace CapaPresentacion.Filters
 
             if (authResult != null && authResult.RequiereSeleccionCompania && isAuthenticated)
             {
+                // Para AJAX nunca se debe responder con 302 + HTML (rompe el parseo JSON
+                // del cliente y deja la pantalla bloqueada con el overlay de guardado).
+                if (isAjax)
+                {
+                    response.StatusCode = 403;
+                    response.TrySkipIisCustomErrors = true;
+                    response.SuppressFormsAuthenticationRedirect = true;
+
+                    var urlHelper = new UrlHelper(filterContext.RequestContext);
+                    filterContext.Result = new JsonResult
+                    {
+                        Data = new
+                        {
+                            success = false,
+                            code = 403,
+                            requiresLogin = false,
+                            requiresCompanySelection = true,
+                            redirectUrl = urlHelper.Action("SeleccionarCompania", "Account", new { returnUrl }),
+                            message = !string.IsNullOrWhiteSpace(authResult.Motivo)
+                                ? authResult.Motivo
+                                : "Debe seleccionar una compañía activa antes de continuar."
+                        },
+                        JsonRequestBehavior = JsonRequestBehavior.AllowGet
+                    };
+                    return;
+                }
+
                 filterContext.Result = new RedirectToRouteResult(
                     new RouteValueDictionary(new
                     {
@@ -235,6 +264,20 @@ namespace CapaPresentacion.Filters
                 codigoSolicitud = idGenerico;
             }
 
+            if (string.Equals(controller, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase)
+                && (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                && (string.Equals(action, "GuardarProgreso", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, "GuardarFlota", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(Accion, "GuardarProgresoRT", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(Accion, "EditarRT", StringComparison.OrdinalIgnoreCase)))
+            {
+                var codigoDesdeJson = ResolveCodigoSolicitudFromJsonBody(httpContext);
+                if (codigoDesdeJson.HasValue && codigoDesdeJson.Value > 0)
+                {
+                    codigoSolicitud = codigoDesdeJson;
+                }
+            }
+
             if (string.Equals(controller, "Inspeccion", StringComparison.OrdinalIgnoreCase) && !codigoInspeccion.HasValue)
             {
                 codigoInspeccion = ResolveIntParameter(httpContext, null, "id");
@@ -258,7 +301,29 @@ namespace CapaPresentacion.Filters
                 && string.IsNullOrWhiteSpace(context.CompanyCode)
                 && string.Equals(RoleGroupingHelper.NormalizeSelectedRole(context.SelectedRole), RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
             {
-                result = AocrAuthorizationResultType.Denied(Modulo ?? controller, Accion ?? action, "Debe seleccionar una compañía activa antes de continuar.", true);
+                var esAdmin = context.Roles != null && context.Roles.Any(r =>
+                    string.Equals(r, "Administrador", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase));
+
+                var usuarioIdRecuperacion = CompaniaActivaRecoveryHelper.ResolveUsuarioIdSolicitud(
+                    httpContext.Session,
+                    context.UserId);
+
+                if (codigoSolicitud.HasValue
+                    && codigoSolicitud.Value > 0
+                    && CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(
+                        httpContext.Session,
+                        codigoSolicitud.Value,
+                        usuarioIdRecuperacion,
+                        esAdmin))
+                {
+                    context.CompanyCode = CompaniaActivaSessionHelper.ObtenerCodigo(httpContext.Session);
+                    context.CompanyName = CompaniaActivaSessionHelper.ObtenerNombre(httpContext.Session);
+                }
+                else
+                {
+                    result = AocrAuthorizationResultType.Denied(Modulo ?? controller, Accion ?? action, "Debe seleccionar una compañía activa antes de continuar.", true);
+                }
             }
 
             result.CodigoSolicitud = codigoSolicitud;
@@ -317,7 +382,7 @@ namespace CapaPresentacion.Filters
                     : string.Empty;
 
                 Logger.LogWarning(string.Format(
-                    "[AUTH] Acceso bloqueado. Path={0}; Method={1}; Authenticated={2}; Ajax={3}; User={4}; ReturnUrl={5}; AttrRoles={6}; Rol={7}; Roles={8}; RolesRaw={9}",
+                    "[AUTH] Acceso bloqueado. Path={0}; Method={1}; Authenticated={2}; Ajax={3}; User={4}; ReturnUrl={5}; AttrRoles={6}; Rol={7}; Roles={8}; RolesRaw={9}; Modulo={10}; Accion={11}; Motivo={12}",
                     path,
                     request != null ? request.HttpMethod : string.Empty,
                     isAuthenticated,
@@ -327,7 +392,10 @@ namespace CapaPresentacion.Filters
                     Roles ?? string.Empty,
                     ReadSessionValue(httpContext, "Rol"),
                     ReadSessionValue(httpContext, "Roles"),
-                    ReadSessionValue(httpContext, "RolesRaw")));
+                    ReadSessionValue(httpContext, "RolesRaw"),
+                    authResult != null ? (authResult.Modulo ?? string.Empty) : string.Empty,
+                    authResult != null ? (authResult.Accion ?? string.Empty) : string.Empty,
+                    authResult != null ? (authResult.Motivo ?? string.Empty) : string.Empty));
 
                 int userId;
                 UserContextAccessor.TryGetUserId(httpContext.Session, out userId);
@@ -394,6 +462,79 @@ namespace CapaPresentacion.Filters
                 if (TryParseInt(request.Form[name], out parsed))
                 {
                     return parsed;
+                }
+            }
+
+            return null;
+        }
+
+        private static int? ResolveCodigoSolicitudFromJsonBody(HttpContextBase httpContext)
+        {
+            var request = httpContext != null ? httpContext.Request : null;
+            if (request == null || !string.Equals(request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var contentType = request.ContentType ?? string.Empty;
+            if (contentType.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) < 0
+                && contentType.IndexOf("text/json", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (request.InputStream == null || !request.InputStream.CanRead)
+                {
+                    return null;
+                }
+
+                if (request.InputStream.CanSeek)
+                {
+                    request.InputStream.Position = 0;
+                }
+
+                string body;
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
+                {
+                    body = reader.ReadToEnd();
+                }
+
+                if (request.InputStream.CanSeek)
+                {
+                    request.InputStream.Position = 0;
+                }
+
+                if (string.IsNullOrWhiteSpace(body))
+                {
+                    return null;
+                }
+
+                var json = JObject.Parse(body);
+                var solicitud = json["solicitud"] ?? json["Solicitud"];
+                if (solicitud != null && solicitud.Type == JTokenType.Object)
+                {
+                    var codigoToken = solicitud["CodigoSolicitud"] ?? solicitud["codigoSolicitud"];
+                    int parsed;
+                    if (codigoToken != null && int.TryParse(Convert.ToString(codigoToken), out parsed) && parsed > 0)
+                    {
+                        return parsed;
+                    }
+                }
+
+                var directo = json["CodigoSolicitud"] ?? json["codigoSolicitud"];
+                int directoParsed;
+                if (directo != null && int.TryParse(Convert.ToString(directo), out directoParsed) && directoParsed > 0)
+                {
+                    return directoParsed;
+                }
+            }
+            catch
+            {
+                if (request.InputStream != null && request.InputStream.CanSeek)
+                {
+                    request.InputStream.Position = 0;
                 }
             }
 

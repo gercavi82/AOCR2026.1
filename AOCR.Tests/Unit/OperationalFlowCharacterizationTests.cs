@@ -21,7 +21,8 @@ namespace AOCR.Tests.Unit
 
             StringAssert.Contains(controller, "_revisionDocumentalService.CrearDecisionCierreMasivo(");
             StringAssert.Contains(controller, "_revisionDocumentalService.CrearDecisionCierreFinal(");
-            StringAssert.Contains(controller, "_revisionDocumentalService.PrepararFirmaAceptacionDocumental(estadoActual, documentosRevision, revisiones, observacion)");
+            StringAssert.Contains(controller, "_revisionDocumentalService.PrepararFirmaAceptacionDocumental(");
+            StringAssert.Contains(controller, "solicitud.TipoSolicitud");
             StringAssert.Contains(service, "EstadoDestino = aprobarTodos ? EstadoSolicitud.AceptacionDocumental : EstadoSolicitud.Observada");
             StringAssert.Contains(service, "EstadoDestino = tieneDocumentosDevueltos ? EstadoSolicitud.Observada : EstadoSolicitud.AceptacionDocumental");
             StringAssert.Contains(service, "public RevisionDocumentalFirmaPlan PrepararFirmaAceptacionDocumental(");
@@ -79,12 +80,16 @@ namespace AOCR.Tests.Unit
 
             StringAssert.Contains(service, "public sealed class AocrModificacionWorkflowResult");
             StringAssert.Contains(service, "public AocrModificationWorkflowPlan PrepararRequiereInspeccion(SolicitudAOCR solicitud, string observacion)");
+            StringAssert.Contains(service, "public AocrModificationWorkflowPlan PrepararCierreFaseDocumentalNuevoAeropuerto(SolicitudAOCR solicitud, string observacion)");
             StringAssert.Contains(service, "public AocrModificationWorkflowPlan PrepararGeneracionCondicionesLimitaciones(SolicitudAOCR solicitud, string observacion)");
             StringAssert.Contains(service, "public AocrModificacionWorkflowResult EjecutarRequiereInspeccion(");
+            StringAssert.Contains(service, "public AocrModificacionWorkflowResult EjecutarCierreFaseDocumentalNuevoAeropuerto(");
             StringAssert.Contains(service, "public AocrModificacionWorkflowResult EjecutarGeneracionCondicionesLimitaciones(");
+            StringAssert.Contains(service, "TieneNuevoAeropuertoDeclarado");
             StringAssert.Contains(service, "public AocrModificationWorkflowPlan PrepararRevisionFinalCondicionesLimitaciones(SolicitudAOCR solicitud, string observacion)");
             StringAssert.Contains(service, "public AocrModificationWorkflowPlan PrepararEnvioDcavCondicionesLimitaciones(SolicitudAOCR solicitud, string observacion)");
             StringAssert.Contains(controller, "_aocrModificationWorkflowService.EjecutarRequiereInspeccion(");
+            StringAssert.Contains(controller, "_aocrModificationWorkflowService.EjecutarCierreFaseDocumentalNuevoAeropuerto(");
             StringAssert.Contains(controller, "_aocrModificationWorkflowService.EjecutarGeneracionCondicionesLimitaciones(");
             StringAssert.Contains(controller, "_aocrModificationWorkflowService.PrepararRevisionFinalCondicionesLimitaciones(solicitud, observacion)");
             StringAssert.Contains(controller, "_aocrModificationWorkflowService.PrepararEnvioDcavCondicionesLimitaciones(solicitud, observacion)");
@@ -151,11 +156,22 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
+        public void DescargaAceptacionDocumentalRt_NoDebeCerrarTramiteComoFinalizado()
+        {
+            var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs");
+
+            Assert.IsFalse(
+                controller.Contains("CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, \"Aceptación documental descargada por el RT.\""),
+                "La descarga de aceptación documental no debe cerrar el trámite como FINALIZADO.");
+            StringAssert.Contains(controller, "EstadoPermiteDescargaAceptacionDocumental(");
+            StringAssert.Contains(controller, "EstadoSolicitud.PendienteAsignacionRT");
+        }
+
+        [TestMethod]
         public void DescargaFinalRt_ShouldRemainCoupledToFinalizadoInCurrentFlow()
         {
             var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs");
 
-            StringAssert.Contains(controller, "CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, \"Aceptación documental descargada por el RT.\"");
             StringAssert.Contains(controller, "CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, \"Descarga final de Condiciones y Limitaciones firmada por RT.\"");
         }
 
@@ -165,12 +181,12 @@ namespace AOCR.Tests.Unit
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
                 "FinalizarRevisionDocumental",
-                "Inspector,Coordinador,CoordinadorInspecciones,Administrador");
+                "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
                 "FirmarAceptacionDocumental",
-                "Coordinador,CoordinadorInspecciones,Administrador");
+                "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
@@ -180,7 +196,7 @@ namespace AOCR.Tests.Unit
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
                 "ObservarPorJefatura",
-                "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+                "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
@@ -190,12 +206,12 @@ namespace AOCR.Tests.Unit
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs",
                 "ValidarAocr",
-                "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+                "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs",
                 "DocumentoValidacionAocr",
-                "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+                "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
 
             var direccionAprobar = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "DireccionAprobar");
             var direccionDevolver = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "DireccionDevolver");

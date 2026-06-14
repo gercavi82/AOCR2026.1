@@ -144,6 +144,7 @@
     <Compile Include="Helpers\EmailHelper.cs" />
     <Compile Include="Helpers\RtCorreoTextoHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\FinancialOrderStateHelper.cs" />
     <Compile Include="Helpers\FileStorageHelper.cs" />
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\PdfBrandingHelper.cs" />
@@ -162,7 +163,16 @@
     <Compile Include="Services\NotificacionDestinatarioPolicyService.cs" />
     <Compile Include="Services\NotificacionService.cs" />
     <Compile Include="Services\CorreoInstitucionalService.cs" />
+    <Compile Include="Services\AocrBandejaRoleContext.cs" />
+    <Compile Include="Services\CoordinacionBandejaService.cs" />
+    <Compile Include="Services\DireccionBandejaService.cs" />
+    <Compile Include="Services\InspectorBandejaService.cs" />
     <Compile Include="Services\AocrFinalWorkflowService.cs" />
+    <Compile Include="Services\AocrEstadoService.cs" />
+    <Compile Include="Services\AocrFlujoService.cs" />
+    <Compile Include="Services\AocrSidebarCounterService.cs" />
+    <Compile Include="Services\AocrFlujoValidacionService.cs" />
+    <Compile Include="Services\AocrEmailFlujoService.cs" />
     <Compile Include="Services\AocrModificationWorkflowService.cs" />
     <Compile Include="Services\AocrAuthorizationService.cs" />
     <Compile Include="Services\OrdenRecaudacionService.cs" />
@@ -172,6 +182,7 @@
     <Compile Include="Services\SolicitudAocrService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\RevisionDocumentalService.cs" />
+    <Compile Include="Services\RevisionDocumentalBandejaService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\SolicitudAocrCorreoService.cs" />
     <Compile Include="Services\CertificacionService.cs" />

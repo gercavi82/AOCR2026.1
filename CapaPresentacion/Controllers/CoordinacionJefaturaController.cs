@@ -16,13 +16,14 @@ using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Filters;
 using CapaPresentacion.Models;
 using Npgsql;
 using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
     public class CoordinacionJefaturaController : Controller
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
@@ -44,7 +45,8 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("DashboardGerencial", "Direccion");
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones")]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DashboardInspeccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion")]
         public ActionResult DashboardInspeccion(string compania = null, string inspector = null, string estado = null, string quickFilter = null)
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
@@ -205,8 +207,23 @@ namespace CapaPresentacion.Controllers
                         .ThenByDescending(x => x.CodigoInspeccion ?? 0)
                         .First());
 
+            var pendientesAsignacionPorId = new Dictionary<int, SolicitudAOCR>();
+            if (puedeGestionarAsignacion)
+            {
+                foreach (var solicitudPendiente in new CoordinacionBandejaService().ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>())
+                {
+                    if (solicitudPendiente == null || solicitudPendiente.CodigoSolicitud <= 0)
+                    {
+                        continue;
+                    }
+
+                    pendientesAsignacionPorId[solicitudPendiente.CodigoSolicitud] = solicitudPendiente;
+                }
+            }
+
             var solicitudIds = documentosPorSolicitud.Keys
                 .Concat(inspeccionesPorSolicitud.Keys)
+                .Concat(pendientesAsignacionPorId.Keys)
                 .Distinct()
                 .ToList();
 
@@ -216,13 +233,17 @@ namespace CapaPresentacion.Controllers
             {
                 DashboardInspeccionSeguimientoData inspeccion;
                 DashboardInspeccionDocumentoData documento;
+                SolicitudAOCR solicitudPendienteAsignacion;
                 inspeccionesPorSolicitud.TryGetValue(codigoSolicitud, out inspeccion);
                 documentosPorSolicitud.TryGetValue(codigoSolicitud, out documento);
+                pendientesAsignacionPorId.TryGetValue(codigoSolicitud, out solicitudPendienteAsignacion);
 
-                var numeroSolicitud = FirstNonEmpty(documento != null ? documento.NumeroSolicitud : null, inspeccion != null ? inspeccion.NumeroSolicitud : null, codigoSolicitud.ToString());
-                var compania = FirstNonEmpty(documento != null ? documento.Compania : null, inspeccion != null ? inspeccion.Compania : null, "No especificada");
+                var numeroSolicitud = FirstNonEmpty(documento != null ? documento.NumeroSolicitud : null, inspeccion != null ? inspeccion.NumeroSolicitud : null, solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.NumeroSolicitud : null, codigoSolicitud.ToString());
+                var compania = FirstNonEmpty(documento != null ? documento.Compania : null, inspeccion != null ? inspeccion.Compania : null, solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.NombreComercial : null, solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.NombreOperador : null, solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.RazonSocial : null, "No especificada");
                 var tipo = ResolverTipoGestion(FirstNonEmpty(documento != null ? documento.TipoOperacion : null, inspeccion != null ? inspeccion.TipoOperacion : null));
-                var estadoDocumental = string.IsNullOrWhiteSpace(documento != null ? documento.EstadoDocumento : null) ? "PENDIENTE" : documento.EstadoDocumento;
+                var estadoDocumental = string.IsNullOrWhiteSpace(documento != null ? documento.EstadoDocumento : null)
+                    ? (solicitudPendienteAsignacion != null ? "EN_REVISION" : "PENDIENTE")
+                    : documento.EstadoDocumento;
                 var estadoInspeccion = string.IsNullOrWhiteSpace(inspeccion != null ? inspeccion.EstadoVisual : null) ? "NO_ASIGNADO" : inspeccion.EstadoVisual;
                 var inspector = FirstNonEmpty(inspeccion != null ? inspeccion.InspectorAsignado : null, documento != null ? documento.InspectorAsignado : null, "No asignado");
                 var firmaInspector = documento != null && documento.FirmadoInspector;
@@ -236,7 +257,10 @@ namespace CapaPresentacion.Controllers
                 var fecha = MaxDate(
                     documento != null ? documento.FechaUltimaActualizacion : null,
                     inspeccion != null ? inspeccion.UltimaActualizacion : null,
-                    inspeccion != null ? inspeccion.FechaAsignacion : null);
+                    inspeccion != null ? inspeccion.FechaAsignacion : null,
+                    solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.UpdatedAt : null,
+                    solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.FechaSolicitud : null,
+                    solicitudPendienteAsignacion != null ? solicitudPendienteAsignacion.CreatedAt : null);
 
                 var urlDetalle = urlHelper.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud });
                 var urlVerDocumento = documento != null && documento.CodigoInspeccion.HasValue && documento.TienePdf
@@ -252,7 +276,9 @@ namespace CapaPresentacion.Controllers
                 var urlValidarAocr = puedeValidarAocr
                     ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = codigoSolicitud })
                     : null;
-                var puedeAsignarInspector = !tieneInspector && (inspeccion == null || inspeccion.PuedeAsignarInspector);
+                var puedeAsignarInspector = puedeGestionarAsignacion
+                    && !tieneInspector
+                    && (solicitudPendienteAsignacion != null || inspeccion == null || inspeccion.PuedeAsignarInspector);
                 var puedeValidarFila = puedeValidarAocr
                     && string.Equals(etapaActual, "LEGALIZACION", StringComparison.OrdinalIgnoreCase)
                     && firmaDirdac;
@@ -269,6 +295,11 @@ namespace CapaPresentacion.Controllers
                 {
                     textoAccionPrincipal = "Revisar AOCR";
                     urlAccionPrincipal = urlValidarAocr;
+                }
+                else if (puedeAsignarInspector)
+                {
+                    textoAccionPrincipal = "Asignar inspector";
+                    urlAccionPrincipal = urlHelper.Action("AsignarInspector", "Tecnico", new { solicitudId = codigoSolicitud });
                 }
                 else if (string.Equals(estadoDocumental, "OBSERVADO", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoInspeccion, "OBSERVADA", StringComparison.OrdinalIgnoreCase)
@@ -587,6 +618,7 @@ namespace CapaPresentacion.Controllers
             return "Pendiente de gestión inicial o asignación operativa.";
         }
 
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "RevisionVerificacion")]
         public ActionResult RevisionVerificacion()
         {
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
@@ -836,7 +868,8 @@ namespace CapaPresentacion.Controllers
                 && origen.IndexOf(filtro.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "ValidarAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult ValidarAocr(int? solicitudId = null)
         {
             // Evitar fuga de TempData["Error"] establecido por otras acciones.
@@ -871,7 +904,8 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DocumentoValidacionAocr(int solicitudId, string tipo, bool descargar = false)
         {
             try
@@ -987,7 +1021,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             if (Request != null)
@@ -1099,7 +1133,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult PreviewDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -1196,7 +1230,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult GenerarDocumentoValidacionAocr(AocrDocumentoEdicionViewModel model, string accion = null, HttpPostedFileBase certificadoDigital = null, string passwordCertificado = null)
         {
             try
@@ -1206,6 +1240,17 @@ namespace CapaPresentacion.Controllers
                 if (model == null || model.SolicitudId <= 0 || tipoNormalizado == null)
                 {
                     return new HttpStatusCodeResult(400, "No se recibieron datos validos para generar el documento AOCR.");
+                }
+
+                string motivoAuth;
+                if (!AocrPresentacionAuthorizationHelper.EsPermitido(
+                    HttpContext,
+                    "CoordinacionJefatura",
+                    "GenerarDocumentoValidacionAocr",
+                    out motivoAuth,
+                    model.SolicitudId))
+                {
+                    return new HttpStatusCodeResult(403, motivoAuth ?? "No autorizado para generar el documento AOCR.");
                 }
 
                 var item = ObtenerContextoDocumentoValidacion(model.SolicitudId);
@@ -1402,7 +1447,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult GuardarPosicionFirmaAocr(AocrFirmaPosicionEdicionViewModel model)
         {
             try

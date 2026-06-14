@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guía inspector — Sistema AOCR</title>
+  <style>
+    :root { --brand:#2c5282; --brand2:#4299e1; --light:#ebf4ff; --border:#cfd8e3; --text:#1a2332; --muted:#5c6b7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Tahoma,sans-serif; color:var(--text); line-height:1.55; font-size:10.5pt; background:#eef1f5; }
+    .page { max-width:940px; margin:0 auto; background:#fff; box-shadow:0 0 20px rgba(0,0,0,.07); }
+    .cover { padding:56px 64px; background:linear-gradient(135deg,var(--brand),var(--brand2) 50%,var(--light)); color:#fff; page-break-after:always; min-height:88vh; display:flex; flex-direction:column; justify-content:center; }
+    .cover h1 { font-size:2.15rem; margin:12px 0 8px; line-height:1.2; }
+    .cover .subtitle { font-size:1.05rem; opacity:.95; max-width:620px; }
+    .cover .lead { margin-top:20px; max-width:640px; opacity:.92; font-size:.98rem; }
+    .cover .meta { margin-top:36px; font-size:.9rem; opacity:.88; }
+    .content { padding:40px 52px 56px; }
+    .no-print { background:#fff3cd; border:1px solid #ffc107; padding:12px 14px; border-radius:6px; margin-bottom:22px; font-size:10pt; }
+    .md-body h1 { color:var(--brand); font-size:1.45rem; border-bottom:2px solid var(--brand); padding-bottom:6px; margin-top:2rem; page-break-after:avoid; }
+    .md-body h1:first-child { margin-top:0; }
+    .md-body h2 { color:var(--brand2); font-size:1.12rem; margin-top:1.5rem; page-break-after:avoid; }
+    .md-body h3 { font-size:1rem; color:#334; margin-top:1.1rem; page-break-after:avoid; }
+    .md-body h4 { font-size:.95rem; margin-top:.9rem; }
+    .md-body p, .md-body li { margin:.45rem 0; }
+    .md-body ul, .md-body ol { padding-left:1.35rem; }
+    .md-body table { width:100%; border-collapse:collapse; margin:12px 0; font-size:9.5pt; page-break-inside:avoid; }
+    .md-body th, .md-body td { border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:top; }
+    .md-body th { background:var(--light); }
+    .md-body code { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:1px 4px; border-radius:3px; }
+    .md-body pre { font-family:Consolas,monospace; font-size:9pt; background:#f4f6f8; padding:12px; border-radius:6px; overflow-x:auto; white-space:pre-wrap; page-break-inside:avoid; }
+    .md-body pre code { background:transparent; padding:0; }
+    .md-body blockquote { border-left:4px solid var(--brand); background:var(--light); margin:12px 0; padding:8px 14px; border-radius:0 6px 6px 0; }
+    .md-body hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+    .md-body a { color:var(--brand2); }
+    .md-body img { max-width:100%; height:auto; border:1px solid var(--border); border-radius:6px; margin:10px 0; page-break-inside:avoid; }
+    .footer { margin-top:36px; padding-top:14px; border-top:1px solid var(--border); font-size:9pt; color:var(--muted); }
+    @media print {
+      body { background:#fff; }
+      .page { box-shadow:none; max-width:none; }
+      .cover { min-height:auto; padding:40px 48px; }
+      .no-print { display:none; }
+      .md-body h1 { page-break-before:always; }
+      .md-body h1:first-child { page-break-before:avoid; }
+    }
+    @page { margin:16mm 14mm; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <section class="cover">
+    <div>Documentación DGAC — AOCR</div>
+    <h1>Guía inspector<br><span style="font-weight:400;font-size:1.35rem">Solicitud #12 — paso a paso</span></h1>
+    <p class="lead">Procedimiento verificable para DGAC-GOP-2026-AOCR012, inspección #11, inspector id 43.</p>
+    <p class="meta">Versión 2026-06-11 · Fuente: docs/GUIA_INSPECTOR_SOLICITUD_12.md</p>
+  </section>
+  <div class="content">
+    <div class="no-print"><strong>Exportación:</strong> PDF → <code>docs/export/GUIA_INSPECTOR_SOLICITUD_12.pdf</code> · Editable Word → <code>docs/export/editable/GUIA_INSPECTOR_SOLICITUD_12.docx</code> · Markdown → <code>docs/export/editable/GUIA_INSPECTOR_SOLICITUD_12.md</code></div>
+    <article class="md-body">
+<h1>Guía operativa — Inspector asignado · Solicitud #12</h1>
+<p><strong>Referencia:</strong> <code>DGAC-GOP-2026-AOCR012</code> (código interno <strong>#12</strong>)<br><strong>Rol:</strong> Inspector técnico asignado por coordinación<br><strong>Alcance:</strong> desde la asignación hasta firma del Informe Técnico (fases posteriores: Dirección / Coordinación / DIRDAC)</p>
+<p><strong>Referencia cruzada:</strong> flujo completo RT→AOCR en <a href="MANUAL_FLUJO_RT_A_AOCR.md">MANUAL_FLUJO_RT_A_AOCR.md</a> · capturas <a href="GUIA_VISUAL_FLUJO_RT_AOCR.md">GUIA_VISUAL_FLUJO_RT_AOCR.md</a></p>
+<hr>
+<h2>Diagrama del flujo (inspector)</h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[Coordinación asigna inspector #12] --&gt; B[Login inspector]
+    B --&gt; C[Inspeccion → Mis inspecciones]
+    C --&gt; D[Abrir Detalle de la inspección]
+    D --&gt; E{¿Documentación RT OK?}
+    E --&gt;|No| E1[Esperar RT / Coordinación]
+    E --&gt;|Sí| F[Revisar documentos + Confirmar cierre documental]
+    F --&gt; G[Completar LV/EAE en ventana]
+    G --&gt; H[Finalizar LV]
+    H --&gt; I[Firmar LV con certificado .p12]
+    I --&gt; J[Elaborar Informe Técnico]
+    J --&gt; K[Finalizar informe → PDF]
+    K --&gt; L[Firmar informe con certificado]
+    L --&gt; M[Envío automático a Dirección/DIRDAC]
+    M --&gt; N[Dirección aprueba → fase AOCR]
+</code></pre>
+<hr>
+<h2>Fase 0 — Pre-requisito (Coordinación, no inspector)</h2>
+<p>Antes de que el inspector trabaje, debe cumplirse:</p>
+<table>
+<thead>
+<tr>
+<th>Requisito</th>
+<th>Quién</th>
+<th>Cómo verificar</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Inspector asignado a #12</td>
+<td><strong>GEN_COORDINACION</strong></td>
+<td><code>Tecnico/Index</code> → Asignar inspector → en detalle solicitud ya no dice “Sin asignar”</td>
+</tr>
+<tr>
+<td>Documentación habilitante cargada</td>
+<td>RT</td>
+<td><code>SolicitudAOCR/Detalle/12</code> → documentos vigentes</td>
+</tr>
+<tr>
+<td>Aceptación documental (si aplica)</td>
+<td>Coordinación</td>
+<td>Estado ≠ bloqueado por observaciones pendientes</td>
+</tr>
+</tbody></table>
+<p>Si el inspector entra y ve el mensaje <em>“No se puede iniciar la inspección porque la fase documental aún no ha sido finalizada”</em>, <strong>no avanza</strong> hasta que coordinación/RT resuelvan la documentación.</p>
+<hr>
+<h2>Fase 1 — Acceso e ingreso</h2>
+<h3>1.1 Login</h3>
+<ul>
+<li>Ingresar con la <strong>cuenta del inspector asignado</strong> (rol <code>Inspector</code>).</li>
+<li>Seleccionar compañía activa si el sistema lo solicita.</li>
+</ul>
+<h3>1.2 Ir a la inspección de #12</h3>
+<p><strong>Menú lateral → Inspecciones → Mis inspecciones</strong><br>Ruta: <code>Inspeccion/Index</code></p>
+<p>Buscar la fila vinculada a <code>DGAC-GOP-2026-AOCR012</code> o solicitud <strong>#12</strong>.</p>
+<p><strong>URLs útiles:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Destino</th>
+<th>Ruta exacta (solicitud #12)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandeja inspector</td>
+<td><code>/Inspeccion/Index</code></td>
+</tr>
+<tr>
+<td>Detalle inspección</td>
+<td><code>/Inspeccion/Detalle/11</code></td>
+</tr>
+<tr>
+<td>Revisión documental (acción)</td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental</code></td>
+</tr>
+<tr>
+<td>Revisión documental (consulta)</td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=ver</code> — <strong>no decidir aquí</strong></td>
+</tr>
+<tr>
+<td>Bandeja revisión</td>
+<td><code>/RevisionDocumental/Index</code></td>
+</tr>
+<tr>
+<td>Detalle solicitud</td>
+<td><code>/SolicitudAOCR/Detalle/12</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Fase 2 — Revisión documental (obligatoria)</h2>
+<blockquote>
+<p>Las revisiones del coordinador (usuario 45, observación COO-1 en BD) <strong>no</strong> cuentan como decisión del inspector. Código: <code>FiltrarDetallesRevisionPorInspector</code> en <code>SolicitudAocrInfraBL.cs</code>.</p>
+</blockquote>
+<h3>2.1 Entrada correcta</h3>
+<table>
+<thead>
+<tr>
+<th>No usar</th>
+<th>Usar</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=ver</code> (badge <strong>Solo lectura</strong>)</td>
+<td><code>/Documento/Lista?solicitudId=12&amp;modo=revision&amp;origen=revision-documental</code></td>
+</tr>
+<tr>
+<td>Título <em>Archivos del expediente</em></td>
+<td>Título <em>Bandeja de revisión documental</em></td>
+</tr>
+</tbody></table>
+<p><strong>Ruta recomendada:</strong> <code>/RevisionDocumental/Index</code> → botón <strong>Revisar documentación</strong> en fila solicitud #12.</p>
+<h3>2.2 Decisión por documento</h3>
+<p>Antes de actuar, cada fila debe mostrar <strong>PENDIENTE</strong>, observación vacía, revisor vacío.</p>
+<ul>
+<li><strong>Aceptar:</strong> <code>POST Documento/AceptarDocumentoSolicitud</code></li>
+<li><strong>Devolver:</strong> <code>POST Documento/DevolverDocumentoSolicitud</code> (motivo ≥ 10 caracteres)</li>
+</ul>
+<p>Tras aceptar: revisor = nombre inspector <strong>43</strong>, no GERMAN ALBERTO (45).</p>
+<h3>2.3 Confirmar cierre documental</h3>
+<p>Cuando <strong>todos</strong> los documentos tengan decisión del inspector:</p>
+<ol>
+<li><code>/Inspeccion/Detalle/11</code></li>
+<li>Clic <strong>Confirmar cierre documental</strong></li>
+<li><code>POST Inspeccion/ConfirmarRevisionDocumentalInspector/11</code></li>
+<li>Confirmación válida si <code>estado_documental</code> = <code>EN_REVISION</code> o comentario contiene <em>Inspector confirmó revisión documental</em> (<code>RevisionDocumentalService.InspectorConfirmoCierreDocumental</code>)</li>
+</ol>
+<p><strong>Si LV sigue bloqueada:</strong> falta aceptar algún documento o no se confirmó cierre — mensaje UI: <em>&quot;...confirme el cierre documental antes de habilitar la LV/EAE...&quot;</em></p>
+<hr>
+<h2>Fase 3 — Lista de Verificación LV/EAE</h2>
+<p>Sección <strong>“Flujo técnico operativo → Lista de verificación operacional (LV)”</strong>.</p>
+<h3>3.1 Abrir ventana LV</h3>
+<ul>
+<li>Clic en <strong>“Completar LV en ventana”</strong> (modal dedicado).</li>
+</ul>
+<h3>3.2 Completar criterios</h3>
+<p>En el modal:</p>
+<ol>
+<li>Marcar cumplimiento/implementación de cada ítem.</li>
+<li>Completar comentarios donde aplique.</li>
+<li><strong>Guardar</strong> (borrador) — botón outline azul.</li>
+</ol>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/GuardarListaVerificacionOperacionalEae</code></p>
+<h3>3.3 Finalizar LV</h3>
+<ul>
+<li>Clic en <strong>“Finalizar LV”</strong> → genera PDF de la lista.</li>
+<li>Estado esperado: <strong>“LV completada”</strong>.</li>
+</ul>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/FinalizarListaVerificacionOperacionalEae</code></p>
+<h3>3.4 Firmar LV (certificado digital)</h3>
+<ul>
+<li>Cargar certificado <strong><code>.p12</code> / <code>.pfx</code></strong> institucional o personal.</li>
+<li>Ingresar contraseña del certificado.</li>
+<li>Clic en <strong>“Firmar Lista de Verificación LV”</strong>.</li>
+<li>Estado esperado: <strong>“LV firmada”</strong>.</li>
+</ul>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/FirmarListaVerificacionOperacionalEae</code></p>
+<blockquote>
+<p>Sin LV <strong>finalizada y firmada</strong>, el botón <strong>Informe Técnico</strong> permanece bloqueado con candado.</p>
+</blockquote>
+<hr>
+<h2>Fase 4 — Informe Técnico</h2>
+<h3>4.1 Abrir editor</h3>
+<p>En el bloque <strong>“Flujo técnico operativo”</strong>:</p>
+<ul>
+<li>Clic en <strong>“Informe Técnico”</strong> (modal dedicado).</li>
+</ul>
+<p>Campos típicos:</p>
+<ul>
+<li>Datos de la inspección / operador.</li>
+<li><strong>Resultado:</strong> Satisfactorio o No satisfactorio.</li>
+<li>Si es <strong>No satisfactorio:</strong> registrar hallazgos u observaciones (obligatorio).</li>
+<li>Conclusiones y anexos si aplica.</li>
+</ul>
+<p><strong>Acción backend:</strong> <code>GET Inspeccion/ModalInformeTecnico</code></p>
+<h3>4.2 Guardar borrador</h3>
+<ul>
+<li>Guardar desde el modal.</li>
+<li>Puede iterar hasta que el contenido esté completo.</li>
+</ul>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/GuardarInformeTecnico</code></p>
+<h3>4.3 Finalizar informe</h3>
+<p>En el panel de firma del inspector:</p>
+<ul>
+<li>Clic en <strong>“Finalizar informe”</strong> → genera PDF consolidado.</li>
+<li>Mensaje esperado: <em>“Informe técnico finalizado y PDF generado. Ya puede firmar como inspector.”</em></li>
+</ul>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/FinalizarInformeTecnico</code></p>
+<h3>4.4 Firmar informe (certificado digital)</h3>
+<ol>
+<li>Cargar certificado <strong><code>.p12</code> / <code>.pfx</code></strong>.</li>
+<li>Contraseña del certificado.</li>
+<li>Clic en <strong>“Firmar informe”</strong>.</li>
+</ol>
+<p>Tras firmar:</p>
+<ul>
+<li>Estado: <strong>FIRMADO_INSPECTOR</strong>.</li>
+<li>El sistema <strong>envía automáticamente a Dirección/DIRDAC</strong> para revisión institucional.</li>
+<li>El inspector <strong>no genera la AOCR</strong> en esta etapa.</li>
+</ul>
+<p><strong>Acción backend:</strong> <code>POST Inspeccion/FirmarInformeInspector</code></p>
+<hr>
+<h2>Fase 5 — Qué ocurre después (otros roles)</h2>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Rol</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Revisión / aprobación informe</td>
+<td><strong>Dirección / DIRDAC</strong></td>
+<td><code>Inspeccion/PendientesDireccion</code> → Aprobar o Devolver</td>
+</tr>
+<tr>
+<td>Habilitación fase AOCR</td>
+<td>Sistema</td>
+<td>Al aprobar informe → solicitud pasa a <strong>AOCR En Elaboración</strong></td>
+</tr>
+<tr>
+<td>Generar AOCR / Condiciones</td>
+<td><strong>Coordinación / Legal</strong></td>
+<td><code>CoordinacionJefatura/ValidarAocr</code> o flujo AOCR en detalle solicitud</td>
+</tr>
+<tr>
+<td>Firma final DIRDAC</td>
+<td><strong>DIRDAC</strong></td>
+<td>Firmas pendientes en bandeja dirección</td>
+</tr>
+<tr>
+<td>Documentos finales</td>
+<td>RT / todos</td>
+<td>Descarga AOCR + condiciones firmadas</td>
+</tr>
+</tbody></table>
+<p>El inspector solo interviene de nuevo si <strong>Dirección devuelve</strong> el informe (aparece observación de devolución en el panel).</p>
+<hr>
+<h2>Checklist rápido — Solicitud #12</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Acción</th>
+<th>Estado esperado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>☐</td>
+<td>Coordinación asignó inspector (<code>GEN_COORDINACION</code>)</td>
+<td>Detalle #12 muestra nombre inspector</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Inspector abre <code>Inspeccion/Detalle</code></td>
+<td>Sin error 403</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Confirmar cierre documental</td>
+<td>LV deja de estar bloqueada</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>LV guardada → finalizada → firmada</td>
+<td>Badge “LV firmada”</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Informe guardado → finalizado → firmado</td>
+<td>“Informe firmado digitalmente”</td>
+</tr>
+<tr>
+<td>☐</td>
+<td>Informe enviado a Dirección</td>
+<td>Estado <code>ENVIADO_A_DIRDAC</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Errores frecuentes y solución</h2>
+<table>
+<thead>
+<tr>
+<th>Síntoma</th>
+<th>Causa probable</th>
+<th>Qué hacer</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Botones LV/Informe con candado</td>
+<td>Revisión documental no confirmada</td>
+<td>Confirmar cierre documental</td>
+</tr>
+<tr>
+<td>“Debe firmar la LV antes del informe”</td>
+<td>LV no finalizada/firmada</td>
+<td>Completar pasos 3.3 y 3.4</td>
+</tr>
+<tr>
+<td>HTTP 403 al guardar informe/LV</td>
+<td>Usuario no es el inspector asignado</td>
+<td>Verificar asignación en coordinación</td>
+</tr>
+<tr>
+<td>“fase documental no finalizada”</td>
+<td>RT/coordinación pendientes</td>
+<td>Escalar a GEN_COORDINACION</td>
+</tr>
+<tr>
+<td>Firma falla</td>
+<td>Certificado vencido o contraseña incorrecta</td>
+<td>Validar <code>.p12</code> en entorno de prueba</td>
+</tr>
+<tr>
+<td>Informe bloqueado tras firmar</td>
+<td>Flujo normal — espera Dirección</td>
+<td>Revisar <code>PendientesDireccion</code> (rol dirección)</td>
+</tr>
+</tbody></table>
+<p><strong>Log a revisar</strong> (servidor):</p>
+<pre><code>[GestionInspeccion]
+[AUTH] Acceso bloqueado
+</code></pre>
+<p>Archivo: <code>CapaPresentacion/App_Data/Logs/AOCR_YYYYMMDD.log</code></p>
+<hr>
+<h2>Materiales que debe tener el inspector</h2>
+<ol>
+<li><strong>Certificado digital</strong> <code>.p12</code> o <code>.pfx</code> vigente (para LV e Informe).</li>
+<li><strong>Contraseña</strong> del certificado (no se almacena en el sistema).</li>
+<li>Acceso de red al entorno publicado.</li>
+</ol>
+<hr>
+<h2>Orden estricto (regla de negocio en backend)</h2>
+<pre><code>Revisión documental confirmada
+    → LV finalizada
+    → LV firmada
+    → Informe elaborado
+    → Informe finalizado (PDF)
+    → Informe firmado por inspector
+    → Revisión Dirección
+    → AOCR (coordinación/legal)
+</code></pre>
+<p>Saltarse un paso devuelve <strong>403</strong> o botón deshabilitado — comportamiento esperado tras las validaciones en <code>AocrAuthorizationService</code> y <code>AocrFlujoValidacionService</code>.</p>
+<hr>
+<h2>Referencias técnicas</h2>
+<table>
+<thead>
+<tr>
+<th>Documento</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>docs/AOCR_FLUJO_INTEGRAL_MATRICES.md</code></td>
+<td>Matrices de estados, roles y fases del plan maestro</td>
+</tr>
+<tr>
+<td><code>docs/GUIA_PRUEBAS_POST_REPUBLICACION.md</code></td>
+<td>Pruebas manuales post-republicación (firma coord., nuevo aeropuerto, <code>/Tecnico</code>)</td>
+</tr>
+<tr>
+<td><code>CapaPresentacion/Views/Inspeccion/Detalle.cshtml</code></td>
+<td>Visibilidad de botones LV/Informe</td>
+</tr>
+<tr>
+<td><code>CapaNegocio/Services/AocrFlujoValidacionService.cs</code></td>
+<td>Validaciones LV → Informe → AOCR</td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Última actualización: 2026-06-11</em></p>
+
+    </article>
+    <div class="footer">Guía inspector — Sistema AOCR v2026-06-11 · Generado desde Markdown canónico · 2026-06-12</div>
+  </div>
+</div>
+</body>
+</html>

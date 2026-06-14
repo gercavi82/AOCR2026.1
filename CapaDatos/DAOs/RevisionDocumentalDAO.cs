@@ -211,7 +211,20 @@ namespace CapaDatos.DAOs
                 if (condicionesAsignacion.Count > 0)
                 {
                     sql += @"
-                      AND (" + string.Join(" OR ", condicionesAsignacion) + ")";
+                      AND ((" + string.Join(" OR ", condicionesAsignacion) + @")
+                           OR (
+                                COALESCE(s.codigo_tecnico, 0) = 0
+                                AND NOT EXISTS (
+                                    SELECT 1
+                                    FROM aocr_tbinspeccion ix
+                                    WHERE ix.codigo_solicitud = s.codigo_solicitud
+                                )
+                                AND UPPER(REPLACE(TRIM(COALESCE(s.estado, '')), '_', ' ')) IN (
+                                    'EN REVISION',
+                                    'DOCUMENTACION PENDIENTE',
+                                    'SUBSANADA'
+                                )
+                           ))";
                 }
 
                 sql += @"

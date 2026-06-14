@@ -8,6 +8,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Services;
 using CapaPresentacion.Filters;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models.ViewModels;
@@ -17,7 +18,7 @@ namespace CapaPresentacion.Controllers
     [AocrAuthorize(Roles = "Inspector,Administrador")]
     public class RevisionDocumentalController : Controller
     {
-        private readonly RevisionDocumentalDAO _revisionDocumentalDao;
+        private readonly RevisionDocumentalBandejaService _revisionDocumentalBandejaService;
         private readonly SolicitudAOCRDAO _solicitudDao;
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBl;
         private readonly DocumentoBL _documentoBl;
@@ -26,7 +27,7 @@ namespace CapaPresentacion.Controllers
 
         public RevisionDocumentalController()
         {
-            _revisionDocumentalDao = new RevisionDocumentalDAO();
+            _revisionDocumentalBandejaService = new RevisionDocumentalBandejaService();
             _solicitudDao = new SolicitudAOCRDAO();
             _solicitudAocrInfraBl = new SolicitudAocrInfraBL();
             _documentoBl = new DocumentoBL();
@@ -37,25 +38,20 @@ namespace CapaPresentacion.Controllers
         public ActionResult Index()
         {
             var solicitudes = new List<RevisionDocumentalSolicitudRowViewModel>();
-            var solicitudesRegistradas = new HashSet<int>();
             var contextoInspector = ConstruirContextoInspectorActual();
-            var codigoSolicitudes = EsAdmin()
-                ? _revisionDocumentalDao.ObtenerPendientesRevisionInspector(Enumerable.Empty<int>(), Enumerable.Empty<string>(), true)
-                : _revisionDocumentalDao.ObtenerPendientesRevisionInspector(contextoInspector.Ids, contextoInspector.Identificadores);
+            var itemsBandeja = EsAdmin()
+                ? _revisionDocumentalBandejaService.ObtenerItemsBandejaInspector(Enumerable.Empty<int>(), Enumerable.Empty<string>(), true)
+                : _revisionDocumentalBandejaService.ObtenerItemsBandejaInspector(contextoInspector.Ids, contextoInspector.Identificadores);
 
-            foreach (var codigoSolicitud in codigoSolicitudes ?? Enumerable.Empty<int>())
+            foreach (var itemBandeja in itemsBandeja ?? Enumerable.Empty<RevisionDocumentalBandejaItem>())
             {
-                if (!solicitudesRegistradas.Add(codigoSolicitud))
-                {
-                    continue;
-                }
-
+                var codigoSolicitud = itemBandeja.CodigoSolicitud;
                 var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
                 var estadoRevision = solicitud != null
                     ? _solicitudAocrInfraBl.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
                     : null;
 
-                if (solicitud == null || !PuedeAccederRevisionDocumental(solicitud, estadoRevision, contextoInspector))
+                if (solicitud == null)
                 {
                     continue;
                 }
@@ -66,9 +62,24 @@ namespace CapaPresentacion.Controllers
                     continue;
                 }
 
-                if (string.Equals(fila.EstadoDocumentalCodigo, "DOCUMENTACION_APROBADA", StringComparison.OrdinalIgnoreCase))
+                if (itemBandeja.MostrarAccionInspeccion)
                 {
-                    continue;
+                    fila.CodigoInspeccion = itemBandeja.CodigoInspeccion;
+                    fila.MostrarAccionInspeccion = true;
+                    fila.EstadoDocumentalCodigo = "LISTO_INSPECCION_CAMPO";
+                    fila.EstadoDocumentalNombre = "Lista para inspección de campo";
+                    fila.EstadoDocumentalDetalle = "La fase documental fue confirmada. Continúe con la LV/EAE en el detalle de inspección.";
+                }
+                else if (itemBandeja.CodigoInspeccion.HasValue
+                    && itemBandeja.CodigoInspeccion.Value > 0
+                    && estadoRevision != null
+                    && estadoRevision.DocumentacionAprobada)
+                {
+                    fila.CodigoInspeccion = itemBandeja.CodigoInspeccion;
+                    fila.PendienteConfirmacionInspector = true;
+                    fila.EstadoDocumentalCodigo = "PENDIENTE_CONFIRMACION_INSPECTOR";
+                    fila.EstadoDocumentalNombre = "Pendiente confirmación del inspector";
+                    fila.EstadoDocumentalDetalle = "Revise la documentación y confirme el cierre documental antes de habilitar la LV/EAE.";
                 }
 
                 solicitudes.Add(fila);
@@ -175,26 +186,13 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
-            if (estadoRevision == null || !estadoRevision.VisibleEnBandejaInspector)
-            {
-                return false;
-            }
-
-            var inspectorIds = contextoInspector != null ? contextoInspector.Ids : new HashSet<int>();
-            var identificadores = contextoInspector != null ? contextoInspector.Identificadores : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if ((solicitud.CodigoTecnico.HasValue && inspectorIds.Contains(solicitud.CodigoTecnico.Value))
-                || CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identificadores)
-                || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identificadores))
-            {
-                return true;
-            }
-
             var inspecciones = _solicitudAocrInfraBl.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
-            return inspecciones.Any(inspeccion =>
-                inspeccion != null
-                && ((inspeccion.CodigoInspector.HasValue && inspectorIds.Contains(inspeccion.CodigoInspector.Value))
-                    || CoincideIdentificadorInspector(inspeccion.InspectorPrincipalCedula, identificadores)
-                    || CoincideIdentificadorInspector(inspeccion.InspectorApoyoCedula, identificadores)));
+            return RevisionDocumentalBandejaService.PuedeAccederRevisionDocumental(
+                solicitud,
+                estadoRevision,
+                inspecciones,
+                contextoInspector != null ? contextoInspector.Ids : new HashSet<int>(),
+                contextoInspector != null ? contextoInspector.Identificadores : new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         }
 
         private HashSet<int> ObtenerIdsInspectorActual()

@@ -13,10 +13,12 @@ namespace CapaPresentacion.Models.ViewModels
         public bool TienePdfGenerado { get; set; }
         public bool TienePdfFirmado { get; set; }
         public bool PuedeEditarSolicitudInspeccionExt { get; set; }
+        public bool PuedeAgregarAccionesOrden { get; set; }
         public bool PuedeGenerarSolicitud { get; set; }
         public bool PuedeDescargarSolicitud { get; set; }
         public bool PuedeSubirSolicitudFirmada { get; set; }
         public bool PuedeVerSolicitudFirmada { get; set; }
+        public bool PuedeRechazarGeneracionSolicitud { get; set; }
         public bool PuedeContinuarConOrden { get; set; }
         public bool EsNuevaOrden { get; set; }
         public bool MostrarSoloLecturaSinFirmado { get; set; }
@@ -24,6 +26,7 @@ namespace CapaPresentacion.Models.ViewModels
         public string UrlVerSolicitudFirmada { get; set; }
         public string UrlDescargarSolicitudGenerada { get; set; }
         public string UrlSubirSolicitudFirmada { get; set; }
+        public string UrlRechazarGeneracionSolicitud { get; set; }
         public string ClaseEstadoCss { get; set; }
         public string MensajeEstado { get; set; }
         public string MensajeSoloLectura { get; set; }

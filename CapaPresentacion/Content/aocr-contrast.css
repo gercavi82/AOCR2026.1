@@ -194,9 +194,81 @@ select,
     caret-color: #0f172a !important;
 }
 
-body.aocr-body .aocr-page ::selection {
-    color: #ffffff;
-    background-color: #0d6efd;
+body.aocr-body .aocr-page ::selection,
+body.aocr-body .aocr-page ::-moz-selection {
+    color: inherit !important;
+    background-color: rgba(13, 110, 253, 0.28) !important;
+}
+
+/* WebKit: no usar -webkit-text-fill-color en ::selection ni en texto de tablas (texto fantasma azul). */
+
+/* Evita capa fantasma WebKit en texto legible (bandejas/tablas custom sin .table) */
+body.aocr-body .aocr-page :where(
+    p, span, strong, em, small, b,
+    td, th, li, dt, dd,
+    h1, h2, h3, h4, h5, h6,
+    label, legend,
+    .aocr-status-badge,
+    .aocr-status-badge span,
+    .tecnico-index-card,
+    .tecnico-index-hero,
+    .tecnico-index-table
+) {
+    text-shadow: none !important;
+}
+
+/* NO aplicar -webkit-text-fill-color a texto legible (td/span/h*) — provoca capa fantasma con ::selection. */
+
+body.aocr-body .tecnico-index-shell,
+body.aocr-body .tecnico-index-shell *:not(input):not(textarea):not(select):not(option) {
+    -webkit-text-fill-color: unset !important;
+    text-shadow: none !important;
+}
+
+body.aocr-body .tecnico-index-shell ::selection,
+body.aocr-body .tecnico-index-shell *::selection {
+    background-color: rgba(13, 110, 253, 0.28) !important;
+    color: inherit !important;
+}
+
+body.aocr-body .tecnico-index-hero,
+body.aocr-body .tecnico-index-hero h1,
+body.aocr-body .tecnico-index-hero p,
+body.aocr-body .tecnico-index-eyebrow {
+    color: #ffffff !important;
+}
+
+body.aocr-body .tecnico-index-card-head h2 {
+    color: #19354c !important;
+}
+
+body.aocr-body .tecnico-index-card-head p,
+body.aocr-body .tecnico-index-sub {
+    color: #6c7b86 !important;
+}
+
+body.aocr-body .tecnico-index-numero {
+    color: #1b4f72 !important;
+}
+
+body.aocr-body .tecnico-index-badge {
+    color: #1b4f72 !important;
+}
+
+body.aocr-body .tecnico-index-table thead th {
+    color: #6c7b86 !important;
+}
+
+body.aocr-body .tecnico-index-primary,
+body.aocr-body .tecnico-index-primary span,
+body.aocr-body .tecnico-index-primary i {
+    color: #ffffff !important;
+}
+
+body.aocr-body .tecnico-index-secondary,
+body.aocr-body .tecnico-index-secondary span,
+body.aocr-body .tecnico-index-secondary i {
+    color: #1b4f72 !important;
 }
 
 body.aocr-body :where(.modal-content,
@@ -314,4 +386,56 @@ body.aocr-body .aocr-session-timeout-modal .btn-outline-secondary,
 body.aocr-body .aocr-session-timeout-modal .btn-outline-secondary i {
     color: #475569 !important;
     -webkit-text-fill-color: #475569 !important;
+}
+
+/* ============================================================
+   Anti-fantasma WebKit — tablas y bandejas (global)
+   Carga al final de aocr-contrast.css para ganar cascada.
+   ============================================================ */
+body.aocr-body .aocr-page :where(
+    table,
+    .table,
+    .dataTable,
+    .tecnico-index-table,
+    .aocr-table,
+    .table-dgac,
+    .aocr-table-card,
+    .dataTables_wrapper,
+    .tecnico-index-shell
+) :where(
+    td, th, thead, tbody, tr,
+    span, strong, em, small, b, i,
+    a, div, p, label, li, button
+) {
+    -webkit-text-fill-color: unset !important;
+    text-shadow: none !important;
+}
+
+body.aocr-body .aocr-page :where(
+    table.dataTable thead th,
+    .table thead th,
+    .table-dgac thead th,
+    .aocr-table thead th,
+    .tecnico-index-table thead th
+) {
+    color: #ffffff !important;
+}
+
+body.aocr-body .aocr-page :where(
+    table tbody td,
+    .table tbody td,
+    .dataTables_wrapper table.dataTable tbody td,
+    .tecnico-index-table tbody td
+) {
+    color: #263845 !important;
+}
+
+body.aocr-body .aocr-page :where(
+    table, .table, .dataTable, .tecnico-index-table, .tecnico-index-shell
+) ::selection,
+body.aocr-body .aocr-page :where(
+    table, .table, .dataTable, .tecnico-index-table, .tecnico-index-shell
+) *::selection {
+    background-color: rgba(13, 110, 253, 0.22) !important;
+    color: inherit !important;
 }

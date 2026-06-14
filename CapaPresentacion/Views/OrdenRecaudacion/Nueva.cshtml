@@ -132,6 +132,21 @@
                         <div class="col-md-12">
                             <h5><i class="fas fa-list me-2 text-primary"></i>Agregar Conceptos</h5>
 
+                            @if (ViewBag.ConceptoObligatorioEncontrado == false)
+                            {
+                                <div class="alert alert-danger" id="alertConceptoObligatorioCatalogo">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info" id="alertConceptoObligatorioInfo">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Para continuar con el proceso debe mantener el concepto obligatorio <strong>INSPECCION_EXT</strong> y agregar al menos otra acción o concepto adicional.
+                                </div>
+                            }
+
                             <div class="card">
                                 <div class="card-body">
                                     <div class="row g-3">
@@ -252,6 +267,15 @@
             gap: .5rem;
         }
 
+        .detalle-obligatorio td {
+            background-color: #f8fbff;
+        }
+
+        .badge-concepto-obligatorio {
+            font-size: 0.7rem;
+            vertical-align: middle;
+        }
+
         @@media (max-width: 576px) {
             .solicitud-inspeccion-actions .btn,
             .solicitud-inspeccion-actions label.btn {
@@ -263,6 +287,144 @@
                         $(function () {
 
                             var detalles = [];
+                            var CODIGO_CONCEPTO_OBLIGATORIO = '@(ViewBag.ConceptoObligatorioCodigo ?? "INSPECCION_EXT")';
+                            var CONCEPTO_OBLIGATORIO_ENCONTRADO = @((ViewBag.ConceptoObligatorioEncontrado == true) ? "true" : "false");
+                            var agregandoConceptoObligatorio = false;
+
+                            function esConceptoObligatorio(codigo) {
+                                return ((codigo || '').toString().trim().toUpperCase() === CODIGO_CONCEPTO_OBLIGATORIO);
+                            }
+
+                            function obtenerOpcionConceptoObligatorio() {
+                                var $encontrada = null;
+                                $('#ConceptoId option').each(function () {
+                                    var codigo = ($(this).data('codigo') || '').toString().trim().toUpperCase();
+                                    if (codigo === CODIGO_CONCEPTO_OBLIGATORIO) {
+                                        $encontrada = $(this);
+                                        return false;
+                                    }
+                                });
+                                return $encontrada;
+                            }
+
+                            function yaExisteConceptoObligatorio() {
+                                return detalles.some(function (d) {
+                                    return esConceptoObligatorio(d.ConceptoCodigo);
+                                });
+                            }
+
+                            function mostrarAlertaInstitucional(mensaje) {
+                                alert(mensaje);
+                            }
+
+                            function crearDetalleDesdeOpcion($opt, cantidad) {
+                                var conceptoId = $opt.val();
+                                var codigo = $opt.data('codigo') || '';
+                                var nombre = $opt.data('nombre') || $opt.text();
+                                var valor = toNumber($opt.data('valor'));
+                                var porcentaje = toNumber($opt.data('porcentaje'));
+
+                                var detalle = {
+                                    ConceptoId: parseInt(conceptoId, 10),
+                                    ConceptoCodigo: codigo,
+                                    ConceptoNombre: nombre,
+                                    Cantidad: cantidad,
+                                    ValorUnitario: valor,
+                                    PorcentajeAdmin: porcentaje,
+                                    EsObligatorio: esConceptoObligatorio(codigo)
+                                };
+
+                                detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
+                                detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
+                                detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
+                                return detalle;
+                            }
+
+                            function agregarDetalleDesdeOpcion($opt, cantidad) {
+                                if (!$opt || !$opt.length || cantidad <= 0) {
+                                    return false;
+                                }
+
+                                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
+                                    return false;
+                                }
+
+                                detalles.push(crearDetalleDesdeOpcion($opt, cantidad));
+                                return true;
+                            }
+
+                            function seleccionarConceptoObligatorioEnCombo() {
+                                var $opt = obtenerOpcionConceptoObligatorio();
+                                if ($opt && $opt.length) {
+                                    $('#ConceptoId').val($opt.val());
+                                }
+                            }
+
+                            function agregarConceptoObligatorioAutomatico() {
+                                if (!CONCEPTO_OBLIGATORIO_ENCONTRADO) {
+                                    $('#btnGuardar').prop('disabled', true);
+                                    return;
+                                }
+
+                                if (yaExisteConceptoObligatorio()) {
+                                    seleccionarConceptoObligatorioEnCombo();
+                                    return;
+                                }
+
+                                var $opt = obtenerOpcionConceptoObligatorio();
+                                if (!$opt || !$opt.length) {
+                                    CONCEPTO_OBLIGATORIO_ENCONTRADO = false;
+                                    $('#alertConceptoObligatorioInfo').addClass('d-none');
+                                    if ($('#alertConceptoObligatorioCatalogo').length === 0) {
+                                        var $alertCatalogo = $('<div class="alert alert-danger" id="alertConceptoObligatorioCatalogo">' +
+                                            '<i class="fas fa-exclamation-triangle me-1"></i> ' +
+                                            'No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.' +
+                                            '</div>');
+                                        if ($('#alertConceptoObligatorioInfo').length) {
+                                            $('#alertConceptoObligatorioInfo').replaceWith($alertCatalogo);
+                                        } else {
+                                            $('h5:contains("Agregar Conceptos")').first().after($alertCatalogo);
+                                        }
+                                    }
+                                    $('#btnGuardar').prop('disabled', true);
+                                    return;
+                                }
+
+                                agregandoConceptoObligatorio = true;
+                                seleccionarConceptoObligatorioEnCombo();
+                                if (agregarDetalleDesdeOpcion($opt, 1)) {
+                                    renderTabla();
+                                    actualizarTotales();
+                                }
+                                agregandoConceptoObligatorio = false;
+                                $('#Cantidad').val('1');
+                            }
+
+                            function validarDetallesAntesGuardar() {
+                                if (!CONCEPTO_OBLIGATORIO_ENCONTRADO) {
+                                    mostrarAlertaInstitucional('No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.');
+                                    return false;
+                                }
+
+                                var tieneInspeccionExt = detalles.some(function (d) {
+                                    return esConceptoObligatorio(d.ConceptoCodigo) && d.Cantidad > 0;
+                                });
+                                if (!tieneInspeccionExt) {
+                                    mostrarAlertaInstitucional('Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.');
+                                    return false;
+                                }
+
+                                var tieneOtroConcepto = detalles.some(function (d) {
+                                    return !esConceptoObligatorio(d.ConceptoCodigo) && d.Cantidad > 0;
+                                });
+                                if (!tieneOtroConcepto) {
+                                    mostrarAlertaInstitucional('Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.');
+                                    return false;
+                                }
+
+                                return true;
+                            }
 
                             function limpiarSoloDigitos(valor, maximo) {
                                 var limpio = (valor || '').toString().replace(/\D/g, '');
@@ -327,16 +489,26 @@
                 $tb.empty();
 
                 detalles.forEach(function (d, i) {
+                    var esObligatorio = esConceptoObligatorio(d.ConceptoCodigo);
+                    var nombreHtml = AOCR.escapeHtml(String(d.ConceptoNombre));
+                    if (esObligatorio) {
+                        nombreHtml += ' <span class="badge bg-primary badge-concepto-obligatorio ms-1">Obligatorio</span>';
+                    }
+
+                    var accionesHtml = esObligatorio
+                        ? '<span class="text-muted" title="Concepto obligatorio del proceso AOCR"><i class="fas fa-lock"></i></span>'
+                        : '<button type="button" class="btn btn-danger btn-sm btnEliminarDetalle" data-index="' + AOCR.escapeHtml(String(i)) + '"><i class="fas fa-trash"></i></button>';
+
                     var tr = ''
-                        + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '">' 
+                        + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '"' + (esObligatorio ? ' class="detalle-obligatorio"' : '') + '>'
                         + '<td>' + AOCR.escapeHtml(String(d.ConceptoCodigo)) + '</td>'
-                        + '<td>' + AOCR.escapeHtml(String(d.ConceptoNombre)) + '</td>'
-                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"></td>'
+                        + '<td>' + nombreHtml + '</td>'
+                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + '></td>'
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.ValorUnitario.toFixed(2)) + '</td>'
                         + '<td class="text-end">' + AOCR.escapeHtml(d.PorcentajeAdmin.toFixed(2)) + '%</td>'
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.Admin.toFixed(2)) + '</td>'
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.TotalLinea.toFixed(2)) + '</td>'
-                        + '<td class="text-center"><button type="button" class="btn btn-danger btn-sm btnEliminarDetalle" data-index="' + AOCR.escapeHtml(String(i)) + '"><i class="fas fa-trash"></i></button></td>'
+                        + '<td class="text-center">' + accionesHtml + '</td>'
                         + '</tr>';
                     $tb.append(tr);
                 });
@@ -398,35 +570,39 @@
                 if (!conceptoId) { alert('Seleccione un concepto'); return; }
                 if (cantidad <= 0) { alert('Cantidad inválida'); return; }
 
-                var codigo = $opt.data('codigo') || '';
-                var nombre = $opt.data('nombre') || $opt.text();
-                var valor = toNumber($opt.data('valor'));
-                var porcentaje = toNumber($opt.data('porcentaje'));
+                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
+                    alert('El concepto INSPECCION_EXT ya está incluido como concepto obligatorio.');
+                    seleccionarConceptoObligatorioEnCombo();
+                    return;
+                }
 
-                var detalle = {
-                    ConceptoId: parseInt(conceptoId, 10),
-                    ConceptoCodigo: codigo,
-                    ConceptoNombre: nombre,
-                    Cantidad: cantidad,
-                    ValorUnitario: valor,
-                    PorcentajeAdmin: porcentaje
-                };
-
-                detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
-                detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
-                detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
-
-                detalles.push(detalle);
+                if (!agregarDetalleDesdeOpcion($opt, cantidad)) {
+                    return;
+                }
 
                 renderTabla();
                 actualizarTotales();
 
-                $('#ConceptoId').val('');
+                if (!esConceptoObligatorio(codigo)) {
+                    $('#ConceptoId').val('');
+                } else {
+                    seleccionarConceptoObligatorioEnCombo();
+                }
                 $('#Cantidad').val('1');
             });
 
             $(document).on('click', '.btnEliminarDetalle', function () {
                 var idx = parseInt($(this).data('index'), 10);
+                if (!detalles[idx]) {
+                    return;
+                }
+
+                if (esConceptoObligatorio(detalles[idx].ConceptoCodigo)) {
+                    alert('El concepto INSPECCION_EXT es obligatorio y no puede eliminarse.');
+                    return;
+                }
+
                 detalles.splice(idx, 1);
                 renderTabla();
                 actualizarTotales();
@@ -435,8 +611,18 @@
             $(document).on('change', '.cantidad-detalle', function () {
                 var idx = parseInt($(this).data('index'), 10);
                 var cant = toNumber($(this).val());
+                var esObligatorio = $(this).data('obligatorio') === 1 || $(this).data('obligatorio') === '1';
 
-                if (!detalles[idx] || cant <= 0) return;
+                if (!detalles[idx]) return;
+
+                if (cant <= 0) {
+                    if (esObligatorio) {
+                        cant = 1;
+                        $(this).val('1');
+                    } else {
+                        return;
+                    }
+                }
 
                 detalles[idx].Cantidad = cant;
                 detalles[idx].Subtotal = detalles[idx].Cantidad * detalles[idx].ValorUnitario;
@@ -450,7 +636,7 @@
                             function cargarDetallesIniciales() {
                                 var raw = $('#DetallesJson').val();
                                 if (!raw) {
-                                    actualizarPanelSolicitudInspeccion();
+                                    agregarConceptoObligatorioAutomatico();
                                     return;
                                 }
 
@@ -462,30 +648,24 @@
                                         var $opt = $('#ConceptoId option[value="' + conceptoId + '"]');
                                         if (!$opt.length || cantidad <= 0) return;
 
-                                        var detalle = {
-                                            ConceptoId: parseInt(conceptoId, 10),
-                                            ConceptoCodigo: $opt.data('codigo') || '',
-                                            ConceptoNombre: $opt.data('nombre') || $opt.text(),
-                                            Cantidad: cantidad,
-                                            ValorUnitario: toNumber($opt.data('valor')),
-                                            PorcentajeAdmin: toNumber($opt.data('porcentaje'))
-                                        };
-                                        detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
-                                        detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
-                                        detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
-                                        detalles.push(detalle);
+                                        var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                        if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
+                                            return;
+                                        }
+
+                                        agregarDetalleDesdeOpcion($opt, cantidad);
                                     });
 
                                     renderTabla();
                                     actualizarTotales();
+                                    agregarConceptoObligatorioAutomatico();
                                 } catch (e) {
-                                    actualizarPanelSolicitudInspeccion();
+                                    agregarConceptoObligatorioAutomatico();
                                 }
                             }
 
                             $('#formOrden').on('submit', function (e) {
-                                if (detalles.length === 0) {
-                                    alert('Debe agregar al menos un concepto a la orden');
+                                if (!validarDetallesAntesGuardar()) {
                                     if ($('#GenerarSolicitudInspeccionAlGuardar').val() === 'true') {
                                         $('#GenerarSolicitudInspeccionAlGuardar').val('false');
                                         restaurarBotonGenerarSolicitudInspeccion();
@@ -496,17 +676,7 @@
 
                                 var solicitaGenerarInspeccion = $('#GenerarSolicitudInspeccionAlGuardar').val() === 'true' || $('#GenerarSolicitudInspeccionAlGuardar').val() === 'True';
                                 if (solicitaGenerarInspeccion) {
-                                    var existeInspeccion = detalles.some(function (d) {
-                                        return ((d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'INSPECCION_EXT');
-                                    });
                                     var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
-                                    if (!existeInspeccion) {
-                                        alert('La orden debe contener el concepto INSPECCION_EXT para generar la Solicitud de Inspecciones.');
-                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
-                                        restaurarBotonGenerarSolicitudInspeccion();
-                                        e.preventDefault();
-                                        return false;
-                                    }
                                     if (!aeropuertos) {
                                         $('#mensajeSolicitudInspeccion')
                                             .removeClass('d-none')
@@ -534,11 +704,28 @@
                                     return;
                                 }
 
-                                $('#GenerarSolicitudInspeccionAlGuardar').val('true');
-                                $('#btnGenerarSolicitudInspeccionNueva')
-                                    .prop('disabled', true)
-                                    .html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
-                                $('#formOrden').trigger('submit');
+                                function solicitarConfirmacionGeneracion(onConfirm) {
+                                    if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {
+                                        window.AOCR.confirmarGeneracionSolicitudInspeccion(onConfirm);
+                                        return;
+                                    }
+
+                                    var mensajePlano = 'Está por generar el PDF definitivo de la Solicitud de Inspecciones.\n\n' +
+                                        'Si continúa, la solicitud quedará cerrada y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.\n\n' +
+                                        '¿Desea generar el PDF definitivo con la información actual?';
+
+                                    if (window.confirm(mensajePlano)) {
+                                        onConfirm();
+                                    }
+                                }
+
+                                solicitarConfirmacionGeneracion(function () {
+                                    $('#GenerarSolicitudInspeccionAlGuardar').val('true');
+                                    $('#btnGenerarSolicitudInspeccionNueva')
+                                        .prop('disabled', true)
+                                        .html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
+                                    $('#formOrden').trigger('submit');
+                                });
                             });
 
                             $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);

@@ -328,4 +328,175 @@ html body table.table-dgac > thead > tr > th:last-child,
 html body .dataTables_wrapper table.dataTable > thead > tr > th:last-child {
     border-top-right-radius: 8px;
 }
+/* ============================================================
+   CORRECCIÓN DEFINITIVA — TEXTO FANTASMA EN TABLAS AOCR
+   Fuerza texto visible en el cuerpo de DataTables.
+   Mantiene encabezados blancos sobre azul institucional.
+   ============================================================ */
 
+/* Celdas normales del cuerpo */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody td,
+html body.aocr-body table.dataTable tbody td,
+html body.aocr-body table.table tbody td,
+html body.aocr-body table.table-dgac tbody td,
+html body.aocr-body table.aocr-table tbody td {
+    color: #263845 !important;
+    background-color: #ffffff;
+    text-shadow: none !important;
+}
+
+    /* Texto interno dentro de celdas */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td span,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td div,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td p,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td strong,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td small {
+        color: inherit !important;
+        text-shadow: none !important;
+    }
+
+    /* Enlaces principales dentro de tablas */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td a,
+    html body.aocr-body table.dataTable tbody td a,
+    html body.aocr-body table.table tbody td a {
+        color: #007bff !important;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a:hover {
+            color: #0056b3 !important;
+            text-decoration: underline;
+        }
+
+    /* Subtexto gris: ID interno, OACI, detalle secundario */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td .aocr-dt-sub,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td small,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td .text-muted {
+        color: #6c7b86 !important;
+    }
+
+/* Filas alternas */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr.odd > td,
+html body.aocr-body .dataTables_wrapper table.dataTable.display tbody tr.odd > td,
+html body.aocr-body .dataTables_wrapper table.dataTable.stripe tbody tr.odd > td {
+    background-color: #ffffff !important;
+    color: #263845 !important;
+}
+
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr.even > td {
+    background-color: #ffffff !important;
+    color: #263845 !important;
+}
+
+/* Hover visible */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr:hover > td {
+    background-color: #f1f7fc !important;
+    color: #263845 !important;
+}
+
+/* Responsive DataTables: detalle expandido con botón + */
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child ul,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child li,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child span {
+    color: #263845 !important;
+    background-color: #fbfcfd !important;
+    text-shadow: none !important;
+}
+
+    /* Títulos de columnas en detalle responsive */
+    html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child .dtr-title {
+        color: #1B4F72 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Valor de columnas en detalle responsive */
+    html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child .dtr-data {
+        color: #263845 !important;
+    }
+
+/* Mantener encabezados blancos */
+html body.aocr-body .dataTables_wrapper table.dataTable thead th,
+html body.aocr-body table.dataTable thead th,
+html body.aocr-body table.table thead th,
+html body.aocr-body table.table-dgac thead th,
+html body.aocr-body table.aocr-table thead th {
+    background-color: #1B4F72 !important;
+    color: #ffffff !important;
+}
+
+#tblInspeccion tbody td,
+#tblInspeccion tbody td span,
+#tblInspeccion tbody td div,
+#tblInspeccion tbody td strong,
+#tblInspeccion tbody td small,
+#tblInspeccionesInspector tbody td,
+#tblInspeccionesInspector tbody td span,
+#tblInspeccionesInspector tbody td div,
+#tblInspeccionesInspector tbody td strong,
+#tblInspeccionesInspector tbody td small {
+    color: #263845 !important;
+    text-shadow: none !important;
+}
+
+#tblInspeccion tbody td a,
+#tblInspeccionesInspector tbody td a {
+    color: #007bff !important;
+    font-weight: 700;
+}
+
+#tblInspeccion tbody td .text-muted,
+#tblInspeccion tbody td small,
+#tblInspeccionesInspector tbody td .text-muted,
+#tblInspeccionesInspector tbody td small {
+    color: #6c7b86 !important;
+}
+
+/* Bandeja coordinacion /Tecnico — tablas custom sin clase .table */
+html body.aocr-body .tecnico-index-table tbody td,
+html body.aocr-body .tecnico-index-table thead th,
+html body.aocr-body .tecnico-index-card-head,
+html body.aocr-body .tecnico-index-card-head h2,
+html body.aocr-body .tecnico-index-card-head p,
+html body.aocr-body .tecnico-index-table tbody td span,
+html body.aocr-body .tecnico-index-table tbody td strong,
+html body.aocr-body .tecnico-index-table tbody td small,
+html body.aocr-body .tecnico-index-badge {
+    color: inherit;
+    text-shadow: none !important;
+    -webkit-text-fill-color: unset !important;
+}
+
+html body.aocr-body .tecnico-index-numero {
+    color: #1b4f72 !important;
+}
+
+html body.aocr-body .tecnico-index-sub {
+    color: #6c7b86 !important;
+}
+
+html body.aocr-body .tecnico-index-primary,
+html body.aocr-body .tecnico-index-primary span,
+html body.aocr-body .tecnico-index-primary i {
+    color: #ffffff !important;
+    text-shadow: none !important;
+}
+
+html body.aocr-body .tecnico-index-secondary,
+html body.aocr-body .tecnico-index-secondary span,
+html body.aocr-body .tecnico-index-secondary i {
+    color: #1b4f72 !important;
+    text-shadow: none !important;
+}
+
+/* Anti-fantasma WebKit — todas las tablas AOCR */
+html body.aocr-body .aocr-page table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .dataTable :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .dataTables_wrapper :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .aocr-table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .table-dgac :where(td, th, span, strong, em, small, b, a, div, p, i) {
+    -webkit-text-fill-color: unset !important;
+    text-shadow: none !important;
+}

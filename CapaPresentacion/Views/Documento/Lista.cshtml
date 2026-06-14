@@ -24,13 +24,20 @@
     var modoDocumentos = (ViewBag.ModoDocumentos ?? string.Empty).ToString().Trim();
     var esModoVerDocumentacion = string.Equals(modoDocumentos, "ver", System.StringComparison.OrdinalIgnoreCase);
     var esModoRevisionDocumental = !esModoVerDocumentacion;
+    var esFaseInspectorDocumental = ViewBag.EsFaseInspectorDocumental as bool? ?? false;
     var operadoraContexto = (ViewBag.OperadoraEae ?? string.Empty).ToString().Trim();
     var documentos = Model ?? new List<Documento>();
-    var tituloPaginaModulo = string.IsNullOrWhiteSpace(solicitudIdTexto)
-        ? (esModoVerDocumentacion ? "Ver documentación de la solicitud" : "Revisión documental de la solicitud")
+    var solicitudNumero = (ViewBag.SolicitudNumero ?? solicitudIdTexto ?? string.Empty).ToString().Trim();
+    var referenciaSolicitud = !string.IsNullOrWhiteSpace(solicitudNumero) ? solicitudNumero : solicitudIdTexto;
+    var tituloPaginaModulo = string.IsNullOrWhiteSpace(referenciaSolicitud)
+        ? (esModoVerDocumentacion ? "Documentación cargada" : "Revisión documental de la solicitud")
         : (esModoVerDocumentacion
-            ? "Ver documentación de la solicitud (#" + solicitudIdTexto + ")"
-            : "Revisión documental de la solicitud (#" + solicitudIdTexto + ")");
+            ? "Documentación cargada - Solicitud AOCR " + referenciaSolicitud
+            : "Revisión documental - Solicitud AOCR " + referenciaSolicitud);
+    var volverUrl = (ViewBag.VolverUrl as string) ?? (string.IsNullOrWhiteSpace(solicitudIdTexto)
+        ? Url.Action("Index", "SolicitudAOCR")
+        : Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudIdTexto }));
+    var volverTexto = (ViewBag.VolverTexto as string) ?? "Volver";
     var subtituloPaginaModulo = esModoVerDocumentacion
         ? "Consulta documental del expediente en modo solo lectura, con trazabilidad y descarga disponible."
         : (puedeRevisarDocumentos
@@ -138,6 +145,11 @@
             return visible;
         }
 
+        if (esFaseInspectorDocumental)
+        {
+            return "PENDIENTE";
+        }
+
         var estado = doc != null ? (doc.Estado ?? string.Empty).Trim().ToUpperInvariant() : string.Empty;
         switch (estado)
         {
@@ -193,6 +205,11 @@
             return string.Empty;
         }
 
+        if (esFaseInspectorDocumental)
+        {
+            return normalizarTextoVisible(doc.ObservacionRevision ?? string.Empty);
+        }
+
         var observacion = doc.ObservacionRevision ?? doc.Observaciones ?? string.Empty;
         return normalizarTextoVisible(observacion);
     };
@@ -202,6 +219,11 @@
         if (doc == null)
         {
             return string.Empty;
+        }
+
+        if (esFaseInspectorDocumental)
+        {
+            return (doc.NombreUsuarioRevisor ?? string.Empty).Trim();
         }
 
         return (doc.NombreUsuarioRevisor ?? doc.ValidadoPor ?? string.Empty).Trim();
@@ -731,7 +753,8 @@
 </div>
 
 @Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
-    { "VolverUrl", string.IsNullOrWhiteSpace(solicitudIdTexto) ? Url.Action("Index", "SolicitudAOCR") : Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudIdTexto }) }
+    { "VolverUrl", volverUrl },
+    { "VolverTexto", volverTexto }
 })
 
 <div id="frmRevisionToken" class="d-none">@Html.AntiForgeryToken()</div>

@@ -372,6 +372,9 @@ namespace CapaNegocio.Services
 
                 EmitirNotificacionEvento(inspeccionId, "NC_GENERADAS", observacionFinal);
 
+                TransicionarSolicitudObservadaParaSubsanacion(inspeccion.CodigoSolicitud, observacionFinal, usuarioId);
+                NotificarRtSubsanacionDocumentalHabilitada(inspeccion, observacionFinal);
+
                 return ResultadoOperacion.Ok(null, "No conformidad aprobada. El expediente quedó observado para subsanación documental del RT.");
             }
             catch (Exception ex)
@@ -847,6 +850,64 @@ namespace CapaNegocio.Services
             }
 
             return ResultadoOperacion.Ok(null, "Validación de NC aprobada.");
+        }
+
+        private void TransicionarSolicitudObservadaParaSubsanacion(int codigoSolicitud, string observacion, int usuarioId)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return;
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null)
+            {
+                return;
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            string mensajeCambio;
+            new SolicitudEstadoTransitionBL().CambiarEstadoConReglasAocr(
+                codigoSolicitud,
+                EstadoSolicitud.Observada,
+                string.IsNullOrWhiteSpace(observacion)
+                    ? "Coordinación aprobó NC. RT habilitado para subsanación documental."
+                    : observacion,
+                usuarioId,
+                _ => true,
+                out mensajeCambio);
+        }
+
+        private void NotificarRtSubsanacionDocumentalHabilitada(Inspeccion inspeccion, string observacion)
+        {
+            if (inspeccion == null || inspeccion.CodigoSolicitud <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                if (solicitud == null)
+                {
+                    return;
+                }
+
+                new SolicitudAocrCorreoService().NotificarEvento(
+                    solicitud,
+                    "OBSERVADA",
+                    observacion,
+                    correlationId: "NC_SUBSANACION_" + inspeccion.CodigoInspeccion);
+            }
+            catch
+            {
+                // La subsanación no debe fallar si el correo no se encola.
+            }
         }
 
         private ResultadoOperacion AsegurarNoConformidadDesdeInforme(int inspeccionId, InspeccionInformeTecnico informe, int usuarioId, string usuarioNombre)
