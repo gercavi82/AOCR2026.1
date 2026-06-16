@@ -1,4 +1,6 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Web;
 
 namespace CapaPresentacion.Helpers
@@ -8,6 +10,7 @@ namespace CapaPresentacion.Helpers
         public const string SessionCompaniaActivaCodigo = "CompaniaActivaCodigo";
         public const string SessionCompaniaActivaNombre = "CompaniaActivaNombre";
         public const string SessionCompaniaPendienteReturnUrl = "PostLoginReturnUrl";
+        public const string SessionCompaniaActivaContextToken = "CompaniaActivaContextToken";
 
         public static void Establecer(HttpSessionStateBase session, string codigo, string nombre)
         {
@@ -68,8 +71,56 @@ namespace CapaPresentacion.Helpers
 
             session.Remove(SessionCompaniaActivaCodigo);
             session.Remove(SessionCompaniaActivaNombre);
+            session.Remove(SessionCompaniaActivaContextToken);
             session.Remove("EmpresaCodigo");
             session.Remove("EmpresaNombre");
+        }
+
+        public static string GenerarTokenContexto(HttpSessionStateBase session, int usuarioId)
+        {
+            if (session == null || usuarioId <= 0)
+            {
+                return string.Empty;
+            }
+
+            var codigo = ObtenerCodigo(session);
+            var token = Convert.ToBase64String(
+                SHA256.Create().ComputeHash(
+                    Encoding.UTF8.GetBytes(usuarioId + "|" + codigo + "|" + DateTime.UtcNow.Ticks)));
+
+            session[SessionCompaniaActivaContextToken] = token;
+            return token;
+        }
+
+        public static bool ValidarTokenContexto(HttpSessionStateBase session, int usuarioId, string token)
+        {
+            if (session == null || usuarioId <= 0 || string.IsNullOrWhiteSpace(token))
+            {
+                return false;
+            }
+
+            var esperado = session[SessionCompaniaActivaContextToken] as string;
+            return !string.IsNullOrWhiteSpace(esperado)
+                && string.Equals(esperado.Trim(), token.Trim(), StringComparison.Ordinal);
+        }
+
+        public static void LimpiarDatosTemporalesCambioCompania(HttpSessionStateBase session, int usuarioId)
+        {
+            if (session == null)
+            {
+                return;
+            }
+
+            session.Remove(SessionCompaniaActivaContextToken);
+            session.Remove("TieneOrdenGenerada");
+            session.Remove("TieneOrdenBorrador");
+            session.Remove("TieneOrdenPendienteProceso");
+            session.Remove("TieneOrdenPendienteComprobante");
+
+            if (usuarioId > 0)
+            {
+                session.Remove("_Sidebar_OrdenStatus_" + usuarioId);
+            }
         }
     }
 }

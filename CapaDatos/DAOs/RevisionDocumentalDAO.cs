@@ -170,6 +170,16 @@ namespace CapaDatos.DAOs
                 {
                     condicionesAsignacion.Add("COALESCE(i.codigo_inspector, 0) = ANY(@codigos_inspector)");
                     condicionesAsignacion.Add("COALESCE(s.codigo_tecnico, 0) = ANY(@codigos_inspector)");
+
+                    if (columnasInspeccion.Contains("inspector_usuario_id"))
+                    {
+                        condicionesAsignacion.Add("COALESCE(i.inspector_usuario_id, 0) = ANY(@codigos_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_principal_id"))
+                    {
+                        condicionesAsignacion.Add("COALESCE(i.inspector_principal_id, 0) = ANY(@codigos_inspector)");
+                    }
                 }
 
                 if (identificadores.Length > 0)
@@ -187,6 +197,21 @@ namespace CapaDatos.DAOs
                     if (columnasInspeccion.Contains("inspector_principal_cedula"))
                     {
                         condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(i.inspector_principal_cedula, '')") + " = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_principal_codigo"))
+                    {
+                        condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(i.inspector_principal_codigo, '')") + " = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_principal_id"))
+                    {
+                        condicionesAsignacion.Add("TRIM(COALESCE(i.inspector_principal_id::text, '')) = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_usuario_id"))
+                    {
+                        condicionesAsignacion.Add("TRIM(COALESCE(i.inspector_usuario_id::text, '')) = ANY(@identificadores_inspector)");
                     }
 
                     if (columnasInspeccion.Contains("inspector_apoyo_cedula"))

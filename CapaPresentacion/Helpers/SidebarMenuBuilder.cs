@@ -92,6 +92,10 @@ namespace CapaPresentacion.Helpers
             public bool SolicitudRtFormularioEditable { get; set; } = true;
             public bool PuedeAbrirFormularioEmisionRt { get; set; }
             public string MensajeBloqueoRtSidebar { get; set; }
+            public bool ExisteProcesoActivoCompania { get; set; }
+            public string ProcesoActivoReferencia { get; set; }
+            public string ProcesoActivoEstado { get; set; }
+            public string ProcesoActivoMensaje { get; set; }
             public string CodigoCompaniaActiva { get; set; }
             public string NombreCompaniaActiva { get; set; }
             public bool MostrarSelectorCompaniaRt { get; set; }
@@ -288,7 +292,7 @@ namespace CapaPresentacion.Helpers
                     return;
                 }
 
-                var cacheKey = "_Sidebar_OrdenStatus_" + context.UserId;
+                var cacheKey = "_Sidebar_OrdenStatus_" + context.UserId + "_" + (context.CodigoCompaniaActiva ?? "ALL");
                 var cached = session[cacheKey] as int[];
                 var cacheTimeKey = cacheKey + "_t";
                 var cachedTime = session[cacheTimeKey] as long?;
@@ -303,11 +307,46 @@ namespace CapaPresentacion.Helpers
                     return;
                 }
 
-                var dao = new OrdenRecaudacionDAO();
-                context.TieneOrdenGenerada = dao.TieneOrdenHabilitanteAOCR(context.UserId);
-                context.TieneOrdenBorrador = dao.ExisteORMinima(context.UserId);
-                context.TieneOrdenPendienteProceso = dao.TieneOrdenActivaEnProceso(context.UserId);
-                context.TieneOrdenPendienteComprobante = dao.TieneOrdenPendienteComprobante(context.UserId);
+                var procesoService = new AocrProcesoActivoService();
+                var companiaCodigo = context.CodigoCompaniaActiva;
+                var companiaNombre = context.NombreCompaniaActiva;
+
+                if (!string.IsNullOrWhiteSpace(companiaCodigo))
+                {
+                    context.TieneOrdenBorrador = procesoService.TieneOrdenBorradorPorCompania(
+                        context.UserId,
+                        companiaCodigo,
+                        companiaNombre);
+                    context.TieneOrdenPendienteProceso = procesoService.TieneOrdenActivaEnProcesoPorCompania(
+                        context.UserId,
+                        companiaCodigo,
+                        companiaNombre);
+                    context.TieneOrdenPendienteComprobante = procesoService.TieneOrdenPendienteComprobantePorCompania(
+                        context.UserId,
+                        companiaCodigo,
+                        companiaNombre);
+                    context.TieneOrdenGenerada = context.TieneOrdenPendienteProceso || context.TieneOrdenPendienteComprobante;
+                }
+                else
+                {
+                    var dao = new OrdenRecaudacionDAO();
+                    context.TieneOrdenGenerada = dao.TieneOrdenHabilitanteAOCR(context.UserId);
+                    context.TieneOrdenBorrador = dao.ExisteORMinima(context.UserId);
+                    context.TieneOrdenPendienteProceso = dao.TieneOrdenActivaEnProceso(context.UserId);
+                    context.TieneOrdenPendienteComprobante = dao.TieneOrdenPendienteComprobante(context.UserId);
+                }
+
+                var procesoActivo = !string.IsNullOrWhiteSpace(companiaCodigo)
+                    ? procesoService.ObtenerProcesoActivoPorCompania(context.UserId, companiaCodigo, companiaNombre)
+                    : null;
+                context.ExisteProcesoActivoCompania = procesoActivo != null && procesoActivo.ExisteProcesoActivo;
+                context.ProcesoActivoReferencia = procesoActivo != null
+                    ? (procesoActivo.NumeroSolicitudActiva ?? procesoActivo.NumeroOrdenActiva)
+                    : null;
+                context.ProcesoActivoEstado = procesoActivo != null ? procesoActivo.EstadoProcesoActivo : null;
+                context.ProcesoActivoMensaje = procesoActivo != null
+                    ? (procesoActivo.ExisteProcesoActivo ? procesoActivo.MensajeBloqueo : procesoActivo.MensajeInformativo)
+                    : null;
 
                 session[cacheKey] = new[]
                 {
@@ -384,7 +423,7 @@ namespace CapaPresentacion.Helpers
                         string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigoActivoActual, StringComparison.OrdinalIgnoreCase))
                     : null;
 
-                if (context.CompaniasRtAsignadas.Count > 0 && companiaActiva == null)
+                if (context.CompaniasRtAsignadas.Count == 1 && companiaActiva == null)
                 {
                     companiaActiva = context.CompaniasRtAsignadas[0];
                     context.CodigoCompaniaActiva = (companiaActiva.CompaniaCodigo ?? string.Empty).Trim();
@@ -397,10 +436,24 @@ namespace CapaPresentacion.Helpers
                     {
                         CapaNegocio.LogBL.RegistrarInfo(
                             string.Format(
-                                "[SIDEBAR][COMPANIA_ACTIVA] UsuarioId={0}; Rol={1}; Motivo=SesionSinCompaniaValida; CompaniaSeleccionada={2}; TotalCompanias={3}",
+                                "[SIDEBAR][COMPANIA_ACTIVA] UsuarioId={0}; Rol={1}; Motivo=UnicaCompaniaAsignada; CompaniaSeleccionada={2}",
                                 context.UserId,
                                 context.RolActual ?? string.Empty,
-                                context.CodigoCompaniaActiva,
+                                context.CodigoCompaniaActiva),
+                            "SidebarMenuBuilder");
+                    }
+                    catch
+                    {
+                    }
+                }
+                else if (context.CompaniasRtAsignadas.Count > 1 && companiaActiva == null)
+                {
+                    try
+                    {
+                        CapaNegocio.LogBL.RegistrarAdvertencia(
+                            string.Format(
+                                "[SIDEBAR][COMPANIA_ACTIVA] UsuarioId={0}; Motivo=MultiCompaniaSinSeleccion; TotalCompanias={1}",
+                                context.UserId,
                                 context.CompaniasRtAsignadas.Count),
                             "SidebarMenuBuilder");
                     }
@@ -1153,6 +1206,30 @@ namespace CapaPresentacion.Helpers
                 return card;
             }
 
+            if (context.ExisteProcesoActivoCompania
+                && !context.TieneAccesoSolicitudRt
+                && !string.IsNullOrWhiteSpace(context.ProcesoActivoMensaje))
+            {
+                card.ToneClass = "info";
+                card.IconClass = "fas fa-building";
+                card.Title = "Proceso AOCR activo";
+                card.Message = context.ProcesoActivoMensaje;
+                if (!string.IsNullOrWhiteSpace(context.ProcesoActivoReferencia))
+                {
+                    card.Message += " Referencia: " + context.ProcesoActivoReferencia + ".";
+                }
+
+                card.LinkText = context.PuedeAbrirFormularioEmisionRt
+                    ? "Continuar solicitud actual"
+                    : (DebeMostrarSeguimientoSolicitudRt(context) ? "Ver seguimiento AOCR" : "Continuar proceso");
+                card.LinkUrl = context.PuedeAbrirFormularioEmisionRt
+                    ? context.Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", ResolverRouteValuesSolicitudRtSidebar(context, 1))
+                    : (DebeMostrarSeguimientoSolicitudRt(context)
+                        ? context.Url.Action("Detalle", "SolicitudAOCR", new { id = context.CodigoSolicitudRtSeguimiento.Value })
+                        : context.Url.Action("Index", "OrdenRecaudacion"));
+                return card;
+            }
+
             if (context.TieneAccesoSolicitudRt)
             {
                 card.ToneClass = "success";
@@ -1727,8 +1804,33 @@ namespace CapaPresentacion.Helpers
 
             if (context.EsSolicitanteORT)
             {
-                actions.Add(CreateQuickAction(context, "qa-orden", context.TieneOrdenPendienteProceso ? "Continuar orden" : "Nueva orden", "fas fa-file-invoice-dollar", "OrdenRecaudacion", context.TieneOrdenPendienteProceso ? "Index" : (context.TieneOrdenBorrador ? "Obligatoria" : "Nueva"), null, context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador ? 1 : 0, "warning", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-solicitud", context.PuedeAbrirFormularioEmisionRt ? "Continuar solicitud" : (DebeMostrarSeguimientoSolicitudRt(context) ? "Ver seguimiento AOCR" : "Continuar solicitud"), context.PuedeAbrirFormularioEmisionRt ? "fas fa-file-signature" : (DebeMostrarSeguimientoSolicitudRt(context) ? "fas fa-route" : "fas fa-file-signature"), "SolicitudAOCR", ResolverAccionSolicitudRtSidebar(context, "FormularioEmisionAOCR"), ResolverRouteValuesSolicitudRtSidebar(context, 1), context.Badges.RtActiveRequests, "info", true, context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt ? string.Empty : context.MensajeBloqueoRtSidebar));
+                var bloquearNuevaOrden = context.ExisteProcesoActivoCompania
+                    && !context.TieneOrdenBorrador
+                    && !context.TieneOrdenPendienteProceso;
+                var ordenTitle = context.TieneSolicitudRtHabilitada
+                    ? "Ver orden aprobada"
+                    : (context.TieneOrdenPendienteProceso
+                        ? "Continuar orden"
+                        : (context.TieneOrdenBorrador ? "Completar orden" : (bloquearNuevaOrden ? "Nueva orden (bloqueada)" : "Nueva orden")));
+                var ordenAction = context.TieneSolicitudRtHabilitada
+                    ? "Index"
+                    : (context.TieneOrdenPendienteProceso
+                        ? "Index"
+                        : (context.TieneOrdenBorrador ? "Obligatoria" : "Nueva"));
+                actions.Add(CreateQuickAction(
+                    context,
+                    "qa-orden",
+                    ordenTitle,
+                    context.TieneSolicitudRtHabilitada ? "fas fa-file-circle-check" : "fas fa-file-invoice-dollar",
+                    "OrdenRecaudacion",
+                    ordenAction,
+                    null,
+                    context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador ? 1 : 0,
+                    bloquearNuevaOrden && !context.TieneSolicitudRtHabilitada ? "neutral" : "warning",
+                    !bloquearNuevaOrden || context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador || context.TieneSolicitudRtHabilitada,
+                    !bloquearNuevaOrden || context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador || context.TieneSolicitudRtHabilitada,
+                    bloquearNuevaOrden && !context.TieneSolicitudRtHabilitada ? AocrProcesoActivoService.MensajeBloqueoGenerico : string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-solicitud", context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? "Continuar Solicitud AOCR" : (DebeMostrarSeguimientoSolicitudRt(context) ? "Ver seguimiento AOCR" : "Continuar solicitud"), context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? "fas fa-file-signature" : (DebeMostrarSeguimientoSolicitudRt(context) ? "fas fa-route" : "fas fa-file-signature"), "SolicitudAOCR", ResolverAccionSolicitudRtSidebar(context, "FormularioEmisionAOCR"), ResolverRouteValuesSolicitudRtSidebar(context, 1), context.Badges.RtActiveRequests, "info", true, context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? string.Empty : context.MensajeBloqueoRtSidebar));
                 actions.Add(CreateQuickAction(context, "qa-subsanar", "Ver subsanaciones", "fas fa-screwdriver-wrench", "SolicitudAOCR", "MisSolicitudes", null, context.Badges.RtPendingSubsanations, "warning", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-finales", "Descargar final", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments, "success", true, true, string.Empty));
             }

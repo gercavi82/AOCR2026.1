@@ -17,10 +17,11 @@ using CapaPresentacion.Filters;
 using CapaPresentacion.Models;
 using CapaPresentacion.Models.ViewModels;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Infrastructure;
 using CapaModelo;
 using CapaNegocio.Services;
-using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
+using CapaNegocio.Integraciones.As400Sync;
 using iTextSharp.text.pdf;
 using Rotativa;
 // Alias para evitar ambigï¿½edad
@@ -70,6 +71,8 @@ namespace CapaPresentacion.Controllers
 
         private OrdenRecaudacionDAO _ordenDAO;
         private readonly OrdenRecaudacionDAO _dao = new OrdenRecaudacionDAO();
+        private readonly AocrCompaniaContextService _companiaContextService = new AocrCompaniaContextService();
+        private readonly AocrProcesoActivoService _procesoActivoService = new AocrProcesoActivoService();
         private readonly DocumentoDAO _documentoDao = new DocumentoDAO();
         private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
         private readonly ConceptoDAO _conceptoDao = new ConceptoDAO();
@@ -334,6 +337,10 @@ namespace CapaPresentacion.Controllers
             CargarContinuidadOrdenUsuario(idUsuario);
 
             var ordenes = _dao.ListarPorUsuarioModel(idUsuarioFiltro, estado) ?? new List<OrdenRecaudacionModel>();
+            if (!esAdministrador && idUsuario > 0)
+            {
+                ordenes = FiltrarOrdenesModelPorCompaniaActiva(ordenes, idUsuario);
+            }
 
             // Estadï¿½sticas: tu view espera claves con mayï¿½scula
             var est = _dao.ObtenerEstadisticas(idUsuarioFiltro);
@@ -361,6 +368,10 @@ namespace CapaPresentacion.Controllers
             CargarContinuidadOrdenUsuario(idUsuario);
 
             var ordenes = _dao.ListarPorUsuario(idUsuarioFiltro, estado) ?? new List<OrdenRecaudacion>();
+            if (!esAdministrador && idUsuario > 0)
+            {
+                ordenes = FiltrarOrdenesPorCompaniaActiva(ordenes, idUsuario);
+            }
             System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Órdenes", ordenes.Count));
 
             // Estadisticas
@@ -372,7 +383,24 @@ namespace CapaPresentacion.Controllers
 
         private void CargarContinuidadOrdenUsuario(int idUsuario)
         {
-            var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(idUsuario);
+            OrdenRecaudacionModel ordenPendiente = null;
+            var scope = RtCompaniaScope.FromSession(Session, idUsuario);
+            if (!string.IsNullOrWhiteSpace(scope.CodigoCompania))
+            {
+                var entity = _procesoActivoService.ObtenerOrdenPendienteAccionPorCompania(
+                    idUsuario,
+                    scope.CodigoCompania,
+                    scope.NombreCompania);
+                if (entity != null && entity.Id > 0)
+                {
+                    ordenPendiente = _dao.ObtenerOrdenPorIdModel(entity.Id);
+                }
+            }
+            else
+            {
+                ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(idUsuario);
+            }
+
             var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente != null ? ordenPendiente.Estado : null);
             var requiereComprobante = estadoPendiente == EstadoOrden.Pendiente ||
                                       estadoPendiente == EstadoOrden.Generada ||
@@ -394,57 +422,41 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(userId);
-            if (ordenPendiente != null)
+            var scope = RtCompaniaScope.FromSession(Session, userId);
+            scope.PublicarEnViewBag(this);
+
+            if (!scope.TieneCompaniaActivaValida())
             {
-                var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente.Estado);
+                TempData["Error"] = "Debe seleccionar una compañía activa válida antes de crear una orden.";
+                return RedirectToAction("SeleccionarCompania", "Account", new { returnUrl = Url.Action("Nueva", "OrdenRecaudacion") });
+            }
+
+            var bloqueoProceso = scope.EvaluarBloqueoNuevaOrden();
+            if (bloqueoProceso.Bloqueado)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = bloqueoProceso.Mensaje;
+                return RedirectToAction(bloqueoProceso.Action, bloqueoProceso.Controller, bloqueoProceso.RouteValues);
+            }
+
+            var ordenPendienteEntity = _procesoActivoService.ObtenerOrdenPendienteAccionPorCompania(
+                userId,
+                scope.CodigoCompania,
+                scope.NombreCompania);
+            if (ordenPendienteEntity != null)
+            {
+                var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendienteEntity.Estado);
                 var requiereComprobante = estadoPendiente == EstadoOrden.Pendiente ||
                                           estadoPendiente == EstadoOrden.Generada ||
                                           estadoPendiente == EstadoOrden.Devuelta;
                 TempData["OK"] = requiereComprobante
-                    ? "Ya existe una orden pendiente de comprobante. Continúe con esa orden antes de crear otra."
-                    : "Ya existe una orden en borrador. Continúe con esa orden antes de crear otra.";
-                return RedirectToAction("Detalles", new { id = ordenPendiente.Id, abrirPago = requiereComprobante });
+                    ? "Ya existe una orden pendiente de comprobante para esta compañía. Continúe con esa orden antes de crear otra."
+                    : "Ya existe una orden en borrador para esta compañía. Continúe con esa orden antes de crear otra.";
+                return RedirectToAction("Detalles", new { id = ordenPendienteEntity.Id, abrirPago = requiereComprobante });
             }
 
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
-            PrepararNuevaOrdenViewModel(model);
-            Usuario usuario = null;
-            // Prefill bÃ¡sico desde usuario/empresa (editables)
-            try
-            {
-                usuario = UsuarioDAO.ObtenerPorId(userId);
-                var empresaNombre = ObtenerNombreCompaniaActiva(usuario);
-
-                if (!string.IsNullOrWhiteSpace(empresaNombre))
-                    model.Orden.Compania = empresaNombre;
-
-                var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
-                if (!string.IsNullOrWhiteSpace(rucCedula))
-                    model.Orden.RucCedula = ExtraerRucCedula(rucCedula);
-
-                if (!string.IsNullOrWhiteSpace(usuario?.Email))
-                    model.Orden.Correo = usuario.Email;
-            }
-            catch
-            {
-                // ignorar prefill si falla
-            }
-
-            // Completar campos faltantes con la última orden registrada del usuario.
-            PrefillDesdeUltimaOrden(userId, model);
-            if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
-            {
-                model.Orden.RucCedula = ExtraerRucCedula(ResolverRucCedulaDesdeFuentes(userId, usuario));
-            }
-
-            var nombreCompaniaActiva = ObtenerNombreCompaniaActiva(usuario);
-            if (!string.IsNullOrWhiteSpace(nombreCompaniaActiva))
-            {
-                model.Orden.Compania = nombreCompaniaActiva;
-            }
-
-            model.Orden.LugarEmision = ResolverLugarEmisionDesdeDb(model.Orden.CodigoSolicitud, userId);
+            AplicarCompaniaActivaAlModelo(model, userId, scope);
             PrepararNuevaOrdenViewModel(model);
             return View(model);
         }
@@ -467,7 +479,19 @@ namespace CapaPresentacion.Controllers
                     return View(model);
                 }
 
-                var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(idUsuario);
+                var scope = RtCompaniaScope.FromSession(Session, idUsuario);
+                var bloqueoProceso = scope.EvaluarBloqueoNuevaOrden();
+                if (bloqueoProceso.Bloqueado)
+                {
+                    TempData["NotificacionTipo"] = "warning";
+                    TempData["NotificacionMensaje"] = bloqueoProceso.Mensaje;
+                    return RedirectToAction(bloqueoProceso.Action, bloqueoProceso.Controller, bloqueoProceso.RouteValues);
+                }
+
+                var ordenPendiente = _procesoActivoService.ObtenerOrdenPendienteAccionPorCompania(
+                    idUsuario,
+                    scope.CodigoCompania,
+                    scope.NombreCompania);
                 if (ordenPendiente != null)
                 {
                     var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente.Estado);
@@ -479,6 +503,35 @@ namespace CapaPresentacion.Controllers
                         : "Ya existe una orden en borrador para este usuario. Complete la orden existente antes de crear otra.";
                     return RedirectToAction("Detalles", new { id = ordenPendiente.Id, abrirPago = requiereComprobante });
                 }
+
+                if (!scope.TieneCompaniaActivaValida())
+                {
+                    ModelState.AddModelError("", _companiaContextService.ObtenerMensajeAccesoDenegadoCompania());
+                    PrepararNuevaOrdenViewModel(model);
+                    return View(model);
+                }
+
+                // PROCESO 1 — Crear orden: la fuente de verdad es la sesión del servidor.
+                // No validar CompaniaId / token / hidden del formulario (pueden quedar vacíos o desactualizados).
+                AplicarCompaniaActivaAlModelo(model, idUsuario, scope);
+                var companiaActiva = ObtenerCompaniaActivaDesdeSesion(idUsuario);
+                if (!companiaActiva.EsValida)
+                {
+                    ModelState.AddModelError("", _companiaContextService.ObtenerMensajeAccesoDenegadoCompania());
+                    PrepararNuevaOrdenViewModel(model);
+                    return View(model);
+                }
+
+                RegistrarTrazaOrdenPdf(
+                    "NuevaOrdenGuardar",
+                    idUsuario,
+                    null,
+                    companiaActiva.Codigo,
+                    model?.CompaniaActivaCodigo,
+                    model?.CompaniaActivaContextToken,
+                    0,
+                    companiaActiva.Codigo,
+                    "BORRADOR_NUEVO");
 
                 // Parsear detalles del JSON
                 var detalles = new List<DetalleOrdenRequest>();
@@ -560,14 +613,8 @@ namespace CapaPresentacion.Controllers
                 }
                 model.Orden.RucCedula = ExtraerRucCedula(rucDesdeDb);
 
-                var nombreCompaniaActiva = ObtenerNombreCompaniaActiva(usuarioActual);
-                if (string.IsNullOrWhiteSpace(nombreCompaniaActiva))
-                {
-                    ModelState.AddModelError("Orden.Compania", "No se encontró la compañía activa de la sesión. Seleccione una compañía activa e intente nuevamente.");
-                    PrepararNuevaOrdenViewModel(model, requiereSolicitudInspeccion);
-                    return View(model);
-                }
-                model.Orden.Compania = nombreCompaniaActiva;
+                model.Orden.Compania = _companiaContextService.FormatearTextoCompaniaOrden(companiaActiva.Codigo, companiaActiva.Nombre);
+                model.Orden.NombreContribuyente = companiaActiva.Nombre;
 
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
@@ -582,8 +629,9 @@ namespace CapaPresentacion.Controllers
                     CodigoUsuario = idUsuario,
                     CodigoSolicitud = codigoSolicitud,
                     LugarEmision = lugarEmisionDb,
-                    Compania = nombreCompaniaActiva,
-                    NombreContribuyente = nombreCompaniaActiva,
+                    Compania = _companiaContextService.FormatearTextoCompaniaOrden(companiaActiva.Codigo, companiaActiva.Nombre),
+                    CompaniaCodigo = companiaActiva.Codigo,
+                    NombreContribuyente = companiaActiva.Nombre,
                     RucCedula = model.Orden?.RucCedula,
                     RucContribuyente = model.Orden?.RucCedula,
                     Correo = model.Orden?.Correo,
@@ -647,7 +695,7 @@ namespace CapaPresentacion.Controllers
                         var solicitudAuto = ConstruirSolicitudAuto(
                             idUsuario,
                             usuarioActual,
-                            nombreCompaniaActiva,
+                            companiaActiva.Nombre,
                             model.Orden?.RucCedula,
                             model.Orden?.Correo,
                             model.Orden?.Telefono,
@@ -668,24 +716,9 @@ namespace CapaPresentacion.Controllers
 
                     if (model.GenerarSolicitudInspeccionAlGuardar)
                     {
-                        var ordenGuardada = _dao.ObtenerOrdenPorIdModel(ordenId);
-                        CompletarDatosOrdenParaVista(ordenGuardada);
-
-                        int documentoId;
-                        string errorGeneracion;
-                        if (GenerarSolicitudInspeccionDocumento(
-                            ordenGuardada,
-                            model.AeropuertosSolicitados,
-                            idUsuario,
-                            out documentoId,
-                            out errorGeneracion))
-                        {
-                            TempData["OK"] = "Orden " + numeroOrden + " creada en borrador. " + MensajeSolicitudInspeccionGeneradaExito;
-                            return RedirectToAction("Detalles", new { id = ordenId });
-                        }
-
-                        TempData["Error"] = "La orden fue guardada como borrador, pero no se pudo generar la Solicitud de Inspecciones. " + (errorGeneracion ?? string.Empty);
-                        return RedirectToAction("Detalles", new { id = ordenId });
+                        TempData["OK"] = "Orden " + numeroOrden + " creada en borrador.";
+                        TempData["AeropuertosGenerarSolicitudInspeccion"] = model.AeropuertosSolicitados.Trim();
+                        return RedirectToAction("GenerarSolicitudInspeccion", new { id = ordenId });
                     }
 
                     TempData["OK"] = "Orden " + numeroOrden + " creada exitosamente.";
@@ -712,9 +745,200 @@ namespace CapaPresentacion.Controllers
                 return;
             }
 
+            var userId = GetUserId();
+            if (userId > 0)
+            {
+                var scope = RtCompaniaScope.FromSession(Session, userId);
+                AplicarCompaniaActivaAlModelo(model, userId, scope);
+            }
+
             CargarConceptosNueva(model);
             ConfigurarConceptoObligatorioViewBag(model);
             model.SolicitudInspeccionPanel = BuildNuevaSolicitudInspeccionPanelViewModel(model, tieneInspeccionExt);
+        }
+
+        private CompaniaActivaInfo ObtenerCompaniaActivaDesdeSesion(int userId)
+        {
+            return _companiaContextService.ObtenerCompaniaActivaObligatoria(
+                userId,
+                CompaniaActivaSessionHelper.ObtenerCodigo(Session),
+                CompaniaActivaSessionHelper.ObtenerNombre(Session));
+        }
+
+        private string ResolverCompaniaCodigoOrden(OrdenRecaudacionModel orden)
+        {
+            if (orden == null || orden.Id <= 0)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var entidad = _dao.ObtenerPorId(orden.Id);
+                return _companiaContextService.ResolverCodigoCompaniaDesdeOrden(entidad);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private bool ValidarAccesoOrdenRecaudacionDesdeBd(OrdenRecaudacionModel orden, int idUsuario, bool esAdmin, out string mensajeError)
+        {
+            mensajeError = null;
+            if (orden == null || orden.Id <= 0)
+            {
+                mensajeError = "No se encontró la Orden de Recaudación solicitada.";
+                return false;
+            }
+
+            if (string.Equals(EstadoOrden.NormalizarEstado(orden.Estado), EstadoOrden.Anulada, StringComparison.OrdinalIgnoreCase))
+            {
+                mensajeError = "No se puede generar el PDF porque la orden se encuentra anulada.";
+                return false;
+            }
+
+            if (!esAdmin && orden.CodigoUsuario != idUsuario)
+            {
+                mensajeError = "No está autorizado para generar el PDF de esta orden de recaudación.";
+                return false;
+            }
+
+            if (esAdmin)
+            {
+                return true;
+            }
+
+            OrdenRecaudacion ordenEntidad;
+            try
+            {
+                ordenEntidad = _dao.ObtenerPorId(orden.Id);
+            }
+            catch
+            {
+                ordenEntidad = null;
+            }
+
+            if (ordenEntidad == null)
+            {
+                mensajeError = "No se encontró la Orden de Recaudación solicitada.";
+                return false;
+            }
+
+            var codigoOrden = _companiaContextService.ResolverCodigoCompaniaDesdeOrden(ordenEntidad);
+            if (!string.IsNullOrWhiteSpace(codigoOrden)
+                && _companiaContextService.ValidarCompaniaPerteneceAlRt(idUsuario, codigoOrden))
+            {
+                return true;
+            }
+
+            if (_companiaContextService.OrdenPerteneceACompania(
+                ordenEntidad,
+                codigoOrden,
+                FirstNonEmpty(ordenEntidad.Compania, ordenEntidad.NombreContribuyente),
+                idUsuario))
+            {
+                return true;
+            }
+
+            mensajeError = "No está autorizado para generar el PDF de esta orden de recaudación.";
+            return false;
+        }
+
+        private void RegistrarTrazaOrdenPdf(
+            string accion,
+            int usuarioId,
+            OrdenRecaudacionModel orden,
+            string companiaActivaCodigo,
+            string companiaFormulario,
+            string tokenFormulario,
+            int ordenId,
+            string companiaOrdenCodigo,
+            string estadoOrden)
+        {
+            var ordenIdFinal = orden != null && orden.Id > 0 ? orden.Id : ordenId;
+            var companiaOrden = !string.IsNullOrWhiteSpace(companiaOrdenCodigo)
+                ? companiaOrdenCodigo
+                : ResolverCompaniaCodigoOrden(orden);
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[AOCR][ORDEN_PDF] Accion={0} Usuario={1} CompaniaActiva={2} CompaniaFormulario={3} TokenFormulario={4} OrdenId={5} CompaniaOrden={6} EstadoOrden={7}",
+                accion ?? string.Empty,
+                usuarioId,
+                companiaActivaCodigo ?? string.Empty,
+                string.IsNullOrWhiteSpace(companiaFormulario) ? "(ignorado)" : companiaFormulario,
+                string.IsNullOrWhiteSpace(tokenFormulario) ? "(ignorado)" : "presente",
+                ordenIdFinal,
+                companiaOrden ?? string.Empty,
+                estadoOrden ?? string.Empty);
+        }
+
+        private void AplicarCompaniaActivaAlModelo(OrdenRecaudacionNuevaVM model, int userId, RtCompaniaScope scope)
+        {
+            if (model == null || userId <= 0 || scope == null || !scope.TieneCompaniaActivaValida())
+            {
+                return;
+            }
+
+            var companiaActiva = ObtenerCompaniaActivaDesdeSesion(userId);
+            if (!companiaActiva.EsValida)
+            {
+                return;
+            }
+
+            model.Orden = model.Orden ?? new OrdenRecaudacionNuevaVM.NuevaOrdenViewModel();
+            model.Orden.Compania = _companiaContextService.FormatearTextoCompaniaOrden(companiaActiva.Codigo, companiaActiva.Nombre);
+            model.Orden.NombreContribuyente = companiaActiva.Nombre;
+            model.CompaniaActivaCodigo = companiaActiva.Codigo;
+            model.CompaniaActivaContextToken = CompaniaActivaSessionHelper.GenerarTokenContexto(Session, userId);
+
+            if (!string.IsNullOrWhiteSpace(companiaActiva.Ruc))
+            {
+                model.Orden.RucCedula = ExtraerRucCedula(companiaActiva.Ruc);
+                model.RucCedula = model.Orden.RucCedula;
+            }
+
+            Usuario usuario = null;
+            try
+            {
+                usuario = UsuarioDAO.ObtenerPorId(userId);
+                if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
+                {
+                    var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
+                    if (!string.IsNullOrWhiteSpace(rucCedula))
+                    {
+                        model.Orden.RucCedula = ExtraerRucCedula(rucCedula);
+                        model.RucCedula = model.Orden.RucCedula;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(model.Orden.Correo) && !string.IsNullOrWhiteSpace(usuario?.Email))
+                {
+                    model.Orden.Correo = usuario.Email;
+                }
+            }
+            catch
+            {
+                // ignorar prefill si falla
+            }
+
+            PrefillDesdeUltimaOrden(userId, model, companiaActiva.Codigo, companiaActiva.Nombre);
+
+            if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
+            {
+                model.Orden.RucCedula = ExtraerRucCedula(ResolverRucCedulaDesdeFuentes(userId, usuario));
+                model.RucCedula = model.Orden.RucCedula;
+            }
+
+            model.Orden.LugarEmision = ResolverLugarEmisionDesdeDb(model.Orden.CodigoSolicitud, userId);
+
+            ViewBag.CompaniaActivaCodigo = companiaActiva.Codigo;
+            ViewBag.CompaniaActivaNombre = companiaActiva.Nombre;
+            ViewBag.CompaniaActivaAlerta = "Esta orden se generará para la compañía activa seleccionada: "
+                + companiaActiva.Nombre
+                + " ("
+                + companiaActiva.Codigo
+                + "). Verifique que la compañía sea correcta antes de guardar.";
         }
 
         private void ConfigurarConceptoObligatorioViewBag(OrdenRecaudacionNuevaVM model)
@@ -1237,10 +1461,31 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
+            if (id <= 0)
+            {
+                TempData["Error"] = "No se recibió el identificador de la Orden de Recaudación. Regrese al detalle de la orden e intente nuevamente.";
+                return RedirectToAction("Index");
+            }
+
             var orden = _dao.ObtenerOrdenPorIdModel(id);
             var esAdmin = User != null && (User.IsInRole("Administrador") || User.IsInRole("Financiero"));
-            if (orden == null || (!esAdmin && orden.CodigoUsuario != idUsuario))
-                return HttpNotFound();
+
+            RegistrarTrazaOrdenPdf(
+                "GenerarOrden",
+                idUsuario,
+                orden,
+                CompaniaActivaSessionHelper.ObtenerCodigo(Session),
+                null,
+                null,
+                id,
+                null,
+                orden != null ? orden.Estado : null);
+
+            if (!ValidarAccesoOrdenRecaudacionDesdeBd(orden, idUsuario, esAdmin, out var mensajeAcceso))
+            {
+                TempData["Error"] = mensajeAcceso;
+                return orden == null ? (ActionResult)HttpNotFound() : RedirectToAction("Detalles", new { id });
+            }
 
             if (!string.Equals((orden.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase))
             {
@@ -1274,8 +1519,7 @@ namespace CapaPresentacion.Controllers
 
                 if (result)
                 {
-                    TempData["OK"] = "Orden generada correctamente (pendiente de pago).";
-                    // Notificar al contribuyente con comprobante PDF
+                    TempData["OK"] = "Su Orden de Recaudación ha sido generada correctamente. Descargue el documento y cargue el comprobante de depósito o transferencia para que el área Financiera pueda realizar la revisión correspondiente.";
                     await EnviarNotificacionOrdenGeneradaAsync(orden);
                     return RedirectToAction("Detalles", new { id = id });
                 }
@@ -1352,31 +1596,15 @@ namespace CapaPresentacion.Controllers
                 var instruccionesPagoHtml = ConstruirInstruccionesPagoCorreoHtml(orden);
                 var resultadoCorreoRt = _ordenCorreoService.NotificarEvento(
                     ordenEntidad,
-                    "ORDEN_CREADA",
+                    "ORDEN_GENERADA_RT",
                     string.IsNullOrWhiteSpace(orden.Correo) ? null : orden.Correo,
                     string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.Compania : orden.NombreContribuyente,
                     pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
                     pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
                     instruccionesPagoHtml);
-                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_CREADA: Exitoso={resultadoCorreoRt.Exitoso}, Mensaje={resultadoCorreoRt.Mensaje}");
+                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_GENERADA_RT: Exitoso={resultadoCorreoRt.Exitoso}, Mensaje={resultadoCorreoRt.Mensaje}");
 
-                var resultadoCorreo = _ordenCorreoService.NotificarEvento(
-                    ordenEntidad,
-                    "ORDEN_RECAUDACION_GENERADA_FINANCIERO",
-                    null,
-                    null,
-                    pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
-                    pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
-                    pdfBytes != null && pdfBytes.Length > 0
-                        ? "Orden de recaudación generada y remitida a Financiero con comprobante adjunto."
-                        : "Orden de recaudación generada y remitida a Financiero sin adjunto por falla de PDF.");
-                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_RECAUDACION_GENERADA_FINANCIERO: Exitoso={resultadoCorreo.Exitoso}, Mensaje={resultadoCorreo.Mensaje}");
-                if (!resultadoCorreo.Exitoso)
-                {
-                    TempData["Warning"] = "La orden fue generada, pero la notificación al área Financiera no se pudo encolar: "
-                        + (resultadoCorreo.Mensaje ?? "Error no especificado.");
-                }
-                else if (!resultadoCorreoRt.Exitoso)
+                if (!resultadoCorreoRt.Exitoso)
                 {
                     TempData["Warning"] = "La orden fue generada, pero la notificación al RT no se pudo encolar: "
                         + (resultadoCorreoRt.Mensaje ?? "Error no especificado.");
@@ -1743,9 +1971,13 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound();
 
             var estadoOrden = CapaDatos.Constants.EstadoOrden.NormalizarEstado(orden.Estado);
-            if (!estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Pendiente, StringComparison.OrdinalIgnoreCase) &&
-                !estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Generada, StringComparison.OrdinalIgnoreCase) &&
-                !estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase))
+            if (OrdenRecaudacionOperativaHelper.EsOrdenCerradaPostAprobacionFinanciera(estadoOrden))
+            {
+                TempData["Error"] = OrdenRecaudacionOperativaHelper.MensajeBloqueoComprobante;
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+            if (!OrdenRecaudacionOperativaHelper.PermiteSubirComprobante(estadoOrden))
             {
                 TempData["Error"] = "Solo se puede cargar respaldo cuando la orden esté en GENERADA, PENDIENTE o DEVUELTA.";
                 return RedirectToAction("Detalles", new { id = id });
@@ -1927,18 +2159,24 @@ namespace CapaPresentacion.Controllers
                         NombreContribuyente = orden.NombreContribuyente
                     };
 
+                    var pagoRegistrado = _dao.ObtenerUltimoPagoPorOrden(orden.Id);
+                    var comprobanteId = pagoRegistrado != null && pagoRegistrado.Id > 0
+                        ? pagoRegistrado.Id.ToString()
+                        : "0";
+
                     var resultadoCorreoPago = _ordenCorreoService.NotificarEvento(
                         ordenEntidad,
-                        "PAGO_REGISTRADO",
-                        string.IsNullOrWhiteSpace(orden.Correo) ? null : orden.Correo,
-                        string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.Compania : orden.NombreContribuyente,
+                        "COMPROBANTE_CARGADO_FINANCIERO",
+                        null,
+                        null,
                         comprobanteAdjunto,
                         nombreAdjunto,
-                        "Se registró un comprobante de pago para la orden y queda pendiente la validación del área Financiera.");
+                        "Sistema AOCR - Dirección General de Aviación Civil",
+                        comprobanteId);
 
                     if (!resultadoCorreoPago.Exitoso)
                     {
-                        TempData["Warning"] = "El pago fue registrado, pero la notificación no se pudo encolar: "
+                        TempData["Warning"] = "El comprobante fue registrado, pero la notificación al área Financiera no se pudo encolar: "
                             + (resultadoCorreoPago.Mensaje ?? "Error no especificado.");
                     }
                 }
@@ -1977,6 +2215,12 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound();
 
             var estadoAnterior = (orden.Estado ?? string.Empty).Trim();
+            if (OrdenRecaudacionOperativaHelper.EsOrdenCerradaPostAprobacionFinanciera(estadoAnterior))
+            {
+                TempData["Error"] = OrdenRecaudacionOperativaHelper.MensajeBloqueoEdicion;
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
             if (estadoAnterior.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
                 estadoAnterior.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
             {
@@ -2026,6 +2270,22 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
+        /// Genera la Solicitud de Inspecciones usando solo el Id de la orden (datos desde BD).
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Solicitante,Administrador,Operador")]
+        public ActionResult GenerarSolicitudInspeccion(int id)
+        {
+            var aeropuertos = TempData["AeropuertosGenerarSolicitudInspeccion"] as string;
+            if (string.IsNullOrWhiteSpace(aeropuertos))
+            {
+                aeropuertos = Session["SolicitudInspeccionAeropuertos_" + id] as string;
+            }
+
+            return EjecutarGenerarSolicitudInspeccion(id, aeropuertos, GetUserId());
+        }
+
+        /// <summary>
         /// Genera y registra la solicitud documental requerida por INSPECCION_EXT.
         /// </summary>
         [HttpPost]
@@ -2033,14 +2293,45 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = "Solicitante,Administrador,Operador")]
         public ActionResult GenerarSolicitudInspeccion(int id, string aeropuertosSolicitados)
         {
-            int idUsuario = GetUserId();
+            return EjecutarGenerarSolicitudInspeccion(id, aeropuertosSolicitados, GetUserId());
+        }
+
+        private ActionResult EjecutarGenerarSolicitudInspeccion(int id, string aeropuertosSolicitados, int idUsuario)
+        {
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
+            if (id <= 0)
+            {
+                TempData["Error"] = "No se recibió el identificador de la Orden de Recaudación. Regrese al detalle de la orden e intente nuevamente.";
+                return RedirectToAction("Index");
+            }
+
             var orden = _dao.ObtenerOrdenPorIdModel(id);
+            CompletarDatosOrdenParaVista(orden);
+
+            var esAdmin = User != null && User.IsInRole("Administrador");
+            var companiaActivaCodigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            RegistrarTrazaOrdenPdf(
+                "GenerarSolicitudInspeccion",
+                idUsuario,
+                orden,
+                companiaActivaCodigo,
+                null,
+                null,
+                id,
+                ResolverCompaniaCodigoOrden(orden),
+                orden != null ? orden.Estado : null);
+
+            if (!ValidarAccesoOrdenRecaudacionDesdeBd(orden, idUsuario, esAdmin, out var mensajeAcceso))
+            {
+                TempData["Error"] = mensajeAcceso;
+                return orden == null ? (ActionResult)HttpNotFound() : RedirectToAction("Detalles", new { id });
+            }
+
             if (!ValidarOrdenSolicitudInspeccion(orden, idUsuario, permitirGestion: true, mensajeError: out var mensaje))
             {
                 TempData["Error"] = mensaje;
-                return orden == null ? (ActionResult)HttpNotFound() : RedirectToAction("Detalles", new { id });
+                return RedirectToAction("Detalles", new { id });
             }
 
             if (!PuedeEditarSolicitudInspeccionExt(orden, idUsuario, out _, out var motivoBloqueoEdicion))
@@ -2489,6 +2780,18 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
+        /// Genera y descarga el PDF de la orden usando únicamente el Id (datos desde BD).
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "OrdenRecaudacion", Accion = "Descargar", CodigoOrdenParameter = "id")]
+        [Authorize(Roles = "Solicitante,Administrador,Operador,Financiero,Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,JefaturaTecnica,Direccion")]
+        public ActionResult GenerarPdf(int id)
+        {
+            return DescargarPdf(id, vistaPrevia: false);
+        }
+
+        /// <summary>
         /// Descargar PDF de orden
         /// </summary>
         [HttpGet]
@@ -2498,11 +2801,36 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
+            if (id <= 0)
+            {
+                TempData["Error"] = "No se recibió el identificador de la Orden de Recaudación. Regrese al detalle de la orden e intente nuevamente.";
+                return RedirectToAction("Index");
+            }
+
             var ordenModel = _dao.ObtenerOrdenPorIdModel(id);
+            var esFinanciero = User != null && (User.IsInRole("Financiero") || User.IsInRole("Administrador"));
+            var esAdmin = esFinanciero || (User != null && User.IsInRole("Administrador"));
+
+            RegistrarTrazaOrdenPdf(
+                "DescargarPdf",
+                idUsuario,
+                ordenModel,
+                CompaniaActivaSessionHelper.ObtenerCodigo(Session),
+                null,
+                null,
+                id,
+                null,
+                ordenModel != null ? ordenModel.Estado : null);
+
+            if (!ValidarAccesoOrdenRecaudacionDesdeBd(ordenModel, idUsuario, esAdmin, out var mensajeAcceso))
+            {
+                TempData["Error"] = mensajeAcceso;
+                return ordenModel == null ? (ActionResult)HttpNotFound() : RedirectToAction("Detalles", new { id });
+            }
+
             if (ordenModel == null)
                 return HttpNotFound();
 
-            var esFinanciero = User != null && (User.IsInRole("Financiero") || User.IsInRole("Administrador"));
             if (!esFinanciero && ordenModel.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -3710,6 +4038,45 @@ namespace CapaPresentacion.Controllers
             return new SelectList(list, "Value", "Text");
         }
 
+        private List<OrdenRecaudacion> FiltrarOrdenesPorCompaniaActiva(List<OrdenRecaudacion> ordenes, int idUsuario)
+        {
+            var codigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            var nombre = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                var totalCompanias = (new UsuarioCompaniaRTDAO().ObtenerCompaniasAsignadas(idUsuario, true) ?? new List<UsuarioCompaniaRT>()).Count;
+                if (totalCompanias > 1)
+                {
+                    return new List<OrdenRecaudacion>();
+                }
+
+                return ordenes ?? new List<OrdenRecaudacion>();
+            }
+
+            return _companiaContextService
+                .FiltrarOrdenesPorCompania(ordenes, codigo, nombre, idUsuario)
+                .ToList();
+        }
+
+        private List<OrdenRecaudacionModel> FiltrarOrdenesModelPorCompaniaActiva(List<OrdenRecaudacionModel> ordenes, int idUsuario)
+        {
+            var codigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            var nombre = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return ordenes ?? new List<OrdenRecaudacionModel>();
+            }
+
+            var filtradas = _companiaContextService.FiltrarOrdenesPorCompania(
+                (ordenes ?? new List<OrdenRecaudacionModel>()).Select(o => _dao.ObtenerOrdenPorId(o.Id)).Where(o => o != null),
+                codigo,
+                nombre,
+                idUsuario);
+
+            var ids = new HashSet<int>(filtradas.Select(o => o.Id));
+            return (ordenes ?? new List<OrdenRecaudacionModel>()).Where(o => ids.Contains(o.Id)).ToList();
+        }
+
         private int GetUserId()
         {
             int id = 0;
@@ -3726,13 +4093,22 @@ namespace CapaPresentacion.Controllers
             return id;
         }
 
-        private void PrefillDesdeUltimaOrden(int userId, CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
+        private void PrefillDesdeUltimaOrden(int userId, CapaPresentacion.Models.OrdenRecaudacionNuevaVM model, string companiaCodigo = null, string companiaNombre = null)
         {
             if (userId <= 0 || model?.Orden == null) return;
 
             try
             {
-                var ultimaOrden = _dao.ListarPorUsuario(userId, null).FirstOrDefault();
+                var codigo = (companiaCodigo ?? CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim();
+                var nombre = (companiaNombre ?? CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
+                var ordenesUsuario = _dao.ListarPorUsuario(userId, null) ?? new List<OrdenRecaudacion>();
+                var ordenesCompania = string.IsNullOrWhiteSpace(codigo)
+                    ? ordenesUsuario
+                    : _companiaContextService.FiltrarOrdenesPorCompania(ordenesUsuario, codigo, nombre, userId);
+
+                var ultimaOrden = ordenesCompania
+                    .OrderByDescending(o => o.FechaCreacion)
+                    .FirstOrDefault();
                 if (ultimaOrden == null) return;
 
                 if (string.IsNullOrWhiteSpace(model.Orden.RucCedula) && !string.IsNullOrWhiteSpace(ultimaOrden.RucCedula))
@@ -3754,33 +4130,34 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                var codigoCompaniaActiva = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    return string.Empty;
+                }
+
                 var nombreSesion = (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
                 if (!string.IsNullOrWhiteSpace(nombreSesion))
                 {
                     return nombreSesion;
                 }
 
-                var codigoCompaniaActiva = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                var userId = GetUserId();
+                if (userId > 0)
                 {
-                    codigoCompaniaActiva = (usuario != null ? usuario.EmpresaCodigo : string.Empty) ?? string.Empty;
-                }
-
-                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
-                {
-                    var nombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
+                    var nombre = _companiaContextService.ResolverNombreCompaniaAsignada(userId, codigoCompaniaActiva);
                     if (!string.IsNullOrWhiteSpace(nombre))
                     {
                         return nombre;
                     }
                 }
+
+                return codigoCompaniaActiva;
             }
             catch
             {
-                // no-op
+                return string.Empty;
             }
-
-            return string.Empty;
         }
 
         private string ResolverLugarEmisionDesdeDb(int? codigoSolicitud, int codigoUsuario, string fallback = null)
@@ -4494,7 +4871,6 @@ namespace CapaPresentacion.Controllers
                 {
                     if (string.IsNullOrWhiteSpace(solicitud.CodigoOaci))
                     {
-                        // Compatibilidad con solicitudes legacy sin marca explícita de compañía.
                         if (!string.IsNullOrWhiteSpace(nombreCompaniaActiva))
                         {
                             var nombreSolicitud = FirstNonEmpty(
@@ -4509,7 +4885,7 @@ namespace CapaPresentacion.Controllers
                             }
                         }
 
-                        return true;
+                        return string.IsNullOrWhiteSpace(codigoCompania);
                     }
 
                     return false;
@@ -4526,6 +4902,11 @@ namespace CapaPresentacion.Controllers
             {
                 if (userId > 0 && (!string.IsNullOrWhiteSpace(codigoCompaniaActiva) || !string.IsNullOrWhiteSpace(nombreCompaniaActiva)))
                 {
+                    AgregarCandidato(
+                        _companiaContextService.ResolverRucCompaniaAsignada(userId, codigoCompaniaActiva),
+                        true,
+                        "compania_activa.asignacion.usuoid");
+
                     var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(userId) ?? Enumerable.Empty<SolicitudAOCR>();
                     var solicitudCompaniaActiva = solicitudesUsuario
                         .Where(s => CompaniaCoincide(s, codigoCompaniaActiva))
@@ -4581,6 +4962,7 @@ namespace CapaPresentacion.Controllers
                 {
                     var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(userId) ?? Enumerable.Empty<SolicitudAOCR>();
                     var solicitudConRuc = solicitudesUsuario
+                        .Where(s => string.IsNullOrWhiteSpace(codigoCompaniaActiva) || CompaniaCoincide(s, codigoCompaniaActiva))
                         .FirstOrDefault(s =>
                             s != null && (
                                 !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.Ruc)) ||
@@ -4923,22 +5305,19 @@ namespace CapaPresentacion.Controllers
             try
             {
                 string usuario = User.Identity.Name ?? "SISTEMA";
+                var userId = GetUserId();
 
-                // Usa la transacción completa: actualiza pago → actualiza orden → actualiza solicitud
-                string err;
-                var resultado = _dao.ActualizarPagoYEstadoTransaccional(
+                var resultado = new FinancieroAprobacionPagoOrchestrator().AprobarPagoCompleto(
                     ordenId,
                     pagoId,
-                    CapaDatos.Constants.EstadoPago.Validado,
                     usuario,
-                    "Pago validado por " + usuario,
-                    CapaDatos.Constants.EstadoOrden.Facturada,
-                    out err);
+                    userId);
 
-                if (resultado)
+                if (resultado.Exito)
                 {
-                    new AocrPostPagoWorkflowService().ProcesarPagoAprobado(ordenId, usuario);
-                    TempData["Success"] = "Pago validado correctamente. Orden actualizada a FACTURADA.";
+                    TempData["Success"] = resultado.Idempotente
+                        ? "El pago ya estaba aprobado. Solicitud AOCR habilitada para el RT."
+                        : "Pago aprobado. Solicitud AOCR habilitada y orden cerrada para el RT.";
 
                     // Intentar notificación por email (no bloqueante)
                     try
@@ -4961,7 +5340,7 @@ namespace CapaPresentacion.Controllers
                 else
                 {
                     TempData["Error"] = "No se pudo validar el pago." +
-                        (string.IsNullOrWhiteSpace(err) ? "" : " Detalle: " + err);
+                        (string.IsNullOrWhiteSpace(resultado.Error) ? "" : " Detalle: " + resultado.Error);
                 }
             }
             catch (Exception ex)

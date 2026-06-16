@@ -461,8 +461,7 @@ namespace CapaDatos.DAOs
                           'ACEPTACION DOCUMENTAL',
                           'PENDIENTE ASIGNACION RT',
                           'DOCUMENTACION COMPLETA',
-                          'REQUIERE INSPECCION',
-                          'SUBSANADA'
+                          'REQUIERE INSPECCION'
                       )
                       OR EXISTS (
                           SELECT 1

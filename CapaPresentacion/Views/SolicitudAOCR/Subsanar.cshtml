@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.SubsanacionViewModel>
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.SubsanacionViewModel>
 @using System
 @using CapaDatos.Constants
 @using CapaPresentacion.Helpers
@@ -149,7 +149,7 @@
     @* ══════════════════════════════════════════════════════════════
        BLOQUE 3 — CORRECCIÓN DE DOCUMENTOS
        ══════════════════════════════════════════════════════════════ *@
-    <form method="post" action="@Url.Action("SubsanarPost", "SolicitudAOCR")" enctype="multipart/form-data" id="formSubsanar">
+    <form method="post" action="@Url.Action("EnviarSubsanacionAlInspector", "SolicitudAOCR")" enctype="multipart/form-data" id="formSubsanar">
         @Html.AntiForgeryToken()
         <input type="hidden" name="codigoSolicitud" value="@Model.CodigoSolicitud" />
 

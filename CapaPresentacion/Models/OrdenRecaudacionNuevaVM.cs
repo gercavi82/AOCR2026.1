@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using CapaPresentacion.Models;
@@ -24,6 +24,9 @@ namespace CapaPresentacion.Models
         public string AeropuertosSolicitados { get; set; }
 
         public bool GenerarSolicitudInspeccionAlGuardar { get; set; }
+
+        public string CompaniaActivaCodigo { get; set; }
+        public string CompaniaActivaContextToken { get; set; }
 
         public CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel SolicitudInspeccionPanel { get; set; } = new CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel();
 

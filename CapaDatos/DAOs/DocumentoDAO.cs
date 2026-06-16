@@ -30,6 +30,9 @@ namespace CapaDatos.DAOs
                 var columnaUsuario = ExisteColumna(cn, "aocr_tbdocumento", "created_by")
                     ? "created_by"
                     : (ExisteColumna(cn, "aocr_tbdocumento", "usuario_registro") ? "usuario_registro" : string.Empty);
+                var tieneNombreOriginal = ExisteColumna(cn, "aocr_tbdocumento", "nombre_original");
+                var tieneNombreVisible = ExisteColumna(cn, "aocr_tbdocumento", "nombre_visible");
+                var tieneNombreFisico = ExisteColumna(cn, "aocr_tbdocumento", "nombre_fisico");
 
                 var columnas = new List<string>
                 {
@@ -75,6 +78,24 @@ namespace CapaDatos.DAOs
                     valores.Add("@created_by");
                 }
 
+                if (tieneNombreOriginal)
+                {
+                    columnas.Add("nombre_original");
+                    valores.Add("@nombre_original");
+                }
+
+                if (tieneNombreVisible)
+                {
+                    columnas.Add("nombre_visible");
+                    valores.Add("@nombre_visible");
+                }
+
+                if (tieneNombreFisico)
+                {
+                    columnas.Add("nombre_fisico");
+                    valores.Add("@nombre_fisico");
+                }
+
                 string sql = $@"
                     INSERT INTO aocr_tbdocumento
                     ({string.Join(", ", columnas)})
@@ -113,6 +134,21 @@ namespace CapaDatos.DAOs
                         if (!string.IsNullOrWhiteSpace(columnaUsuario))
                         {
                             cmd.Parameters.AddWithValue("@created_by", (object)doc.UsuarioRegistro ?? "sistema");
+                        }
+
+                        if (tieneNombreOriginal)
+                        {
+                            cmd.Parameters.AddWithValue("@nombre_original", (object)(doc.NombreArchivoOriginal ?? doc.NombreArchivo) ?? DBNull.Value);
+                        }
+
+                        if (tieneNombreVisible)
+                        {
+                            cmd.Parameters.AddWithValue("@nombre_visible", (object)(doc.NombreArchivoVisible ?? doc.NombreArchivoOriginal ?? doc.NombreArchivo) ?? DBNull.Value);
+                        }
+
+                        if (tieneNombreFisico)
+                        {
+                            cmd.Parameters.AddWithValue("@nombre_fisico", (object)(doc.NombreArchivoFisico ?? doc.NombreArchivoGuardado) ?? DBNull.Value);
                         }
 
                         try
@@ -304,6 +340,15 @@ namespace CapaDatos.DAOs
                 var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
                     ? "validado_por"
                     : "NULL::varchar AS validado_por";
+                var selectNombreOriginal = ExisteColumna(cn, "aocr_tbdocumento", "nombre_original")
+                    ? "nombre_original"
+                    : "NULL::varchar AS nombre_original";
+                var selectNombreVisible = ExisteColumna(cn, "aocr_tbdocumento", "nombre_visible")
+                    ? "nombre_visible"
+                    : "NULL::varchar AS nombre_visible";
+                var selectNombreFisico = ExisteColumna(cn, "aocr_tbdocumento", "nombre_fisico")
+                    ? "nombre_fisico"
+                    : "NULL::varchar AS nombre_fisico";
 
                 string sql = @"
                     SELECT
@@ -311,6 +356,9 @@ namespace CapaDatos.DAOs
                         codigo_solicitud,
                         tipo_documento,
                         nombre_archivo,
+                        " + selectNombreOriginal + @",
+                        " + selectNombreVisible + @",
+                        " + selectNombreFisico + @",
                         ruta_guardada,
                         extension,
                         tamano_bytes,
@@ -356,6 +404,15 @@ namespace CapaDatos.DAOs
                 var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
                     ? "validado_por"
                     : "NULL::varchar AS validado_por";
+                var selectNombreOriginal = ExisteColumna(cn, "aocr_tbdocumento", "nombre_original")
+                    ? "nombre_original"
+                    : "NULL::varchar AS nombre_original";
+                var selectNombreVisible = ExisteColumna(cn, "aocr_tbdocumento", "nombre_visible")
+                    ? "nombre_visible"
+                    : "NULL::varchar AS nombre_visible";
+                var selectNombreFisico = ExisteColumna(cn, "aocr_tbdocumento", "nombre_fisico")
+                    ? "nombre_fisico"
+                    : "NULL::varchar AS nombre_fisico";
 
                 string sql = @"
                     SELECT
@@ -363,6 +420,9 @@ namespace CapaDatos.DAOs
                         codigo_solicitud,
                         tipo_documento,
                         nombre_archivo,
+                        " + selectNombreOriginal + @",
+                        " + selectNombreVisible + @",
+                        " + selectNombreFisico + @",
                         ruta_guardada,
                         extension,
                         tamano_bytes,
@@ -406,6 +466,15 @@ namespace CapaDatos.DAOs
                 var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
                     ? "validado_por"
                     : "NULL::varchar AS validado_por";
+                var selectNombreOriginal = ExisteColumna(cn, "aocr_tbdocumento", "nombre_original")
+                    ? "nombre_original"
+                    : "NULL::varchar AS nombre_original";
+                var selectNombreVisible = ExisteColumna(cn, "aocr_tbdocumento", "nombre_visible")
+                    ? "nombre_visible"
+                    : "NULL::varchar AS nombre_visible";
+                var selectNombreFisico = ExisteColumna(cn, "aocr_tbdocumento", "nombre_fisico")
+                    ? "nombre_fisico"
+                    : "NULL::varchar AS nombre_fisico";
 
                 string sql = @"
                     SELECT
@@ -413,6 +482,9 @@ namespace CapaDatos.DAOs
                         codigo_solicitud,
                         tipo_documento,
                         nombre_archivo,
+                        " + selectNombreOriginal + @",
+                        " + selectNombreVisible + @",
+                        " + selectNombreFisico + @",
                         ruta_guardada,
                         extension,
                         tamano_bytes,
@@ -456,6 +528,9 @@ namespace CapaDatos.DAOs
                     : (ExisteColumna(cn, "aocr_tbdocumento", "usuario_actualizacion") ? "usuario_actualizacion" : string.Empty);
                 var tieneFechaValidacion = ExisteColumna(cn, "aocr_tbdocumento", "fecha_validacion");
                 var tieneValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por");
+                var tieneNombreOriginal = ExisteColumna(cn, "aocr_tbdocumento", "nombre_original");
+                var tieneNombreVisible = ExisteColumna(cn, "aocr_tbdocumento", "nombre_visible");
+                var tieneNombreFisico = ExisteColumna(cn, "aocr_tbdocumento", "nombre_fisico");
 
                 var setParts = new List<string>
                 {
@@ -479,6 +554,21 @@ namespace CapaDatos.DAOs
                 if (tieneValidadoPor)
                 {
                     setParts.Add("validado_por = @validado_por");
+                }
+
+                if (tieneNombreOriginal)
+                {
+                    setParts.Add("nombre_original = @nombre_original");
+                }
+
+                if (tieneNombreVisible)
+                {
+                    setParts.Add("nombre_visible = @nombre_visible");
+                }
+
+                if (tieneNombreFisico)
+                {
+                    setParts.Add("nombre_fisico = @nombre_fisico");
                 }
 
                 if (tieneUpdatedAt)
@@ -515,6 +605,18 @@ namespace CapaDatos.DAOs
                     if (tieneValidadoPor)
                     {
                         cmd.Parameters.AddWithValue("@validado_por", (object)doc.ValidadoPor ?? DBNull.Value);
+                    }
+                    if (tieneNombreOriginal)
+                    {
+                        cmd.Parameters.AddWithValue("@nombre_original", (object)(doc.NombreArchivoOriginal ?? doc.NombreArchivo) ?? DBNull.Value);
+                    }
+                    if (tieneNombreVisible)
+                    {
+                        cmd.Parameters.AddWithValue("@nombre_visible", (object)(doc.NombreArchivoVisible ?? doc.NombreArchivoOriginal ?? doc.NombreArchivo) ?? DBNull.Value);
+                    }
+                    if (tieneNombreFisico)
+                    {
+                        cmd.Parameters.AddWithValue("@nombre_fisico", (object)(doc.NombreArchivoFisico ?? doc.NombreArchivoGuardado) ?? DBNull.Value);
                     }
                     if (!string.IsNullOrWhiteSpace(columnaUpdatedBy))
                     {
@@ -586,6 +688,9 @@ namespace CapaDatos.DAOs
 
                 TipoDocumento = rd["tipo_documento"] == DBNull.Value ? null : rd["tipo_documento"].ToString(),
                 NombreArchivo = rd["nombre_archivo"] == DBNull.Value ? null : rd["nombre_archivo"].ToString(),
+                NombreArchivoOriginal = rd["nombre_original"] == DBNull.Value ? null : rd["nombre_original"].ToString(),
+                NombreArchivoVisible = rd["nombre_visible"] == DBNull.Value ? null : rd["nombre_visible"].ToString(),
+                NombreArchivoFisico = rd["nombre_fisico"] == DBNull.Value ? null : rd["nombre_fisico"].ToString(),
                 RutaGuardada = rd["ruta_guardada"] == DBNull.Value ? null : rd["ruta_guardada"].ToString(),
 
                 Extension = rd["extension"] == DBNull.Value ? null : rd["extension"].ToString(),

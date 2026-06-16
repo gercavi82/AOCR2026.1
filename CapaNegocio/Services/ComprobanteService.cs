@@ -9,7 +9,10 @@ namespace CapaNegocio.Services
 {
     public class ComprobanteService
     {
-        private const string MensajeBase = "Debe registrar el comprobante antes de continuar.";
+        public const string MensajeAprobacionSinComprobante =
+            "No se puede aprobar el pago porque el RT aún no ha cargado el comprobante de depósito o transferencia.";
+
+        private const string MensajeBase = MensajeAprobacionSinComprobante;
 
         public bool ExisteComprobanteValido(int ordenId)
         {

@@ -1,13 +1,11 @@
 (function () {
-    function logInfo(message, data) {
-        if (window.console && typeof window.console.info === 'function') {
-            window.console.info(message, data || '');
-        }
-    }
+    'use strict';
 
-    function logWarn(message, data) {
-        if (window.console && typeof window.console.warn === 'function') {
-            window.console.warn(message, data || '');
+    var DEBUG = false;
+
+    function logInfo(message) {
+        if (DEBUG && window.console && typeof window.console.info === 'function') {
+            window.console.info(message);
         }
     }
 
@@ -17,32 +15,54 @@
         }
     }
 
-    function installSidebarMenu() {
-        var body;
-        var shell;
-        var sidebar;
-        var panel;
-        var title;
-        var subtitle;
-        var content;
-        var closeBtn;
+    function isMobileViewport() {
+        return window.matchMedia('(max-width: 991.98px)').matches;
+    }
 
-        try {
-            body = document.body;
-            shell = document.querySelector('[data-aocr-sidebar]');
-            sidebar = document.querySelector('.main-sidebar.aocr-sidebar');
-            panel = document.getElementById('aocrSubnavPanel');
-            title = document.getElementById('aocrSubnavTitle');
-            subtitle = document.getElementById('aocrSubnavSubtitle');
-            content = document.getElementById('aocrSubnavContent');
-            closeBtn = document.getElementById('aocrSubnavClose');
-        } catch (error) {
-            logError('[AOCR_SUBNAV_INIT] No se pudo leer la estructura del sidebar.', error);
-            return false;
+    function closeMobileSidebar() {
+        if (!isMobileViewport()) {
+            return;
         }
 
-        if (!shell || !sidebar) {
-            logWarn('[AOCR_SUBNAV_INIT] Sidebar no disponible todavia.');
+        document.body.classList.remove('sidebar-open');
+    }
+
+    function setGroupState(item, toggle, submenu, open) {
+        if (!item || !toggle || !submenu) {
+            return;
+        }
+
+        if (open) {
+            item.classList.add('is-open', 'open');
+            toggle.classList.add('is-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            submenu.classList.add('is-open');
+            submenu.setAttribute('aria-hidden', 'false');
+            return;
+        }
+
+        item.classList.remove('is-open', 'open');
+        toggle.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        submenu.classList.remove('is-open');
+        submenu.setAttribute('aria-hidden', 'true');
+    }
+
+    function closeOtherGroups(menuItems, exceptItem) {
+        Array.prototype.forEach.call(menuItems, function (otherItem) {
+            if (otherItem === exceptItem) {
+                return;
+            }
+
+            var otherToggle = otherItem.querySelector('[data-menu-toggle]');
+            var otherSubmenu = otherItem.querySelector('.aocr-submenu');
+            setGroupState(otherItem, otherToggle, otherSubmenu, false);
+        });
+    }
+
+    function installSidebarAccordion() {
+        var shell = document.querySelector('[data-aocr-sidebar]');
+        if (!shell) {
             return false;
         }
 
@@ -52,230 +72,98 @@
 
         var menuItems = shell.querySelectorAll('[data-aocr-menu-item]');
         if (!menuItems.length) {
-            logWarn('[AOCR_SUBNAV_INIT] Sidebar sin menus renderizados.');
-            return false;
-        }
-
-        var searchInput = shell.querySelector('[data-aocr-sidebar-search]');
-        var sidebarScroll = shell.closest('.sidebar');
-
-        if (!panel || !title || !subtitle || !content) {
-            logWarn('[AOCR_SUBNAV_INIT] Panel secundario incompleto.');
             return false;
         }
 
         shell.setAttribute('data-aocr-sidebar-ready', 'true');
-        logInfo('[AOCR_SUBNAV_INIT] Preparando panel secundario. Menus=' + menuItems.length);
-
-        function getTemplate(button) {
-            if (!button) {
-                return null;
-            }
-
-            var menuId = button.getAttribute('data-aocr-subnav');
-            if (!menuId) {
-                return null;
-            }
-
-            return document.getElementById('aocr-subnav-' + menuId);
-        }
-
-        function clearOpenState() {
-            Array.prototype.forEach.call(menuItems, function (item) {
-                try {
-                    item.classList.remove('open');
-
-                    var button = item.querySelector('[data-aocr-subnav]');
-                    if (button) {
-                        button.classList.remove('is-open');
-                        button.setAttribute('aria-expanded', 'false');
-                    }
-
-                    var mobileTemplate = item.querySelector('.aocr-submenu-template.mobile-visible');
-                    if (mobileTemplate) {
-                        mobileTemplate.setAttribute('aria-hidden', 'true');
-                    }
-                } catch (error) {
-                    logError('[AOCR_SUBNAV_MENU_ERROR] Error limpiando estado de menu.', error);
-                }
-            });
-        }
-
-        function getActiveButton() {
-            return shell.querySelector('[data-aocr-subnav].is-open');
-        }
-
-        function closeFlyout() {
-            try {
-                clearOpenState();
-
-                panel.classList.remove('is-open');
-                panel.setAttribute('aria-hidden', 'true');
-                content.innerHTML = '';
-                body.classList.remove('aocr-subnav-open');
-            } catch (error) {
-                logError('[AOCR_SUBNAV_MENU_ERROR] Error cerrando panel secundario.', error);
-            }
-        }
-
-        function openDesktop(button) {
-            try {
-                var template = getTemplate(button);
-                var item = button ? button.closest('[data-aocr-menu-item]') : null;
-
-                if (!button || !template || !item) {
-                    logWarn('[AOCR_SUBNAV_MENU_ERROR] Menu sin plantilla o boton invalido.', {
-                        hasButton: !!button,
-                        hasTemplate: !!template,
-                        hasItem: !!item
-                    });
-                    return;
-                }
-
-                closeFlyout();
-
-                content.innerHTML = template.innerHTML;
-                title.textContent = button.getAttribute('data-title') || button.textContent.trim();
-                subtitle.textContent = button.getAttribute('data-subtitle') || 'Seleccione una opcion';
-
-                item.classList.add('open');
-                button.classList.add('is-open');
-                button.setAttribute('aria-expanded', 'true');
-                panel.classList.add('is-open');
-                panel.setAttribute('aria-hidden', 'false');
-                body.classList.add('aocr-subnav-open');
-            } catch (error) {
-                logError('[AOCR_SUBNAV_MENU_ERROR] Error abriendo panel secundario.', error);
-            }
-        }
+        logInfo('[AOCR_SIDEBAR] Acordeón inicializado. Grupos=' + menuItems.length);
 
         Array.prototype.forEach.call(menuItems, function (item) {
-            var button = item.querySelector('[data-aocr-subnav]');
-            if (!button) {
+            var toggle = item.querySelector('[data-menu-toggle]');
+            var submenu = item.querySelector('.aocr-submenu');
+            if (!toggle || !submenu) {
                 return;
             }
 
-            button.addEventListener('click', function (event) {
+            var hasActiveChild = !!submenu.querySelector('.aocr-submenu-link.active, .aocr-subnav-link.active');
+            if (item.classList.contains('is-current') || hasActiveChild) {
+                setGroupState(item, toggle, submenu, true);
+            }
+
+            toggle.addEventListener('click', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
 
-                try {
-                    var alreadyOpen = item.classList.contains('open') || button.classList.contains('is-open');
-                    if (alreadyOpen) {
-                        closeFlyout();
-                        return;
-                    }
-
-                    openDesktop(button);
-                } catch (error) {
-                    logError('[AOCR_SUBNAV_MENU_ERROR] Error manejando click de menu.', error);
+                var isOpen = item.classList.contains('is-open');
+                if (isOpen) {
+                    setGroupState(item, toggle, submenu, false);
+                    return;
                 }
+
+                closeOtherGroups(menuItems, item);
+                setGroupState(item, toggle, submenu, true);
             });
         });
 
+        var searchInput = shell.querySelector('[data-aocr-sidebar-search]');
         if (searchInput) {
             searchInput.addEventListener('input', function () {
-                try {
-                    var query = (searchInput.value || '').toLowerCase().trim();
-                    var firstMatch = null;
+                var query = (searchInput.value || '').toLowerCase().trim();
 
-                    Array.prototype.forEach.call(menuItems, function (item) {
-                        var haystack = (item.getAttribute('data-search-text') || '').toLowerCase();
-                        var matches = !query || haystack.indexOf(query) !== -1;
-                        item.hidden = !matches;
+                Array.prototype.forEach.call(menuItems, function (item) {
+                    var haystack = (item.getAttribute('data-search-text') || '').toLowerCase();
+                    var matches = !query || haystack.indexOf(query) !== -1;
+                    item.hidden = !matches;
 
-                        if (matches && !firstMatch) {
-                            firstMatch = item;
-                        }
-
-                        if (!matches) {
-                            item.classList.remove('open');
-                        }
-                    });
-
-                    var activeButton = getActiveButton();
-                    if (activeButton) {
-                        var activeItem = activeButton.closest('[data-aocr-menu-item]');
-                        if (activeItem && activeItem.hidden) {
-                            closeFlyout();
-                        }
+                    if (matches && query) {
+                        var toggle = item.querySelector('[data-menu-toggle]');
+                        var submenu = item.querySelector('.aocr-submenu');
+                        setGroupState(item, toggle, submenu, true);
                     }
-                } catch (error) {
-                    logError('[AOCR_SUBNAV_MENU_ERROR] Error filtrando menus del sidebar.', error);
-                }
+
+                    if (!matches) {
+                        var hiddenToggle = item.querySelector('[data-menu-toggle]');
+                        var hiddenSubmenu = item.querySelector('.aocr-submenu');
+                        setGroupState(item, hiddenToggle, hiddenSubmenu, false);
+                    }
+                });
             });
         }
 
-        document.addEventListener('click', function (event) {
-            try {
-                var insideSidebar = shell.contains(event.target);
-                var insidePanel = panel.contains(event.target);
+        shell.querySelectorAll('.aocr-submenu-link[href]').forEach(function (link) {
+            link.addEventListener('click', function () {
+                closeMobileSidebar();
+            });
+        });
 
-                if (!insideSidebar && !insidePanel) {
-                    closeFlyout();
-                }
-            } catch (error) {
-                logError('[AOCR_SUBNAV_MENU_ERROR] Error manejando click global.', error);
-            }
+        shell.querySelectorAll('.aocr-quick-action[href]').forEach(function (link) {
+            link.addEventListener('click', function () {
+                closeMobileSidebar();
+            });
         });
 
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' || event.keyCode === 27) {
-                closeFlyout();
+                closeMobileSidebar();
             }
         });
 
-        panel.addEventListener('click', function (event) {
-            event.stopPropagation();
-        });
-
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function (event) {
-                event.preventDefault();
-                closeFlyout();
+        var backdrop = document.getElementById('aocrSidebarBackdrop');
+        if (backdrop) {
+            backdrop.addEventListener('click', function () {
+                closeMobileSidebar();
             });
         }
 
-        if (sidebarScroll) {
-            sidebarScroll.addEventListener('scroll', function () {
-                closeFlyout();
-            }, { passive: true });
-        }
-
-        window.addEventListener('resize', function () {
-            closeFlyout();
-        });
-
-        logInfo('[AOCR_SUBNAV_COUNTERS_START] Sidebar sin endpoint dinamico de contadores; se usan valores renderizados por servidor.');
-        logInfo('[AOCR_SUBNAV_COUNTERS_OK] Contadores del sidebar disponibles por render Razor.');
-        logInfo('[AOCR_SUBNAV] Panel secundario inicializado. Menus=' + menuItems.length);
         return true;
     }
 
-    var sidebarInitAttempts = 0;
-    var sidebarInitMaxAttempts = 40;
-    var sidebarInitTimer = null;
-
     function bootSidebarMenu() {
         try {
-            if (installSidebarMenu()) {
-                if (sidebarInitTimer) {
-                    window.clearTimeout(sidebarInitTimer);
-                    sidebarInitTimer = null;
-                }
-                return;
-            }
+            installSidebarAccordion();
         } catch (error) {
-            logError('[AOCR_SUBNAV_INIT] Error no controlado inicializando sidebar.', error);
+            logError('[AOCR_SIDEBAR] Error inicializando acordeón.', error);
         }
-
-        sidebarInitAttempts += 1;
-        if (sidebarInitAttempts >= sidebarInitMaxAttempts) {
-            logWarn('[AOCR_SUBNAV] No se pudo inicializar el panel secundario del sidebar.');
-            return;
-        }
-
-        sidebarInitTimer = window.setTimeout(bootSidebarMenu, 100);
     }
 
     if (document.readyState === 'loading') {
@@ -283,6 +171,4 @@
     } else {
         bootSidebarMenu();
     }
-
-    window.addEventListener('load', bootSidebarMenu);
 })();

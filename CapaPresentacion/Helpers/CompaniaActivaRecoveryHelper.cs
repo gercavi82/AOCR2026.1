@@ -36,14 +36,19 @@ namespace CapaPresentacion.Helpers
             return 0;
         }
 
-        public static bool TryRestoreFromSolicitud(System.Web.HttpSessionStateBase session, int solicitudId, int userId, bool esAdmin)
+        public static bool TryRestoreFromSolicitud(
+            System.Web.HttpSessionStateBase session,
+            int solicitudId,
+            int userId,
+            bool esAdmin,
+            bool forzarReemplazo = false)
         {
             if (session == null || solicitudId <= 0)
             {
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(session)))
+            if (!forzarReemplazo && !string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(session)))
             {
                 return true;
             }

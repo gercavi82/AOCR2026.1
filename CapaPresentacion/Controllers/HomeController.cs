@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
@@ -8,6 +8,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models;
@@ -204,6 +205,13 @@ namespace CapaPresentacion.Controllers
             }
 
             var ordenes = _ordenDao.ListarPorUsuario(idUsuario, null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+            if (!string.IsNullOrWhiteSpace(companiaActivaCodigo))
+            {
+                var nombreCompania = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+                ordenes = new AocrCompaniaContextService()
+                    .FiltrarOrdenesPorCompania(ordenes, companiaActivaCodigo, nombreCompania, idUsuario)
+                    .ToList();
+            }
 
             model.SolicitudesPendientes = solicitudes.Count(s => !EsSolicitudFinalizada(s));
             model.TramitesEnCurso = ordenes.Count(o => !EsOrdenFinalizada(o.Estado));
@@ -268,22 +276,12 @@ namespace CapaPresentacion.Controllers
                 || estadoNormalizado == "RECHAZADA";
         }
 
-        private static bool SolicitudCoincideConCompaniaActiva(SolicitudAOCR solicitud, string companiaActivaCodigo)
+        private bool SolicitudCoincideConCompaniaActiva(SolicitudAOCR solicitud, string companiaActivaCodigo)
         {
-            if (solicitud == null || string.IsNullOrWhiteSpace(companiaActivaCodigo))
-            {
-                return true;
-            }
-
-            if (string.IsNullOrWhiteSpace(solicitud.CompaniasSeleccionadas))
-            {
-                return true;
-            }
-
-            return solicitud.CompaniasSeleccionadas
-                .Split(',')
-                .Select(x => (x ?? string.Empty).Trim())
-                .Any(x => x.Equals(companiaActivaCodigo.Trim(), StringComparison.OrdinalIgnoreCase));
+            return new AocrCompaniaContextService().SolicitudPerteneceACompania(
+                solicitud,
+                companiaActivaCodigo,
+                CompaniaActivaSessionHelper.ObtenerNombre(Session));
         }
 
         private int ObtenerIdUsuario()

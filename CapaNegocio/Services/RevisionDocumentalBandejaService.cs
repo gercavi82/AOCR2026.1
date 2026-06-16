@@ -218,8 +218,21 @@ namespace CapaNegocio.Services
         private static bool EsSolicitudEnFaseOperativaInspector(string estadoSolicitud)
         {
             var canonico = EstadoSolicitud.Normalizar(estadoSolicitud);
-            return string.Equals(canonico, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(canonico, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(canonico, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var claveRaw = InspectorIdentityService.NormalizarCodigoInspector(estadoSolicitud);
+            return string.Equals(claveRaw, "ENREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "ENREVISIONDOCUMENTAL", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "SUBSANADART", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DOCUMENTACIONSUBSANADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "PENDIENTEREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)

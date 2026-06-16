@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,6 +13,7 @@ using CapaNegocio;    // <--- IMPORTANTE: Usamos la Capa de Negocio
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Infrastructure;
 using CapaUtilidades;
 using CapaPresentacion.Filters;
 using CapaModelo.Common;
@@ -28,6 +29,8 @@ namespace CapaPresentacion.Controllers
         private readonly DocumentoDAO _documentoDAO;
         private readonly SolicitudAOCRDAO _solicitudDAO; // Solo para obtener datos de la solicitud (padre)
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
+        private readonly DocumentoSubsanacionService _documentoSubsanacionService = new DocumentoSubsanacionService();
+        private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
         private readonly string _rutaDocumentos;
 
         public DocumentoController()
@@ -65,16 +68,74 @@ namespace CapaPresentacion.Controllers
 
                 int usuarioId;
                 var tieneUsuario = TryObtenerUsuarioActualId(out usuarioId);
+                if (tieneUsuario
+                    && solicitud.CodigoUsuario == usuarioId
+                    && !string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(Session)))
+                {
+                    var scope = RtCompaniaScope.FromSession(Session, usuarioId);
+                    if (!scope.SolicitudPerteneceAlScope(solicitud))
+                    {
+                        var mensaje = scope.ObtenerMensajeAccesoDenegado();
+                        TempData["Error"] = mensaje;
+                        return new HttpStatusCodeResult(403, mensaje);
+                    }
+                }
+
                 Inspeccion inspeccionVinculada;
                 string rolesActuales;
                 var puedeVer = PuedeVerDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, out inspeccionVinculada, out rolesActuales);
 
                 var documentos = ObtenerDocumentosVigentesParaListado(_documentoBL.ObtenerPorSolicitud(solicitudId), solicitud);
                 AplicarContextoRevisionDocumental(documentos, solicitud);
+                var estadoSolicitudNormalizado = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+                var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(solicitudId);
+                var esPropietarioRt = tieneUsuario && solicitud.CodigoUsuario == usuarioId;
+                var esModoSubsanacionRt = esPropietarioRt
+                    && DocumentoSubsanacionService.SolicitudPermiteSubsanacionRt(estadoSolicitudNormalizado);
+                var modoNormalizado = (modo ?? string.Empty).Trim();
+                var esConsultaExplicita = string.Equals(modoNormalizado, "ver", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals((origen ?? string.Empty).Trim(), "consulta-bloqueados", StringComparison.OrdinalIgnoreCase);
+
+                if (esModoSubsanacionRt
+                    && !esConsultaExplicita
+                    && (string.IsNullOrWhiteSpace(modoNormalizado)
+                        || string.Equals(modoNormalizado, "ver", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(modoNormalizado, "subsanacion", StringComparison.OrdinalIgnoreCase)))
+                {
+                    TempData["NotificacionTipo"] = "info";
+                    TempData["NotificacionMensaje"] = "Ingrese a la pantalla de subsanación para corregir únicamente los documentos devueltos por el Inspector.";
+                    return RedirectToAction("Subsanar", "SolicitudAOCR", new { id = solicitudId });
+                }
+
+                var esModoVerSolicitado = string.IsNullOrWhiteSpace(modoNormalizado)
+                    || string.Equals(modoNormalizado, "ver", StringComparison.OrdinalIgnoreCase);
+                if (esModoVerSolicitado
+                    && !esModoSubsanacionRt
+                    && !esConsultaExplicita
+                    && PuedeRevisarDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada)
+                    && DebeUsarRevisionDocumentalMasiva(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada))
+                {
+                    var estadoRevisionActiva = _solicitudAocrInfraBL.ObtenerEstadoRevisionDocumental(solicitudId)
+                        ?? new EstadoRevisionDocumental();
+                    if (!estadoRevisionActiva.DocumentacionAprobada)
+                    {
+                        TempData["NotificacionTipo"] = "info";
+                        TempData["NotificacionMensaje"] = "Se abrió la revisión documental activa. Use los combos por documento y pulse Guardar revisión documental para cerrar la fase y notificar al RT.";
+                        return RedirectToAction("Lista", new
+                        {
+                            solicitudId,
+                            modo = "revision",
+                            origen = string.IsNullOrWhiteSpace(origen) ? "revision-documental" : origen,
+                            inspeccionId
+                        });
+                    }
+                }
+
                 var esModoRevisionDocumental = EsModoRevisionDocumental(modo);
                 var esModoVerDocumentacion = !esModoRevisionDocumental;
                 var puedeRevisar = esModoRevisionDocumental && PuedeRevisarDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada);
                 var puedeReabrir = esModoRevisionDocumental && PuedeReabrirRevisionDocumental(solicitud, tieneUsuario ? usuarioId : 0);
+                var puedeRevisarEnModoRevision = PuedeRevisarDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada);
 
                 System.Diagnostics.Trace.TraceInformation(
                     "[DOC_SOLICITUD] solicitudId=" + solicitudId +
@@ -118,6 +179,24 @@ namespace CapaPresentacion.Controllers
                 ViewBag.VolverUrl = volver.Url;
                 ViewBag.VolverTexto = volver.Texto;
                 ViewBag.SolicitudNumero = solicitud.NumeroSolicitud ?? solicitudId.ToString();
+                ViewBag.EsModoSubsanacionRt = esModoSubsanacionRt;
+                ViewBag.UrlSubsanar = Url.Action("Subsanar", "SolicitudAOCR", new { id = solicitudId });
+                ViewBag.RevisionesDocumentales = revisionesDocumentales;
+                ViewBag.EstadoSolicitudNormalizado = estadoSolicitudNormalizado;
+                ViewBag.MostrarAvisoRevisionDocumental = esModoVerDocumentacion
+                    && !esModoSubsanacionRt
+                    && puedeRevisarEnModoRevision;
+                ViewBag.UrlRevisionDocumentalActiva = Url.Action(
+                    "Lista",
+                    "Documento",
+                    new { solicitudId, modo = "revision", origen, inspeccionId });
+
+                foreach (var documento in documentos.Where(d => d != null))
+                {
+                    documento.PuedeEditarEstado = puedeRevisar
+                        && RevisionDocumentalDisplayHelper.ShouldIncludeInRevisionDocumental(documento.TipoDocumento)
+                        && EstadoDocumentoPermiteRevision(documento);
+                }
 
                 return View(documentos);
             }
@@ -274,6 +353,10 @@ namespace CapaPresentacion.Controllers
                     CodigoSolicitud = solicitudId.Value,
                     TipoDocumento = tipoDocumento,
                     NombreArchivo = Path.GetFileName(archivo.FileName),
+                    NombreArchivoOriginal = Path.GetFileName(archivo.FileName),
+                    NombreArchivoVisible = Path.GetFileName(archivo.FileName),
+                    NombreArchivoFisico = result.StoredName,
+                    NombreArchivoGuardado = result.StoredName,
                     RutaArchivo = rutaCompleta,
                     TamanioArchivo = archivo.ContentLength,
                     Observaciones = observaciones,
@@ -633,9 +716,70 @@ namespace CapaPresentacion.Controllers
                 Inspeccion inspeccionVinculada;
                 string rolesActuales;
                 var puedeVer = PuedeVerDocumentosSolicitud(solicitud, usuarioId, out inspeccionVinculada, out rolesActuales);
-                if (!puedeVer || !PuedeRevisarDocumentosSolicitud(solicitud, usuarioId, inspeccionVinculada))
+                var puedeRevisar = PuedeRevisarDocumentosSolicitud(solicitud, usuarioId, inspeccionVinculada);
+                var roles = ObtenerRolesActuales();
+                var esAdmin = roles.Any(r => RoleGroupingHelper.IsAdministrador(r));
+                var esCoordinacion = roles.Any(r => RoleGroupingHelper.IsCoordinacion(r));
+                var esRolInspector = roles.Any(r => RoleGroupingHelper.IsInspectorTecnico(r))
+                    || RoleGroupingHelper.HasAnyRawRole(roles, "Inspector", "InspectorTecnico", "Tecnico", "EvaluadorTecnico");
+
+                var inspeccionesSolicitud = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
+                var identidadInspector = ConstruirIdentidadInspectorActual(usuarioId);
+                var evaluacionAsignacion = EvaluarAsignacionInspector(solicitud, inspeccionesSolicitud, identidadInspector);
+
+                var loginActual = User != null && User.Identity != null ? (User.Identity.Name ?? string.Empty).Trim() : string.Empty;
+                var rolActivo = (Session["Rol"] ?? string.Empty).ToString();
+                var modoRevision = "revision";
+
+                string motivoBloqueo = null;
+                if (!esRolInspector && !esAdmin && !esCoordinacion)
                 {
-                    return JsonError(403, "No tiene permisos para revisar documentos de esta solicitud.");
+                    motivoBloqueo = "El usuario actual no tiene rol de Inspector.";
+                }
+                else if (SolicitudEstaCerradaParaRevision(solicitud))
+                {
+                    motivoBloqueo = "La solicitud está cerrada o anulada y no permite revisión documental.";
+                }
+                else if (!SolicitudPermiteRevisionDocumental(solicitud != null ? solicitud.Estado : null))
+                {
+                    motivoBloqueo = "La solicitud no está en estado válido para revisión documental.";
+                }
+                else if (!esAdmin && !esCoordinacion && !evaluacionAsignacion.EsInspectorAsignado)
+                {
+                    motivoBloqueo = "Esta solicitud no está asignada a su usuario.";
+                }
+                else if (!puedeVer || !puedeRevisar)
+                {
+                    motivoBloqueo = "No tiene permisos para revisar documentos de esta solicitud.";
+                }
+
+                RegistrarLogAuthRevision(
+                    codigoSolicitud,
+                    usuarioId,
+                    loginActual,
+                    rolActivo,
+                    evaluacionAsignacion,
+                    solicitud.Estado,
+                    modoRevision,
+                    string.IsNullOrWhiteSpace(motivoBloqueo),
+                    string.IsNullOrWhiteSpace(motivoBloqueo) ? "OK" : motivoBloqueo);
+
+                if (!string.IsNullOrWhiteSpace(motivoBloqueo))
+                {
+                    Trace.TraceWarning(
+                        "[REV_DOC][GUARDAR_403] SolicitudId=" + codigoSolicitud +
+                        "; UsuarioId=" + usuarioId +
+                        "; Login=" + loginActual +
+                        "; Rol=" + rolActivo +
+                        "; Motivo=" + motivoBloqueo);
+                    return JsonError(403, motivoBloqueo);
+                }
+
+                if (DebeUsarRevisionDocumentalMasiva(solicitud, usuarioId, inspeccionVinculada))
+                {
+                    return JsonError(
+                        409,
+                        "Debe registrar las decisiones con los combos y pulsar Guardar revisión documental para cerrar la fase documental y notificar al RT.");
                 }
 
                 if (inspeccionVinculada != null && inspeccionVinculada.CodigoInspeccion > 0)
@@ -674,6 +818,11 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var estadoActual = ObtenerEstadoRevisionNormalizado(documento);
+                if (!EstadoDocumentoPermiteRevision(documento))
+                {
+                    return JsonError(409, "El documento no está en estado revisable después de la subsanación.");
+                }
+
                 if (decisionNormalizada == "ACEPTADO" && (estadoActual == "RECHAZADO" || estadoActual == "OBSERVADO"))
                 {
                     return JsonError(409, "El documento fue devuelto u observado. Debe cargarse una nueva versión o reabrirse la revisión antes de aceptarlo.");
@@ -691,6 +840,14 @@ namespace CapaPresentacion.Controllers
                 documento.FechaValidacion = DateTime.Now;
                 documento.ValidadoPor = usuarioVisible;
                 documento.UsuarioRegistro = usuarioVisible;
+
+                Trace.TraceInformation(
+                    "[REV_DOC][GUARDAR_DECISION] SolicitudId=" + codigoSolicitud +
+                    "; DocumentoId=" + idDocumento +
+                    "; EstadoDocumentoAnterior=" + estadoActual +
+                    "; Decision=" + decisionNormalizada +
+                    "; EstadoDocumentoNuevo=" + documento.Estado +
+                    "; UsuarioInspector=" + usuarioId);
 
                 if (!_documentoDAO.Actualizar(documento))
                 {
@@ -736,6 +893,12 @@ namespace CapaPresentacion.Controllers
                 var redirectUrl = autoAbrirLvEae
                     ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion, lvAutoFlow = "open" })
                     : string.Empty;
+
+                Trace.TraceInformation(
+                    "[REV_DOC][GUARDAR_OK] SolicitudId=" + codigoSolicitud +
+                    "; Aceptados=" + Convert.ToInt32(contadores["Aprobados"]) +
+                    "; Devueltos=" + Convert.ToInt32(contadores["Rechazados"]) +
+                    "; Pendientes=" + pendientesDocumentos);
 
                 return Json(new
                 {
@@ -815,10 +978,35 @@ namespace CapaPresentacion.Controllers
 
             if (esInspectorAsignado)
             {
-                return true;
+                return SolicitudPermiteRevisionDocumental(solicitud.Estado);
             }
 
-            return esInspectorAsignado && estadoRevision.VisibleEnBandejaInspector;
+            return esInspectorAsignado
+                && estadoRevision.VisibleEnBandejaInspector
+                && SolicitudPermiteRevisionDocumental(solicitud.Estado);
+        }
+
+        private bool DebeUsarRevisionDocumentalMasiva(SolicitudAOCR solicitud, int usuarioId, Inspeccion inspeccionVinculada)
+        {
+            if (solicitud == null || usuarioId <= 0)
+            {
+                return false;
+            }
+
+            var roles = ObtenerRolesActuales();
+            if (roles.Any(r => RoleGroupingHelper.IsAdministrador(r)))
+            {
+                return false;
+            }
+
+            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
+            if (SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion(solicitud, inspecciones))
+            {
+                return false;
+            }
+
+            var identidadInspector = ConstruirIdentidadInspectorActual(usuarioId);
+            return EsInspectorAsignadoActual(solicitud, inspecciones, identidadInspector);
         }
 
         private bool PuedeReabrirRevisionDocumental(SolicitudAOCR solicitud, int usuarioId)
@@ -836,111 +1024,121 @@ namespace CapaPresentacion.Controllers
 
         private InspectorIdentityContext ConstruirIdentidadInspectorActual(int usuarioId)
         {
-            var ids = new HashSet<int>();
-            var identificadores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            if (usuarioId > 0)
-            {
-                ids.Add(usuarioId);
-                AgregarIdentificadorInspector(identificadores, usuarioId.ToString());
-            }
-
-            AgregarIdentificadorInspector(identificadores, (Session["CodigoUsuario"] ?? string.Empty).ToString());
-            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                AgregarIdentificadorInspector(identificadores, User.Identity.Name);
-            }
-
-            try
-            {
-                var usuarioInternoRtDao = new UsuarioInternoRTDAO();
-                var inspectorActual = usuarioId > 0
-                    ? usuarioInternoRtDao.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(usuarioId)
-                    : null;
-
-                if (inspectorActual == null)
-                {
-                    var codigoUsuario = (Session["CodigoUsuario"] ?? string.Empty).ToString();
-                    if (!string.IsNullOrWhiteSpace(codigoUsuario))
-                    {
-                        inspectorActual = usuarioInternoRtDao.ObtenerActivoPorCodigoUsuario(codigoUsuario)
-                            ?? usuarioInternoRtDao.ObtenerInspectorAsignableActivo(codigoUsuario);
-                    }
-                }
-
-                if (inspectorActual != null)
-                {
-                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
-                    {
-                        ids.Add(inspectorActual.UsuarioId.Value);
-                        AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioId.Value.ToString());
-                    }
-
-                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
-                    {
-                        ids.Add(inspectorActual.TecnicoId.Value);
-                        AgregarIdentificadorInspector(identificadores, inspectorActual.TecnicoId.Value.ToString());
-                    }
-
-                    AgregarIdentificadorInspector(identificadores, inspectorActual.CodigoUsuario);
-                    AgregarIdentificadorInspector(identificadores, inspectorActual.Identificacion);
-                    AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioLogin);
-                }
-            }
-            catch
-            {
-            }
-
+            var identidad = _inspectorIdentityService.ObtenerIdentidadInspector(
+                usuarioId,
+                User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                (Session["CodigoUsuario"] ?? string.Empty).ToString());
             return new InspectorIdentityContext
             {
-                Ids = ids,
-                Identificadores = identificadores
+                Ids = identidad != null ? identidad.Ids : new HashSet<int>(),
+                Identificadores = identidad != null
+                    ? identidad.Identificadores
+                    : new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             };
         }
 
-        private static bool EsInspectorAsignadoActual(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones, InspectorIdentityContext identidad)
+        private bool EsInspectorAsignadoActual(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones, InspectorIdentityContext identidad)
         {
-            if (identidad == null)
+            return EvaluarAsignacionInspector(solicitud, inspecciones, identidad).EsInspectorAsignado;
+        }
+
+        private InspectorAsignacionEvaluacion EvaluarAsignacionInspector(
+            SolicitudAOCR solicitud,
+            IEnumerable<Inspeccion> inspecciones,
+            InspectorIdentityContext identidad)
+        {
+            var identidadServicio = new InspectorIdentityInfo
+            {
+                Ids = identidad != null ? identidad.Ids : new HashSet<int>(),
+                Identificadores = identidad != null
+                    ? identidad.Identificadores
+                    : new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            return _inspectorIdentityService.EvaluarInspectorAsignado(
+                       solicitud != null ? solicitud.CodigoSolicitud : 0,
+                       solicitud,
+                       inspecciones,
+                       identidadServicio)
+                   ?? new InspectorAsignacionEvaluacion
+                   {
+                       EsInspectorAsignado = false,
+                       Motivo = "No se pudo determinar la asignación del inspector.",
+                       Asignado = new InspectorAsignadoInfo()
+                   };
+        }
+
+        private static bool SolicitudPermiteRevisionDocumental(string estadoSolicitud)
+        {
+            var canonico = EstadoSolicitud.Normalizar(estadoSolicitud ?? string.Empty);
+            if (string.Equals(canonico, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var clave = InspectorIdentityService.NormalizarCodigoInspector(estadoSolicitud);
+            return string.Equals(clave, "ENREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "ENREVISIONDOCUMENTAL", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "SUBSANADART", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "DOCUMENTACIONSUBSANADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "DOCUMENTOSSUBSANADOS", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "PENDIENTEREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EstadoDocumentoPermiteRevision(Documento documento)
+        {
+            if (documento == null)
             {
                 return false;
             }
 
-            if (solicitud != null)
+            var estadoRaw = (documento.Estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
+            if (string.Equals(estadoRaw, "CARGADO", StringComparison.OrdinalIgnoreCase))
             {
-                if (solicitud.CodigoTecnico.HasValue && identidad.Ids.Contains(solicitud.CodigoTecnico.Value))
-                {
-                    return true;
-                }
-
-                if (CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identidad.Identificadores)
-                    || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identidad.Identificadores))
-                {
-                    return true;
-                }
+                return true;
             }
 
-            return (inspecciones ?? Enumerable.Empty<Inspeccion>())
-                .Any(i => i != null
-                    && ((i.CodigoInspector.HasValue && identidad.Ids.Contains(i.CodigoInspector.Value))
-                        || CoincideIdentificadorInspector(i.InspectorPrincipalCedula, identidad.Identificadores)
-                        || CoincideIdentificadorInspector(i.InspectorApoyoCedula, identidad.Identificadores)));
+            return EstadoDocumentoInstitucional.EsEstadoRevisablePorInspector(documento.Estado);
         }
 
-        private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)
+        private static bool SolicitudEstaCerradaParaRevision(SolicitudAOCR solicitud)
         {
-            return !string.IsNullOrWhiteSpace(valor)
-                && identificadores != null
-                && identificadores.Contains(valor.Trim().ToUpperInvariant());
+            var canonico = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(canonico, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static void AgregarIdentificadorInspector(HashSet<string> identificadores, string valor)
+        private static void RegistrarLogAuthRevision(
+            int solicitudId,
+            int usuarioId,
+            string login,
+            string rolActivo,
+            InspectorAsignacionEvaluacion evaluacionAsignacion,
+            string estadoSolicitud,
+            string modo,
+            bool puedeGuardar,
+            string motivo)
         {
-            if (identificadores == null || string.IsNullOrWhiteSpace(valor))
-            {
-                return;
-            }
-
-            identificadores.Add(valor.Trim().ToUpperInvariant());
+            Trace.TraceInformation(
+                "[REV_DOC][AUTH_CHECK] SolicitudId=" + solicitudId +
+                "; UsuarioId=" + usuarioId +
+                "; Login=" + (login ?? string.Empty) +
+                "; RolActivo=" + (rolActivo ?? string.Empty) +
+                "; InspectorAsignadoRaw=" + (evaluacionAsignacion != null && evaluacionAsignacion.Asignado != null
+                    ? (evaluacionAsignacion.Asignado.InspectorAsignadoRaw ?? string.Empty)
+                    : string.Empty) +
+                "; InspectorAsignadoUsuarioId=" + (evaluacionAsignacion != null && evaluacionAsignacion.Asignado != null
+                    ? (evaluacionAsignacion.Asignado.InspectorAsignadoUsuarioId ?? string.Empty)
+                    : string.Empty) +
+                "; EstadoSolicitud=" + (estadoSolicitud ?? string.Empty) +
+                "; Modo=" + (modo ?? string.Empty) +
+                "; PuedeGuardar=" + puedeGuardar +
+                "; Motivo=" + (motivo ?? string.Empty));
         }
 
         private static bool EsModoRevisionDocumental(string modo)
@@ -1027,7 +1225,7 @@ namespace CapaPresentacion.Controllers
                 rolesCrudos.Add(rolSesion);
             }
 
-            foreach (var rol in new[] { "Administrador", "Coordinador", "Coordinacion", "CoordinadorInspecciones", "Inspector", "Solicitante", "Operador" })
+            foreach (var rol in new[] { "Administrador", "Coordinador", "Coordinacion", "CoordinadorInspecciones", "Inspector", "InspectorTecnico", "Tecnico", "EvaluadorTecnico", "Solicitante", "Operador" })
             {
                 if (User != null && User.IsInRole(rol))
                 {
@@ -1043,14 +1241,18 @@ namespace CapaPresentacion.Controllers
             var lista = (documentos ?? Enumerable.Empty<Documento>())
                 .Where(d => d != null && d.CodigoDocumento > 0)
                 .ToList();
+            var revisables = lista
+                .Where(d => RevisionDocumentalDisplayHelper.ShouldIncludeInRevisionDocumental(d.TipoDocumento))
+                .ToList();
 
             var tamanioTotal = lista.Sum(d => d.TamanioArchivo ?? 0L);
             return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
                 { "Total", lista.Count },
-                { "Pendientes", lista.Count(d => ObtenerEstadoRevisionNormalizado(d) == "PENDIENTE") },
-                { "Aprobados", lista.Count(d => ObtenerEstadoRevisionNormalizado(d) == "APROBADO") },
-                { "Rechazados", lista.Count(d => ObtenerEstadoRevisionNormalizado(d) == "RECHAZADO" || ObtenerEstadoRevisionNormalizado(d) == "OBSERVADO") },
+                { "Revisables", revisables.Count },
+                { "Pendientes", revisables.Count(d => ObtenerEstadoRevisionNormalizado(d) == "PENDIENTE") },
+                { "Aprobados", revisables.Count(d => ObtenerEstadoRevisionNormalizado(d) == "APROBADO") },
+                { "Rechazados", revisables.Count(d => ObtenerEstadoRevisionNormalizado(d) == "RECHAZADO" || ObtenerEstadoRevisionNormalizado(d) == "OBSERVADO") },
                 { "TamanioTotal", tamanioTotal > int.MaxValue ? int.MaxValue : (int)tamanioTotal }
             };
         }
@@ -1117,6 +1319,7 @@ namespace CapaPresentacion.Controllers
                 case "VALIDADO":
                     return "ACEPTADO";
                 case "DEVUELTO":
+                case "DEVUELTO INSPECTOR":
                 case "RECHAZADO":
                     return "DEVUELTO";
                 case "OBSERVADO":
@@ -1287,6 +1490,16 @@ namespace CapaPresentacion.Controllers
             foreach (var documento in lista)
             {
                 documento.OperadoraEae = operadora;
+
+                if (!RevisionDocumentalDisplayHelper.ShouldIncludeInRevisionDocumental(documento.TipoDocumento))
+                {
+                    documento.DecisionRevision = string.Empty;
+                    documento.ObservacionRevision = NormalizarTextoVisible(documento.Observaciones);
+                    documento.FechaRevision = documento.FechaValidacion;
+                    documento.NombreUsuarioRevisor = (documento.ValidadoPor ?? documento.UsuarioRegistro ?? string.Empty).Trim();
+                    documento.EstadoRevisionVisible = "SOLO CONSULTA";
+                    continue;
+                }
 
                 RevisionDocumentalDetalle revision;
                 if (revisiones != null && revisiones.TryGetValue(documento.CodigoDocumento, out revision) && revision != null)
@@ -1461,89 +1674,6 @@ namespace CapaPresentacion.Controllers
                 ?? string.Empty;
         }
 
-        private void NotificarDocumentoDevueltoEnSistema(SolicitudAOCR solicitud, Documento documento, string motivo, int usuarioId, string usuarioRegistro)
-        {
-            if (solicitud == null || documento == null)
-            {
-                return;
-            }
-
-            var tipoDocumento = string.IsNullOrWhiteSpace(documento.TipoDocumento) ? "Documento" : documento.TipoDocumento.Trim();
-            var operadora = ObtenerOperadoraEaeVisible(solicitud);
-            var mensaje = "Se devolvió el documento " + tipoDocumento +
-                          (string.IsNullOrWhiteSpace(operadora) ? string.Empty : " de " + operadora) +
-                          " para la solicitud #" + solicitud.CodigoSolicitud + ". Motivo: " + motivo;
-            var url = Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud });
-
-            if (solicitud.CodigoUsuario > 0)
-            {
-                NotificacionBL.EnviarNotificacion(
-                    solicitud.CodigoUsuario,
-                    "Documento devuelto en revisión AOCR",
-                    mensaje,
-                    "WARNING",
-                    url,
-                    "SolicitudAOCR",
-                    solicitud.CodigoSolicitud,
-                    "aocr_tbsolicitud");
-            }
-
-            var destinatarios = new[]
-                {
-                    solicitud.CorreoRepresentanteTecnico,
-                    solicitud.Email
-                }
-                .Select(x => (x ?? string.Empty).Trim())
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (destinatarios.Count == 0)
-            {
-                return;
-            }
-
-            var numeroSolicitud = string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
-                ? "#" + solicitud.CodigoSolicitud
-                : solicitud.NumeroSolicitud.Trim();
-            var etiquetaDocumento = ObtenerEtiquetaDocumento(documento);
-            var asunto = "AOCR - Documento devuelto en revision documental " + numeroSolicitud;
-            var cuerpo = "Estimado/a usuario AOCR:<br><br>" +
-                         "Se devolvio un documento durante la revision documental de su solicitud AOCR.<br><br>" +
-                         "<strong>Solicitud AOCR:</strong> " + HttpUtility.HtmlEncode(numeroSolicitud) + "<br>" +
-                         "<strong>Operadora / EAE:</strong> " + HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(operadora) ? "No definida" : operadora) + "<br>" +
-                         "<strong>Documento devuelto:</strong> " + HttpUtility.HtmlEncode(etiquetaDocumento) + "<br>" +
-                         "<strong>Motivo de devolucion:</strong> " + HttpUtility.HtmlEncode(motivo ?? string.Empty) + "<br>" +
-                         "<strong>Fecha de revision:</strong> " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + "<br><br>" +
-                         "Por favor ingrese al sistema AOCR, revise la observacion y cargue la version corregida del documento para continuar con el tramite.<br><br>" +
-                         "Saludos.<br>Sistema AOCR";
-            var correoEnviado = false;
-
-            foreach (var destinatario in destinatarios)
-            {
-                try
-                {
-                    EmailHelper.EnviarEmail(destinatario, asunto, cuerpo);
-                    correoEnviado = true;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Trace.TraceWarning("[DOC_SOLICITUD] No se pudo enviar correo de devolucion documental. Solicitud=" + solicitud.CodigoSolicitud + "; documento=" + documento.CodigoDocumento + "; destinatario=" + destinatario + "; detalle=" + ex.Message);
-                }
-            }
-
-            if (correoEnviado)
-            {
-                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
-                    solicitud.CodigoSolicitud,
-                    documento.CodigoDocumento,
-                    "CORREO_DOCUMENTO_DEVUELTO_ENVIADO",
-                    "Correo de devolucion documental enviado para " + etiquetaDocumento + ".",
-                    usuarioId,
-                    usuarioRegistro);
-            }
-        }
-
         private object ConstruirDocumentoResponse(Documento documento, bool puedeRevisar, bool puedeReabrir)
         {
             if (documento == null)
@@ -1554,12 +1684,13 @@ namespace CapaPresentacion.Controllers
             var estadoVisible = documento.EstadoRevisionVisible ?? ObtenerEstadoDocumentoVisible(documento);
             var estadoNormalizado = ObtenerEstadoRevisionNormalizado(documento);
             var esPdf = string.Equals(Path.GetExtension(documento.NombreArchivo ?? string.Empty), ".pdf", StringComparison.OrdinalIgnoreCase);
+            var archivoVisible = ObtenerNombreArchivoVisible(documento);
 
             return new
             {
                 id = documento.CodigoDocumento,
                 tipo = documento.TipoDocumento ?? string.Empty,
-                archivo = documento.NombreArchivo ?? string.Empty,
+                archivo = archivoVisible,
                 operadora = documento.OperadoraEae ?? string.Empty,
                 fechaCarga = documento.FechaCarga.HasValue ? documento.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : string.Empty,
                 fechaCargaIso = documento.FechaCarga.HasValue ? documento.FechaCarga.Value.ToString("yyyy-MM-dd") : string.Empty,
@@ -1578,13 +1709,33 @@ namespace CapaPresentacion.Controllers
             };
         }
 
+        private static string ObtenerNombreArchivoVisible(Documento documento)
+        {
+            if (documento == null)
+            {
+                return string.Empty;
+            }
+
+            return new[]
+                {
+                    documento.NombreArchivoOriginal,
+                    documento.NombreArchivoVisible,
+                    documento.NombreOriginal,
+                    documento.NombreVisible,
+                    documento.NombreArchivo
+                }
+                .Select(x => Path.GetFileName((x ?? string.Empty).Trim()))
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
+                ?? string.Empty;
+        }
+
         private JsonResult JsonError(int statusCode, string mensaje)
         {
             Response.StatusCode = statusCode;
             Response.TrySkipIisCustomErrors = true;
             Response.SuppressFormsAuthenticationRedirect = true;
 
-            return Json(new { success = false, message = mensaje });
+            return Json(new { success = false, code = statusCode, message = mensaje });
         }
 
         private SelectList ObtenerTiposDocumento()

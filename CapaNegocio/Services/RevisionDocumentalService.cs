@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
 using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
+using Npgsql;
 
 namespace CapaNegocio.Services
 {
@@ -29,9 +32,24 @@ namespace CapaNegocio.Services
         public string ObservacionEstado { get; set; }
     }
 
+    public sealed class RevisionDocumentalSubsanacionResult
+    {
+        public bool Ok { get; set; }
+        public string Mensaje { get; set; }
+        public int CodigoInspector { get; set; }
+        public int DocumentosActualizados { get; set; }
+        public int? CodigoHistorialEstado { get; set; }
+        public string EstadoAnterior { get; set; }
+        public string EstadoNuevo { get; set; }
+    }
+
     public class RevisionDocumentalService
     {
         private const string MensajeBloqueoPredeterminado = "No se puede iniciar la inspección porque la fase documental aún no ha sido finalizada.";
+        private const string EventoHistorialDocumentalSubsanacionEnviada = "SUBSANACION_ENVIADA_POR_RT";
+        private readonly string _connectionString = ConfigurationManager.ConnectionStrings["AOCRConnection"] != null
+            ? ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString
+            : string.Empty;
         private static readonly HashSet<string> EstadosSolicitudNoCompatiblesInspeccion = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "ANULADA",
@@ -47,6 +65,202 @@ namespace CapaNegocio.Services
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
             _solicitudDao = new SolicitudAOCRDAO();
             _postPagoWorkflowService = new AocrPostPagoWorkflowService();
+        }
+
+        public RevisionDocumentalSubsanacionResult EnviarSubsanacionAlInspector(
+            int solicitudId,
+            int usuarioRtId,
+            string observacionRt,
+            string usuarioRegistro = null)
+        {
+            var resultado = new RevisionDocumentalSubsanacionResult
+            {
+                Ok = false,
+                Mensaje = "No fue posible enviar la subsanación al Inspector.",
+                CodigoInspector = 0,
+                DocumentosActualizados = 0,
+                EstadoAnterior = string.Empty,
+                EstadoNuevo = string.Empty
+            };
+
+            if (solicitudId <= 0 || usuarioRtId <= 0)
+            {
+                resultado.Mensaje = "Solicitud o usuario inválido para enviar subsanación.";
+                return resultado;
+            }
+
+            if (string.IsNullOrWhiteSpace(_connectionString))
+            {
+                resultado.Mensaje = "No existe configuración de conexión a la base de datos AOCR.";
+                return resultado;
+            }
+
+            usuarioRegistro = string.IsNullOrWhiteSpace(usuarioRegistro)
+                ? usuarioRtId.ToString()
+                : usuarioRegistro.Trim();
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[DOC_FLOW][SUBSANACION_RT_INICIO] SolicitudId={0}; UsuarioRT={1}",
+                solicitudId,
+                usuarioRtId);
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_connectionString))
+                {
+                    cn.Open();
+                    using (var tx = cn.BeginTransaction())
+                    {
+                        var columnasSolicitud = ObtenerColumnasTabla(cn, tx, "aocr_tbsolicitud");
+                        var columnasDocumento = ObtenerColumnasTabla(cn, tx, "aocr_tbdocumento");
+                        var columnasInspeccion = ObtenerColumnasTabla(cn, tx, "aocr_tbinspeccion");
+
+                        var solicitud = ObtenerSolicitudParaSubsanacion(cn, tx, solicitudId);
+                        if (solicitud == null)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "La solicitud no existe.";
+                            return resultado;
+                        }
+
+                        var estadoAnterior = EstadoSolicitud.Normalizar(solicitud.Estado);
+                        resultado.EstadoAnterior = estadoAnterior;
+                        if (!EstadoPermiteEnviarSubsanacion(estadoAnterior))
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "La solicitud no se encuentra en un estado válido para enviar subsanación al Inspector.";
+                            return resultado;
+                        }
+
+                        var inspector = ResolverInspectorAsignado(cn, tx, solicitudId, solicitud.CodigoTecnico);
+                        if (inspector.CodigoInspector <= 0)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "No se puede enviar la subsanación porque no existe Inspector asignado a la solicitud.";
+                            return resultado;
+                        }
+
+                        var totalDevueltosPendientes = ContarDocumentosPorEstado(
+                            cn,
+                            tx,
+                            solicitudId,
+                            EstadoDocumentoInstitucional.DevueltoInspector,
+                            EstadoDocumentoInstitucional.Observado,
+                            EstadoDocumentoInstitucional.PendienteSubsanacion);
+
+                        var totalSubsanadosPendientes = ContarDocumentosPorEstado(
+                            cn,
+                            tx,
+                            solicitudId,
+                            EstadoDocumentoInstitucional.SubsanadoRt,
+                            EstadoDocumentoInstitucional.PendienteRevisionSubsanacion);
+
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[DOC_FLOW][SUBSANACION_RT_VALIDACION] SolicitudId={0}; Devueltos={1}; Subsanados={2}; Faltantes={3}; InspectorAsignado={4}",
+                            solicitudId,
+                            totalDevueltosPendientes,
+                            totalSubsanadosPendientes,
+                            totalDevueltosPendientes,
+                            inspector.CodigoInspector);
+
+                        if (totalSubsanadosPendientes <= 0 || totalDevueltosPendientes > 0)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "Debe cargar la subsanación de todos los documentos devueltos por el Inspector antes de enviar nuevamente a revisión.";
+                            return resultado;
+                        }
+
+                        var codigosDocumentosEnviados = ActualizarDocumentosSubsanadosARevisionInspector(
+                            cn,
+                            tx,
+                            solicitudId,
+                            usuarioRtId,
+                            columnasDocumento);
+
+                        if (codigosDocumentosEnviados.Count == 0)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "No existen documentos subsanados pendientes para enviar al Inspector.";
+                            return resultado;
+                        }
+
+                        var observacionFlujo = ConstruirObservacionFlujoSubsanacion(observacionRt, codigosDocumentosEnviados.Count);
+                        var estadoDestinoPersistencia = EstadoSolicitud.EnInspeccion;
+                        const string estadoDestinoLog = "EN_REVISION_INSPECTOR";
+
+                        if (!ActualizarSolicitudARevisionInspector(
+                            cn,
+                            tx,
+                            solicitudId,
+                            inspector,
+                            estadoDestinoPersistencia,
+                            observacionFlujo,
+                            usuarioRegistro,
+                            columnasSolicitud))
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "No fue posible actualizar el estado de la solicitud.";
+                            return resultado;
+                        }
+
+                        ActualizarInspeccionParaRevisionDocumental(
+                            cn,
+                            tx,
+                            solicitudId,
+                            inspector.CodigoInspector,
+                            columnasInspeccion,
+                            observacionFlujo,
+                            usuarioRegistro);
+
+                        var codigoHistorial = InsertarHistorialEstado(
+                            cn,
+                            tx,
+                            solicitudId,
+                            estadoAnterior,
+                            estadoDestinoLog,
+                            usuarioRtId,
+                            "SUBSANACION_ENVIADA_POR_RT. " + observacionFlujo);
+
+                        RegistrarHistorialDocumentalSubsanacion(
+                            cn,
+                            tx,
+                            solicitudId,
+                            codigosDocumentosEnviados,
+                            usuarioRtId,
+                            usuarioRegistro);
+
+                        tx.Commit();
+
+                        resultado.Ok = true;
+                        resultado.Mensaje = "La subsanación fue enviada correctamente al Inspector.";
+                        resultado.CodigoInspector = inspector.CodigoInspector;
+                        resultado.DocumentosActualizados = codigosDocumentosEnviados.Count;
+                        resultado.CodigoHistorialEstado = codigoHistorial;
+                        resultado.EstadoNuevo = estadoDestinoLog;
+
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[DOC_FLOW][SUBSANACION_RT_ESTADO] SolicitudId={0}; EstadoAnterior={1}; EstadoNuevo={2}; ResponsableNuevo=INSPECTOR",
+                            solicitudId,
+                            estadoAnterior ?? string.Empty,
+                            estadoDestinoLog);
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[DOC_FLOW][SUBSANACION_RT_OK] SolicitudId={0}; InspectorAsignado={1}; NotificacionCreada=True",
+                            solicitudId,
+                            inspector.CodigoInspector);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError(
+                    "[DOC_FLOW][SUBSANACION_RT_ERROR] SolicitudId={0}; Error={1}",
+                    solicitudId,
+                    ex.Message ?? string.Empty);
+                resultado.Ok = false;
+                resultado.Mensaje = "Error al enviar la subsanación al Inspector: " + ex.Message;
+            }
+
+            return resultado;
         }
 
         public EstadoRevisionDocumental ObtenerEstadoFaseDocumental(int codigoSolicitud)
@@ -361,6 +575,527 @@ namespace CapaNegocio.Services
             }
 
             return EstadoSolicitud.FirmadoCoordinador;
+        }
+
+        private static bool EstadoPermiteEnviarSubsanacion(string estadoActual)
+        {
+            return string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ConstruirObservacionFlujoSubsanacion(string observacionRt, int totalDocumentos)
+        {
+            var baseObservacion = "Subsanación documental enviada por RT al Inspector. Documentos enviados: " + totalDocumentos + ".";
+            var observacion = (observacionRt ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(observacion))
+            {
+                return baseObservacion;
+            }
+
+            return baseObservacion + " Comentario RT: " + observacion;
+        }
+
+        private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, NpgsqlTransaction tx, string nombreTabla)
+        {
+            var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const string sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = @tabla;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@tabla", nombreTabla ?? string.Empty);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        if (!rd.IsDBNull(0))
+                        {
+                            columnas.Add(rd.GetString(0));
+                        }
+                    }
+                }
+            }
+
+            return columnas;
+        }
+
+        private static SolicitudSubsanacionData ObtenerSolicitudParaSubsanacion(NpgsqlConnection cn, NpgsqlTransaction tx, int solicitudId)
+        {
+            const string sql = @"
+                SELECT codigo_solicitud, estado, codigo_tecnico
+                FROM aocr_tbsolicitud
+                WHERE codigo_solicitud = @id
+                  AND deleted_at IS NULL
+                FOR UPDATE;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", solicitudId);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    if (!rd.Read())
+                    {
+                        return null;
+                    }
+
+                    return new SolicitudSubsanacionData
+                    {
+                        CodigoSolicitud = rd.IsDBNull(0) ? 0 : rd.GetInt32(0),
+                        Estado = rd.IsDBNull(1) ? string.Empty : rd.GetString(1),
+                        CodigoTecnico = rd.IsDBNull(2) ? (int?)null : rd.GetInt32(2)
+                    };
+                }
+            }
+        }
+
+        private static InspectorAsignadoData ResolverInspectorAsignado(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            int? codigoTecnicoSolicitud)
+        {
+            var inspector = new InspectorAsignadoData
+            {
+                CodigoInspeccion = 0,
+                CodigoInspector = codigoTecnicoSolicitud.HasValue ? codigoTecnicoSolicitud.Value : 0,
+                EstadoInspeccion = string.Empty,
+                InspectorPrincipalCedula = string.Empty,
+                InspectorPrincipalNombre = string.Empty,
+                InspectorPrincipalTipo = string.Empty
+            };
+
+            const string sql = @"
+                SELECT
+                    codigo_inspeccion,
+                    codigo_inspector,
+                    COALESCE(estado, ''),
+                    COALESCE(inspector_principal_cedula, ''),
+                    COALESCE(inspector_principal_nombre, ''),
+                    COALESCE(inspector_principal_tipo, '')
+                FROM aocr_tbinspeccion
+                WHERE codigo_solicitud = @solicitud
+                ORDER BY COALESCE(updated_at, created_at) DESC, codigo_inspeccion DESC
+                LIMIT 1
+                FOR UPDATE;";
+
+            try
+            {
+                using (var cmd = new NpgsqlCommand(sql, cn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        if (rd.Read())
+                        {
+                            inspector.CodigoInspeccion = rd.IsDBNull(0) ? 0 : rd.GetInt32(0);
+                            inspector.CodigoInspector = rd.IsDBNull(1) ? 0 : rd.GetInt32(1);
+                            inspector.EstadoInspeccion = rd.IsDBNull(2) ? string.Empty : rd.GetString(2);
+                            inspector.InspectorPrincipalCedula = rd.IsDBNull(3) ? string.Empty : rd.GetString(3);
+                            inspector.InspectorPrincipalNombre = rd.IsDBNull(4) ? string.Empty : rd.GetString(4);
+                            inspector.InspectorPrincipalTipo = rd.IsDBNull(5) ? string.Empty : rd.GetString(5);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                const string sqlFallback = @"
+                    SELECT codigo_inspeccion, codigo_inspector, COALESCE(estado, '')
+                    FROM aocr_tbinspeccion
+                    WHERE codigo_solicitud = @solicitud
+                    ORDER BY COALESCE(updated_at, created_at) DESC, codigo_inspeccion DESC
+                    LIMIT 1
+                    FOR UPDATE;";
+
+                using (var cmd = new NpgsqlCommand(sqlFallback, cn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        if (rd.Read())
+                        {
+                            inspector.CodigoInspeccion = rd.IsDBNull(0) ? 0 : rd.GetInt32(0);
+                            inspector.CodigoInspector = rd.IsDBNull(1) ? 0 : rd.GetInt32(1);
+                            inspector.EstadoInspeccion = rd.IsDBNull(2) ? string.Empty : rd.GetString(2);
+                        }
+                    }
+                }
+            }
+
+            if (inspector.CodigoInspector <= 0 && codigoTecnicoSolicitud.HasValue && codigoTecnicoSolicitud.Value > 0)
+            {
+                inspector.CodigoInspector = codigoTecnicoSolicitud.Value;
+            }
+
+            return inspector;
+        }
+
+        private static int ContarDocumentosPorEstado(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            params string[] estados)
+        {
+            var filtroEstados = (estados ?? Array.Empty<string>())
+                .Where(valor => !string.IsNullOrWhiteSpace(valor))
+                .Select(valor => valor.Trim().ToUpperInvariant())
+                .Distinct()
+                .ToArray();
+            if (filtroEstados.Length == 0)
+            {
+                return 0;
+            }
+
+            const string sql = @"
+                SELECT COUNT(*)
+                FROM aocr_tbdocumento
+                WHERE codigo_solicitud = @solicitud
+                  AND UPPER(COALESCE(estado, '')) = ANY(@estados);";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                cmd.Parameters.AddWithValue("@estados", filtroEstados);
+                var valor = cmd.ExecuteScalar();
+                return valor == null || valor == DBNull.Value ? 0 : Convert.ToInt32(valor);
+            }
+        }
+
+        private static List<int> ActualizarDocumentosSubsanadosARevisionInspector(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            int usuarioRtId,
+            HashSet<string> columnasDocumento)
+        {
+            var setClauses = new List<string> { "estado = @estado_nuevo" };
+            if (columnasDocumento.Contains("validado"))
+            {
+                setClauses.Add("validado = FALSE");
+            }
+            if (columnasDocumento.Contains("fecha_validacion"))
+            {
+                setClauses.Add("fecha_validacion = NULL");
+            }
+            if (columnasDocumento.Contains("validado_por"))
+            {
+                setClauses.Add("validado_por = NULL");
+            }
+            if (columnasDocumento.Contains("requiere_subsanacion"))
+            {
+                setClauses.Add("requiere_subsanacion = FALSE");
+            }
+            if (columnasDocumento.Contains("fecha_subsanacion"))
+            {
+                setClauses.Add("fecha_subsanacion = NOW()");
+            }
+            if (columnasDocumento.Contains("usuario_subsanacion"))
+            {
+                setClauses.Add("usuario_subsanacion = @usuario_subsanacion");
+            }
+            if (columnasDocumento.Contains("version_activa"))
+            {
+                setClauses.Add("version_activa = TRUE");
+            }
+            if (columnasDocumento.Contains("es_version_activa"))
+            {
+                setClauses.Add("es_version_activa = TRUE");
+            }
+
+            var sql = @"
+                UPDATE aocr_tbdocumento
+                SET " + string.Join(", ", setClauses) + @"
+                WHERE codigo_solicitud = @solicitud
+                  AND UPPER(COALESCE(estado, '')) = ANY(@estados_origen)
+                RETURNING codigo_documento;";
+
+            var codigos = new List<int>();
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@estado_nuevo", EstadoDocumentoInstitucional.EnRevisionInspector);
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                cmd.Parameters.AddWithValue("@usuario_subsanacion", usuarioRtId);
+                cmd.Parameters.AddWithValue("@estados_origen", new[]
+                {
+                    EstadoDocumentoInstitucional.SubsanadoRt,
+                    EstadoDocumentoInstitucional.PendienteRevisionSubsanacion
+                });
+
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        if (!rd.IsDBNull(0))
+                        {
+                            codigos.Add(rd.GetInt32(0));
+                        }
+                    }
+                }
+            }
+
+            return codigos;
+        }
+
+        private static bool ActualizarSolicitudARevisionInspector(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            InspectorAsignadoData inspector,
+            string estadoDestino,
+            string observacion,
+            string usuarioRegistro,
+            HashSet<string> columnasSolicitud)
+        {
+            var setClauses = new List<string>
+            {
+                "estado = @estado",
+                "observaciones = @observaciones",
+                "updated_at = NOW()"
+            };
+
+            if (columnasSolicitud.Contains("updated_by"))
+            {
+                setClauses.Add("updated_by = @usuario");
+            }
+            if (columnasSolicitud.Contains("pendiente_asignacion_inspector"))
+            {
+                setClauses.Add("pendiente_asignacion_inspector = FALSE");
+            }
+            if (columnasSolicitud.Contains("pendiente_carga_documental_rt"))
+            {
+                setClauses.Add("pendiente_carga_documental_rt = FALSE");
+            }
+            if (columnasSolicitud.Contains("solicitud_finalizada_rt"))
+            {
+                setClauses.Add("solicitud_finalizada_rt = FALSE");
+            }
+            if (columnasSolicitud.Contains("fecha_subsanacion"))
+            {
+                setClauses.Add("fecha_subsanacion = NOW()");
+            }
+            if (columnasSolicitud.Contains("codigo_tecnico"))
+            {
+                setClauses.Add("codigo_tecnico = CASE WHEN COALESCE(codigo_tecnico, 0) <= 0 THEN @codigo_tecnico ELSE codigo_tecnico END");
+            }
+            if (columnasSolicitud.Contains("responsable_actual"))
+            {
+                setClauses.Add("responsable_actual = 'INSPECTOR'");
+            }
+            if (columnasSolicitud.Contains("tecnico_responsable_cedula"))
+            {
+                setClauses.Add("tecnico_responsable_cedula = CASE WHEN NULLIF(TRIM(COALESCE(tecnico_responsable_cedula, '')), '') IS NULL THEN @inspector_cedula ELSE tecnico_responsable_cedula END");
+            }
+            if (columnasSolicitud.Contains("tecnico_responsable_nombre"))
+            {
+                setClauses.Add("tecnico_responsable_nombre = CASE WHEN NULLIF(TRIM(COALESCE(tecnico_responsable_nombre, '')), '') IS NULL THEN @inspector_nombre ELSE tecnico_responsable_nombre END");
+            }
+            if (columnasSolicitud.Contains("tecnico_responsable_tipo"))
+            {
+                setClauses.Add("tecnico_responsable_tipo = CASE WHEN NULLIF(TRIM(COALESCE(tecnico_responsable_tipo, '')), '') IS NULL THEN @inspector_tipo ELSE tecnico_responsable_tipo END");
+            }
+
+            var sql = @"
+                UPDATE aocr_tbsolicitud
+                SET " + string.Join(", ", setClauses) + @"
+                WHERE codigo_solicitud = @solicitud
+                  AND deleted_at IS NULL;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@estado", estadoDestino);
+                cmd.Parameters.AddWithValue("@observaciones", observacion ?? string.Empty);
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                cmd.Parameters.AddWithValue("@usuario", usuarioRegistro ?? string.Empty);
+                cmd.Parameters.AddWithValue("@codigo_tecnico", inspector.CodigoInspector > 0 ? (object)inspector.CodigoInspector : DBNull.Value);
+                cmd.Parameters.AddWithValue("@inspector_cedula", (object)(inspector.InspectorPrincipalCedula ?? string.Empty));
+                cmd.Parameters.AddWithValue("@inspector_nombre", (object)(inspector.InspectorPrincipalNombre ?? string.Empty));
+                cmd.Parameters.AddWithValue("@inspector_tipo", (object)(inspector.InspectorPrincipalTipo ?? string.Empty));
+                return cmd.ExecuteNonQuery() > 0;
+            }
+        }
+
+        private static void ActualizarInspeccionParaRevisionDocumental(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            int codigoInspector,
+            HashSet<string> columnasInspeccion,
+            string observacion,
+            string usuarioRegistro)
+        {
+            if (codigoInspector <= 0)
+            {
+                return;
+            }
+
+            var setClauses = new List<string> { "updated_at = NOW()" };
+
+            if (columnasInspeccion.Contains("codigo_inspector"))
+            {
+                setClauses.Add("codigo_inspector = CASE WHEN COALESCE(codigo_inspector, 0) <= 0 THEN @codigo_inspector ELSE codigo_inspector END");
+            }
+            if (columnasInspeccion.Contains("estado_documental"))
+            {
+                setClauses.Add("estado_documental = @estado_documental");
+            }
+            if (columnasInspeccion.Contains("estado"))
+            {
+                setClauses.Add("estado = CASE WHEN UPPER(COALESCE(estado, '')) IN ('OBSERVADA', 'OBSERVACION_DOCUMENTAL', 'SUBSANADA') THEN @estado_inspeccion ELSE estado END");
+            }
+            if (columnasInspeccion.Contains("comentarios"))
+            {
+                setClauses.Add("comentarios = CASE WHEN NULLIF(TRIM(COALESCE(comentarios, '')), '') IS NULL THEN @comentarios ELSE comentarios || ' | ' || @comentarios END");
+            }
+            if (columnasInspeccion.Contains("updated_by"))
+            {
+                setClauses.Add("updated_by = @updated_by");
+            }
+
+            var sql = @"
+                UPDATE aocr_tbinspeccion
+                SET " + string.Join(", ", setClauses) + @"
+                WHERE codigo_inspeccion = (
+                    SELECT codigo_inspeccion
+                    FROM aocr_tbinspeccion
+                    WHERE codigo_solicitud = @solicitud
+                    ORDER BY COALESCE(updated_at, created_at) DESC, codigo_inspeccion DESC
+                    LIMIT 1
+                );";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                cmd.Parameters.AddWithValue("@codigo_inspector", codigoInspector);
+                cmd.Parameters.AddWithValue("@estado_documental", "EN_REVISION_DOCUMENTAL");
+                cmd.Parameters.AddWithValue("@estado_inspeccion", EstadosInspeccion.VERIFICACION_SOLICITUD);
+                cmd.Parameters.AddWithValue("@comentarios", "Subsanación RT enviada para revisión documental. " + (observacion ?? string.Empty));
+                cmd.Parameters.AddWithValue("@updated_by", usuarioRegistro ?? string.Empty);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static int? InsertarHistorialEstado(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            string estadoAnterior,
+            string estadoNuevo,
+            int usuarioId,
+            string observacion)
+        {
+            const string sql = @"
+                INSERT INTO aocr_tbhistorial_estado
+                (
+                    codigo_solicitud,
+                    estado_anterior,
+                    estado_nuevo,
+                    codigo_usuario,
+                    observaciones,
+                    fecha_cambio
+                )
+                VALUES
+                (
+                    @solicitud,
+                    @estado_anterior,
+                    @estado_nuevo,
+                    @usuario,
+                    @observaciones,
+                    NOW()
+                )
+                RETURNING codigo_historial;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                cmd.Parameters.AddWithValue("@estado_anterior", estadoAnterior ?? string.Empty);
+                cmd.Parameters.AddWithValue("@estado_nuevo", estadoNuevo ?? string.Empty);
+                cmd.Parameters.AddWithValue("@usuario", usuarioId);
+                cmd.Parameters.AddWithValue("@observaciones", observacion ?? string.Empty);
+                var value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    return null;
+                }
+
+                return Convert.ToInt32(value);
+            }
+        }
+
+        private static void RegistrarHistorialDocumentalSubsanacion(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int solicitudId,
+            IEnumerable<int> codigosDocumento,
+            int usuarioId,
+            string usuarioRegistro)
+        {
+            var codigos = (codigosDocumento ?? Enumerable.Empty<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            if (codigos.Count == 0)
+            {
+                return;
+            }
+
+            const string sql = @"
+                INSERT INTO aocr_tbhistorial_documental
+                (
+                    codigo_solicitud,
+                    codigo_documento,
+                    evento,
+                    detalle,
+                    codigo_usuario,
+                    fecha_evento,
+                    created_at,
+                    created_by
+                )
+                VALUES
+                (
+                    @codigo_solicitud,
+                    @codigo_documento,
+                    @evento,
+                    @detalle,
+                    @codigo_usuario,
+                    NOW(),
+                    NOW(),
+                    @created_by
+                );";
+
+            foreach (var codigoDocumento in codigos)
+            {
+                using (var cmd = new NpgsqlCommand(sql, cn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", solicitudId);
+                    cmd.Parameters.AddWithValue("@codigo_documento", codigoDocumento);
+                    cmd.Parameters.AddWithValue("@evento", EventoHistorialDocumentalSubsanacionEnviada);
+                    cmd.Parameters.AddWithValue("@detalle", "Documento enviado nuevamente al inspector luego de subsanación RT.");
+                    cmd.Parameters.AddWithValue("@codigo_usuario", usuarioId);
+                    cmd.Parameters.AddWithValue("@created_by", usuarioRegistro ?? string.Empty);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private sealed class SolicitudSubsanacionData
+        {
+            public int CodigoSolicitud { get; set; }
+            public string Estado { get; set; }
+            public int? CodigoTecnico { get; set; }
+        }
+
+        private sealed class InspectorAsignadoData
+        {
+            public int CodigoInspeccion { get; set; }
+            public int CodigoInspector { get; set; }
+            public string EstadoInspeccion { get; set; }
+            public string InspectorPrincipalCedula { get; set; }
+            public string InspectorPrincipalNombre { get; set; }
+            public string InspectorPrincipalTipo { get; set; }
         }
 
         private static string CombinarObservacionCierre(string observacionBase, string observacionCoordinador)

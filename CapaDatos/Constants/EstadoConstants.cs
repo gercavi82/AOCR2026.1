@@ -14,6 +14,8 @@ namespace CapaDatos.Constants
         public const string Completada = "COMPLETADA";
         public const string Facturada = "FACTURADA";
         public const string Pagada = "PAGADA";
+        public const string OrdenCerradaPorSolicitud = "ORDEN_CERRADA_POR_SOLICITUD";
+        public const string OrdenInactiva = "ORDEN_INACTIVA";
         public const string Anulada = "ANULADA";
 
         public static string NormalizarEstado(string estado)
@@ -32,6 +34,10 @@ namespace CapaDatos.Constants
                     return Devuelta;
                 case Facturada:
                     return Facturada;
+                case OrdenCerradaPorSolicitud:
+                    return OrdenCerradaPorSolicitud;
+                case OrdenInactiva:
+                    return OrdenInactiva;
                 case Completada:
                     return Completada;
                 case Pagada:
@@ -75,7 +81,19 @@ namespace CapaDatos.Constants
             return string.Equals(actual, Pagada, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(actual, Anulada, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(actual, Completada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase);
+                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenCerradaPorSolicitud, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenInactiva, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool EsOrdenCerradaPostAprobacionFinanciera(string estado)
+        {
+            var actual = NormalizarEstado(estado);
+            return string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenCerradaPorSolicitud, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenInactiva, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Pagada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Completada, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsPagado(string estado)
@@ -85,7 +103,9 @@ namespace CapaDatos.Constants
 
             return string.Equals(actual, Pagada, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(actual, Completada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase);
+                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenCerradaPorSolicitud, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, OrdenInactiva, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string ObtenerColorBadge(string estado)
@@ -107,6 +127,8 @@ namespace CapaDatos.Constants
                 case Devuelta:
                     return "danger";
                 case Facturada:
+                case OrdenCerradaPorSolicitud:
+                case OrdenInactiva:
                 case Completada:
                 case Pagada:
                     return "success";
@@ -133,6 +155,91 @@ namespace CapaDatos.Constants
                 Anulada
             };
         }
+
+        private static readonly string[] EstadosPermitidosBaseDatos =
+        {
+            Borrador, Pendiente, "PROCESADA", Completada, Anulada, Facturada
+        };
+
+        /// <summary>Estado seguro para aocr_or_orden tras aprobación financiera (varchar(20) + chk_estado).</summary>
+        public static string ResolverEstadoPersistenciaPostAprobacionFinanciera()
+        {
+            return Completada;
+        }
+
+        public static bool EsPermitidoEnBaseDatos(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return false;
+            }
+
+            var normalizado = estado.Trim();
+            foreach (var permitido in EstadosPermitidosBaseDatos)
+            {
+                if (string.Equals(permitido, normalizado, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static string ValidarOPrepararEstadoPersistencia(string estadoPropuesto)
+        {
+            if (string.IsNullOrWhiteSpace(estadoPropuesto))
+            {
+                throw new InvalidOperationException("El estado de orden no puede estar vacío.");
+            }
+
+            var propuesto = estadoPropuesto.Trim();
+            if (EsPermitidoEnBaseDatos(propuesto))
+            {
+                return NormalizarEstadoPersistencia(propuesto);
+            }
+
+            if (string.Equals(propuesto, OrdenCerradaPorSolicitud, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(propuesto, OrdenInactiva, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(propuesto, Pagada, StringComparison.OrdinalIgnoreCase))
+            {
+                return Completada;
+            }
+
+            throw new InvalidOperationException(
+                "El estado de orden '" + propuesto + "' no está permitido. Revise la matriz de estados financieros.");
+        }
+
+        public static string NormalizarEstadoPersistencia(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return Pendiente;
+            }
+
+            var upper = estado.Trim().ToUpperInvariant().Replace(" ", "_");
+            switch (upper)
+            {
+                case "BORRADOR":
+                    return Borrador;
+                case "PENDIENTE":
+                    return Pendiente;
+                case "PROCESADA":
+                    return "PROCESADA";
+                case "COMPLETADA":
+                    return Completada;
+                case "FACTURADA":
+                    return Facturada;
+                case "ANULADA":
+                    return Anulada;
+                case "ORDEN_CERRADA_POR_SOLICITUD":
+                case "ORDEN_INACTIVA":
+                case "PAGADA":
+                    return Completada;
+                default:
+                    return estado.Trim();
+            }
+        }
     }
 
     public static class EstadoPago
@@ -140,17 +247,133 @@ namespace CapaDatos.Constants
         public const string Pendiente = "PENDIENTE";
         public const string Validado = "VALIDADO";
         public const string Aprobado = "APROBADO";
+        /// <summary>Alias semántico de flujo/historial. No persistir en aocr_tbpago.estado (chk_estado_pago).</summary>
+        public const string PagoAprobado = "PAGO_APROBADO";
         public const string Rechazado = "RECHAZADO";
         public const string Anulado = "ANULADO";
+        public const string Confirmado = "CONFIRMADO";
+        public const string Pagado = "PAGADO";
+        public const string Completado = "COMPLETADO";
+        public const string Cancelado = "CANCELADO";
+        public const string EnRevision = "EN_REVISION";
+        public const string Procesando = "PROCESANDO";
+
+        private static readonly string[] EstadosPermitidosBaseDatos =
+        {
+            Pendiente, Validado, Aprobado, Rechazado, Confirmado, Pagado, Completado,
+            Cancelado, EnRevision, Procesando, Anulado,
+            "Pendiente", "Validado", "Aprobado", "Rechazado"
+        };
+
+        /// <summary>Estado seguro para aocr_tbpago tras aprobación financiera (chk_estado_pago).</summary>
+        public static string ResolverEstadoPersistenciaPostAprobacionFinanciera()
+        {
+            return Aprobado;
+        }
+
+        public static bool EsPermitidoEnBaseDatos(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return false;
+            }
+
+            var normalizado = estado.Trim();
+            foreach (var permitido in EstadosPermitidosBaseDatos)
+            {
+                if (string.Equals(permitido, normalizado, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Normaliza códigos de flujo a un valor persistible en aocr_tbpago.</summary>
+        public static string ValidarOPrepararEstadoPersistencia(string estadoPropuesto)
+        {
+            if (string.IsNullOrWhiteSpace(estadoPropuesto))
+            {
+                throw new InvalidOperationException("El estado de pago no puede estar vacío.");
+            }
+
+            var propuesto = estadoPropuesto.Trim();
+            if (EsPermitidoEnBaseDatos(propuesto))
+            {
+                return NormalizarEstadoPersistencia(propuesto);
+            }
+
+            if (string.Equals(propuesto, PagoAprobado, StringComparison.OrdinalIgnoreCase))
+            {
+                return Aprobado;
+            }
+
+            throw new InvalidOperationException(
+                "El estado de pago '" + propuesto + "' no está permitido. Revise la matriz de estados financieros.");
+        }
+
+        public static string NormalizarEstadoPersistencia(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return Pendiente;
+            }
+
+            var upper = estado.Trim().ToUpperInvariant().Replace(" ", "_");
+            switch (upper)
+            {
+                case "PENDIENTE":
+                    return Pendiente;
+                case "VALIDADO":
+                    return Validado;
+                case "APROBADO":
+                    return Aprobado;
+                case "RECHAZADO":
+                    return Rechazado;
+                case "ANULADO":
+                    return Anulado;
+                case "CONFIRMADO":
+                    return Confirmado;
+                case "PAGADO":
+                    return Pagado;
+                case "COMPLETADO":
+                    return Completado;
+                case "CANCELADO":
+                    return Cancelado;
+                case "EN_REVISION":
+                    return EnRevision;
+                case "PROCESANDO":
+                    return Procesando;
+                case "PAGO_APROBADO":
+                    return Aprobado;
+                default:
+                    return estado.Trim();
+            }
+        }
+
+        public static bool EsPagoAprobadoFinancieramente(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return false;
+            }
+
+            var normalizado = NormalizarEstadoPersistencia(estado);
+            return string.Equals(normalizado, Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, Aprobado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, Confirmado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, Pagado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, Completado, StringComparison.OrdinalIgnoreCase);
+        }
 
         public static bool EsEstadoFinal(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return false;
 
-            return string.Equals(estado, Validado, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Aprobado, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Rechazado, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Anulado, StringComparison.OrdinalIgnoreCase);
+            return EsPagoAprobadoFinancieramente(estado)
+                || string.Equals(estado, Rechazado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, Anulado, StringComparison.OrdinalIgnoreCase);
         }
     }
 

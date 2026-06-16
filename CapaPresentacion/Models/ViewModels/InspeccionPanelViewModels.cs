@@ -251,6 +251,8 @@ namespace CapaPresentacion.Models.ViewModels
         public string Recomendaciones { get; set; }
         public string UrlPdfInformeFirmadoInspector { get; set; }
         public string UrlDescargarPdfInformeFirmadoInspector { get; set; }
+        public bool InformeFirmadoInspectorDisponible { get; set; }
+        public string MensajePdfFirmadoInspector { get; set; }
         public bool PuedeAprobarDecisionFinal { get; set; }
         public bool PuedeDevolverConObservacion { get; set; }
         public bool PuedeReenviarNotificacionRt { get; set; }
@@ -288,6 +290,7 @@ namespace CapaPresentacion.Models.ViewModels
             Recomendaciones = string.Empty;
             UrlPdfInformeFirmadoInspector = string.Empty;
             UrlDescargarPdfInformeFirmadoInspector = string.Empty;
+            MensajePdfFirmadoInspector = string.Empty;
             EstadoAocr = string.Empty;
             MotivoBloqueoGenerarAocr = string.Empty;
             UrlDetalleSolicitudAocr = string.Empty;

@@ -145,6 +145,7 @@
     <Compile Include="Helpers\RtCorreoTextoHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\FinancialOrderStateHelper.cs" />
+    <Compile Include="Helpers\OrdenRecaudacionOperativaHelper.cs" />
     <Compile Include="Helpers\FileStorageHelper.cs" />
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\PdfBrandingHelper.cs" />
@@ -174,14 +175,19 @@
     <Compile Include="Services\AocrFlujoValidacionService.cs" />
     <Compile Include="Services\AocrEmailFlujoService.cs" />
     <Compile Include="Services\AocrModificationWorkflowService.cs" />
+    <Compile Include="Services\InspectorIdentityService.cs" />
     <Compile Include="Services\AocrAuthorizationService.cs" />
     <Compile Include="Services\OrdenRecaudacionService.cs" />
     <Compile Include="Services\OrdenRecaudacionCorreoService.cs" />
     <Compile Include="Services\AocrPostPagoWorkflowService.cs" />
+    <Compile Include="Services\FinancieroAprobacionPagoOrchestrator.cs" />
     <Compile Include="Services\PagoService.cs" />
     <Compile Include="Services\SolicitudAocrService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\RevisionDocumentalService.cs" />
+    <Compile Include="Services\AocrCompaniaContextService.cs" />
+    <Compile Include="Services\CompaniaActivaInfo.cs" />
+    <Compile Include="Services\AocrProcesoActivoService.cs" />
     <Compile Include="Services\DocumentoSubsanacionService.cs" />
     <Compile Include="Services\RevisionDocumentalBandejaService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />

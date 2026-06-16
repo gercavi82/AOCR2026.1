@@ -204,16 +204,18 @@
         :root {
             --aocr-modal-z-backdrop: 10490;
             --aocr-modal-z-modal: 10500;
-            --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 236px);
-            --aocr-modal-sidebar-total-offset: var(--aocr-sidebar-total-width, 522px);
+            --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 260px);
             --aocr-modal-sidebar-mini-offset: 4.6rem;
         }
 
         body.aocr-body .main-sidebar.aocr-sidebar,
         body.aocr-body .main-sidebar,
-        body.aocr-body .sidebar,
-        body.aocr-body .aocr-subnav-panel {
-            z-index: 1020 !important;
+        body.aocr-body .sidebar {
+            z-index: 1030 !important;
+        }
+
+        body.aocr-body .aocr-sidebar-backdrop {
+            z-index: 1025 !important;
         }
 
         body.aocr-body .main-header.navbar,
@@ -234,10 +236,6 @@
         @@media (min-width: 992px) {
             body.aocr-body .modal {
                 padding-left: var(--aocr-modal-sidebar-offset);
-            }
-
-            body.aocr-body.aocr-subnav-open .modal {
-                padding-left: var(--aocr-modal-sidebar-total-offset);
             }
 
             body.aocr-body.sidebar-mini.sidebar-collapse .modal,
@@ -1176,20 +1174,7 @@
     })();
     </script>
 
-    <aside id="aocrSubnavPanel" class="aocr-subnav-panel" aria-hidden="true">
-        <div class="aocr-subnav-header">
-            <div>
-                <div id="aocrSubnavTitle" class="aocr-subnav-title">Módulo</div>
-                <div id="aocrSubnavSubtitle" class="aocr-subnav-subtitle">Seleccione una opción</div>
-            </div>
-
-            <button type="button" id="aocrSubnavClose" class="aocr-subnav-close" aria-label="Cerrar panel secundario">
-                ×
-            </button>
-        </div>
-
-        <div id="aocrSubnavContent" class="aocr-subnav-content"></div>
-    </aside>
+    <div id="aocrSidebarBackdrop" class="aocr-sidebar-backdrop" aria-hidden="true"></div>
 
     <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
     @RenderSection("Scripts", required: false)

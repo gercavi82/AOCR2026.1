@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
 @using CapaDatos.Constants
 @using CapaModelo
 @using CapaNegocio.Services
@@ -757,7 +757,7 @@
                 var orden = item.Orden;
                 var pago = item.Pago;
                 var estadoNorm = orden != null ? normalizarEstado(orden.Estado) : string.Empty;
-                var puedeGestionarPorEstado = estadoNorm == EstadoOrden.EnRevisionFinanciera;
+                var puedeGestionarPorEstado = item.PuedeGestionarPago;
         <tr>
             <td>@Html.Encode(i)</td>
             <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>

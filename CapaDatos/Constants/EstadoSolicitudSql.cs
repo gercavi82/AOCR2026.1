@@ -178,8 +178,6 @@ END";
 
                 "REQUIERE INSPECCION",
 
-                "SUBSANADA",
-
                 "PENDIENTE",
 
                 "DOCUMENTACION PENDIENTE"

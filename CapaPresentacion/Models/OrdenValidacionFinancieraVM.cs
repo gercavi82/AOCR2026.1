@@ -10,5 +10,7 @@ namespace CapaPresentacion.Models
         public string Fr3Numero { get; set; }
         public string Fr3Error { get; set; }
         public bool PuedeReintentarFr3 { get; set; }
+        public bool TieneComprobanteValido { get; set; }
+        public bool PuedeGestionarPago { get; set; }
     }
 }

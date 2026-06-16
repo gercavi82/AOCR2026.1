@@ -1592,6 +1592,22 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "RevisionDireccion", CodigoInformeParameter = "codigoInforme")]
+        [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
+        public ActionResult VerInformeFirmadoInspectorDireccion(int codigoInforme)
+        {
+            return ServirInformeFirmadoInspectorDireccion(codigoInforme, false);
+        }
+
+        [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "RevisionDireccion", CodigoInformeParameter = "codigoInforme")]
+        [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
+        public ActionResult DescargarInformeFirmadoInspectorDireccion(int codigoInforme)
+        {
+            return ServirInformeFirmadoInspectorDireccion(codigoInforme, true);
+        }
+
+        [HttpGet]
         [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerListaVerificacionOperacionalEae(int id)
@@ -1737,6 +1753,87 @@ namespace CapaPresentacion.Controllers
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico));
 
             return File(fullPath, "application/pdf");
+        }
+
+        private ActionResult ServirInformeFirmadoInspectorDireccion(int codigoInforme, bool descargar)
+        {
+            _logger.LogInfo("[INFORME_TECNICO][REV_DIR_PDF_REQUEST] InformeTecnicoId=" + codigoInforme
+                + ", Descargar=" + descargar
+                + ", Usuario=" + ObtenerUsuarioActual()
+                + ", Rol=" + ObtenerRolActual()
+                + ", IP=" + ObtenerIpCliente());
+
+            if (codigoInforme <= 0)
+            {
+                Response.TrySkipIisCustomErrors = true;
+                return new HttpStatusCodeResult(400, "Codigo de informe invalido.");
+            }
+
+            var informe = _informeDAO.ObtenerPorId(codigoInforme);
+            if (informe == null)
+            {
+                _logger.LogWarning("[INFORME_TECNICO][REV_DIR_PDF_404] Informe no encontrado. InformeTecnicoId=" + codigoInforme);
+                Response.TrySkipIisCustomErrors = true;
+                return HttpNotFound("Informe tecnico no encontrado.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
+            if (inspeccion == null)
+            {
+                _logger.LogWarning("[INFORME_TECNICO][REV_DIR_PDF_404] Inspeccion no encontrada. InformeTecnicoId=" + codigoInforme
+                    + ", InspeccionId=" + informe.CodigoInspeccion);
+                Response.TrySkipIisCustomErrors = true;
+                return HttpNotFound("Inspeccion no encontrada para el informe tecnico.");
+            }
+
+            var respuestaPermiso = ValidarPermisoDecisionInstitucionalFinal(inspeccion, informe, "VerInformeFirmadoInspectorDireccion");
+            if (respuestaPermiso != null)
+            {
+                return respuestaPermiso;
+            }
+
+            _logger.LogInfo("[INFORME_TECNICO][REV_DIR_PDF_DB] InformeTecnicoId=" + informe.CodigoInforme
+                + ", InspeccionId=" + informe.CodigoInspeccion
+                + ", Version=" + informe.Version
+                + ", EstadoInforme=" + (informe.EstadoInforme ?? string.Empty)
+                + ", FirmadoInspector=" + informe.FirmadoInspector
+                + ", FirmadoDirdac=" + informe.FirmadoDirdac
+                + ", RutaPdf=" + (informe.RutaPdf ?? string.Empty)
+                + ", RutaDocumentoFirmado=" + (informe.RutaDocumentoFirmado ?? string.Empty));
+
+            var disponibilidad = ObtenerDisponibilidadPdfFirmadoInspectorDireccion(informe);
+            _logger.LogInfo("[INFORME_TECNICO][REV_DIR_PDF_RESOLVE] InformeTecnicoId=" + informe.CodigoInforme
+                + ", Disponible=" + disponibilidad.Disponible
+                + ", RutaRelativa=" + (disponibilidad.RutaRelativa ?? string.Empty)
+                + ", RutaFisica=" + (disponibilidad.RutaFisica ?? string.Empty)
+                + ", Mensaje=" + (disponibilidad.Mensaje ?? string.Empty));
+
+            if (!disponibilidad.Disponible)
+            {
+                _logger.LogWarning("[INFORME_TECNICO][REV_DIR_PDF_404] InformeTecnicoId=" + informe.CodigoInforme
+                    + ", InspeccionId=" + informe.CodigoInspeccion
+                    + ", Motivo=" + (disponibilidad.Mensaje ?? string.Empty)
+                    + ", RutaDocumentoFirmado=" + (informe.RutaDocumentoFirmado ?? string.Empty));
+                Response.TrySkipIisCustomErrors = true;
+                return new HttpStatusCodeResult(404, string.IsNullOrWhiteSpace(disponibilidad.Mensaje)
+                    ? "El archivo del informe firmado ya no existe en el servidor."
+                    : disponibilidad.Mensaje);
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            NormalizarDatosOperadorSolicitud(solicitud);
+            var fileInfo = new FileInfo(disponibilidad.RutaFisica);
+
+            _logger.LogInfo("[INFORME_TECNICO][REV_DIR_PDF_OK] InformeTecnicoId=" + informe.CodigoInforme
+                + ", InspeccionId=" + informe.CodigoInspeccion
+                + ", RutaRelativa=" + disponibilidad.RutaRelativa
+                + ", RutaFisica=" + disponibilidad.RutaFisica
+                + ", Tamanio=" + fileInfo.Length
+                + ", Descargar=" + descargar);
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informe));
+            return File(disponibilidad.RutaFisica, "application/pdf");
         }
 
         private ActionResult ServirListaVerificacionOperacionalEaePdf(int id, bool descargar)
@@ -3667,6 +3764,19 @@ namespace CapaPresentacion.Controllers
             if (informe.FirmadoDirdac || string.Equals(informe.EstadoInforme, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase) || informe.NotificadoRt)
             {
                 TempData["Warning"] = "El informe ya fue aprobado por Dirección / Jefatura.";
+                return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
+            }
+
+            var disponibilidadPdfFirmadoInspector = ObtenerDisponibilidadPdfFirmadoInspectorDireccion(informe);
+            if (!disponibilidadPdfFirmadoInspector.Disponible)
+            {
+                _logger.LogWarning("[INFORME_TECNICO][REV_DIR_APROBAR_BLOQUEADO_PDF] InformeTecnicoId=" + informe.CodigoInforme
+                    + ", InspeccionId=" + id
+                    + ", Motivo=" + (disponibilidadPdfFirmadoInspector.Mensaje ?? string.Empty)
+                    + ", RutaDocumentoFirmado=" + (informe.RutaDocumentoFirmado ?? string.Empty));
+                TempData["Error"] = string.IsNullOrWhiteSpace(disponibilidadPdfFirmadoInspector.Mensaje)
+                    ? "No se puede aprobar el informe porque el PDF firmado por Inspector no esta disponible."
+                    : disponibilidadPdfFirmadoInspector.Mensaje;
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
             }
 
@@ -6442,8 +6552,8 @@ namespace CapaPresentacion.Controllers
                 EstadoInforme = FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "BORRADOR"),
                 NotificacionFormalEnviada = informe != null && informe.CorreoEnviado,
                 UrlRevision = informe != null ? ConstruirUrlRevisionDireccion(informe.CodigoInforme) : string.Empty,
-                UrlPdfInformeFirmadoInspector = inspeccion != null && inspeccion.CodigoInspeccion > 0
-                    ? Url.Action("VerInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                UrlPdfInformeFirmadoInspector = informe != null && informe.CodigoInforme > 0
+                    ? Url.Action("VerInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme = informe.CodigoInforme })
                     : string.Empty
             };
         }
@@ -6470,6 +6580,7 @@ namespace CapaPresentacion.Controllers
                 ? _generacionAocrService.Evaluar(codigoSolicitud, ObtenerCodigoUsuario(), ObtenerRolesActualesParaGeneracionAocr())
                 : null;
             var aocrYaGenerada = disponibilidadAocr != null && disponibilidadAocr.YaGenerado;
+            var disponibilidadPdfFirmadoInspector = ObtenerDisponibilidadPdfFirmadoInspectorDireccion(informe);
 
             RegistrarTrazaGeneracionAocr("RevisionDireccion", disponibilidadAocr);
 
@@ -6499,13 +6610,15 @@ namespace CapaPresentacion.Controllers
                 ObservacionesInspector = FirstNonEmpty(informe != null ? informe.Observaciones : null, "Sin observaciones del inspector."),
                 Conclusiones = FirstNonEmpty(informe != null ? informe.Conclusiones : null, "Sin conclusiones registradas."),
                 Recomendaciones = FirstNonEmpty(informe != null ? informe.Recomendaciones : null, "Sin recomendaciones registradas."),
-                UrlPdfInformeFirmadoInspector = inspeccion != null && inspeccion.CodigoInspeccion > 0
-                    ? Url.Action("VerInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                UrlPdfInformeFirmadoInspector = informe != null && informe.CodigoInforme > 0 && disponibilidadPdfFirmadoInspector.Disponible
+                    ? Url.Action("VerInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme = informe.CodigoInforme })
                     : string.Empty,
-                UrlDescargarPdfInformeFirmadoInspector = inspeccion != null && inspeccion.CodigoInspeccion > 0
-                    ? Url.Action("DescargarInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                UrlDescargarPdfInformeFirmadoInspector = informe != null && informe.CodigoInforme > 0 && disponibilidadPdfFirmadoInspector.Disponible
+                    ? Url.Action("DescargarInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme = informe.CodigoInforme })
                     : string.Empty,
-                PuedeAprobarDecisionFinal = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe),
+                InformeFirmadoInspectorDisponible = disponibilidadPdfFirmadoInspector.Disponible,
+                MensajePdfFirmadoInspector = disponibilidadPdfFirmadoInspector.Mensaje,
+                PuedeAprobarDecisionFinal = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe) && disponibilidadPdfFirmadoInspector.Disponible,
                 PuedeDevolverConObservacion = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe),
                 PuedeReenviarNotificacionRt = false,
                 RequiereFirmaDireccion = false,
@@ -7771,6 +7884,57 @@ namespace CapaPresentacion.Controllers
             return Server.MapPath("~" + rutaNormalizada);
         }
 
+        private DisponibilidadPdfFirmadoInspector ObtenerDisponibilidadPdfFirmadoInspectorDireccion(InspeccionInformeTecnico informe)
+        {
+            var resultado = new DisponibilidadPdfFirmadoInspector();
+            if (informe == null)
+            {
+                resultado.Mensaje = "Informe tecnico no encontrado.";
+                return resultado;
+            }
+
+            if (!informe.FirmadoInspector)
+            {
+                resultado.Mensaje = "El informe tecnico aun no cuenta con firma del inspector.";
+                return resultado;
+            }
+
+            var rutaRelativa = NormalizarRutaRelativaInforme(informe.RutaDocumentoFirmado);
+            if (string.IsNullOrWhiteSpace(rutaRelativa))
+            {
+                resultado.Mensaje = "No existe ruta del informe firmado por Inspector registrada en el informe tecnico.";
+                return resultado;
+            }
+
+            var rutaFisica = Server.MapPath("~" + rutaRelativa);
+            var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
+            resultado.RutaRelativa = rutaRelativa;
+            resultado.RutaFisica = rutaFisica;
+
+            if (!EsRutaDentroDeBase(rutaFisica, baseDir))
+            {
+                resultado.Mensaje = "La ruta del informe firmado no pertenece al repositorio seguro de informes tecnicos.";
+                return resultado;
+            }
+
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                resultado.Mensaje = "El archivo del informe firmado ya no existe en el servidor.";
+                return resultado;
+            }
+
+            var fileInfo = new FileInfo(rutaFisica);
+            if (fileInfo.Length <= 0)
+            {
+                resultado.Mensaje = "El archivo del informe firmado esta vacio o no se encuentra disponible.";
+                return resultado;
+            }
+
+            resultado.Disponible = true;
+            resultado.Mensaje = string.Empty;
+            return resultado;
+        }
+
         private string ResolverRutaRelativaInformeDisponible(params string[] rutasRelativas)
         {
             var rutasCandidatas = (rutasRelativas ?? new string[0])
@@ -7810,10 +7974,28 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            var ruta = rutaRelativa.Trim();
+            var ruta = rutaRelativa.Trim().Replace('\\', '/');
             if (ruta.StartsWith("~"))
             {
                 ruta = ruta.Substring(1);
+            }
+
+            Uri uri;
+            if (Uri.TryCreate(ruta, UriKind.Absolute, out uri) && !uri.IsFile)
+            {
+                return null;
+            }
+
+            const string marcadorAppData = "/App_Data/";
+            var indiceAppData = ruta.IndexOf(marcadorAppData, StringComparison.OrdinalIgnoreCase);
+            if (indiceAppData >= 0)
+            {
+                ruta = ruta.Substring(indiceAppData);
+            }
+
+            if (Path.IsPathRooted(ruta) && indiceAppData < 0)
+            {
+                return null;
             }
 
             if (!ruta.StartsWith("/"))
@@ -7822,6 +8004,14 @@ namespace CapaPresentacion.Controllers
             }
 
             return ruta;
+        }
+
+        private class DisponibilidadPdfFirmadoInspector
+        {
+            public bool Disponible { get; set; }
+            public string RutaRelativa { get; set; }
+            public string RutaFisica { get; set; }
+            public string Mensaje { get; set; }
         }
 
         private static bool EsAccionFinalizarListaVerificacionOperacionalEae(string submitActionRaw, string finalizarRaw)

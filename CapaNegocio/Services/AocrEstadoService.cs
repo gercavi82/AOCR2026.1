@@ -17,7 +17,9 @@ namespace CapaNegocio.Services
         bool EsTransicionCanonicaValida(string estadoActual, string estadoDestino);
         bool EstadoPermiteAsignacionInicial(string estado);
         bool EsEstadoFinal(string estado);
+        bool EsEstadoActivoProceso(string estado);
         bool PermiteEdicionRt(string estado);
+        bool EsEstadoRevisablePorInspector(string estado);
         IReadOnlyList<string> EstadosInstitucionales { get; }
         string NormalizarDesdeLegacyCatalogo(string estadoLegacy);
     }
@@ -76,15 +78,72 @@ namespace CapaNegocio.Services
         public bool EsEstadoFinal(string estado)
         {
             var normalizado = Normalizar(estado);
-            return string.Equals(normalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+            if (string.IsNullOrWhiteSpace(normalizado))
+            {
+                return false;
+            }
+
+            if (string.Equals(normalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalizado, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase);
+                || string.Equals(normalizado, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.CertificadoEmitido, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var clave = NormalizarClaveInstitucional(estado);
+            return clave == "CERRADO"
+                || clave == "FINALIZADO"
+                || clave == "AOCR_LEGALIZADO"
+                || clave == "AOCR_EMITIDO_RECIBIDO"
+                || clave == "ANULADO"
+                || clave == "RECHAZADO_FINAL"
+                || clave == "CADUCADO"
+                || clave == "CANCELADO";
+        }
+
+        public bool EsEstadoActivoProceso(string estado)
+        {
+            return !EsEstadoFinal(estado);
         }
 
         public bool PermiteEdicionRt(string estado)
         {
             return EstadoSolicitud.PermiteEdicionFormularioEmision(estado);
+        }
+
+        public bool EsEstadoRevisablePorInspector(string estado)
+        {
+            var canonico = Normalizar(estado);
+            if (string.Equals(canonico, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var clave = EstadoSolicitud.NormalizarClaveEdicion(estado);
+            switch ((clave ?? string.Empty).Trim().ToUpperInvariant())
+            {
+                case "EN_INSPECCION":
+                case "EN_REVISION_INSPECTOR":
+                case "EN_REVISION_DOCUMENTAL":
+                case "PENDIENTE_REVISION_DOCUMENTAL":
+                case "PENDIENTE_REVISION_INSPECTOR":
+                case "SUBSANADA":
+                case "SUBSANADA_RT":
+                case "SUBSANADO_RT":
+                case "DOCUMENTACION_SUBSANADA":
+                case "DOCUMENTOS_SUBSANADOS":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>

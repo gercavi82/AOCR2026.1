@@ -8,15 +8,32 @@ namespace AOCR.Tests.Unit
     public class FinancialOrderStateHelperTests
     {
         [TestMethod]
-        public void EsPendienteGestion_EnRevisionFinanciera_DebeSerTrue()
+        public void EsPendienteGestion_EnRevisionFinancieraConComprobante_DebeSerTrue()
         {
-            Assert.IsTrue(FinancialOrderStateHelper.EsPendienteGestion(EstadoOrden.EnRevisionFinanciera, null, false));
+            Assert.IsTrue(FinancialOrderStateHelper.EsPendienteGestion(
+                EstadoOrden.EnRevisionFinanciera, null, false, true));
+        }
+
+        [TestMethod]
+        public void EsPendienteGestion_EnRevisionFinancieraSinComprobante_DebeSerFalse()
+        {
+            Assert.IsFalse(FinancialOrderStateHelper.EsPendienteGestion(
+                EstadoOrden.EnRevisionFinanciera, null, false, false));
+        }
+
+        [TestMethod]
+        public void EsPendienteGestion_GeneradaSinComprobante_DebeSerFalse()
+        {
+            Assert.IsFalse(FinancialOrderStateHelper.EsPendienteGestion(
+                EstadoOrden.Generada, null, false, false));
+            Assert.IsTrue(FinancialOrderStateHelper.DebeOcultarDeBandejaFinanciera(EstadoOrden.Generada, false));
         }
 
         [TestMethod]
         public void EsPendienteGestion_Facturada_DebeSerFalse()
         {
-            Assert.IsFalse(FinancialOrderStateHelper.EsPendienteGestion(EstadoOrden.Facturada, EstadoPago.Validado, true));
+            Assert.IsFalse(FinancialOrderStateHelper.EsPendienteGestion(
+                EstadoOrden.Facturada, EstadoPago.Validado, true, true));
         }
 
         [TestMethod]
@@ -26,13 +43,22 @@ namespace AOCR.Tests.Unit
                 EstadoOrden.EnRevisionFinanciera,
                 null,
                 false,
-                FinancialOrderStateHelper.PendientesFinanciero));
+                FinancialOrderStateHelper.PendientesFinanciero,
+                true));
+
+            Assert.IsFalse(FinancialOrderStateHelper.CoincideFiltro(
+                EstadoOrden.Generada,
+                null,
+                false,
+                FinancialOrderStateHelper.PendientesFinanciero,
+                false));
 
             Assert.IsFalse(FinancialOrderStateHelper.CoincideFiltro(
                 EstadoOrden.Facturada,
                 EstadoPago.Validado,
                 true,
-                FinancialOrderStateHelper.PendientesFinanciero));
+                FinancialOrderStateHelper.PendientesFinanciero,
+                true));
         }
 
         [TestMethod]

@@ -35,7 +35,8 @@ namespace CapaNegocio.Services
             string nombreDestino = null,
             byte[] adjuntoPdf = null,
             string nombreAdjunto = null,
-            string observacion = null)
+            string observacion = null,
+            string eventKeySuffix = null)
         {
             try
             {
@@ -90,12 +91,12 @@ namespace CapaNegocio.Services
                         SolicitudId = solicitudId.Value,
                         OrdenId = orden.Id > 0 ? (int?)orden.Id : null,
                         TipoNotificacion = tipoNotificacion,
-                        EventKey = string.Format(
-                            CultureInfo.InvariantCulture,
-                            "{0}_{1}_{2}",
+                        EventKey = ConstruirEventKey(
                             tipoNotificacion,
+                            orden,
                             solicitudId.Value,
-                            correoDestinoNormalizado.ToUpperInvariant()),
+                            correoDestinoNormalizado,
+                            eventKeySuffix),
                         EsHtml = true,
                         AdjuntoContenido = adjuntoPdf,
                         AdjuntoNombre = adjuntoPdf != null ? (nombreAdjunto ?? (orden.NumeroOrden ?? "orden") + ".pdf") : null,
@@ -119,6 +120,45 @@ namespace CapaNegocio.Services
             }
         }
 
+        private static string ConstruirEventKey(
+            string tipoNotificacion,
+            OrdenRecaudacion orden,
+            int solicitudId,
+            string correoDestino,
+            string eventKeySuffix)
+        {
+            var tipo = (tipoNotificacion ?? string.Empty).Trim().ToUpperInvariant();
+            var ordenId = orden != null && orden.Id > 0 ? orden.Id : 0;
+
+            switch (tipo)
+            {
+                case "ORDEN_CREADA":
+                case "ORDEN_GENERADA_RT":
+                    return string.Format(CultureInfo.InvariantCulture, "ORDEN_GENERADA_RT_{0}", ordenId);
+                case "COMPROBANTE_CARGADO_FINANCIERO":
+                    return string.Format(
+                        CultureInfo.InvariantCulture,
+                        "COMPROBANTE_CARGADO_FINANCIERO_{0}_{1}",
+                        ordenId,
+                        string.IsNullOrWhiteSpace(eventKeySuffix) ? "0" : eventKeySuffix.Trim());
+                case "PAGO_APROBADO_RT":
+                    return string.Format(CultureInfo.InvariantCulture, "PAGO_APROBADO_RT_{0}", ordenId);
+                case "PAGO_OBSERVADO_RT":
+                    return string.Format(
+                        CultureInfo.InvariantCulture,
+                        "PAGO_OBSERVADO_RT_{0}_{1}",
+                        ordenId,
+                        string.IsNullOrWhiteSpace(eventKeySuffix) ? "0" : eventKeySuffix.Trim());
+                default:
+                    return string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}_{1}_{2}",
+                        tipo,
+                        solicitudId,
+                        (correoDestino ?? string.Empty).Trim().ToUpperInvariant());
+            }
+        }
+
         private static PlantillaOrdenCorreo ConstruirPlantilla(OrdenRecaudacion orden, string evento)
         {
             switch ((evento ?? string.Empty).Trim().ToUpperInvariant())
@@ -132,12 +172,25 @@ namespace CapaNegocio.Services
                         GruposDestinatarios = new[] { CorreoInstitucionalService.FinancieroAocr }
                     };
                 case "ORDEN_CREADA":
+                case "ORDEN_GENERADA_RT":
                     return new PlantillaOrdenCorreo
                     {
                         Asunto = "Nueva Orden de recaudación - " + (orden.NumeroOrden ?? ("#" + orden.Id)),
                         Titulo = "Orden de recaudación generada",
-                        Mensaje = "Se generó una nueva Orden de Recaudación asociada a su trámite. Revise el detalle y proceda con el pago correspondiente.",
+                        Mensaje = "Su Orden de Recaudación ha sido generada correctamente. Descargue el documento y cargue el comprobante de depósito o transferencia para que el área Financiera pueda realizar la revisión correspondiente.",
                         GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante }
+                    };
+                case "COMPROBANTE_CARGADO_FINANCIERO":
+                    return new PlantillaOrdenCorreo
+                    {
+                        Asunto = "Sistema AOCR - Pago pendiente de revisión",
+                        Titulo = "Pago pendiente de revisión",
+                        Mensaje = "Se informa que el Representante Técnico ha cargado el comprobante de depósito o transferencia correspondiente a la orden "
+                            + (orden.NumeroOrden ?? ("#" + orden.Id))
+                            + " de la solicitud "
+                            + (orden.CodigoSolicitud.HasValue ? orden.CodigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : "N/D")
+                            + ". Debe ingresar al Sistema AOCR para revisar el comprobante y aprobar u observar el pago.",
+                        GruposDestinatarios = new[] { CorreoInstitucionalService.FinancieroAocr }
                     };
                 case "PAGO_REGISTRADO":
                     return new PlantillaOrdenCorreo

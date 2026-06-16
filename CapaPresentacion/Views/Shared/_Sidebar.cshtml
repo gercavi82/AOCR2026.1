@@ -154,17 +154,15 @@
                 {
                     var visibleItems = group.Items.Where(i => i.Visible).ToList();
                     var groupSearchText = string.Join(" ", visibleItems.Select(i => i.Title ?? string.Empty));
-                    <li class="aocr-menu-item has-submenu accent-@group.AccentClass @(group.Expanded ? "is-current" : string.Empty)"
+                    <li class="aocr-menu-item has-submenu accent-@group.AccentClass @(group.Expanded ? "is-current is-open" : string.Empty)"
                         data-aocr-menu-item
                         data-search-text="@group.Title @groupSearchText">
                         <button type="button"
-                            class="aocr-menu-link @(group.Expanded ? "is-active" : string.Empty)"
+                            class="aocr-menu-toggle aocr-menu-link @(group.Expanded ? "is-active is-open" : string.Empty)"
                             data-menu-toggle
-                            data-aocr-subnav="@group.CollapseId"
                             data-title="@group.Title"
                             data-subtitle="@group.Description"
-                            aria-expanded="false"
-                            aria-haspopup="true"
+                            aria-expanded="@(group.Expanded ? "true" : "false")"
                             aria-controls="@group.CollapseId">
                             <span class="aocr-menu-icon"><i class="@group.IconClass"></i></span>
                             <span class="aocr-menu-title">@group.Title</span>
@@ -172,53 +170,62 @@
                             {
                                 <span class="aocr-menu-badge">@sidebarBadgeText(group.BadgeCount)</span>
                             }
-                            <span class="aocr-menu-arrow" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                            <span class="aocr-menu-arrow" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>
                         </button>
 
-                        <template id="aocr-subnav-@group.CollapseId">
+                        <ul class="aocr-submenu @(group.Expanded ? "is-open" : string.Empty)"
+                            id="@group.CollapseId"
+                            role="menu"
+                            aria-hidden="@(group.Expanded ? "false" : "true")">
                             @foreach (var item in visibleItems)
                             {
                                 if (item.Enabled)
                                 {
-                                    <a class="aocr-subnav-link @(item.IsActive ? "active" : string.Empty) @item.CssClass"
-                                       href="@item.Url"
-                                       title="@item.Title">
-                                        <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
-                                        <span class="aocr-subnav-link-copy">
-                                            <strong>@item.Title</strong>
-                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                    <li class="aocr-submenu-item" role="none">
+                                        <a class="aocr-submenu-link aocr-subnav-link @(item.IsActive ? "active" : string.Empty) @item.CssClass"
+                                           href="@item.Url"
+                                           role="menuitem"
+                                           title="@item.Title">
+                                            <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
+                                            <span class="aocr-subnav-link-copy">
+                                                <strong>@item.Title</strong>
+                                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                {
+                                                    <small>@item.Description</small>
+                                                }
+                                            </span>
+                                            @if (item.ShowBadge)
                                             {
-                                                <small>@item.Description</small>
+                                                <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                                             }
-                                        </span>
-                                        @if (item.ShowBadge)
-                                        {
-                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
-                                        }
-                                    </a>
+                                        </a>
+                                    </li>
                                 }
                                 else
                                 {
-                                    <span class="aocr-subnav-link is-disabled @item.CssClass"
-                                          data-bs-toggle="tooltip"
-                                          title="@item.Tooltip">
-                                        <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
-                                        <span class="aocr-subnav-link-copy">
-                                            <strong>@item.Title</strong>
-                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                    <li class="aocr-submenu-item" role="none">
+                                        <span class="aocr-submenu-link aocr-subnav-link is-disabled @item.CssClass"
+                                              role="menuitem"
+                                              aria-disabled="true"
+                                              data-bs-toggle="tooltip"
+                                              title="@item.Tooltip">
+                                            <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
+                                            <span class="aocr-subnav-link-copy">
+                                                <strong>@item.Title</strong>
+                                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                {
+                                                    <small>@item.Description</small>
+                                                }
+                                            </span>
+                                            @if (item.ShowBadge)
                                             {
-                                                <small>@item.Description</small>
+                                                <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                                             }
                                         </span>
-                                        @if (item.ShowBadge)
-                                        {
-                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
-                                        }
-                                    </span>
+                                    </li>
                                 }
                             }
-                        </template>
-
+                        </ul>
                     </li>
                 }
             </ul>

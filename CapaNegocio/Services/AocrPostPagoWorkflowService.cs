@@ -15,6 +15,9 @@ namespace CapaNegocio.Services
     {
         public const string TipoCorreoCoordinador = "PAGO_APROBADO_COORDINADOR_ASIGNACION_INSPECTOR";
         public const string TipoCorreoRt = "PAGO_APROBADO_RT_SOLICITUD_AOCR_HABILITADA";
+        public const string TipoCorreoSolicitudHabilitada = "SOLICITUD_AOCR_HABILITADA";
+        public const string EventKeyPagoAprobadoSolicitudHabilitada = "PAGO_APROBADO_SOLICITUD_AOCR_HABILITADA";
+        public const string EstadoSolicitudAocrHabilitada = "SOLICITUD_AOCR_HABILITADA";
         public const string EstadoPendienteCargaDocumentalRt = "PENDIENTE_CARGA_DOCUMENTAL_RT";
         public const string EstadoPendienteRevisionDocumental = "PENDIENTE_REVISION_DOCUMENTAL";
 
@@ -51,32 +54,29 @@ namespace CapaNegocio.Services
                     var ctx = ObtenerContextoPagoAprobado(cn, ordenId);
                     if (ctx == null || ctx.CodigoSolicitud <= 0)
                     {
+                        _logger.LogWarning("AocrPostPagoWorkflowService.ProcesarPagoAprobado: sin solicitud vinculada. OrdenId=" + ordenId);
                         return;
                     }
 
-                    if (EsOrdenNoNotificable(ctx.EstadoOrden))
+                    using (var tx = cn.BeginTransaction())
                     {
-                        return;
-                    }
+                        string error;
+                        if (!EjecutarHabilitacionPostAprobacionEnTransaccion(
+                            cn,
+                            tx,
+                            ordenId,
+                            ctx.CodigoSolicitud,
+                            usuarioFinanciero,
+                            0,
+                            encolarCorreoRt: true,
+                            out error))
+                        {
+                            tx.Rollback();
+                            _logger.LogWarning("AocrPostPagoWorkflowService.ProcesarPagoAprobado: " + (error ?? "fallo habilitacion"));
+                            return;
+                        }
 
-                    var tieneDocumentos = TieneDocumentosHabilitantes(cn, ctx.CodigoSolicitud);
-                    MarcarSolicitudPagoAprobado(cn, ctx, tieneDocumentos, usuarioFinanciero);
-
-                    if (!ctx.NotificadoRtModuloHabilitado)
-                    {
-                        NotificarRtModuloHabilitado(ctx, usuarioFinanciero);
-                    }
-
-                    if (!ctx.TieneInspectorAsignado && !ctx.NotificadoCoordinadorPagoAprobado)
-                    {
-                        NotificarCoordinadoresAsignacionPendiente(ctx, usuarioFinanciero);
-                    }
-
-                    RegistrarHistorial(ctx, usuarioFinanciero, "PAGO_APROBADO_FINANCIERO", ctx.EstadoSolicitud, tieneDocumentos ? EstadoPendienteRevisionDocumental : EstadoPendienteCargaDocumentalRt, "Pago aprobado por Financiero y módulo RT habilitado.");
-                    RegistrarHistorial(ctx, usuarioFinanciero, "MODULO_SOLICITUD_RT_HABILITADO", null, null, "Módulo de Solicitud AOCR habilitado para el RT.");
-                    if (!tieneDocumentos)
-                    {
-                        RegistrarHistorial(ctx, usuarioFinanciero, "SOLICITUD_PENDIENTE_CARGA_DOCUMENTAL_RT", ctx.EstadoSolicitud, EstadoPendienteCargaDocumentalRt, "Pendiente de carga documental por parte del RT.");
+                        tx.Commit();
                     }
                 }
             }
@@ -84,6 +84,61 @@ namespace CapaNegocio.Services
             {
                 _logger.LogError(ex);
             }
+        }
+
+        public bool EjecutarHabilitacionPostAprobacionEnTransaccion(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int ordenId,
+            int codigoSolicitud,
+            string usuarioFinanciero,
+            int usuarioFinancieroId,
+            bool encolarCorreoRt,
+            out string error)
+        {
+            error = null;
+            if (cn == null || tx == null || ordenId <= 0 || codigoSolicitud <= 0)
+            {
+                error = "Parámetros inválidos para habilitar Solicitud AOCR.";
+                return false;
+            }
+
+            EnsureSolicitudControlColumns(cn);
+
+            var ctx = ObtenerContextoPagoAprobado(cn, tx, ordenId, codigoSolicitud);
+            if (ctx == null)
+            {
+                error = "No se encontró la solicitud AOCR asociada a la orden.";
+                return false;
+            }
+
+            if (EsOrdenNoNotificable(ctx.EstadoOrden) && !EstadoOrden.EsOrdenCerradaPostAprobacionFinanciera(ctx.EstadoOrden))
+            {
+                error = "La orden no puede habilitar Solicitud AOCR en su estado actual.";
+                return false;
+            }
+
+            var tieneDocumentos = TieneDocumentosHabilitantes(cn, tx, ctx.CodigoSolicitud);
+            MarcarSolicitudPagoAprobado(cn, tx, ctx, tieneDocumentos, usuarioFinanciero);
+
+            if (encolarCorreoRt && !ctx.NotificadoRtModuloHabilitado)
+            {
+                NotificarRtModuloHabilitado(cn, tx, ctx, usuarioFinanciero, usuarioFinancieroId);
+            }
+
+            if (!ctx.TieneInspectorAsignado && !ctx.NotificadoCoordinadorPagoAprobado)
+            {
+                NotificarCoordinadoresAsignacionPendiente(cn, tx, ctx, usuarioFinanciero);
+            }
+
+            RegistrarHistorial(ctx, usuarioFinanciero, "PAGO_APROBADO_FINANCIERO", ctx.EstadoSolicitud, EstadoSolicitudAocrHabilitada, "Pago aprobado por Financiero. Solicitud AOCR habilitada para el RT.");
+            RegistrarHistorial(ctx, usuarioFinanciero, "MODULO_SOLICITUD_RT_HABILITADO", null, EstadoSolicitudAocrHabilitada, "Módulo de Solicitud AOCR habilitado para el RT.");
+            if (!tieneDocumentos)
+            {
+                RegistrarHistorial(ctx, usuarioFinanciero, "SOLICITUD_PENDIENTE_CARGA_DOCUMENTAL_RT", ctx.EstadoSolicitud, EstadoPendienteCargaDocumentalRt, "Pendiente de carga documental por parte del RT.");
+            }
+
+            return true;
         }
 
         public bool PuedeRtAccederModuloSolicitud(int codigoSolicitud, int codigoUsuarioRt, out string mensaje)
@@ -295,12 +350,20 @@ namespace CapaNegocio.Services
 
         private PagoAprobadoContext ObtenerContextoPagoAprobado(NpgsqlConnection cn, int ordenId)
         {
+            return ObtenerContextoPagoAprobado(cn, null, ordenId, null);
+        }
+
+        private PagoAprobadoContext ObtenerContextoPagoAprobado(NpgsqlConnection cn, NpgsqlTransaction tx, int ordenId, int? codigoSolicitudForzado)
+        {
             var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
             var selectCodigoTecnico = SelectSolicitudColumn(columnasSolicitud, "codigo_tecnico", "codigo_tecnico", "integer");
             var exprCodigoTecnico = columnasSolicitud.Contains("codigo_tecnico")
                 ? "COALESCE(s.codigo_tecnico, 0)"
                 : "0";
             var exprCorreoRt = ConstruirExpresionCorreoRt(columnasSolicitud, "s", "o");
+            var filtroSolicitud = codigoSolicitudForzado.HasValue && codigoSolicitudForzado.Value > 0
+                ? " AND s.codigo_solicitud = @codigo_solicitud_forzado"
+                : string.Empty;
 
             var sql = @"
                 SELECT
@@ -308,6 +371,7 @@ namespace CapaNegocio.Services
                     o.numero_orden,
                     o.estado AS estado_orden,
                     o.codigo_solicitud,
+                    o.total AS total_orden,
                     s.numero_solicitud,
                     s.estado AS estado_solicitud,
                     s.codigo_usuario,
@@ -332,9 +396,16 @@ namespace CapaNegocio.Services
                 FROM aocr_or_orden o
                 INNER JOIN aocr_tbsolicitud s ON s.codigo_solicitud::text = o.codigo_solicitud::text
                 WHERE o.id = @orden_id
-                  AND s.deleted_at IS NULL
+                  AND s.deleted_at IS NULL" + filtroSolicitud + @"
                 LIMIT 1";
-            return LeerContexto(cn, sql, cmd => cmd.Parameters.AddWithValue("@orden_id", ordenId));
+            return LeerContexto(cn, tx, sql, cmd =>
+            {
+                cmd.Parameters.AddWithValue("@orden_id", ordenId);
+                if (codigoSolicitudForzado.HasValue && codigoSolicitudForzado.Value > 0)
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud_forzado", codigoSolicitudForzado.Value);
+                }
+            });
         }
 
         private PagoAprobadoContext ObtenerContextoPorSolicitud(NpgsqlConnection cn, int codigoSolicitud)
@@ -382,9 +453,9 @@ namespace CapaNegocio.Services
             return LeerContexto(cn, sql, cmd => cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud));
         }
 
-        private static PagoAprobadoContext LeerContexto(NpgsqlConnection cn, string sql, Action<NpgsqlCommand> parametros)
+        private static PagoAprobadoContext LeerContexto(NpgsqlConnection cn, NpgsqlTransaction tx, string sql, Action<NpgsqlCommand> parametros)
         {
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
             {
                 parametros(cmd);
                 using (var rd = cmd.ExecuteReader())
@@ -410,11 +481,17 @@ namespace CapaNegocio.Services
                         NombreOperadora = GetString(rd, "nombre_operadora"),
                         RucOperadora = GetString(rd, "ruc_operadora"),
                         CorreoRt = GetString(rd, "correo_rt"),
-                        NombreRt = GetString(rd, "nombre_rt")
+                        NombreRt = GetString(rd, "nombre_rt"),
+                        TotalOrden = TryGetDecimal(rd, "total_orden")
                     };
                     return ctx;
                 }
             }
+        }
+
+        private static PagoAprobadoContext LeerContexto(NpgsqlConnection cn, string sql, Action<NpgsqlCommand> parametros)
+        {
+            return LeerContexto(cn, null, sql, parametros);
         }
 
         private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)
@@ -507,6 +584,11 @@ namespace CapaNegocio.Services
 
         private static bool TieneDocumentosHabilitantes(NpgsqlConnection cn, int codigoSolicitud)
         {
+            return TieneDocumentosHabilitantes(cn, null, codigoSolicitud);
+        }
+
+        private static bool TieneDocumentosHabilitantes(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud)
+        {
             const string sql = @"
                 SELECT COUNT(1)
                 FROM aocr_tbdocumento
@@ -515,7 +597,7 @@ namespace CapaNegocio.Services
                   AND NULLIF(TRIM(COALESCE(nombre_archivo, '')), '') IS NOT NULL
                   AND NULLIF(TRIM(COALESCE(ruta_guardada, '')), '') IS NOT NULL
                   AND UPPER(TRIM(COALESCE(tipo_documento, ''))) NOT IN ('BORRADOR_AOCR', 'AOCR_GENERADO', 'AOCR')";
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
             {
                 cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
                 return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
@@ -536,15 +618,27 @@ namespace CapaNegocio.Services
 
         private static void MarcarSolicitudPagoAprobado(NpgsqlConnection cn, PagoAprobadoContext ctx, bool tieneDocumentos, string usuario)
         {
+            MarcarSolicitudPagoAprobado(cn, null, ctx, tieneDocumentos, usuario);
+        }
+
+        private static void MarcarSolicitudPagoAprobado(NpgsqlConnection cn, NpgsqlTransaction tx, PagoAprobadoContext ctx, bool tieneDocumentos, string usuario)
+        {
             const string sql = @"
                 UPDATE aocr_tbsolicitud
                 SET estado = CASE
                                 WHEN UPPER(COALESCE(estado, '')) IN (
                                     '',
+                                    'PENDIENTE',
                                     'PENDIENTE_CARGA_DOCUMENTAL_RT',
                                     'EN_REVISION_DOCUMENTAL',
-                                    'PENDIENTE_REVISION_DOCUMENTAL'
-                                ) THEN @estado
+                                    'PENDIENTE_REVISION_DOCUMENTAL',
+                                    'PAGO_PENDIENTE',
+                                    'PAGO_VALIDADO',
+                                    'SOLICITUD_CREADA',
+                                    'DOCUMENTACION_PENDIENTE'
+                                ) THEN @estado_habilitada
+                                WHEN UPPER(COALESCE(estado, '')) IN ('PENDIENTE_CARGA_DOCUMENTAL_RT')
+                                     AND @tiene_documentos = TRUE THEN @estado_revision
                                 ELSE estado
                              END,
                     pago_aprobado = TRUE,
@@ -559,9 +653,11 @@ namespace CapaNegocio.Services
                     updated_by = @usuario
                 WHERE codigo_solicitud = @codigo_solicitud
                   AND deleted_at IS NULL";
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
             {
-                cmd.Parameters.AddWithValue("@estado", tieneDocumentos ? EstadoPendienteRevisionDocumental : EstadoPendienteCargaDocumentalRt);
+                cmd.Parameters.AddWithValue("@estado_habilitada", EstadoSolicitudAocrHabilitada);
+                cmd.Parameters.AddWithValue("@estado_revision", EstadoPendienteRevisionDocumental);
+                cmd.Parameters.AddWithValue("@tiene_documentos", tieneDocumentos);
                 cmd.Parameters.AddWithValue("@pendiente_asignacion", !ctx.TieneInspectorAsignado);
                 cmd.Parameters.AddWithValue("@pendiente_documentos", !tieneDocumentos);
                 cmd.Parameters.AddWithValue("@usuario", (object)(usuario ?? "FINANCIERO") ?? DBNull.Value);
@@ -572,22 +668,54 @@ namespace CapaNegocio.Services
 
         private void NotificarRtModuloHabilitado(PagoAprobadoContext ctx, string usuarioFinanciero)
         {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    NotificarRtModuloHabilitado(cn, tx, ctx, usuarioFinanciero, 0);
+                    tx.Commit();
+                }
+            }
+        }
+
+        private void NotificarRtModuloHabilitado(NpgsqlConnection cn, NpgsqlTransaction tx, PagoAprobadoContext ctx, string usuarioFinanciero, int usuarioFinancieroId)
+        {
+            var mensajeInApp = "El pago fue aprobado por Financiero. La Solicitud AOCR se encuentra habilitada para continuar con la carga documental.";
             if (string.IsNullOrWhiteSpace(ctx.CorreoRt))
             {
-                NotificacionBL.EnviarNotificacion(ctx.CodigoUsuarioRt, "Solicitud AOCR habilitada", "El pago fue aprobado. Ya puede completar la Solicitud AOCR y cargar documentos habilitantes.", "PAGO_APROBADO", "/SolicitudAOCR/Index", "SolicitudAOCR", ctx.CodigoSolicitud, "SolicitudAOCR");
+                NotificacionBL.EnviarNotificacion(ctx.CodigoUsuarioRt, "Solicitud AOCR habilitada", mensajeInApp, TipoCorreoSolicitudHabilitada, "/SolicitudAOCR/Index", "SolicitudAOCR", ctx.CodigoSolicitud, "SolicitudAOCR");
+                MarcarNotificacionRt(cn, tx, ctx.CodigoSolicitud);
                 return;
             }
 
-            var asunto = string.Format("Pago aprobado para Solicitud AOCR #{0} - ya puede continuar el proceso", NumeroSolicitud(ctx));
-            var cuerpo = ConstruirCorreoRt(ctx);
-            var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoRt, ctx.CodigoSolicitud, ctx.CorreoRt.Trim().ToUpperInvariant());
-            EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, ctx.CorreoRt, ctx.NombreRt, asunto, cuerpo, TipoCorreoRt, eventKey);
-            MarcarNotificacionRt(ctx.CodigoSolicitud);
-            NotificacionBL.EnviarNotificacion(ctx.CodigoUsuarioRt, "Solicitud AOCR habilitada", "El pago fue aprobado. Ya puede completar la Solicitud AOCR y cargar documentos habilitantes.", "PAGO_APROBADO", "/SolicitudAOCR/Index", "SolicitudAOCR", ctx.CodigoSolicitud, "SolicitudAOCR");
+            var asunto = "Sistema AOCR - Solicitud AOCR habilitada";
+            var cuerpo = ConstruirCorreoRt(ctx, usuarioFinanciero);
+            var eventKey = string.Format(
+                "{0}_{1}_{2}",
+                EventKeyPagoAprobadoSolicitudHabilitada,
+                ctx.OrdenId,
+                ctx.CodigoSolicitud);
+            EncolarCorreo(cn, tx, ctx.CodigoSolicitud, ctx.OrdenId, ctx.CorreoRt, ctx.NombreRt, asunto, cuerpo, TipoCorreoSolicitudHabilitada, eventKey);
+            MarcarNotificacionRt(cn, tx, ctx.CodigoSolicitud);
+            NotificacionBL.EnviarNotificacion(ctx.CodigoUsuarioRt, "Solicitud AOCR habilitada", mensajeInApp, TipoCorreoSolicitudHabilitada, "/SolicitudAOCR/Index", "SolicitudAOCR", ctx.CodigoSolicitud, "SolicitudAOCR");
             RegistrarHistorial(ctx, usuarioFinanciero, "NOTIFICACION_RT_MODULO_HABILITADO", null, null, "Notificación enviada/encolada al RT: " + ctx.CorreoRt);
         }
 
         private void NotificarCoordinadoresAsignacionPendiente(PagoAprobadoContext ctx, string usuarioFinanciero)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    NotificarCoordinadoresAsignacionPendiente(cn, tx, ctx, usuarioFinanciero);
+                    tx.Commit();
+                }
+            }
+        }
+
+        private void NotificarCoordinadoresAsignacionPendiente(NpgsqlConnection cn, NpgsqlTransaction tx, PagoAprobadoContext ctx, string usuarioFinanciero)
         {
             if (EstadoSolicitudNoNotificable(ctx.EstadoSolicitud))
             {
@@ -602,7 +730,7 @@ namespace CapaNegocio.Services
                 foreach (var correo in correoInstitucional.ObtenerTodosLosCorreos().Distinct(StringComparer.OrdinalIgnoreCase))
                 {
                     var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoCoordinador, ctx.CodigoSolicitud, correo.Trim().ToUpperInvariant());
-                    EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, correo, correoInstitucional.NombreArea, asunto, cuerpo, TipoCorreoCoordinador, eventKey);
+                    EncolarCorreo(cn, tx, ctx.CodigoSolicitud, ctx.OrdenId, correo, correoInstitucional.NombreArea, asunto, cuerpo, TipoCorreoCoordinador, eventKey);
                 }
             }
             else
@@ -623,7 +751,7 @@ namespace CapaNegocio.Services
                     var asunto = string.Format("Pago aprobado para Solicitud AOCR #{0} - pendiente asignación de inspector", NumeroSolicitud(ctx));
                     var cuerpo = ConstruirCorreoCoordinador(ctx, coordinador);
                     var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoCoordinador, ctx.CodigoSolicitud, coordinador.Email.Trim().ToUpperInvariant());
-                    EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, coordinador.Email, NombreUsuario(coordinador), asunto, cuerpo, TipoCorreoCoordinador, eventKey);
+                    EncolarCorreo(cn, tx, ctx.CodigoSolicitud, ctx.OrdenId, coordinador.Email, NombreUsuario(coordinador), asunto, cuerpo, TipoCorreoCoordinador, eventKey);
                 }
 
                 if (coordinador.Id > 0)
@@ -640,7 +768,7 @@ namespace CapaNegocio.Services
                 }
             }
 
-            MarcarNotificacionCoordinador(ctx.CodigoSolicitud);
+            MarcarNotificacionCoordinador(cn, tx, ctx.CodigoSolicitud);
             RegistrarHistorial(ctx, usuarioFinanciero, "NOTIFICACION_COORDINADOR_ASIGNACION_PENDIENTE", null, null, "Notificación enviada/encolada a coordinación para asignar inspector.");
         }
 
@@ -687,6 +815,39 @@ namespace CapaNegocio.Services
             }
         }
 
+        private void EncolarCorreo(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud, int ordenId, string para, string nombre, string asunto, string cuerpo, string tipo, string eventKey)
+        {
+            try
+            {
+                var queueService = new EmailQueueService(_connectionString);
+                var queueItem = new EmailQueueItem
+                {
+                    Para = para.Trim(),
+                    Asunto = asunto,
+                    Cuerpo = cuerpo,
+                    EsHtml = true,
+                    SolicitudId = codigoSolicitud,
+                    OrdenId = ordenId > 0 ? ordenId : (int?)null,
+                    EventKey = eventKey,
+                    TipoNotificacion = tipo,
+                    Estado = EstadoEmail.Pendiente,
+                    FechaCreacion = DateTime.UtcNow,
+                    MaxIntentos = 5
+                };
+
+                bool duplicateEvent;
+                queueService.EncolarConAdjuntosEnTransaccion(cn, tx, queueItem, null, out duplicateEvent);
+                if (duplicateEvent)
+                {
+                    _logger.LogInfo("AocrPostPagoWorkflowService.EncolarCorreo: correo omitido por duplicado. EventKey=" + eventKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex);
+            }
+        }
+
         private static List<Usuario> ObtenerCoordinadores()
         {
             var result = new Dictionary<int, Usuario>();
@@ -705,12 +866,47 @@ namespace CapaNegocio.Services
 
         private void MarcarNotificacionRt(int codigoSolicitud)
         {
-            EjecutarUpdateSolicitudNotificacion(codigoSolicitud, "notificado_rt_modulo_habilitado = TRUE, fecha_notificacion_rt_modulo_habilitado = COALESCE(fecha_notificacion_rt_modulo_habilitado, NOW())");
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    MarcarNotificacionRt(cn, tx, codigoSolicitud);
+                    tx.Commit();
+                }
+            }
+        }
+
+        private static void MarcarNotificacionRt(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud)
+        {
+            EjecutarUpdateSolicitudNotificacion(cn, tx, codigoSolicitud, "notificado_rt_modulo_habilitado = TRUE, fecha_notificacion_rt_modulo_habilitado = COALESCE(fecha_notificacion_rt_modulo_habilitado, NOW())");
         }
 
         private void MarcarNotificacionCoordinador(int codigoSolicitud)
         {
-            EjecutarUpdateSolicitudNotificacion(codigoSolicitud, "notificado_coordinador_pago_aprobado = TRUE, fecha_notificacion_coordinador_pago = COALESCE(fecha_notificacion_coordinador_pago, NOW())");
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    MarcarNotificacionCoordinador(cn, tx, codigoSolicitud);
+                    tx.Commit();
+                }
+            }
+        }
+
+        private static void MarcarNotificacionCoordinador(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud)
+        {
+            EjecutarUpdateSolicitudNotificacion(cn, tx, codigoSolicitud, "notificado_coordinador_pago_aprobado = TRUE, fecha_notificacion_coordinador_pago = COALESCE(fecha_notificacion_coordinador_pago, NOW())");
+        }
+
+        private static void EjecutarUpdateSolicitudNotificacion(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud, string setSql)
+        {
+            using (var cmd = new NpgsqlCommand("UPDATE aocr_tbsolicitud SET " + setSql + " WHERE codigo_solicitud = @codigo_solicitud", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private void EjecutarUpdateSolicitudNotificacion(int codigoSolicitud, string setSql)
@@ -773,20 +969,22 @@ namespace CapaNegocio.Services
                 "Ingrese al sistema AOCR y asigne el inspector responsable para continuar con el proceso.");
         }
 
-        private static string ConstruirCorreoRt(PagoAprobadoContext ctx)
+        private static string ConstruirCorreoRt(PagoAprobadoContext ctx, string usuarioFinanciero)
         {
             return PlantillaInstitucional(
                 "Estimado/a " + Html(ctx.NombreRt) + ",",
-                "Se informa que el área Financiera ha aprobado el pago correspondiente a la Orden de Recaudación de la Solicitud AOCR " + Html(NumeroSolicitud(ctx)) + ".",
+                "Se informa que el área Financiera ha aprobado el comprobante de depósito o transferencia correspondiente a la Orden de Recaudación " + Html(ctx.NumeroOrden) + ".",
                 new[]
                 {
-                    Pair("Número de solicitud", NumeroSolicitud(ctx)),
-                    Pair("Operadora / Compañía", ctx.NombreOperadora),
-                    Pair("Orden de Recaudación", ctx.NumeroOrden),
-                    Pair("Fecha de aprobación del pago", DateTime.Now.ToString("dd/MM/yyyy HH:mm")),
-                    Pair("Estado actual", "Módulo de Solicitud AOCR habilitado")
+                    Pair("Número de orden", ctx.NumeroOrden),
+                    Pair("Número de solicitud AOCR", NumeroSolicitud(ctx)),
+                    Pair("Compañía", ctx.NombreOperadora),
+                    Pair("RUC", ctx.RucOperadora),
+                    Pair("Fecha de aprobación", DateTime.Now.ToString("dd/MM/yyyy HH:mm")),
+                    Pair("Valor aprobado", ctx.TotalOrden > 0m ? ctx.TotalOrden.ToString("C2", new System.Globalization.CultureInfo("es-EC")) : "N/D"),
+                    Pair("Aprobado por", string.IsNullOrWhiteSpace(usuarioFinanciero) ? "Financiero AOCR" : usuarioFinanciero)
                 },
-                "Ingrese al sistema AOCR, complete la solicitud y cargue los documentos habilitantes correspondientes para continuar con el proceso.");
+                "A partir de este momento, se encuentra habilitada la Solicitud AOCR para la compañía " + Html(ctx.NombreOperadora) + ". Debe ingresar al Sistema AOCR para continuar con el proceso y cargar la documentación correspondiente. La Orden de Recaudación aprobada quedará cerrada para este proceso y no podrá ser modificada ni reutilizada mientras el trámite AOCR se encuentre activo.");
         }
 
         private static string PlantillaInstitucional(string saludo, string mensaje, IEnumerable<KeyValuePair<string, string>> datos, string accion)
@@ -869,6 +1067,19 @@ namespace CapaNegocio.Services
             return value != DBNull.Value && Convert.ToBoolean(value);
         }
 
+        private static decimal TryGetDecimal(System.Data.IDataRecord rd, string name)
+        {
+            try
+            {
+                var value = rd[name];
+                return value == null || value == DBNull.Value ? 0m : Convert.ToDecimal(value);
+            }
+            catch
+            {
+                return 0m;
+            }
+        }
+
         private static bool EsFlujoPostAsignacionCoordinador(string estadoSolicitud, bool inspector)
         {
             if (string.IsNullOrWhiteSpace(estadoSolicitud))
@@ -909,6 +1120,7 @@ namespace CapaNegocio.Services
             public string RucOperadora { get; set; }
             public string CorreoRt { get; set; }
             public string NombreRt { get; set; }
+            public decimal TotalOrden { get; set; }
         }
     }
 }

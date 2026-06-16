@@ -185,6 +185,7 @@ namespace CapaNegocio.Services
         private readonly InspeccionInformeDAO _informeDao = new InspeccionInformeDAO();
         private readonly RevisionDocumentalService _revisionDocumentalService = new RevisionDocumentalService();
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
+        private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
 
         public bool TieneAccesoModulo(string modulo, AocrAuthorizationContext usuario)
         {
@@ -295,8 +296,53 @@ namespace CapaNegocio.Services
                 return false;
             }
 
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null)
+            {
+                return false;
+            }
+
             var inspecciones = _inspeccionDao.ListarPorSolicitud(codigoSolicitud) ?? new List<Inspeccion>();
-            var inspectorIds = ResolverIdsInspector(codigoUsuario, codigoUsuario.ToString(CultureInfo.InvariantCulture));
+            var login = codigoUsuario.ToString(CultureInfo.InvariantCulture);
+            var codigoUsuarioInstitucional = login;
+
+            try
+            {
+                var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
+                if (usuario != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(usuario.NombreUsuario))
+                    {
+                        login = usuario.NombreUsuario.Trim();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(usuario.CodigoUsuario))
+                    {
+                        codigoUsuarioInstitucional = usuario.CodigoUsuario.Trim();
+                    }
+                }
+            }
+            catch
+            {
+                // Mantener fallback por id de usuario.
+            }
+
+            var identidad = _inspectorIdentityService.ObtenerIdentidadInspector(
+                codigoUsuario,
+                login,
+                codigoUsuarioInstitucional);
+            var evaluacion = _inspectorIdentityService.EvaluarInspectorAsignado(
+                codigoSolicitud,
+                solicitud,
+                inspecciones,
+                identidad);
+
+            if (evaluacion != null && evaluacion.EsInspectorAsignado)
+            {
+                return true;
+            }
+
+            var inspectorIds = ResolverIdsInspector(codigoUsuario, login);
             return inspecciones.Any(i => i != null && i.CodigoInspector.HasValue && inspectorIds.Contains(i.CodigoInspector.Value));
         }
 

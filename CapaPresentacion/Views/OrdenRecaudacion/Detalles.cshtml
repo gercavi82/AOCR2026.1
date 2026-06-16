@@ -4,6 +4,7 @@
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using CapaPresentacion.Helpers
+@using CapaNegocio.Helpers
 @using System.Globalization
 
 @{
@@ -13,7 +14,8 @@
     var modeloIncompleto = Model == null || Model.Orden == null;
     var orden = Model != null && Model.Orden != null ? Model.Orden : new CapaDatos.Models.OrdenRecaudacionModel();
     var estado = EstadoOrden.NormalizarEstado(orden.Estado);
-    var puedeEditar = estado == EstadoOrden.Borrador &&
+    var ordenCerradaPostAprobacion = OrdenRecaudacionOperativaHelper.EsOrdenCerradaPostAprobacionFinanciera(estado);
+    var puedeEditar = OrdenRecaudacionOperativaHelper.PermiteEditarOrden(estado) &&
         (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")));
     var solicitudInspeccionPanel = Model != null ? Model.SolicitudInspeccionPanel : null;
     var bloquearEdicionPorSolicitudInspeccion = solicitudInspeccionPanel != null &&
@@ -24,8 +26,8 @@
     int solicitudId = 0;
     int.TryParse(orden.CodigoSolicitud ?? "", out solicitudId);
     var tieneSolicitudValida = solicitudId > 0;
-    var puedeSubirComprobante = (estado == EstadoOrden.Pendiente || estado == EstadoOrden.Generada || estado == EstadoOrden.Devuelta) && tieneSolicitudValida;
-    var puedeAnular = estado != EstadoOrden.Anulada && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
+    var puedeSubirComprobante = OrdenRecaudacionOperativaHelper.PermiteSubirComprobante(estado) && tieneSolicitudValida;
+    var puedeAnular = OrdenRecaudacionOperativaHelper.PermiteAnularOrden(estado);
     var esDevuelta = estado == EstadoOrden.Devuelta;
     var motivoDevolucion = esDevuelta ? (orden.Observacion ?? string.Empty).Trim() : string.Empty;
 
@@ -49,7 +51,7 @@
     var saldoPendiente = orden.Total - totalPagado;
     var tieneSaldoPendiente = saldoPendiente > 0 && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
-    var facturaGenerada = estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
+    var facturaGenerada = ordenCerradaPostAprobacion || estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
     var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
     var requiereSolicitudInspeccion = solicitudInspeccionPanel != null && solicitudInspeccionPanel.TieneInspeccionExt;
     var bloquearGeneracionPorSolicitudInspeccion = requiereSolicitudInspeccion && !solicitudInspeccionPanel.PuedeContinuarConOrden;
@@ -63,6 +65,12 @@
             {
                 <div class="alert alert-warning m-3 mb-0">
                     Se detectó información parcial de la orden. Se muestran datos mínimos para evitar errores de carga.
+                </div>
+            }
+            @if (ordenCerradaPostAprobacion)
+            {
+                <div class="alert alert-success m-3 mb-0">
+                    <i class="fas fa-circle-check me-2"></i>@OrdenRecaudacionOperativaHelper.MensajeOrdenCerradaPostAprobacion
                 </div>
             }
             <div class="card-header bg-dark text-white">

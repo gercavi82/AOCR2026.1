@@ -43,7 +43,19 @@
         </h3>
     </div>
 
-            @using (Html.BeginForm("Nueva", "OrdenRecaudacion", FormMethod.Post, new { id = "formOrden", @class = "form-horizontal", autocomplete = "off" }))
+            @{
+                var companiaActivaNombre = ViewBag.CompaniaActivaNombre as string ?? (Model != null ? Model.Orden?.Compania : string.Empty);
+                var companiaActivaCodigo = ViewBag.CompaniaActivaCodigo as string ?? (Model != null ? Model.CompaniaActivaCodigo : string.Empty);
+                var companiaActivaAlerta = ViewBag.CompaniaActivaAlerta as string;
+            }
+
+            @using (Html.BeginForm("Nueva", "OrdenRecaudacion", FormMethod.Post, new {
+                id = "formOrden",
+                @class = "form-horizontal",
+                autocomplete = "off",
+                data_compania_codigo = companiaActivaCodigo,
+                data_compania_nombre = companiaActivaNombre
+            }))
             {
                 @Html.AntiForgeryToken()
 
@@ -62,6 +74,15 @@
                     }
 
                     @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+                    @if (!string.IsNullOrWhiteSpace(companiaActivaAlerta))
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-building me-2"></i>@companiaActivaAlerta
+                        </div>
+                    }
+
+                    @Html.HiddenFor(m => m.CompaniaActivaCodigo)
 
                     <!-- Información básica -->
                     <div class="row mb-4">
@@ -96,13 +117,20 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Compañía</label>
+                                <label class="form-label">Compañía activa</label>
                                 @Html.HiddenFor(m => m.Orden.Compania)
                                 @Html.HiddenFor(m => m.Orden.NombreContribuyente, new { id = "Orden_NombreContribuyente" })
-                                <div id="Orden_Compania_Texto" class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene automáticamente y no es editable.">
-                                    @(Model != null && Model.Orden != null ? (Model.Orden.Compania ?? string.Empty) : string.Empty)
+                                <div id="Orden_Compania_Texto" class="form-control bg-light" aria-readonly="true" title="Compañía activa seleccionada en el sistema.">
+                                    @if (!string.IsNullOrWhiteSpace(companiaActivaCodigo))
+                                    {
+                                        @:[@companiaActivaCodigo] @companiaActivaNombre
+                                    }
+                                    else
+                                    {
+                                        @(Model != null && Model.Orden != null ? (Model.Orden.Compania ?? string.Empty) : string.Empty)
+                                    }
                                 </div>
-                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
+                                <small class="text-muted">Valor tomado exclusivamente de la compañía activa del RT. Si necesita cambiarla, use el selector del menú lateral.</small>
                             </div>
                         </div>
 
@@ -543,17 +571,26 @@
             }
 
             function actualizarCamposOcultos() {
-                // SOLO enviar lo mínimo; el servidor recalcula (seguridad)
+                // SOLO enviar lo mínimo; el servidor recalcula compañía desde sesión (seguridad).
                 var payload = detalles.map(function (d) {
                     return { ConceptoId: d.ConceptoId, Cantidad: d.Cantidad };
                 });
                 $('#DetallesJson').val(JSON.stringify(payload));
 
-                // Mantener sincronizados campos requeridos del ViewModel.
+                var $form = $('#formOrden');
+                var codigoCompania = ($form.data('compania-codigo') || $('#CompaniaActivaCodigo').val() || '').toString().trim();
+                var nombreCompania = ($form.data('compania-nombre') || $('#Orden_Compania').val() || '').toString().trim();
                 var ruc = limpiarSoloDigitos($('#Orden_RucCedula').val(), 13);
-                var compania = ($('#Orden_Compania').val() || '').trim();
+
+                if (codigoCompania) {
+                    $('#CompaniaActivaCodigo').val(codigoCompania);
+                }
+                if (nombreCompania) {
+                    $('#Orden_Compania').val(nombreCompania);
+                    $('#Orden_NombreContribuyente').val(nombreCompania);
+                }
+
                 $('#RucCedulaGeneral').val(ruc);
-                $('#Orden_NombreContribuyente').val(compania);
             }
 
             function restaurarBotonGenerarSolicitudInspeccion() {

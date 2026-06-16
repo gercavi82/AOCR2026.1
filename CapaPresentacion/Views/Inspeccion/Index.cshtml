@@ -489,11 +489,18 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Acciones rapidas de inspeccion">
+                                    @if (esBandejaInspector && faseDocumentalPendiente)
+                                    {
+                                        <a href="@urlRevisionDocumental"
+                                           class="btn btn-success" title="Revisar documentación (modo decisión)">
+                                            <i class="fa fa-clipboard-check"></i>
+                                        </a>
+                                    }
                                     <a href="@urlVerDocumentacion"
-                                       class="btn btn-outline-secondary" title="Ver documentación cargada">
+                                       class="btn btn-outline-secondary" title="Ver documentación cargada (solo lectura)">
                                         <i class="fa fa-folder-open"></i>
                                     </a>
-                                    @if (esBandejaInspector && faseDocumentalPendiente)
+                                    @if (esBandejaInspector && !faseDocumentalPendiente)
                                     {
                                         <a href="@urlRevisionDocumental"
                                            class="btn btn-outline-success" title="Revisar documentación (modo decisión)">

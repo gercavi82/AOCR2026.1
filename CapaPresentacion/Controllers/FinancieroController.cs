@@ -24,15 +24,16 @@ namespace CapaPresentacion.Controllers
     public class FinancieroController : Controller
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
+        private readonly FinancieroAprobacionPagoOrchestrator _aprobacionOrchestrator = new FinancieroAprobacionPagoOrchestrator();
 
         [RequirePermission("FIN_VER_PAGOS")]
-        public ActionResult Dashboard(string estado = "TODAS")
+        public ActionResult Dashboard(string estado = FinancialOrderStateHelper.PendientesFinanciero)
         {
             return ConstruirDashboardFinanciero(estado);
         }
 
         [RequirePermission("FIN_VER_PAGOS")]
-        public ActionResult Index(string estado = "TODAS")
+        public ActionResult Index(string estado = FinancialOrderStateHelper.PendientesFinanciero)
         {
             return ConstruirDashboardFinanciero(estado);
         }
@@ -41,7 +42,11 @@ namespace CapaPresentacion.Controllers
         {
             var estadoFiltro = NormalizarFiltroDashboard(estado);
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
-            var contextos = ConstruirContextosFinancieros(ordenesEnt);
+            var contextos = ConstruirContextosFinancieros(ordenesEnt)
+                .Where(c => !FinancialOrderStateHelper.DebeOcultarDeBandejaFinanciera(
+                    c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
+                    c.TieneComprobanteValido))
+                .ToList();
             var contextosFiltrados = contextos;
 
             if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
@@ -51,6 +56,7 @@ namespace CapaPresentacion.Controllers
                         c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
                         c.PagoEntidad != null ? c.PagoEntidad.Estado : null,
                         c.TieneFacturaRegistrada,
+                        c.TieneComprobanteValido,
                         estadoFiltro))
                     .ToList();
             }
@@ -80,7 +86,9 @@ namespace CapaPresentacion.Controllers
                     Fr3Estado = fr3Estado,
                     Fr3Numero = fr3Numero,
                     Fr3Error = fr3Error,
-                    PuedeReintentarFr3 = puedeReintentarFr3
+                    PuedeReintentarFr3 = puedeReintentarFr3,
+                    TieneComprobanteValido = contexto.TieneComprobanteValido,
+                    PuedeGestionarPago = contexto.PuedeGestionarPago
                 });
             }
 
@@ -115,27 +123,28 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
+                var resultado = _aprobacionOrchestrator.AprobarPagoCompleto(id, null, user, ObtenerUsuarioIdActual());
+                if (!resultado.Exito)
                 {
-                    CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
-                    TempData["Error"] = "Error al aprobar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                    CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", resultado.Error ?? "n/a", "FinancieroController");
+                    TempData["Error"] = "Error al aprobar la orden. " + (string.IsNullOrWhiteSpace(resultado.Error) ? "" : ("Detalle: " + resultado.Error));
                     return RedirectToAction("Index");
                 }
 
-                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(id, user);
-
                 try
                 {
-                    // Generar PDF directamente desde la orden
-                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
-                    new EmailServiceData().EnviarFacturaGenerada(orden, pdf);
+                    var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(id) ?? orden;
+                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
+                    new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
                 }
                 catch (System.Exception exPdf)
                 {
                     CapaNegocio.LogBL.RegistrarError($"Error generando/mandando factura Orden={orden.NumeroOrden}", exPdf.ToString(), "FinancieroController");
                 }
 
-                TempData["Success"] = "Orden aprobada y factura generada.";
+                TempData["Success"] = resultado.Idempotente
+                    ? "La orden ya estaba aprobada. Solicitud AOCR habilitada para el RT."
+                    : "Pago aprobado. Solicitud AOCR habilitada y orden cerrada para el RT.";
             }
             catch (System.Exception ex)
             {
@@ -172,15 +181,13 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                // Actualizar pago y estado en transacciÃ³n
-                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, pagoId, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
+                var resultado = _aprobacionOrchestrator.AprobarPagoCompleto(id, pagoId, user, ObtenerUsuarioIdActual());
+                if (!resultado.Exito)
                 {
-                    CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", err ?? "n/a", "FinancieroController");
-                    TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                    CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", resultado.Error ?? "n/a", "FinancieroController");
+                    TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(resultado.Error) ? "" : ("Detalle: " + resultado.Error));
                     return RedirectToAction("Index");
                 }
-
-                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(id, user);
 
                 try
                 {
@@ -193,7 +200,9 @@ namespace CapaPresentacion.Controllers
                     CapaNegocio.LogBL.RegistrarError($"Error generando/mandando factura al aprobar pago OrdenId={id}", exPdf.ToString(), "FinancieroController");
                 }
 
-                TempData["Success"] = "Pago aprobado y orden facturada.";
+                TempData["Success"] = resultado.Idempotente
+                    ? "El pago ya estaba aprobado. Solicitud AOCR habilitada para el RT."
+                    : "Pago aprobado. Solicitud AOCR habilitada y orden cerrada para el RT.";
             }
             catch (System.Exception ex)
             {
@@ -358,7 +367,28 @@ namespace CapaPresentacion.Controllers
                     ? "La orden ya estaba aprobada con factura. No se duplicaron registros."
                     : "Pago aprobado y factura registrada correctamente.";
 
-                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(model.OrdenId, usuario);
+                if (!idempotente)
+                {
+                    var resultado = _aprobacionOrchestrator.AprobarPagoCompleto(model.OrdenId, model.PagoId, usuario, ObtenerUsuarioIdActual());
+                    if (!resultado.Exito)
+                    {
+                        CapaNegocio.LogBL.RegistrarError(
+                            string.Format("Error habilitando solicitud tras factura. OrdenId={0}", model.OrdenId),
+                            resultado.Error ?? "n/a",
+                            "FinancieroController");
+                        return JsonErrorLogged(resultado.Error ?? "No se pudo habilitar la Solicitud AOCR para el RT.");
+                    }
+                }
+                else
+                {
+                    var resultadoSync = _aprobacionOrchestrator.AprobarPagoCompleto(model.OrdenId, model.PagoId, usuario, ObtenerUsuarioIdActual());
+                    if (!resultadoSync.Exito)
+                    {
+                        CapaNegocio.LogBL.RegistrarAdvertencia(
+                            string.Format("Sincronización post-factura idempotente omitida. OrdenId={0}, Detalle={1}", model.OrdenId, resultadoSync.Error ?? "n/a"),
+                            "FinancieroController");
+                    }
+                }
 
                 string advertenciaAs400 = null;
                 if (!idempotente && FacturacionAS400Service.IsEnabled())
@@ -467,50 +497,28 @@ namespace CapaPresentacion.Controllers
 
                 if (permiteAprobar)
                 {
-                    string errAprobacion;
-                    var aprobado = _ordenDAO.ActualizarPagoYEstadoTransaccional(
-                        ordenId, pagoId, "VALIDADO", usuario, "Aprobado por Finanzas", "FACTURADA", out errAprobacion);
-
-                    if (!aprobado)
+                    var resultado = _aprobacionOrchestrator.AprobarPagoCompleto(ordenId, pagoId, usuario, ObtenerUsuarioIdActual());
+                    if (!resultado.Exito)
                     {
-                        var ordenRevalidada = _ordenDAO.ObtenerOrdenPorId(ordenId);
-                        var estadoRevalidado = ((ordenRevalidada != null ? ordenRevalidada.Estado : null) ?? string.Empty)
-                            .Trim();
-                        var estadoRevalidadoNormalizado = EstadoOrden.NormalizarEstado(estadoRevalidado);
-                        if (estadoRevalidadoNormalizado == EstadoOrden.Facturada ||
-                            estadoRevalidadoNormalizado == EstadoOrden.Completada ||
-                            estadoRevalidadoNormalizado == EstadoOrden.Pagada)
-                        {
-                            aprobacionIdempotente = true;
-                            orden = ordenRevalidada ?? orden;
-                            CapaNegocio.LogBL.RegistrarInfo(
-                                string.Format("AprobarYEnviarAS400 idempotente por carrera. OrdenId={0}, Estado={1}", ordenId, estadoRevalidadoNormalizado),
-                                "FinancieroController");
-                        }
-                        else
-                        {
-                            LogAprobarYEnviarAs400Request("ERROR_APROBACION", ordenId.ToString(CultureInfo.InvariantCulture), errAprobacion);
-                            return JsonErrorLogged("Error al aprobar la orden. " + (errAprobacion ?? ""));
-                        }
+                        LogAprobarYEnviarAs400Request("ERROR_APROBACION", ordenId.ToString(CultureInfo.InvariantCulture), resultado.Error);
+                        return JsonErrorLogged("Error al aprobar la orden. " + (resultado.Error ?? ""));
                     }
-                    else
-                    {
-                        new AocrPostPagoWorkflowService().ProcesarPagoAprobado(ordenId, usuario);
 
-                        try
-                        {
-                            var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
-                            var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
-                            new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
-                            orden = ordenActualizada;
-                        }
-                        catch (Exception exPdf)
-                        {
-                            CapaNegocio.LogBL.RegistrarError(
-                                string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
-                                exPdf.ToString(),
-                                "FinancieroController");
-                        }
+                    aprobacionIdempotente = resultado.Idempotente;
+
+                    try
+                    {
+                        var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
+                        var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
+                        new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
+                        orden = ordenActualizada;
+                    }
+                    catch (Exception exPdf)
+                    {
+                        CapaNegocio.LogBL.RegistrarError(
+                            string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
+                            exPdf.ToString(),
+                            "FinancieroController");
                     }
                 }
                 else
@@ -557,11 +565,20 @@ namespace CapaPresentacion.Controllers
 
                         LogAprobarYEnviarAs400Request("FR3_ERROR", ordenId.ToString(CultureInfo.InvariantCulture), advertenciaAs400);
 
-                        return JsonErrorLogged(
-                            string.IsNullOrWhiteSpace(advertenciaAs400)
+                        var mensajeAs400Fallido = aprobacionIdempotente
+                            ? "La orden ya estaba aprobada, pero ocurrió un inconveniente al enviar la información al AS400. Puede reintentar el envío desde la bandeja financiera."
+                            : "El pago fue aprobado, pero ocurrió un inconveniente al enviar la información al AS400. Puede reintentar el envío desde la bandeja financiera.";
+
+                        return Json(new
+                        {
+                            ok = true,
+                            message = mensajeAs400Fallido,
+                            idempotent = aprobacionIdempotente,
+                            warning = string.IsNullOrWhiteSpace(advertenciaAs400)
                                 ? "No se pudo generar FR3 en AS400."
                                 : advertenciaAs400,
-                            500);
+                            as400Error = true
+                        });
                     }
                 }
                 else
@@ -570,8 +587,8 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var mensaje = aprobacionIdempotente
-                    ? "La orden ya estaba aprobada. Se verifico el envio AS400."
-                    : "Orden aprobada y enviada a AS400 correctamente.";
+                    ? "La orden ya estaba aprobada. Se verificó el envío AS400."
+                    : "Pago aprobado y enviado correctamente al AS400.";
                 return Json(new
                 {
                     ok = true,
@@ -653,11 +670,16 @@ namespace CapaPresentacion.Controllers
             if (orden == null) return HttpNotFound();
 
             var estado = CapaDatos.Constants.EstadoOrden.NormalizarEstado(orden.Estado);
-            if (estado != CapaDatos.Constants.EstadoOrden.EnRevisionFinanciera &&
-                estado != CapaDatos.Constants.EstadoOrden.Pendiente &&
-                estado != CapaDatos.Constants.EstadoOrden.Enviada)
+            if (estado != CapaDatos.Constants.EstadoOrden.EnRevisionFinanciera)
             {
-                TempData["Error"] = "Solo se pueden devolver órdenes en revisión financiera.";
+                TempData["Error"] = "Solo se pueden devolver órdenes con comprobante cargado y pago pendiente de revisión.";
+                return RedirectToAction("Index");
+            }
+
+            var comprobanteService = new ComprobanteService();
+            if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
+            {
+                TempData["Error"] = mensajeComprobante;
                 return RedirectToAction("Index");
             }
 
@@ -806,7 +828,11 @@ namespace CapaPresentacion.Controllers
         {
             var estadoFiltro = NormalizarFiltroDashboard(estado);
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
-            var contextos = ConstruirContextosFinancieros(ordenesEnt);
+            var contextos = ConstruirContextosFinancieros(ordenesEnt)
+                .Where(c => !FinancialOrderStateHelper.DebeOcultarDeBandejaFinanciera(
+                    c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
+                    c.TieneComprobanteValido))
+                .ToList();
             var contextosFiltrados = contextos;
             if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
             {
@@ -815,6 +841,7 @@ namespace CapaPresentacion.Controllers
                         c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
                         c.PagoEntidad != null ? c.PagoEntidad.Estado : null,
                         c.TieneFacturaRegistrada,
+                        c.TieneComprobanteValido,
                         estadoFiltro))
                     .ToList();
             }
@@ -841,17 +868,17 @@ namespace CapaPresentacion.Controllers
 
         private static bool CoincideEstadoDashboard(string estadoOrden, string estadoFiltro)
         {
-            return CoincideEstadoDashboard(estadoOrden, null, false, estadoFiltro);
+            return CoincideEstadoDashboard(estadoOrden, null, false, false, estadoFiltro);
         }
 
-        private static bool CoincideEstadoDashboard(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, string estadoFiltro)
+        private static bool CoincideEstadoDashboard(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, bool tieneComprobanteValido, string estadoFiltro)
         {
-            return FinancialOrderStateHelper.CoincideFiltro(estadoOrden, estadoPago, tieneFacturaRegistrada, estadoFiltro);
+            return FinancialOrderStateHelper.CoincideFiltro(estadoOrden, estadoPago, tieneFacturaRegistrada, estadoFiltro, tieneComprobanteValido);
         }
 
-        private static bool EsPendienteGestionFinanciera(string estadoOrden)
+        private static bool EsPendienteGestionFinanciera(string estadoOrden, bool tieneComprobanteValido)
         {
-            return FinancialOrderStateHelper.EsPendienteGestion(estadoOrden, null, false);
+            return FinancialOrderStateHelper.EsPendienteGestion(estadoOrden, null, false, tieneComprobanteValido);
         }
 
         private sealed class OrdenFinancieraContext
@@ -862,11 +889,14 @@ namespace CapaPresentacion.Controllers
             public PagoModel Pago { get; set; }
             public FacturaPagoRegistroModel Factura { get; set; }
             public bool TieneFacturaRegistrada { get; set; }
+            public bool TieneComprobanteValido { get; set; }
+            public bool PuedeGestionarPago { get; set; }
             public string EstadoFinanciero { get; set; }
         }
 
         private List<OrdenFinancieraContext> ConstruirContextosFinancieros(IEnumerable<CapaDatos.Entidades.OrdenRecaudacion> ordenesEnt)
         {
+            var comprobanteService = new ComprobanteService();
             var contextos = new List<OrdenFinancieraContext>();
             foreach (var ordenEnt in ordenesEnt ?? Enumerable.Empty<CapaDatos.Entidades.OrdenRecaudacion>())
             {
@@ -881,6 +911,7 @@ namespace CapaPresentacion.Controllers
                     factura != null ? factura.NumeroFactura : null,
                     factura != null ? factura.Fr3Estado : null,
                     factura != null ? factura.Fr3Numero : null);
+                var tieneComprobanteValido = comprobanteService.ExisteComprobanteValido(ordenEnt.Id);
                 var estadoFinanciero = FinancialOrderStateHelper.ResolverEstadoOperativo(
                     ordenEnt.Estado,
                     pagoEnt != null ? pagoEnt.Estado : null,
@@ -899,6 +930,12 @@ namespace CapaPresentacion.Controllers
                     Pago = MapearPago(pagoEnt),
                     Factura = factura,
                     TieneFacturaRegistrada = tieneFacturaRegistrada,
+                    TieneComprobanteValido = tieneComprobanteValido,
+                    PuedeGestionarPago = FinancialOrderStateHelper.EsPendienteGestion(
+                        ordenEnt.Estado,
+                        pagoEnt != null ? pagoEnt.Estado : null,
+                        tieneFacturaRegistrada,
+                        tieneComprobanteValido),
                     EstadoFinanciero = estadoFinanciero
                 });
             }
@@ -1027,6 +1064,18 @@ namespace CapaPresentacion.Controllers
                 string.Format("{0} rechazado ({1}): {2}", action, statusCode, message ?? "Error procesando la solicitud."),
                 "FinancieroController");
             return JsonError(message, statusCode);
+        }
+
+        private int ObtenerUsuarioIdActual()
+        {
+            var v = Session["UserId"] ?? Session["IdUsuario"];
+            if (v == null)
+            {
+                return 0;
+            }
+
+            int id;
+            return int.TryParse(v.ToString(), out id) ? id : 0;
         }
 
         private static bool TryParseDecimalFlexible(string raw, out decimal value)

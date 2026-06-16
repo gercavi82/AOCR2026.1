@@ -170,6 +170,19 @@
             </div>
         </div>
     }
+    else
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Vista previa del PDF firmado por Inspector</h2>
+                <div class="alert alert-warning mb-0">
+                    @(string.IsNullOrWhiteSpace(vm.MensajePdfFirmadoInspector)
+                        ? "El PDF firmado por Inspector no se encuentra disponible para previsualizacion."
+                        : vm.MensajePdfFirmadoInspector)
+                </div>
+            </div>
+        </div>
+    }
 
     <div class="row g-4 mb-4">
         <div class="col-12 col-xl-8">
@@ -225,22 +238,34 @@
                     <h2 class="h5 mb-3">Decisión institucional final</h2>
                     @if (vm.PuedeAprobarDecisionFinal || vm.PuedeDevolverConObservacion)
                     {
-                        using (Html.BeginForm("AprobarDecisionFinalDireccion", "Inspeccion", FormMethod.Post, new { @class = "d-grid gap-3 mb-3" }))
+                        if (vm.PuedeAprobarDecisionFinal)
                         {
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="codigoInforme" value="@vm.CodigoInforme" />
-                            <div>
-                                <label class="form-label">Observación institucional opcional</label>
-                                <textarea name="observacionDireccion" class="form-control" rows="3" placeholder="Puede registrar una observación antes de aprobar."></textarea>
+                            using (Html.BeginForm("AprobarDecisionFinalDireccion", "Inspeccion", FormMethod.Post, new { @class = "d-grid gap-3 mb-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="codigoInforme" value="@vm.CodigoInforme" />
+                                <div>
+                                    <label class="form-label">Observación institucional opcional</label>
+                                    <textarea name="observacionDireccion" class="form-control" rows="3" placeholder="Puede registrar una observación antes de aprobar."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check-circle"></i> Aprobar decisión final
+                                </button>
+                            }
+                        }
+                        else if (!vm.InformeFirmadoInspectorDisponible)
+                        {
+                            <div class="alert alert-warning mb-3">
+                                No se puede aprobar hasta que el PDF firmado por Inspector exista en el servidor.
                             </div>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-check-circle"></i> Aprobar decisión final
-                            </button>
                         }
 
-                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#modalDevolucionDireccion">
-                            <i class="fas fa-undo"></i> Devolver con observación
-                        </button>
+                        if (vm.PuedeDevolverConObservacion)
+                        {
+                            <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#modalDevolucionDireccion">
+                                <i class="fas fa-undo"></i> Devolver con observación
+                            </button>
+                        }
                     }
                     else
                     {

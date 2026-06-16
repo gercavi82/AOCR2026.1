@@ -37,14 +37,20 @@ namespace CapaPresentacion.Controllers
         }
 
         // GET: /Error/NoAutorizado
-        public ActionResult NoAutorizado()
+        public ActionResult NoAutorizado(string mensaje = null, string detalle = null)
         {
             Response.StatusCode = 403;
             Response.TrySkipIisCustomErrors = true;
             Response.SuppressFormsAuthenticationRedirect = true;
             ViewBag.ErrorCode = 403;
-            ViewBag.ErrorMessage = "Acceso denegado";
-            ViewBag.ErrorDescription = "No tiene permisos para acceder a este recurso.";
+            ViewBag.ErrorMessage = !string.IsNullOrWhiteSpace(mensaje)
+                ? mensaje
+                : "Acceso denegado";
+            ViewBag.ErrorDescription = !string.IsNullOrWhiteSpace(detalle)
+                ? detalle
+                : "No tiene permisos para acceder a este recurso.";
+            ViewBag.MostrarSeleccionCompania = true;
+            ViewBag.Estilo = "denied";
             return View("~/Views/Shared/NoAutorizado.cshtml");
         }
 

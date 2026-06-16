@@ -64,15 +64,21 @@ namespace CapaNegocio.Helpers
 
         public static bool CoincideFiltro(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, string estadoFiltro)
         {
+            return CoincideFiltro(estadoOrden, estadoPago, tieneFacturaRegistrada, estadoFiltro, false);
+        }
+
+        public static bool CoincideFiltro(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, string estadoFiltro, bool tieneComprobanteValido)
+        {
             var filtro = NormalizarFiltro(estadoFiltro);
             if (string.Equals(filtro, "TODAS", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            if (string.Equals(filtro, PendientesFinanciero, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(filtro, PendientesFinanciero, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filtro, EstadoOrden.EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase))
             {
-                return EsPendienteGestion(estadoOrden, estadoPago, tieneFacturaRegistrada);
+                return EsPendienteGestion(estadoOrden, estadoPago, tieneFacturaRegistrada, tieneComprobanteValido);
             }
 
             if (string.Equals(filtro, EstadoOrden.Facturada, StringComparison.OrdinalIgnoreCase))
@@ -91,19 +97,51 @@ namespace CapaNegocio.Helpers
                 StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Orden generada/enviada por RT aún sin comprobante de depósito o transferencia.
+        /// </summary>
+        public static bool EsOrdenRtPendienteComprobante(string estadoOrden)
+        {
+            var actual = NormalizarEstadoDashboard(estadoOrden);
+            return string.Equals(actual, EstadoOrden.Generada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, EstadoOrden.Pendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, EstadoOrden.Enviada, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Oculta de bandeja/contador financiero órdenes RT sin comprobante o en revisión sin respaldo válido.
+        /// </summary>
+        public static bool DebeOcultarDeBandejaFinanciera(string estadoOrden, bool tieneComprobanteValido)
+        {
+            if (EsOrdenRtPendienteComprobante(estadoOrden))
+            {
+                return true;
+            }
+
+            var actual = NormalizarEstadoDashboard(estadoOrden);
+            return string.Equals(actual, EstadoOrden.EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase)
+                && !tieneComprobanteValido;
+        }
+
         public static bool EsPendienteGestion(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada)
         {
-            if (EsAprobadaOFacturada(estadoOrden, estadoPago, tieneFacturaRegistrada) ||
+            return EsPendienteGestion(estadoOrden, estadoPago, tieneFacturaRegistrada, false);
+        }
+
+        /// <summary>
+        /// Pago pendiente de revisión financiera: solo con comprobante cargado y estado EN_REVISION_FINANCIERA.
+        /// </summary>
+        public static bool EsPendienteGestion(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, bool tieneComprobanteValido)
+        {
+            if (!tieneComprobanteValido ||
+                EsAprobadaOFacturada(estadoOrden, estadoPago, tieneFacturaRegistrada) ||
                 EsObservada(estadoOrden, estadoPago))
             {
                 return false;
             }
 
             var actual = NormalizarEstadoDashboard(estadoOrden);
-            return string.Equals(actual, EstadoOrden.EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(actual, EstadoOrden.Enviada, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(actual, EstadoOrden.Generada, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(actual, EstadoOrden.Pendiente, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(actual, EstadoOrden.EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsObservada(string estadoOrden, string estadoPago)
@@ -122,10 +160,11 @@ namespace CapaNegocio.Helpers
             var actual = NormalizarEstadoDashboard(estadoOrden);
             return tieneFacturaRegistrada
                 || string.Equals(actual, EstadoOrden.Facturada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, EstadoOrden.OrdenCerradaPorSolicitud, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, EstadoOrden.OrdenInactiva, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(actual, EstadoOrden.Pagada, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(actual, EstadoOrden.Completada, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(NormalizarPago(estadoPago), EstadoPago.Validado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(NormalizarPago(estadoPago), EstadoPago.Aprobado, StringComparison.OrdinalIgnoreCase);
+                || EstadoPago.EsPagoAprobadoFinancieramente(estadoPago);
         }
 
         public static bool TieneFacturaRegistrada(string numeroFactura, string fr3Estado, string fr3Numero)

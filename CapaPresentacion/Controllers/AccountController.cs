@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
@@ -664,6 +664,14 @@ namespace CapaPresentacion.Controllers
                 : ResolverNombreCompaniaPorCodigo(companiaCodigo);
 
             CompaniaActivaSessionHelper.Establecer(Session, companiaCodigo, nombre);
+            CompaniaActivaSessionHelper.LimpiarDatosTemporalesCambioCompania(Session, usuarioId);
+            Session.Remove("_Sidebar_OrdenStatus_" + usuarioId);
+            if (!string.IsNullOrWhiteSpace(companiaCodigo))
+            {
+                Session.Remove("_Sidebar_OrdenStatus_" + usuarioId + "_" + companiaCodigo);
+            }
+
+            TempData["OK"] = "Compañía activa actualizada correctamente.";
 
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
             {

@@ -121,6 +121,39 @@ namespace CapaModelo
         [NotMapped]
         public string NombreArchivoGuardado { get; set; }
 
+        [NotMapped]
+        public string NombreArchivoOriginal { get; set; }
+
+        [NotMapped]
+        public string NombreArchivoVisible { get; set; }
+
+        [NotMapped]
+        public string NombreArchivoFisico { get; set; }
+
+        [NotMapped]
+        public string NombreOriginal
+        {
+            get => NombreArchivoOriginal;
+            set => NombreArchivoOriginal = value;
+        }
+
+        [NotMapped]
+        public string NombreVisible
+        {
+            get => NombreArchivoVisible;
+            set => NombreArchivoVisible = value;
+        }
+
+        [NotMapped]
+        public string NombreFisico
+        {
+            get => NombreArchivoFisico;
+            set => NombreArchivoFisico = value;
+        }
+
+        [NotMapped]
+        public bool PuedeEditarEstado { get; set; }
+
         // ====== PROPIEDADES DE NAVEGACIÓN ======
         [ForeignKey("CodigoSolicitud")]
         public virtual SolicitudAOCR Solicitud { get; set; }

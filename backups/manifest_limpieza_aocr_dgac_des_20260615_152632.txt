@@ -1,0 +1,8 @@
+﻿Fecha: 2026-06-15 15:26:32
+Base: dgac_des
+Host: 172.20.16.55
+Puerto: 5432
+Usuario: root
+Ambiente: dgac_des
+Backup completo: C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\backups\backup_aocr_completo_antes_limpieza_dgac_des_20260615_152632.dump
+Backup transaccional: C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\backups\backup_aocr_transaccional_antes_limpieza_dgac_des_20260615_152632.dump

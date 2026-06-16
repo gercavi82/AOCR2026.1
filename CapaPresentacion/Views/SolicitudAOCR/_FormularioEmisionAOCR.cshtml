@@ -2542,6 +2542,15 @@
               });
             } else if (r.requiresCompanySelection || r.requiresLogin) {
               manejarSesionOCompaniaAocr({ responseJSON: r, status: xhr ? xhr.status : 0 }, 'formulario');
+            } else if (r.redirectUrl) {
+              Swal.fire({
+                title: 'Subsanacion documental',
+                text: r.message || r.mensaje || 'Debe continuar desde la pantalla de subsanacion documental.',
+                icon: 'info',
+                confirmButtonText: 'Continuar'
+              }).then(function () {
+                window.location.href = r.redirectUrl;
+              });
             } else {
               console.log('[AOCR_GUARDAR][formulario] Success es false:', r.mensaje);
               Swal.fire({
@@ -2623,6 +2632,18 @@
           console.error('SQLSTATE backend:', payload.sqlState);
         }
 
+        if (payload && payload.redirectUrl) {
+          Swal.fire({
+            title: 'Subsanacion documental',
+            text: payload.message || payload.mensaje || mensajeError,
+            icon: 'info',
+            confirmButtonText: 'Continuar'
+          }).then(function () {
+            window.location.href = payload.redirectUrl;
+          });
+          return;
+        }
+
         Swal.fire({
           title: 'Error',
           text: mensajeError,
@@ -2660,7 +2681,6 @@
   };
 </script>
 <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-formulario-emision.js")"></script>
-
 
 
 

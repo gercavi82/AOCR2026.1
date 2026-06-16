@@ -226,7 +226,23 @@ namespace CapaNegocio
         private static bool DebeIncluirEnRevisionDocumental(string tipoDocumento)
         {
             var canonical = ObtenerTipoDocumentoCanonicoRevision(tipoDocumento);
-            return !string.Equals(canonical, "SOLICITUD_INSPECCION_EXT", StringComparison.OrdinalIgnoreCase);
+            switch (canonical)
+            {
+                case "SOLICITUD_INSPECCION_EXT":
+                case "SOLICITUD_INSPECCIONES_FIRMADA":
+                case "COMPROBANTE_PAGO":
+                case "ORDEN_RECAUDACION":
+                case "FACTURA":
+                case "COMPROBANTE_AS400":
+                case "DOCUMENTO_GENERADO_SISTEMA":
+                case "AOCR_GENERADO":
+                case "AOCR_FIRMADO":
+                case "CONDICIONES_LIMITACIONES":
+                case "CONSTANCIA":
+                    return false;
+                default:
+                    return true;
+            }
         }
 
         private static string ObtenerGrupoDocumentoRevision(string tipoDocumento)
@@ -254,6 +270,30 @@ namespace CapaNegocio
                 case "COMPROBANTE_PAGO":
                 case "COMPROBANTE_DE_PAGO":
                     return "COMPROBANTE_PAGO";
+
+                case "ORDEN_RECAUDACION":
+                    return "ORDEN_RECAUDACION";
+
+                case "FACTURA":
+                    return "FACTURA";
+
+                case "COMPROBANTE_AS400":
+                    return "COMPROBANTE_AS400";
+
+                case "DOCUMENTO_GENERADO_SISTEMA":
+                    return "DOCUMENTO_GENERADO_SISTEMA";
+
+                case "AOCR_GENERADO":
+                    return "AOCR_GENERADO";
+
+                case "AOCR_FIRMADO":
+                    return "AOCR_FIRMADO";
+
+                case "CONDICIONES_LIMITACIONES":
+                    return "CONDICIONES_LIMITACIONES";
+
+                case "CONSTANCIA":
+                    return "CONSTANCIA";
 
                 case "SOLICITUD_INSPECCION_EXT":
                 case "SOLICITUD_DE_INSPECCIONES":

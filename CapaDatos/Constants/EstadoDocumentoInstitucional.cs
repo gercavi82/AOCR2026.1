@@ -32,6 +32,14 @@ namespace CapaDatos.Constants
             "SUBSANACION"
         };
 
+        private static readonly HashSet<string> EstadosRevisablesInspector = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            PendienteRevision,
+            PendienteRevisionSubsanacion,
+            SubsanadoRt,
+            EnRevisionInspector
+        };
+
         public static string Normalizar(string estado)
         {
             var actual = (estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
@@ -62,8 +70,11 @@ namespace CapaDatos.Constants
                     return PendienteSubsanacion;
                 case "SUBSANADO_RT":
                 case "SUBSANADO":
+                case "DOCUMENTACION_SUBSANADA":
+                case "DOCUMENTOS_SUBSANADOS":
                     return SubsanadoRt;
                 case "EN_REVISION_INSPECTOR":
+                case "PENDIENTE_REVISION_INSPECTOR":
                     return EnRevisionInspector;
                 case "RECHAZADO":
                     return Rechazado;
@@ -103,6 +114,12 @@ namespace CapaDatos.Constants
         {
             var normalizado = Normalizar(estadoDocumento);
             return EstadosSubsanablesRt.Contains(normalizado);
+        }
+
+        public static bool EsEstadoRevisablePorInspector(string estadoDocumento)
+        {
+            var normalizado = Normalizar(estadoDocumento);
+            return EstadosRevisablesInspector.Contains(normalizado);
         }
 
         public static bool DecisionIndicaDevolucionInspector(string decisionRevision)

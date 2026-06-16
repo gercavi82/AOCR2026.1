@@ -84,6 +84,7 @@ namespace CapaNegocio.Services
         public AocrSidebarFinancieroCounters ObtenerContadoresFinanciero()
         {
             var ordenes = _ordenDao.ObtenerTodasLasOrdenes(null) ?? new List<OrdenRecaudacion>();
+            var comprobanteService = new ComprobanteService();
             var contador = new AocrSidebarFinancieroCounters();
 
             foreach (var orden in ordenes.Where(o => o != null))
@@ -97,13 +98,19 @@ namespace CapaNegocio.Services
                         factura != null ? factura.Fr3Estado : null,
                         factura != null ? factura.Fr3Numero : null);
                     var estadoPago = pago != null ? pago.Estado : null;
+                    var tieneComprobanteValido = comprobanteService.ExisteComprobanteValido(orden.Id);
 
-                    if (FinancialOrderStateHelper.EsPendienteGestion(orden.Estado, estadoPago, tieneFactura))
+                    if (FinancialOrderStateHelper.DebeOcultarDeBandejaFinanciera(orden.Estado, tieneComprobanteValido))
+                    {
+                        continue;
+                    }
+
+                    if (FinancialOrderStateHelper.EsPendienteGestion(orden.Estado, estadoPago, tieneFactura, tieneComprobanteValido))
                     {
                         contador.PendientesValidacion++;
                     }
 
-                    if (FinancialOrderStateHelper.CoincideFiltro(orden.Estado, estadoPago, tieneFactura, EstadoOrden.EnRevisionFinanciera))
+                    if (FinancialOrderStateHelper.CoincideFiltro(orden.Estado, estadoPago, tieneFactura, EstadoOrden.EnRevisionFinanciera, tieneComprobanteValido))
                     {
                         contador.PagosCargados++;
                     }

@@ -345,6 +345,7 @@
     <Compile Include="Helpers\FormularioEmisionTextHelper.cs" />
     <Compile Include="Helpers\AssetVersionHelper.cs" />
     <Compile Include="Helpers\AocrBandejaEstadoHelper.cs" />
+    <Compile Include="Helpers\InstitutionalAccessViewHelper.cs" />
     <Compile Include="Helpers\AocrPresentacionAuthorizationHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
@@ -362,6 +363,7 @@
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
     <Compile Include="Infrastructure\ControllerGuardExtensions.cs" />
+    <Compile Include="Infrastructure\RtCompaniaScope.cs" />
     <Compile Include="Infrastructure\AocrAuthorizationContextFactory.cs" />
     <Compile Include="Infrastructure\UserContextAccessor.cs" />
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />

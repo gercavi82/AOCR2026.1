@@ -20,6 +20,7 @@ namespace CapaPresentacion.Filters
 
             // 1) Intentar desde header (AJAX con JSON)
             string formToken = request.Headers["RequestVerificationToken"]
+                            ?? request.Headers["X-RequestVerificationToken"]
                             ?? request.Headers["X-Request-Verification-Token"]
                             ?? request.Headers["__RequestVerificationToken"];
 
@@ -48,9 +49,9 @@ namespace CapaPresentacion.Filters
                     {
                         ok = false,
                         success = false,
-                        message = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
-                        error = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
-                        code = "ANTI_FORGERY_INVALID",
+                        message = "Token de seguridad no enviado o invalido. Recargue la pagina e intente nuevamente.",
+                        error = "Token de seguridad no enviado o invalido. Recargue la pagina e intente nuevamente.",
+                        code = 400,
                         errorCode = "ANTI_FORGERY_INVALID",
                         data = (object)null
                     },

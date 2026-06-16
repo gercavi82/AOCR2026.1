@@ -70,6 +70,12 @@ namespace CapaDatos.Entidades
         [StringLength(200)]
         public string Compania { get; set; }
 
+        /// <summary>
+        /// C?digo OACI en memoria (no persistido; la tabla aocr_or_orden solo tiene columna compania).
+        /// </summary>
+        [NotMapped]
+        public string CompaniaCodigo { get; set; }
+
         [Column("ruc_cedula")]
         [StringLength(20)]
         public string RucCedula { get; set; }
