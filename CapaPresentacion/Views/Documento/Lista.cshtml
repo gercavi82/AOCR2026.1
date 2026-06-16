@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Documento>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Documento>>
 @using CapaModelo
 @using CapaPresentacion.Helpers
 @using System.Web.Mvc
@@ -69,6 +69,9 @@
             ? "Documentos listos para decisión documental con trazabilidad de revisión."
             : "Consulta documental del expediente sin acciones operativas habilitadas.");
     var tablaBadge = esModoVerDocumentacion ? "Solo lectura" : (puedeRevisarDocumentos ? "Revisión activa" : "Seguimiento");
+    var urlGuardarRevisionDocumental = tieneSolicitudId
+        ? Url.Action("GuardarRevisionDocumental", "SolicitudAOCR", new { id = solicitudIdNumero, returnUrl = Request.Url != null ? Request.Url.PathAndQuery : null })
+        : string.Empty;
     ViewBag.Title = tituloPaginaModulo + " AOCR";
 
     var stats = (ViewBag.Stats as IDictionary<string, object>)
@@ -504,6 +507,19 @@
         word-break: break-word;
     }
 
+    .documentos-table__cell--filename {
+        max-width: 16rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .js-decision-combo,
+    .js-decision-observacion {
+        width: 100%;
+        min-width: 0;
+    }
+
     .documentos-actions {
         display: flex;
         flex-wrap: wrap;
@@ -845,10 +861,15 @@
                     <tr>
                         <th>Tipo</th>
                         <th>Archivo</th>
+                        <th>Versión</th>
                         <th>Operadora / EAE</th>
                         <th>Fecha de carga</th>
                         <th>Estado</th>
                         <th>Observacion / motivo</th>
+                        @if (puedeRevisarDocumentos)
+                        {
+                            <th>Decisión</th>
+                        }
                         <th>Revisado por</th>
                         <th>Fecha revision</th>
                         <th class="text-center">Acciones</th>
@@ -867,6 +888,16 @@
                             var operadoraFila = operadoraVisible(doc);
                             var tipoDocumentoVisible = RevisionDocumentalDisplayHelper.GetDocumentDisplayName(doc.TipoDocumento);
                             var esPdf = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+                            var decisionActual = (doc.DecisionRevision ?? string.Empty).Trim().ToUpperInvariant();
+                            if (string.IsNullOrWhiteSpace(decisionActual))
+                            {
+                                decisionActual = estadoFilaNormalizado == "APROBADO"
+                                    ? "ACEPTADO"
+                                    : (estadoFilaNormalizado == "RECHAZADO" ? "DEVUELTO" : (estadoFilaNormalizado == "OBSERVADO" ? "OBSERVADO" : "PENDIENTE"));
+                            }
+                            var observacionRevisionActual = !string.IsNullOrWhiteSpace(doc.ObservacionRevision)
+                                ? doc.ObservacionRevision
+                                : observacionFila;
                             <tr id="doc-row-@doc.CodigoDocumento"
                                 data-document-id="@doc.CodigoDocumento"
                                 data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
@@ -874,7 +905,8 @@
                                 data-fecha="@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd") : string.Empty)"
                                 data-estado="@estadoFilaNormalizado">
                                 <td class="documentos-table__cell" data-column-label="Tipo" title="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)">@Html.Encode(tipoDocumentoVisible)</td>
-                                <td class="documentos-table__cell" data-column-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
+                                <td class="documentos-table__cell documentos-table__cell--filename" data-column-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
+                                <td class="documentos-table__cell" data-column-label="Versión">@(doc.Version.HasValue ? doc.Version.Value.ToString() : "1")</td>
                                 <td class="documentos-table__cell" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
                                 <td class="documentos-table__cell" data-column-label="Fecha de carga">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
                                 <td class="documentos-table__cell js-doc-state" data-column-label="Estado"><span class="@badgeFila">@estadoFilaVisible</span></td>
@@ -888,6 +920,29 @@
                                         <span class="documentos-muted">-</span>
                                     }
                                 </td>
+                                @if (puedeRevisarDocumentos)
+                                {
+                                    <td class="documentos-table__cell js-doc-decision" data-column-label="Decisión">
+                                        @if (estadoFilaNormalizado == "PENDIENTE")
+                                        {
+                                            <select class="form-select form-select-sm js-decision-combo" data-document-id="@doc.CodigoDocumento">
+                                                <option value="PENDIENTE" @(decisionActual == "PENDIENTE" ? "selected=\"selected\"" : null)>Pendiente de revisión</option>
+                                                <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected=\"selected\"" : null)>Aceptar documento</option>
+                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected=\"selected\"" : null)>Devolver para subsanación</option>
+                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected=\"selected\"" : null)>Observar documento</option>
+                                            </select>
+                                            <textarea class="form-control form-control-sm mt-2 js-decision-observacion @(decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO" ? string.Empty : "d-none")"
+                                                      rows="2"
+                                                      maxlength="1000"
+                                                      placeholder="Observación obligatoria al devolver u observar..."
+                                                      data-document-id="@doc.CodigoDocumento">@Html.Encode(observacionRevisionActual)</textarea>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-dark border">@estadoFilaVisible</span>
+                                        }
+                                    </td>
+                                }
                                 <td class="documentos-table__cell js-doc-reviewer" data-column-label="Revisado por">
                                     @if (!string.IsNullOrWhiteSpace(revisorFila))
                                     {
@@ -915,22 +970,6 @@
                                         <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-primary">
                                             <i class="fas fa-download"></i> Descargar
                                         </a>
-                                        @if (puedeRevisarDocumentos && estadoFilaNormalizado == "PENDIENTE")
-                                        {
-                                            <button type="button"
-                                                    class="btn btn-sm btn-success btn-aceptar-documento"
-                                                    data-id="@doc.CodigoDocumento">
-                                                <i class="fas fa-check"></i> Aceptar
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-danger btn-devolver-documento"
-                                                    data-id="@doc.CodigoDocumento"
-                                                    data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
-                                                    data-nombre="@Html.AttributeEncode(doc.NombreArchivo ?? string.Empty)"
-                                                    data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)">
-                                                <i class="fas fa-undo"></i> Devolver
-                                            </button>
-                                        }
                                         @if (puedeReabrirDocumentos && estadoFilaNormalizado != "PENDIENTE")
                                         {
                                             <button type="button"
@@ -945,7 +984,7 @@
                         }
 
                         <tr id="filaSinResultados" style="display:none;">
-                            <td colspan="9">
+                            <td colspan="@(puedeRevisarDocumentos ? 11 : 10)">
                                 @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                                     { "Icon", "fas fa-filter" },
                                     { "Title", "Sin coincidencias" },
@@ -956,7 +995,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="9">
+                        <tr><td colspan="@(puedeRevisarDocumentos ? 11 : 10)">
                             @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                                 { "Icon", "fas fa-folder-open" },
                                 { "Title", "Sin documentos" },
@@ -967,6 +1006,23 @@
                 </tbody>
             </table>
         </div>
+        @if (puedeRevisarDocumentos && !string.IsNullOrWhiteSpace(urlGuardarRevisionDocumental))
+        {
+            <div class="p-3 border-top bg-light">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                    <div class="text-muted small">
+                        Seleccione la decisión por documento. La observación es obligatoria al devolver u observar.
+                    </div>
+                    <form id="frmGuardarRevisionDocumental" method="post" action="@urlGuardarRevisionDocumental" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="revisionesJson" id="revisionesJsonGuardar" value="" />
+                        <button type="button" class="btn btn-primary btn-lg w-100 w-lg-auto" id="btnGuardarRevisionDocumental">
+                            <i class="fas fa-save me-1"></i> Guardar revisión documental
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -1476,6 +1532,135 @@
                 control.addEventListener('change', applyFilters);
                 control.addEventListener('input', applyFilters);
             });
+
+            function toggleObservacionCombo(combo) {
+                if (!combo) {
+                    return;
+                }
+
+                var documentId = combo.getAttribute('data-document-id');
+                var observacion = document.querySelector('.js-decision-observacion[data-document-id="' + documentId + '"]');
+                if (!observacion) {
+                    return;
+                }
+
+                var decision = (combo.value || '').toUpperCase();
+                if (decision === 'DEVUELTO' || decision === 'OBSERVADO') {
+                    observacion.classList.remove('d-none');
+                } else {
+                    observacion.classList.add('d-none');
+                }
+            }
+
+            document.querySelectorAll('.js-decision-combo').forEach(function (combo) {
+                toggleObservacionCombo(combo);
+                combo.addEventListener('change', function () {
+                    toggleObservacionCombo(combo);
+                });
+            });
+
+            function recolectarRevisionesDocumentales() {
+                var revisiones = [];
+                var faltantes = [];
+                var sinObservacion = [];
+
+                tabla.querySelectorAll('tbody tr[data-document-id]').forEach(function (fila) {
+                    if (fila.style.display === 'none') {
+                        return;
+                    }
+
+                    var documentId = parseInt(fila.getAttribute('data-document-id'), 10);
+                    if (!documentId) {
+                        return;
+                    }
+
+                    var combo = fila.querySelector('.js-decision-combo');
+                    if (!combo) {
+                        return;
+                    }
+
+                    var decision = (combo.value || '').trim().toUpperCase();
+                    var observacionInput = fila.querySelector('.js-decision-observacion');
+                    var observacion = observacionInput ? (observacionInput.value || '').trim() : '';
+
+                    if (!decision || decision === 'PENDIENTE') {
+                        faltantes.push(documentId);
+                        return;
+                    }
+
+                    if ((decision === 'DEVUELTO' || decision === 'OBSERVADO') && observacion.length < 10) {
+                        sinObservacion.push(documentId);
+                    }
+
+                    revisiones.push({
+                        CodigoDocumento: documentId,
+                        Decision: decision,
+                        Observacion: observacion
+                    });
+                });
+
+                return {
+                    revisiones: revisiones,
+                    faltantes: faltantes,
+                    sinObservacion: sinObservacion
+                };
+            }
+
+            var btnGuardarRevision = document.getElementById('btnGuardarRevisionDocumental');
+            var frmGuardarRevision = document.getElementById('frmGuardarRevisionDocumental');
+            var revisionesJsonGuardar = document.getElementById('revisionesJsonGuardar');
+
+            if (btnGuardarRevision && frmGuardarRevision && revisionesJsonGuardar) {
+                btnGuardarRevision.addEventListener('click', function () {
+                    var payload = recolectarRevisionesDocumentales();
+
+                    if (payload.faltantes.length > 0) {
+                        showAlert('warning', 'No se puede guardar la revisión documental. Debe seleccionar una decisión para todos los documentos pendientes.');
+                        return;
+                    }
+
+                    if (payload.sinObservacion.length > 0) {
+                        showAlert('warning', 'Debe registrar una observación de al menos 10 caracteres en los documentos devueltos u observados.');
+                        return;
+                    }
+
+                    var cantidadDevueltos = payload.revisiones.filter(function (item) {
+                        return item.Decision === 'DEVUELTO' || item.Decision === 'OBSERVADO';
+                    }).length;
+
+                    var confirmar = function () {
+                        revisionesJsonGuardar.value = JSON.stringify(payload.revisiones);
+                        btnGuardarRevision.disabled = true;
+                        frmGuardarRevision.submit();
+                    };
+
+                    if (cantidadDevueltos > 0) {
+                        var mensaje = 'Se devolverán ' + cantidadDevueltos + ' documento(s) al RT para subsanación. ¿Desea continuar?';
+                        if (window.Swal && typeof window.Swal.fire === 'function') {
+                            window.Swal.fire({
+                                title: 'Confirmar revisión documental',
+                                text: mensaje,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, guardar',
+                                cancelButtonText: 'Cancelar'
+                            }).then(function (result) {
+                                if (result.isConfirmed) {
+                                    confirmar();
+                                }
+                            });
+                            return;
+                        }
+
+                        if (window.confirm(mensaje)) {
+                            confirmar();
+                        }
+                        return;
+                    }
+
+                    confirmar();
+                });
+            }
 
             applyFilters();
         })();

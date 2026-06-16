@@ -121,6 +121,10 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(controller, "CambiarEstadoSubsanadaDesdeSubsanarPost(codigoSolicitud, observacionCambio, out mensajeCambio)");
             StringAssert.Contains(controllerNormalizado, "out mensaje,\n                true,\n                true);");
             StringAssert.Contains(controller, "NotificarInspectorDocumentacionSubsanada");
+            StringAssert.Contains(controller, "DocumentoSubsanacionService");
+            StringAssert.Contains(controller, "NotificarDocumentosDevueltosInspectorConsolidado");
+            StringAssert.Contains(view, "Documentos aceptados o sin observaciones");
+            StringAssert.Contains(view, "Solo se encuentran habilitados para subsanación");
             Assert.IsFalse(view.Contains(".Where(doc => string.Equals((doc.Estado ?? string.Empty).Trim(), \"OBSERVADO\""), "La vista Subsanar no debe volver a filtrar por estado; el backend ya entrega solo documentos pendientes.");
             Assert.IsFalse(controller.Contains("return decision == \"DEVUELTO\" || decision == \"OBSERVADO\";"), "El controlador no debe duplicar inline el criterio documental de subsanación pendiente.");
         }

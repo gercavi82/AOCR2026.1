@@ -12,22 +12,32 @@
     var documentosPendientesSubsanacion = (Model.DocumentosObservados ?? Enumerable.Empty<CapaPresentacion.Models.DocumentoSubsanacionVM>())
         .Where(doc => doc != null)
         .ToList();
+    var documentosBloqueados = (Model.DocumentosBloqueados ?? Enumerable.Empty<CapaPresentacion.Models.DocumentoSubsanacionVM>())
+        .Where(doc => doc != null)
+        .ToList();
 }
 
 <style>
-    .subsanar-container { max-width: 900px; margin: 0 auto; }
+    .subsanar-container { max-width: 980px; margin: 0 auto; }
     .obs-card { border-left: 4px solid #ffc107 !important; }
+    .blocked-card { border-left: 4px solid #6c757d !important; }
     .obs-item { background: #fffbea; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
     .obs-item:last-child { margin-bottom: 0; }
     .doc-upload-card { border: 2px dashed #dee2e6; border-radius: 10px; padding: 1.25rem; transition: border-color 0.2s; }
     .doc-upload-card:hover { border-color: #0d6efd; }
     .doc-upload-card.has-file { border-color: #198754; border-style: solid; background: #f0fdf4; }
+    .doc-readonly-card { border: 1px solid #dee2e6; border-radius: 10px; padding: 1rem 1.25rem; background: #f8f9fa; }
     .doc-badge-current { font-size: 0.75rem; }
-    .file-name-display { font-size: 0.85rem; color: #198754; font-weight: 600; margin-top: 0.5rem; }
-    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .file-name-display { font-size: 0.85rem; color: #198754; font-weight: 600; margin-top: 0.5rem; word-break: break-word; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }
     .summary-item label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.15rem; }
-    .summary-item .value { font-size: 0.95rem; font-weight: 600; color: #212529; }
+    .summary-item .value { font-size: 0.95rem; font-weight: 600; color: #212529; word-break: break-word; }
     .step-number { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
+    .doc-actions-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .doc-actions-inline .btn { flex: 1 1 auto; min-width: 120px; }
+    @@media (max-width: 767.98px) {
+        .doc-actions-inline .btn { width: 100%; }
+    }
 </style>
 
 @Html.Partial("_PageHeader", null, new ViewDataDictionary {
@@ -150,11 +160,11 @@
                     <h5 class="mb-0 fw-bold">Corrección de Documentos</h5>
                 </div>
                 <p class="text-muted mb-3">
-                    <i class="fas fa-info-circle me-1"></i>Suba los documentos corregidos. Cada carga se registrará como nueva versión y conservará el documento anterior.
+                    <i class="fas fa-info-circle me-1"></i>Solo se encuentran habilitados para subsanación los documentos devueltos por el Inspector. Los documentos aceptados o sin observaciones permanecen bloqueados para garantizar la trazabilidad del expediente.
                 </p>
-                <div class="alert alert-light border mb-3" role="alert">
-                    <i class="fas fa-list-check text-primary me-1"></i>
-                    Se muestran solo los documentos pendientes de subsanación: <strong>@documentosPendientesSubsanacion.Count</strong>.
+                <div class="alert alert-warning border mb-3" role="alert">
+                    <i class="fas fa-list-check me-1"></i>
+                    Documentos devueltos pendientes de subsanación: <strong>@documentosPendientesSubsanacion.Count</strong>.
                 </div>
 
                 @if (documentosPendientesSubsanacion.Any())
@@ -192,9 +202,20 @@
                                 </div>
                             }
 
+                            <div class="doc-actions-inline mb-2">
+                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-eye"></i> Ver anterior
+                                </a>
+                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                   class="btn btn-sm btn-aocr-primary">
+                                    <i class="fas fa-download"></i> Descargar anterior
+                                </a>
+                            </div>
+
                             <div class="mt-2">
                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.85rem;">
-                                    <i class="fas fa-upload me-1"></i>Subir archivo corregido
+                                    <i class="fas fa-upload me-1"></i>Subsanar documento
                                 </label>
                                 <input type="hidden" name="docIds" value="@doc.CodigoDocumento" />
                                 <input type="hidden" name="docTipos" value="@doc.TipoDocumento" />
@@ -216,7 +237,6 @@
                     </div>
                 }
 
-                @* Campo de comentarios adicionales del solicitante *@
                 <div class="mt-4 pt-3 border-top">
                     <label class="form-label fw-semibold" for="comentarioSubsanacion">
                         <i class="fas fa-comment me-1"></i>Comentario adicional <small class="text-muted">(opcional)</small>
@@ -224,18 +244,65 @@
                     <textarea class="form-control" id="comentarioSubsanacion" name="comentario" rows="3"
                               placeholder="Describa brevemente las correcciones realizadas..."></textarea>
                 </div>
+
+                @* ── BOTONES DE ACCIÓN ── *@
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2 mb-5">
+                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </a>
+                    @if (documentosPendientesSubsanacion.Any())
+                    {
+                        <button type="submit" class="btn btn-success btn-lg" id="btnReenviar">
+                            <i class="fas fa-paper-plane me-2"></i>Enviar subsanación al Inspector
+                        </button>
+                    }
+                </div>
             </div>
         </div>
 
-        @* ── BOTONES DE ACCIÓN ── *@
-        <div class="d-flex justify-content-between align-items-center mb-5">
-            <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-secondary">
-                <i class="fas fa-times me-1"></i>Cancelar
-            </a>
-            <button type="submit" class="btn btn-success btn-lg" id="btnReenviar">
-                <i class="fas fa-paper-plane me-2"></i>Reenviar Corrección
-            </button>
-        </div>
+        @if (documentosBloqueados.Any())
+        {
+            <div class="card shadow-sm mb-4 blocked-card">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="step-number bg-secondary text-white">4</span>
+                        <h5 class="mb-0 fw-bold">Documentos aceptados o sin observaciones — Solo consulta</h5>
+                    </div>
+                    <p class="text-muted mb-3">Estos documentos permanecen bloqueados. Solo puede visualizarlos o descargarlos.</p>
+
+                    @foreach (var doc in documentosBloqueados)
+                    {
+                        <div class="doc-readonly-card mb-3">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-2">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-semibold">
+                                        <i class="fas fa-lock text-secondary me-1"></i>@doc.TipoDocumento
+                                    </h6>
+                                    <small class="text-muted d-block" style="overflow-wrap:anywhere;">
+                                        Archivo: <strong>@doc.NombreArchivo</strong>
+                                        @if (doc.Version.HasValue)
+                                        {
+                                            <span class="ms-2">Versión @doc.Version</span>
+                                        }
+                                    </small>
+                                </div>
+                                <span class="badge bg-success doc-badge-current">Aceptado / Bloqueado</span>
+                            </div>
+                            <div class="doc-actions-inline">
+                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                   class="btn btn-sm btn-aocr-primary">
+                                    <i class="fas fa-download"></i> Descargar
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     </form>
 </div>
 
@@ -267,6 +334,18 @@
             $('.doc-file-input').each(function () {
                 if (this.files && this.files.length > 0) archivosSeleccionados++;
             });
+
+            var totalDevueltos = $('.doc-file-input').length;
+            if (archivosSeleccionados < totalDevueltos) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Subsanación incompleta',
+                    text: 'Debe cargar la subsanación de todos los documentos devueltos por el Inspector antes de enviar nuevamente a revisión.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido'
+                });
+                return false;
+            }
 
             if (archivosSeleccionados === 0) {
                 e.preventDefault();

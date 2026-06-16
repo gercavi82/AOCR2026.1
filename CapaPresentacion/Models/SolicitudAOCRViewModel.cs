@@ -72,6 +72,7 @@ namespace CapaPresentacion.Models
         public string ObservacionesInspector { get; set; }
         public List<HistorialObservacionVM> HistorialObservaciones { get; set; } = new List<HistorialObservacionVM>();
         public List<DocumentoSubsanacionVM> DocumentosObservados { get; set; } = new List<DocumentoSubsanacionVM>();
+        public List<DocumentoSubsanacionVM> DocumentosBloqueados { get; set; } = new List<DocumentoSubsanacionVM>();
     }
 
     public class HistorialObservacionVM
@@ -89,5 +90,8 @@ namespace CapaPresentacion.Models
         public string Estado { get; set; }
         public string Observaciones { get; set; }
         public DateTime? FechaCarga { get; set; }
+        public int? Version { get; set; }
+        public bool PuedeSubsanar { get; set; }
+        public bool EsBloqueado { get; set; }
     }
 }

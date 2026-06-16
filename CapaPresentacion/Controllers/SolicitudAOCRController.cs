@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -45,6 +45,7 @@ namespace CapaPresentacion.Controllers
         private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
         private readonly AocrBandejaDAO _aocrBandejaDao = new AocrBandejaDAO();
         private readonly RevisionDocumentalService _revisionDocumentalService = new RevisionDocumentalService();
+        private readonly DocumentoSubsanacionService _documentoSubsanacionService = new DocumentoSubsanacionService();
         private readonly AocrFinalWorkflowService _aocrFinalWorkflowService = new AocrFinalWorkflowService();
         private readonly AocrModificationWorkflowService _aocrModificationWorkflowService = new AocrModificationWorkflowService();
         private readonly IAocrAuthorizationService _aocrAuthorizationService = new AocrAuthorizationService();
@@ -3777,13 +3778,12 @@ namespace CapaPresentacion.Controllers
             {
                 try
                 {
-                    var documentosYaNotificados = _solicitudAocrInfraBL.ObtenerDocumentosConEventoHistorial(id, "CORREO_DOCUMENTO_DEVUELTO_ENVIADO");
-                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisionesResumen, documentosYaNotificados);
+                    NotificarDocumentosDevueltosInspectorConsolidado(solicitud, documentosRevision, revisionesResumen, usuarioId, usuarioRegistro);
                     _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
                         id,
                         null,
                         "CORREO_REVISION_FINAL_RESUMEN_ENVIADO",
-                        "Correo final de resumen de revision documental con observaciones enviado.",
+                        "Correo final de resumen de revision documental con observaciones encolado.",
                         usuarioId,
                         usuarioRegistro);
                 }
@@ -3871,13 +3871,12 @@ namespace CapaPresentacion.Controllers
             {
                 try
                 {
-                    var documentosYaNotificados = _solicitudAocrInfraBL.ObtenerDocumentosConEventoHistorial(id, "CORREO_DOCUMENTO_DEVUELTO_ENVIADO");
-                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisiones, documentosYaNotificados);
+                    NotificarDocumentosDevueltosInspectorConsolidado(solicitud, documentosRevision, revisiones, usuarioId, usuarioRegistro);
                     _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
                         id,
                         null,
                         "CORREO_REVISION_FINAL_RESUMEN_ENVIADO",
-                        "Correo final de resumen de revision documental con observaciones enviado.",
+                        "Correo final de resumen de revision documental con observaciones encolado.",
                         usuarioId,
                         usuarioRegistro);
                 }
@@ -3893,6 +3892,302 @@ namespace CapaPresentacion.Controllers
                 : "La revisión documental fue cerrada y la solicitud avanzó a Aceptación Documental.";
 
             return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
+        [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "RevisionDocumental", Accion = "Revisar", CodigoSolicitudParameter = "id")]
+        public ActionResult GuardarRevisionDocumental(int id, string revisionesJson, string returnUrl = null)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "La solicitud no existe.";
+                return RedirectToAction("RevisarSolicitudes");
+            }
+
+            ActionResult redireccionProcesoCerrado;
+            if (TryRedirigirSiProcesoCerrado(solicitud, id, out redireccionProcesoCerrado))
+            {
+                return redireccionProcesoCerrado;
+            }
+
+            var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (!SolicitudEstaEnEtapaRevisionDocumental(estadoSolicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud no se encuentra en una etapa habilitada para revisión documental.";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            if (!UsuarioPuedeOperarRevisionDocumental(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo el inspector asignado puede guardar la revisión documental en esta etapa.";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            List<RevisionDocumentalMasivaItem> revisionesPayload;
+            try
+            {
+                revisionesPayload = JsonConvert.DeserializeObject<List<RevisionDocumentalMasivaItem>>(revisionesJson ?? "[]")
+                    ?? new List<RevisionDocumentalMasivaItem>();
+            }
+            catch
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "No fue posible leer las decisiones de revisión documental.";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
+            if (documentosRevision.Count == 0)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "No existen documentos vigentes para revisión documental.";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            var revisionesPorDocumento = revisionesPayload
+                .Where(x => x != null && x.CodigoDocumento > 0)
+                .GroupBy(x => x.CodigoDocumento)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var documentosSinDecision = new List<string>();
+            var documentosSinObservacion = new List<string>();
+
+            foreach (var doc in documentosRevision)
+            {
+                RevisionDocumentalMasivaItem revision;
+                if (!revisionesPorDocumento.TryGetValue(doc.CodigoDocumento, out revision) || revision == null)
+                {
+                    documentosSinDecision.Add(ObtenerEtiquetaDocumento(doc));
+                    continue;
+                }
+
+                var decisionNorm = NormalizarDecisionRevisionDocumental(revision.Decision);
+                revision.Decision = decisionNorm;
+                revision.Observacion = (revision.Observacion ?? string.Empty).Trim();
+
+                if (decisionNorm != "ACEPTADO" && decisionNorm != "DEVUELTO" && decisionNorm != "OBSERVADO")
+                {
+                    documentosSinDecision.Add(ObtenerEtiquetaDocumento(doc));
+                    continue;
+                }
+
+                if (DecisionRevisionRequiereObservacion(decisionNorm) && string.IsNullOrWhiteSpace(revision.Observacion))
+                {
+                    documentosSinObservacion.Add(ObtenerEtiquetaDocumento(doc));
+                }
+            }
+
+            if (documentosSinDecision.Count > 0)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "No se puede guardar la revisión documental. Faltan decisiones en: "
+                    + string.Join(", ", documentosSinDecision) + ".";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            if (documentosSinObservacion.Count > 0)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "No se puede guardar la revisión documental. Debe registrar observación en: "
+                    + string.Join(", ", documentosSinObservacion) + ".";
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            var usuarioId = ObtenerUsuarioActualId();
+            var usuarioRegistro = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
+
+            foreach (var doc in documentosRevision)
+            {
+                var revision = revisionesPorDocumento[doc.CodigoDocumento];
+                var decisionNorm = NormalizarDecisionRevisionDocumental(revision.Decision);
+                var estadoDocumento = EstadoDocumentoInstitucional.ResolverEstadoTrasDecisionInspector(decisionNorm);
+
+                doc.Estado = estadoDocumento == EstadoDocumentoInstitucional.Aceptado ? "APROBADO" : estadoDocumento;
+                doc.Validado = decisionNorm == "ACEPTADO";
+                doc.Observaciones = decisionNorm == "ACEPTADO" ? null : revision.Observacion;
+                doc.FechaValidacion = DateTime.Now;
+                doc.ValidadoPor = usuarioRegistro;
+                doc.UsuarioRegistro = usuarioRegistro;
+
+                if (!_documentoDAO.Actualizar(doc))
+                {
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = "No se pudo registrar la revisión documental para todos los documentos.";
+                    return RedirectGuardarRevisionDocumental(id, returnUrl);
+                }
+
+                _solicitudAocrInfraBL.RegistrarRevisionDocumental(
+                    id,
+                    doc.CodigoDocumento,
+                    decisionNorm == "DEVUELTO" ? "DEVUELTO" : decisionNorm,
+                    revision.Observacion,
+                    usuarioId,
+                    usuarioRegistro);
+                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                    id,
+                    doc.CodigoDocumento,
+                    decisionNorm == "ACEPTADO" ? "DOCUMENTO_ACEPTADO" : "DOCUMENTO_DEVUELTO",
+                    "Documento " + ObtenerEtiquetaDocumento(doc) + " marcado como " + decisionNorm + ". " + revision.Observacion,
+                    usuarioId,
+                    usuarioRegistro);
+            }
+
+            var revisionesResumen = revisionesPorDocumento
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => Tuple.Create(
+                        NormalizarDecisionRevisionDocumental(kvp.Value.Decision),
+                        (kvp.Value.Observacion ?? string.Empty).Trim()));
+
+            var validacionCierre = _revisionDocumentalService.ValidarCierreRevisionDocumental(documentosRevision, revisionesResumen);
+            if (!validacionCierre.EsValido)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = validacionCierre.Mensaje;
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            var decisionCierre = _revisionDocumentalService.CrearDecisionCierreFinal(
+                validacionCierre.TieneDocumentosDevueltos,
+                ConstruirResumenRevisionDocumental(documentosRevision, revisionesResumen, true));
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, decisionCierre.EstadoDestino, decisionCierre.ObservacionCierre, out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectGuardarRevisionDocumental(id, returnUrl);
+            }
+
+            _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                id,
+                null,
+                "REVISION_DOCUMENTAL_FINALIZADA",
+                decisionCierre.ObservacionCierre,
+                usuarioId,
+                usuarioRegistro);
+
+            if (decisionCierre.RequiereNotificarObservaciones)
+            {
+                try
+                {
+                    NotificarDocumentosDevueltosInspectorConsolidado(solicitud, documentosRevision, revisionesResumen, usuarioId, usuarioRegistro);
+                }
+                catch
+                {
+                }
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = validacionCierre.TieneDocumentosDevueltos
+                ? "La revisión documental fue guardada y la solicitud se devolvió al RT con observaciones."
+                : "La revisión documental fue guardada y la solicitud avanzó a Aceptación Documental.";
+
+            return RedirectGuardarRevisionDocumental(id, returnUrl);
+        }
+
+        private ActionResult RedirectGuardarRevisionDocumental(int id, string returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Lista", "Documento", new { solicitudId = id, modo = "revision" });
+        }
+
+        private DocumentoSubsanacionVM MapearDocumentoSubsanacionVm(
+            Documento documento,
+            IDictionary<int, Tuple<string, string>> revisiones,
+            bool puedeSubsanar)
+        {
+            if (documento == null)
+            {
+                return new DocumentoSubsanacionVM();
+            }
+
+            var decision = ObtenerDecisionRevisionDocumental(documento, revisiones);
+            var observacion = ObtenerObservacionRevisionDocumental(documento, revisiones);
+            var estadoVisible = !string.IsNullOrWhiteSpace(decision)
+                ? decision
+                : EstadoDocumentoInstitucional.Normalizar(documento.Estado);
+
+            return new DocumentoSubsanacionVM
+            {
+                CodigoDocumento = documento.CodigoDocumento,
+                TipoDocumento = !string.IsNullOrWhiteSpace(documento.TipoDocumentoNombre)
+                    ? documento.TipoDocumentoNombre
+                    : documento.TipoDocumento,
+                NombreArchivo = documento.NombreArchivo,
+                Estado = estadoVisible,
+                Observaciones = observacion,
+                FechaCarga = documento.FechaCarga,
+                Version = documento.Version,
+                PuedeSubsanar = puedeSubsanar,
+                EsBloqueado = !puedeSubsanar
+            };
+        }
+
+        private void NotificarDocumentosDevueltosInspectorConsolidado(
+            SolicitudAOCR solicitud,
+            IEnumerable<Documento> documentos,
+            IDictionary<int, Tuple<string, string>> revisiones,
+            int usuarioId,
+            string usuarioRegistro)
+        {
+            if (solicitud == null)
+            {
+                return;
+            }
+
+            var itemsDevueltos = (documentos ?? Enumerable.Empty<Documento>())
+                .Select(d => new
+                {
+                    Documento = d,
+                    Decision = ObtenerDecisionRevisionDocumental(d, revisiones),
+                    Observacion = ObtenerObservacionRevisionDocumental(d, revisiones)
+                })
+                .Where(x => x.Decision == "DEVUELTO" || x.Decision == "OBSERVADO")
+                .Select(x => new DocumentoDevueltoNotificacionItem
+                {
+                    CodigoDocumento = x.Documento.CodigoDocumento,
+                    Etiqueta = ObtenerEtiquetaDocumento(x.Documento),
+                    Observacion = x.Observacion
+                })
+                .ToList();
+
+            if (itemsDevueltos.Count == 0)
+            {
+                return;
+            }
+
+            var correlationId = _documentoSubsanacionService.ConstruirEventKeyDocumentosDevueltos(
+                solicitud.CodigoSolicitud,
+                itemsDevueltos.Select(x => x.CodigoDocumento));
+
+            var urlSistema = Url.Action("Subsanar", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }, Request.Url.Scheme);
+            var inspector = FirstNonEmpty(solicitud.TecnicoResponsableNombre, ObtenerNombreInspector(solicitud), "Inspector asignado");
+
+            _documentoSubsanacionService.EncolarCorreoDocumentosDevueltosInspector(
+                solicitud,
+                itemsDevueltos,
+                inspector,
+                urlSistema,
+                correlationId);
+
+            _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                solicitud.CodigoSolicitud,
+                null,
+                "CORREO_DOCUMENTOS_DEVUELTOS_INSPECTOR_ENVIADO",
+                "Correo consolidado de " + itemsDevueltos.Count + " documento(s) devuelto(s) encolado para el RT.",
+                usuarioId,
+                usuarioRegistro);
         }
 
         private class RevisionDocumentalMasivaItem
@@ -3999,6 +4294,11 @@ namespace CapaPresentacion.Controllers
 
             var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
             var documentos = ObtenerDocumentosPendientesSubsanacionParaSolicitud(id, revisionesDocumentales);
+            var documentosVigentes = ObtenerDocumentosVigentesParaRevision(id);
+            var clasificacion = _documentoSubsanacionService.ClasificarDocumentosParaRt(
+                documentosVigentes,
+                revisionesDocumentales,
+                estadoActual);
             var historial = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id);
 
             var inspectorNombre = ObtenerNombreInspector(solicitud);
@@ -4028,15 +4328,10 @@ namespace CapaPresentacion.Controllers
                 InspectorNombre = inspectorNombre,
                 ObservacionesInspector = solicitud.Observaciones,
                 HistorialObservaciones = historialObs,
-                DocumentosObservados = documentos.Select(d => new DocumentoSubsanacionVM
-                {
-                    CodigoDocumento = d.CodigoDocumento,
-                    TipoDocumento = d.TipoDocumento,
-                    NombreArchivo = d.NombreArchivo,
-                    Estado = ObtenerDecisionRevisionDocumental(d, revisionesDocumentales),
-                    Observaciones = ObtenerObservacionRevisionDocumental(d, revisionesDocumentales),
-                    FechaCarga = d.FechaCarga
-                }).ToList()
+                DocumentosObservados = documentos.Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, true)).ToList(),
+                DocumentosBloqueados = clasificacion.DocumentosBloqueados
+                    .Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, false))
+                    .ToList()
             };
 
             return View(vm);
@@ -4177,6 +4472,19 @@ namespace CapaPresentacion.Controllers
                 foreach (var par in archivosPorDocumento)
                 {
                     var docOriginal = documentosObservadosPorId[par.Key];
+                    var validacionSubsanacion = _documentoSubsanacionService.ValidarCargaSubsanacionRt(
+                        docOriginal,
+                        revisionesDocumentales,
+                        estadoActual,
+                        true);
+
+                    if (!validacionSubsanacion.EsValido)
+                    {
+                        TempData["NotificacionTipo"] = "error";
+                        TempData["NotificacionMensaje"] = validacionSubsanacion.Mensaje;
+                        return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+                    }
+
                     var tipoDoc = !string.IsNullOrWhiteSpace(docOriginal.TipoDocumento)
                         ? docOriginal.TipoDocumento
                         : "Documento Subsanado";
@@ -4226,6 +4534,13 @@ namespace CapaPresentacion.Controllers
 
                         var codigoNuevoDocumento = _documentoDAO.Crear(nuevoDoc);
                         nuevoDoc.CodigoDocumento = codigoNuevoDocumento;
+
+                        docOriginal.Estado = EstadoDocumentoInstitucional.ResolverEstadoVersionAnterior();
+                        docOriginal.Observaciones = string.IsNullOrWhiteSpace(docOriginal.Observaciones)
+                            ? "Versión anterior conservada por subsanación RT."
+                            : docOriginal.Observaciones.Trim();
+                        _documentoDAO.Actualizar(docOriginal);
+
                         documentosSubsanadosNotificacion.Add(nuevoDoc);
                         LogBL.RegistrarInfo(
                             "[SubsanarPost] Documento subsanado registrado como nueva version. SolicitudId=" + codigoSolicitud

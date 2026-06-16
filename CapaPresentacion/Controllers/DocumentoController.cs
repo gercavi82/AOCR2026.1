@@ -15,6 +15,7 @@ using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
 using CapaUtilidades;
 using CapaPresentacion.Filters;
+using CapaModelo.Common;
 
 namespace CapaPresentacion.Controllers
 {
@@ -178,6 +179,13 @@ namespace CapaPresentacion.Controllers
                     TempData["Error"] = mensajeBloqueo;
                     return RedirectToAction("Index", "SolicitudAOCR");
                 }
+
+                var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+                if (string.Equals(estadoSolicitud, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["Error"] = "No puede cargar documentos en esta solicitud. Utilice la pantalla de subsanación para reemplazar únicamente los documentos devueltos por el Inspector.";
+                    return RedirectToAction("Subsanar", "SolicitudAOCR", new { id = solicitudId.Value });
+                }
             }
 
             ViewBag.SolicitudId = solicitudId.Value;
@@ -214,6 +222,13 @@ namespace CapaPresentacion.Controllers
                     {
                         TempData["Error"] = mensajeBloqueo;
                         return RedirectToAction("Index", "SolicitudAOCR");
+                    }
+
+                    var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+                    if (string.Equals(estadoSolicitud, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+                    {
+                        TempData["Error"] = "No puede cargar documentos en esta solicitud. Utilice la pantalla de subsanación para reemplazar únicamente los documentos devueltos por el Inspector.";
+                        return RedirectToAction("Subsanar", "SolicitudAOCR", new { id = solicitudId.Value });
                     }
                 }
 
@@ -701,7 +716,7 @@ namespace CapaPresentacion.Controllers
 
                 if (decisionNormalizada == "DEVUELTO")
                 {
-                    NotificarDocumentoDevueltoEnSistema(solicitud, documento, observacionNormalizada, usuarioId, usuarioVisible);
+                    // El correo consolidado al RT se envía al guardar/cerrar la revisión documental.
                 }
 
                 var documentosActualizados = ObtenerDocumentosVigentesParaListado(_documentoBL.ObtenerPorSolicitud(codigoSolicitud), solicitud);

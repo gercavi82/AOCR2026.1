@@ -53,6 +53,7 @@
     <Compile Include="Unit\SolicitudEstadoTransitionBLTests.cs" />
     <Compile Include="Unit\NullSafetyRegressionTests.cs" />
     <Compile Include="Unit\OperationalFlowCharacterizationTests.cs" />
+    <Compile Include="Unit\DocumentoSubsanacionTests.cs" />
     <Compile Include="Unit\PdfGeneratorTests.cs" />
     <Compile Include="Unit\AocrModificationNuevoAeropuertoTests.cs" />
     <Compile Include="Unit\FinancialOrderStateHelperTests.cs" />
