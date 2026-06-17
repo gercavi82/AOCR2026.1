@@ -1,0 +1,207 @@
+@using System.Collections.Generic
+@model CapaPresentacion.Models.AdminUsuarios.AdminUsuarioInternoRTViewModel
+
+@{
+    ViewBag.Title = "Administracion - Crear Usuario Interno RT";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <h2 class="mb-2 mb-md-0">Crear Usuario Interno RT</h2>
+    <a class="btn btn-outline-secondary" href="@Url.Action("Index", "AdminUsuarios")">
+        <i class="fas fa-arrow-left mr-1"></i> Volver
+    </a>
+</div>
+
+<p class="text-muted">
+    Consulte el usuario interno en la base institucional y registre su configuracion de aeropuerto.
+</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@using (Html.BeginForm("CrearUsuarioInternoRT", "AdminUsuarios", FormMethod.Post, new { id = "formUsuarioInternoRt", autocomplete = "off" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Busqueda de usuario interno</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.CodigoUsuarioBusqueda, new { @class = "form-label" })
+                    <div class="input-group">
+                        @Html.TextBoxFor(m => m.CodigoUsuarioBusqueda, new
+                        {
+                            @class = "form-control",
+                            maxlength = "64",
+                            placeholder = "Ingrese codigo usuario institucional",
+                            id = "CodigoUsuarioBusqueda"
+                        })
+                        <button class="btn btn-primary" type="button" id="btnBuscarUsuarioInternoRT">
+                            <i class="fas fa-search mr-1"></i> Buscar
+                        </button>
+                    </div>
+                    @Html.ValidationMessageFor(m => m.CodigoUsuarioBusqueda, null, new { @class = "text-danger d-block mt-1" })
+                </div>
+            </div>
+            <div id="msgBusquedaUsuarioInternoRT" class="small mt-2"></div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Datos institucionales y destino</strong>
+        </div>
+        <div class="card-body">
+            @Html.HiddenFor(m => m.CodigoUsuario, new { id = "CodigoUsuario" })
+            @Html.HiddenFor(m => m.Opcaer, new { id = "Opcaer" })
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CiudadCodigo, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CiudadCodigo, new
+                    {
+                        @class = "form-control",
+                        id = "CiudadCodigo",
+                        @readonly = "readonly"
+                    })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CodigoFinanciero, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CodigoFinanciero, new
+                    {
+                        @class = "form-control",
+                        id = "CodigoFinanciero",
+                        @readonly = "readonly"
+                    })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.Opcoi3, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Opcoi3, new
+                    {
+                        @class = "form-control",
+                        id = "Opcoi3",
+                        @readonly = "readonly"
+                    })
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.Opcar5, new { @class = "form-label" })
+                    @Html.DropDownListFor(
+                        m => m.Opcar5,
+                        Model.Aeropuertos ?? new List<SelectListItem>(),
+                        new { @class = "form-control", id = "Opcar5" })
+                    @Html.ValidationMessageFor(m => m.Opcar5, null, new { @class = "text-danger d-block mt-1" })
+                    <small class="text-muted">Al guardar se almacenara tambien en OPCAER.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Cancelar</a>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-save mr-1"></i> Guardar
+        </button>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/Scripts/admin-usuarios.js"></script>
+    <script>
+        (function () {
+            function byId(id) { return document.getElementById(id); }
+
+            var btnBuscar = byId("btnBuscarUsuarioInternoRT");
+            var txtBusqueda = byId("CodigoUsuarioBusqueda");
+            var msg = byId("msgBusquedaUsuarioInternoRT");
+            var txtCodigo = byId("CodigoUsuario");
+            var txtCiudad = byId("CiudadCodigo");
+            var txtFinanciero = byId("CodigoFinanciero");
+            var txtOpcoi3 = byId("Opcoi3");
+            var ddlOpcar5 = byId("Opcar5");
+            var txtOpcaer = byId("Opcaer");
+
+            function limpiarMensaje() {
+                if (!msg) { return; }
+                msg.className = "small mt-2";
+                msg.textContent = "";
+            }
+
+            function mostrarMensaje(texto, esError) {
+                if (!msg) { return; }
+                msg.className = esError ? "small mt-2 text-danger" : "small mt-2 text-success";
+                msg.textContent = texto || "";
+            }
+
+            function sincronizarAeropuerto() {
+                if (txtOpcaer && ddlOpcar5) {
+                    txtOpcaer.value = ddlOpcar5.value || "";
+                }
+            }
+
+            if (ddlOpcar5) {
+                ddlOpcar5.addEventListener("change", sincronizarAeropuerto);
+                sincronizarAeropuerto();
+            }
+
+            if (!btnBuscar) {
+                return;
+            }
+
+            btnBuscar.addEventListener("click", function () {
+                limpiarMensaje();
+
+                var codigo = (txtBusqueda && txtBusqueda.value ? txtBusqueda.value : "").trim();
+                if (!codigo) {
+                    mostrarMensaje("Debe ingresar el codigo del usuario interno.", true);
+                    if (txtBusqueda) { txtBusqueda.focus(); }
+                    return;
+                }
+
+                btnBuscar.disabled = true;
+                var url = "@Url.Action("BuscarUsuarioInternoRT", "AdminUsuarios")" + "?codigoUsuario=" + encodeURIComponent(codigo);
+
+                $.ajax({
+                    url: url,
+                    method: "GET",
+                    dataType: "json"
+                }).done(function (data) {
+                        if (!data || !data.success) {
+                            mostrarMensaje((data && data.message) ? data.message : "No se pudo obtener la informacion del usuario.", true);
+                            return;
+                        }
+
+                        if (txtCodigo) { txtCodigo.value = data.codigoUsuario || codigo.toUpperCase(); }
+                        if (txtBusqueda) { txtBusqueda.value = data.codigoUsuario || codigo.toUpperCase(); }
+                        if (txtCiudad) { txtCiudad.value = data.ciudadCodigo || ""; }
+                        if (txtFinanciero) { txtFinanciero.value = data.codigoFinanciero || ""; }
+                        if (txtOpcoi3) { txtOpcoi3.value = data.codigoFinanciero || ""; }
+
+                        sincronizarAeropuerto();
+
+                        if (data.yaRegistrado) {
+                            mostrarMensaje(data.message || "El usuario ya tiene un registro interno RT activo.", true);
+                        } else {
+                            mostrarMensaje("Datos cargados correctamente. Seleccione el aeropuerto y guarde.", false);
+                        }
+                    }).fail(function () {
+                        mostrarMensaje("Error al consultar la base institucional.", true);
+                    }).always(function () {
+                        btnBuscar.disabled = false;
+                    });
+            });
+        })();
+    </script>
+}

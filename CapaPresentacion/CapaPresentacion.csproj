@@ -335,6 +335,7 @@
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminRolPermisosViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioTransferenciaViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuarioInternoRTViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioFormViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioRolesViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuariosIndexViewModel.cs" />
@@ -2948,6 +2949,7 @@
     <Content Include="Views\Notificacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
     <Content Include="Views\AdminUsuarios\Create.cshtml" />
+    <Content Include="Views\AdminUsuarios\CrearUsuarioInternoRT.cshtml" />
     <Content Include="Views\AdminUsuarios\Edit.cshtml" />
     <Content Include="Views\AdminUsuarios\Index.cshtml" />
     <Content Include="Views\AdminUsuarios\PermisosRol.cshtml" />

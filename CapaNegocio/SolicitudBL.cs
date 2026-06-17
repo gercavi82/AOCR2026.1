@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
@@ -67,7 +68,14 @@ namespace CapaNegocio
                 if (id > 0)
                 {
                     modelo.CodigoSolicitud = id;
-                    _historialDAO.RegistrarCambio(id, null, EstadoSolicitud.Pendiente, codigoUsuario, "Creación inicial del trámite.");
+                    try
+                    {
+                        _historialDAO.RegistrarCambio(id, null, EstadoSolicitud.Pendiente, codigoUsuario, "Creación inicial del trámite.");
+                    }
+                    catch (Exception exHistorial)
+                    {
+                        Debug.WriteLine("[SolicitudBL] No se pudo registrar historial de estado: " + exHistorial.Message);
+                    }
                     mensaje = "Solicitud creada correctamente.";
                     return true;
                 }

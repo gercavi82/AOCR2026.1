@@ -428,14 +428,12 @@
                    id="EmpresaTexto"
                    list="empresasDatalist"
                    placeholder="Seleccione o busque una empresa..."
-                   autocomplete="off"
-                   required />
+                   autocomplete="off" />
         </div>
         <datalist id="empresasDatalist"></datalist>
         <select class="form-select form-select-sm d-none"
                 id="EmpresaCodigo"
-                name="EmpresaCodigo"
-                required>
+                name="EmpresaCodigo">
             <option value="">-- Seleccione una empresa --</option>
         </select>
         <div class="invalid-feedback">
@@ -1181,6 +1179,17 @@
         });
 
         renderCompaniasSeleccionadasRegistro();
+        limpiarSeleccionEmpresaActual();
+    }
+
+    function limpiarSeleccionEmpresaActual() {
+        $('#EmpresaCodigo').val('');
+        $('#EmpresaTexto').val('');
+        removerErrorCampo('#EmpresaCodigo');
+        var $inputEmpresa = $('#EmpresaTexto');
+        if ($inputEmpresa.length) {
+            $inputEmpresa.trigger('focus');
+        }
     }
 
     function eliminarCompaniaSeleccionada(codigo) {
@@ -1273,9 +1282,15 @@
 
     function validarFormularioUsuario() {
         let valido = true;
+        const tieneCompaniasAgregadas = companiasSeleccionadasRegistro.length > 0;
 
         // Validar campos requeridos
         $('input[required]').each(function() {
+            const idCampo = ($(this).attr('id') || '').trim();
+            if (idCampo === 'EmpresaTexto' && tieneCompaniasAgregadas) {
+                removerErrorCampo(this);
+                return;
+            }
             if (!$(this).val().trim()) {
                 mostrarErrorCampo(this, 'Campo requerido');
                 valido = false;
@@ -1297,13 +1312,13 @@
             removerErrorCampo('#aceptaDeclaracion');
         }
         // Validar empresa seleccionada
-        const empresaCodigo = $('#EmpresaCodigo').val();
-        if (!empresaCodigo) {
+        const empresaCodigo = ($('#EmpresaCodigo').val() || '').trim();
+        if (!tieneCompaniasAgregadas && !empresaCodigo) {
             mostrarErrorCampo('#EmpresaCodigo', 'Debe seleccionar una empresa');
             valido = false;
         }
 
-        if (companiasSeleccionadasRegistro.length === 0 && empresaCodigo) {
+        if (!tieneCompaniasAgregadas && empresaCodigo) {
             agregarCompaniaSeleccionadaActual();
         }
 
@@ -1312,6 +1327,7 @@
             valido = false;
         } else {
             $('#companiasSeleccionadasError').hide();
+            removerErrorCampo('#EmpresaCodigo');
         }
 
         return valido;

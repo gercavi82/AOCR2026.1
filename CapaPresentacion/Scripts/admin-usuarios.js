@@ -64,18 +64,70 @@
         };
 
         if (selectCompanias) {
-            selectCompanias.addEventListener("mousedown", function (event) {
-                var option = event.target;
-                if (!option || option.tagName !== "OPTION") {
+            var sincronizandoSeleccion = false;
+            var seleccionAnterior = {};
+
+            var obtenerSeleccionActual = function () {
+                var lookup = {};
+                for (var i = 0; i < selectCompanias.options.length; i++) {
+                    var opt = selectCompanias.options[i];
+                    if (opt.selected) {
+                        lookup[opt.value] = true;
+                    }
+                }
+                return lookup;
+            };
+
+            var aplicarSeleccion = function (lookup) {
+                for (var i = 0; i < selectCompanias.options.length; i++) {
+                    var opt = selectCompanias.options[i];
+                    opt.selected = !!lookup[opt.value];
+                }
+            };
+
+            var actualizarSeleccionAnterior = function () {
+                seleccionAnterior = obtenerSeleccionActual();
+            };
+
+            selectCompanias.addEventListener("focus", actualizarSeleccionAnterior);
+            selectCompanias.addEventListener("mousedown", actualizarSeleccionAnterior);
+
+            // Toggle por clic simple: agrega o quita sin perder lo ya marcado.
+            selectCompanias.addEventListener("change", function () {
+                if (sincronizandoSeleccion) {
                     return;
                 }
 
-                event.preventDefault();
-                option.selected = !option.selected;
+                var idx = selectCompanias.selectedIndex;
+                if (idx < 0 || idx >= selectCompanias.options.length) {
+                    actualizarSeleccionAnterior();
+                    actualizarContadorCompanias();
+                    return;
+                }
+
+                var valorClic = selectCompanias.options[idx].value;
+                var nuevaSeleccion = {};
+                for (var key in seleccionAnterior) {
+                    if (Object.prototype.hasOwnProperty.call(seleccionAnterior, key)) {
+                        nuevaSeleccion[key] = true;
+                    }
+                }
+
+                if (nuevaSeleccion[valorClic]) {
+                    delete nuevaSeleccion[valorClic];
+                } else {
+                    nuevaSeleccion[valorClic] = true;
+                }
+
+                sincronizandoSeleccion = true;
+                aplicarSeleccion(nuevaSeleccion);
+                sincronizandoSeleccion = false;
+
+                seleccionAnterior = nuevaSeleccion;
                 actualizarContadorCompanias();
             });
 
-            selectCompanias.addEventListener("change", actualizarContadorCompanias);
+            actualizarSeleccionAnterior();
             actualizarContadorCompanias();
         }
 
@@ -83,6 +135,9 @@
             btnSeleccionarTodas.addEventListener("click", function () {
                 for (var i = 0; i < selectCompanias.options.length; i++) {
                     selectCompanias.options[i].selected = true;
+                }
+                if (typeof actualizarSeleccionAnterior === "function") {
+                    actualizarSeleccionAnterior();
                 }
                 actualizarContadorCompanias();
             });
@@ -92,6 +147,9 @@
             btnLimpiar.addEventListener("click", function () {
                 for (var i = 0; i < selectCompanias.options.length; i++) {
                     selectCompanias.options[i].selected = false;
+                }
+                if (typeof actualizarSeleccionAnterior === "function") {
+                    actualizarSeleccionAnterior();
                 }
                 actualizarContadorCompanias();
             });

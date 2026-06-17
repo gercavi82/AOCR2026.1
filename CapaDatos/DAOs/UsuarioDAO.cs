@@ -71,7 +71,10 @@ namespace CapaDatos.DAOs
                         ruta_constancia_rt AS RutaConstanciaRT,
                         fecha_revision_designacion AS FechaRevisionDesignacion
                     FROM usuario
-                    WHERE (codigousuario = @p1 OR correo = @p1)
+                    WHERE (
+                        UPPER(TRIM(codigousuario)) = UPPER(TRIM(@p1))
+                        OR UPPER(TRIM(correo)) = UPPER(TRIM(@p1))
+                    )
                     LIMIT 1;";
 
                 var u = conn.QueryFirstOrDefault<Usuario>(sql, new { p1 = loginInput });
@@ -121,6 +124,151 @@ namespace CapaDatos.DAOs
                     LIMIT 1;";
 
                 return conn.QueryFirstOrDefault<Usuario>(sql, new { id = idUsuario });
+            }
+        }
+
+        public static string ObtenerIdentificacionPrincipal(int idUsuario)
+        {
+            if (idUsuario <= 0)
+            {
+                return string.Empty;
+            }
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                var expresiones = new List<string>();
+
+                // Priorizamos cédula; si no existe, usamos RUC/identificación tributaria.
+                if (ExisteColumna(conn, "usuario", "cedulaidentificacion"))
+                {
+                    expresiones.Add("NULLIF(TRIM(cedulaidentificacion), '')");
+                }
+
+                if (ExisteColumna(conn, "usuario", "identificaciontributaria"))
+                {
+                    expresiones.Add("NULLIF(TRIM(identificaciontributaria), '')");
+                }
+
+                if (ExisteColumna(conn, "usuario", "ruc"))
+                {
+                    expresiones.Add("NULLIF(TRIM(ruc), '')");
+                }
+
+                if (ExisteColumna(conn, "usuario", "numeroruc"))
+                {
+                    expresiones.Add("NULLIF(TRIM(numeroruc), '')");
+                }
+
+                if (expresiones.Count == 0)
+                {
+                    return string.Empty;
+                }
+
+                var sql = @"
+                    SELECT COALESCE(" + string.Join(", ", expresiones) + @", '')
+                    FROM usuario
+                    WHERE idusuario = @id
+                    LIMIT 1;";
+
+                return (conn.ExecuteScalar<string>(sql, new { id = idUsuario }) ?? string.Empty).Trim();
+            }
+        }
+
+        public static string ObtenerNombreCompletoPrincipal(int idUsuario)
+        {
+            if (idUsuario <= 0)
+            {
+                return string.Empty;
+            }
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                var tieneNombreUsuario = ExisteColumna(conn, "usuario", "nombreusuario");
+                var tieneApellidoUsuario = ExisteColumna(conn, "usuario", "apellidousuario");
+                var tieneNombres = ExisteColumna(conn, "usuario", "nombres");
+                var tienePrimerNombre = ExisteColumna(conn, "usuario", "primer_nombre");
+                var tieneSegundoNombre = ExisteColumna(conn, "usuario", "segundo_nombre");
+                var tieneApellidoPaterno = ExisteColumna(conn, "usuario", "apellidopaterno") || ExisteColumna(conn, "usuario", "apellido_paterno");
+                var tieneApellidoMaterno = ExisteColumna(conn, "usuario", "apellidomaterno") || ExisteColumna(conn, "usuario", "apellido_materno");
+                var tieneNombreCompleto = ExisteColumna(conn, "usuario", "nombrecompleto") || ExisteColumna(conn, "usuario", "nombre_completo");
+
+                var segmentos = new List<string>();
+
+                if (tieneNombres || tienePrimerNombre || tieneSegundoNombre)
+                {
+                    if (tieneNombres)
+                    {
+                        segmentos.Add("NULLIF(TRIM(nombres), '')");
+                    }
+                    else
+                    {
+                        if (tienePrimerNombre)
+                        {
+                            segmentos.Add("NULLIF(TRIM(primer_nombre), '')");
+                        }
+                        if (tieneSegundoNombre)
+                        {
+                            segmentos.Add("NULLIF(TRIM(segundo_nombre), '')");
+                        }
+                    }
+
+                    if (tieneApellidoPaterno)
+                    {
+                        if (ExisteColumna(conn, "usuario", "apellidopaterno"))
+                            segmentos.Add("NULLIF(TRIM(apellidopaterno), '')");
+                        else if (ExisteColumna(conn, "usuario", "apellido_paterno"))
+                            segmentos.Add("NULLIF(TRIM(apellido_paterno), '')");
+                    }
+
+                    if (tieneApellidoMaterno)
+                    {
+                        if (ExisteColumna(conn, "usuario", "apellidomaterno"))
+                            segmentos.Add("NULLIF(TRIM(apellidomaterno), '')");
+                        else if (ExisteColumna(conn, "usuario", "apellido_materno"))
+                            segmentos.Add("NULLIF(TRIM(apellido_materno), '')");
+                    }
+                }
+                else
+                {
+                    if (tieneNombreUsuario)
+                    {
+                        segmentos.Add("NULLIF(TRIM(nombreusuario), '')");
+                    }
+
+                    if (tieneApellidoUsuario)
+                    {
+                        segmentos.Add("NULLIF(TRIM(apellidousuario), '')");
+                    }
+                }
+
+                if (segmentos.Count == 0)
+                {
+                    if (tieneNombreCompleto)
+                    {
+                        var columna = ExisteColumna(conn, "usuario", "nombrecompleto") ? "nombrecompleto" : "nombre_completo";
+                        var sqlNombreCompleto = @"
+                            SELECT COALESCE(NULLIF(TRIM(" + columna + @"), ''), '')
+                            FROM usuario
+                            WHERE idusuario = @id
+                            LIMIT 1;";
+
+                        return NormalizarEspacios(conn.ExecuteScalar<string>(sqlNombreCompleto, new { id = idUsuario }));
+                    }
+
+                    return string.Empty;
+                }
+
+                var sql = @"
+                    SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', " + string.Join(", ", segmentos) + @")), ''), '')
+                    FROM usuario
+                    WHERE idusuario = @id
+                    LIMIT 1;";
+
+                return NormalizarEspacios(conn.ExecuteScalar<string>(sql, new { id = idUsuario }));
             }
         }
 
@@ -1109,6 +1257,14 @@ WHERE table_schema = 'public'
 
             nombres = string.Join(" ", partes.Take(partes.Count - 2));
             apellidos = string.Join(" ", partes.Skip(partes.Count - 2));
+        }
+
+        private static string NormalizarEspacios(string texto)
+        {
+            return string.Join(" ",
+                (texto ?? string.Empty)
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim()));
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
+using CapaDatos.Models;
 using CapaDatos.Services;
 using CapaModelo;
 using CapaModelo.Seguridad;
@@ -106,6 +107,158 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult CrearUsuarioInternoRT()
+        {
+            var vm = new AdminUsuarioInternoRTViewModel();
+            CargarAeropuertosUsuarioInterno(vm, null);
+            return View(vm);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public JsonResult BuscarUsuarioInternoRT(string codigoUsuario)
+        {
+            var codigo = NormalizarCodigo(codigoUsuario);
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return Json(
+                    new
+                    {
+                        success = false,
+                        message = "Debe ingresar el codigo del usuario interno."
+                    },
+                    JsonRequestBehavior.AllowGet);
+            }
+
+            var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+            var fuente = as400Dao.ObtenerDatosUsuarioInterno(codigo);
+            if (fuente == null)
+            {
+                return Json(
+                    new
+                    {
+                        success = false,
+                        message = "No se encontro el usuario en la base institucional."
+                    },
+                    JsonRequestBehavior.AllowGet);
+            }
+
+            if (!fuente.CodigoFinanciero.HasValue || fuente.CodigoFinanciero.Value <= 0m)
+            {
+                return Json(
+                    new
+                    {
+                        success = false,
+                        message = "El usuario no tiene codigo financiero (usuoid) en la base institucional."
+                    },
+                    JsonRequestBehavior.AllowGet);
+            }
+
+            var daoInterno = new UsuarioInternoRTDAO();
+            var existente = daoInterno.ObtenerActivoPorCodigoUsuario(codigo);
+
+            return Json(
+                new
+                {
+                    success = true,
+                    codigoUsuario = fuente.CodigoUsuario,
+                    ciudadCodigo = fuente.CiudadCodigo,
+                    codigoFinanciero = fuente.CodigoFinanciero.Value,
+                    yaRegistrado = existente != null,
+                    message = existente != null
+                        ? "El usuario ya tiene un registro interno RT activo."
+                        : string.Empty
+                },
+                JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult CrearUsuarioInternoRT(AdminUsuarioInternoRTViewModel model)
+        {
+            model = model ?? new AdminUsuarioInternoRTViewModel();
+            model.CodigoUsuarioBusqueda = NormalizarCodigo(model.CodigoUsuarioBusqueda);
+            model.Opcar5 = NormalizarCodigo(model.Opcar5, 10);
+            model.Opcaer = model.Opcar5;
+
+            if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
+            {
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar el codigo del usuario interno.");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Opcar5))
+            {
+                ModelState.AddModelError("Opcar5", "Debe seleccionar un aeropuerto.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                return View(model);
+            }
+
+            var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+            var fuente = as400Dao.ObtenerDatosUsuarioInterno(model.CodigoUsuarioBusqueda);
+            if (fuente == null)
+            {
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro el usuario en la base institucional.");
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                return View(model);
+            }
+
+            if (!fuente.CodigoFinanciero.HasValue || fuente.CodigoFinanciero.Value <= 0m)
+            {
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "El usuario no tiene codigo financiero (usuoid).");
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                return View(model);
+            }
+
+            model.CodigoUsuario = fuente.CodigoUsuario;
+            model.CiudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
+            model.CodigoFinanciero = fuente.CodigoFinanciero.Value;
+            model.Opcoi3 = fuente.CodigoFinanciero.Value;
+            model.Opcaer = model.Opcar5;
+
+            if (string.IsNullOrWhiteSpace(model.CiudadCodigo))
+            {
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "El usuario no tiene ciudad (usucod9) en la base institucional.");
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                return View(model);
+            }
+
+            var daoInterno = new UsuarioInternoRTDAO();
+            var registro = new UsuarioInternoRTRegistro
+            {
+                UsuarioId = daoInterno.ObtenerUsuarioIdPorCodigoUsuario(model.CodigoUsuario),
+                CodigoUsuario = model.CodigoUsuario,
+                CiudadCodigo = model.CiudadCodigo,
+                CodigoFinanciero = fuente.CodigoFinanciero.Value,
+                Opcar5 = model.Opcar5,
+                Opcaer = model.Opcar5,
+                Opcoi3 = fuente.CodigoFinanciero.Value,
+                Activo = true
+            };
+
+            string mensaje;
+            if (!daoInterno.GuardarRegistro(registro, ObtenerActorCodigoUsuario(), out mensaje))
+            {
+                ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(mensaje)
+                    ? "No se pudo guardar el usuario interno RT."
+                    : mensaje);
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                return View(model);
+            }
+
+            TempData["Success"] = mensaje;
+            return RedirectToAction("CrearUsuarioInternoRT");
         }
 
         [HttpGet]
@@ -1287,6 +1440,50 @@ namespace CapaPresentacion.Controllers
                     Selected = u.IdUsuario == model.UsuarioDestinoId
                 })
                 .ToList();
+        }
+
+        private static string NormalizarCodigo(string value, int maxLength = 64)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalizado = value.Trim().ToUpperInvariant();
+            if (normalizado.Length > maxLength)
+            {
+                normalizado = normalizado.Substring(0, maxLength);
+            }
+
+            return normalizado;
+        }
+
+        private static void CargarAeropuertosUsuarioInterno(AdminUsuarioInternoRTViewModel model, string seleccionado)
+        {
+            if (model == null)
+            {
+                return;
+            }
+
+            var selectedCode = NormalizarCodigo(seleccionado, 10);
+            var catalogo = new[]
+            {
+                new { Codigo = "", Texto = "-- Seleccione --" },
+                new { Codigo = "SEQU", Texto = "SEQU - Quito" },
+                new { Codigo = "SEGU", Texto = "SEGU - Guayaquil" },
+                new { Codigo = "SECU", Texto = "SECU - Cuenca" },
+                new { Codigo = "SEMT", Texto = "SEMT - Manta" },
+                new { Codigo = "SELT", Texto = "SELT - Latacunga" },
+                new { Codigo = "SEST", Texto = "SEST - San Cristobal" },
+                new { Codigo = "SEGS", Texto = "SEGS - Galapagos/Baltra" }
+            };
+
+            model.Aeropuertos = catalogo.Select(a => new SelectListItem
+            {
+                Value = a.Codigo,
+                Text = a.Texto,
+                Selected = string.Equals(a.Codigo, selectedCode, StringComparison.OrdinalIgnoreCase)
+            }).ToList();
         }
     }
 }
