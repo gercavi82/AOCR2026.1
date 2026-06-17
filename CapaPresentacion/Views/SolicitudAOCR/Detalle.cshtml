@@ -1549,16 +1549,33 @@
                 }
                 else if (puedeGenerarAocr)
                 {
-                    using (Html.BeginForm("GenerarAOCR", "SolicitudAOCR", new { id = Model.CodigoSolicitud }, FormMethod.Post, new { style = "display:contents;" }))
+                    var esFirmaInstitucionalAocr = User.IsInRole("Direccion")
+                        || User.IsInRole("DireccionJefaturaTecnica")
+                        || User.IsInRole("DIRDAC")
+                        || User.IsInRole("JefaturaTecnica")
+                        || User.IsInRole("DirectorGeneral");
+                    if (esFirmaInstitucionalAocr)
                     {
-                        @Html.AntiForgeryToken()
-                        <button type="submit"
-                                class="btn btn-primary aocr-action-btn-full"
-                                onclick="return confirm('¿Confirma la generación automática del documento AOCR para esta solicitud?');"
-                                title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Generar documento AOCR desde el sistema" : normalizeVisibleText(motivoAocr))">
+                        <a class="btn btn-primary aocr-action-btn-full"
+                           href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })"
+                           title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Abrir Firma institucional AOCR" : normalizeVisibleText(motivoAocr))">
                             <i class="fas fa-file-signature"></i>
-                            Generar AOCR
-                        </button>
+                            Firma institucional AOCR
+                        </a>
+                    }
+                    else
+                    {
+                        using (Html.BeginForm("GenerarAOCR", "SolicitudAOCR", new { id = Model.CodigoSolicitud }, FormMethod.Post, new { style = "display:contents;" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="btn btn-primary aocr-action-btn-full"
+                                    onclick="return confirm('¿Confirma la generación automática del documento AOCR para esta solicitud?');"
+                                    title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Generar PDF oficial AOCR desde el sistema" : normalizeVisibleText(motivoAocr))">
+                                <i class="fas fa-file-signature"></i>
+                                Generar AOCR
+                            </button>
+                        }
                     }
                 }
                 else
@@ -2013,11 +2030,11 @@
                     <p class="text-muted mb-0">El documento institucional ya puede completarse y revisarse desde este trámite antes del envío a DCAV/DGAC.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="@Url.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" })" class="btn btn-primary aocr-action-btn">
+                    <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-primary aocr-action-btn">
                         <i class="fas fa-pen"></i>
                         Completar documento
                     </a>
-                    <a href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                    <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, firmado = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
                         <i class="fas fa-eye"></i>
                         PDF directo
                     </a>
@@ -2094,11 +2111,11 @@
                     <p class="text-muted mb-0">El documento ya fue revisado por coordinación y está listo para firma digital institucional de DCAV/DGAC.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="@Url.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" })" class="btn btn-dark aocr-action-btn">
+                    <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-dark aocr-action-btn">
                         <i class="fas fa-signature"></i>
                         Abrir para firmar
                     </a>
-                    <a href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                    <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, firmado = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
                         <i class="fas fa-eye"></i>
                         Vista previa
                     </a>
@@ -2212,7 +2229,7 @@
                             <div class="aocr-review-actions">
                                 <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
                                     <i class="fas fa-check-circle"></i>
-                                    Validar AOCR
+                                    Aprobar AOCR
                                 </button>
                                 <button formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-outline-danger aocr-action-btn" type="submit">
                                     <i class="fas fa-exclamation-triangle"></i>

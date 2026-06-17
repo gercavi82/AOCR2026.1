@@ -64,3 +64,10 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.csproj.Co
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.csproj.Up2Date
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.pdb
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Buffers.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Memory.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Text.Json.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Numerics.Vectors.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Buffers.xml
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Memory.xml
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\System.Text.Json.xml

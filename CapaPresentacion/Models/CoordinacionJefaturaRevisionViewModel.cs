@@ -34,6 +34,52 @@ namespace CapaPresentacion.Models
     public class ValidarAocrViewModel
     {
         public List<ValidarAocrSolicitudItemViewModel> Items { get; set; } = new List<ValidarAocrSolicitudItemViewModel>();
+        public string MensajeInformativo { get; set; }
+        public string MensajeError { get; set; }
+        public int SolicitudId { get; set; }
+        public string CodigoSolicitud { get; set; }
+        public string Operadora { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public string CodigoAocr { get; set; }
+        public DateTime? FechaGeneracionAocr { get; set; }
+        public bool InformeAprobadoDireccion { get; set; }
+        public bool AocrExiste { get; set; }
+        public bool AocrFirmada { get; set; }
+        public bool CondicionesExisten { get; set; }
+        public bool CondicionesFirmadas { get; set; }
+        public bool DocumentoUnificado { get; set; }
+        public bool PuedeGenerarAocr { get; set; }
+        public bool PuedeVerAocr { get; set; }
+        public bool PuedeDescargarAocr { get; set; }
+        public bool PuedeFirmarAocr { get; set; }
+        public bool PuedeFirmarCondiciones { get; set; }
+        public bool PuedeFinalizar { get; set; }
+        public bool FirmaDigitalCargada { get; set; }
+        public string UsuarioFirma { get; set; }
+        public string RolFirma { get; set; }
+        public IList<DocumentoFirmaAocrViewModel> DocumentosFirma { get; set; } = new List<DocumentoFirmaAocrViewModel>();
+    }
+
+    public class DocumentoFirmaAocrViewModel
+    {
+        public string Tipo { get; set; }
+        public string Titulo { get; set; }
+        public string Descripcion { get; set; }
+        public string Estado { get; set; }
+        public string EstadoVisible { get; set; }
+        public DateTime? Fecha { get; set; }
+        public bool RutaDisponible { get; set; }
+        public bool PuedeGenerar { get; set; }
+        public bool PuedeVer { get; set; }
+        public bool PuedeDescargar { get; set; }
+        public bool PuedeFirmar { get; set; }
+        public bool EstaFirmado { get; set; }
+        public bool EsUnificado { get; set; }
+        public string UrlGenerar { get; set; }
+        public string UrlVer { get; set; }
+        public string UrlDescargar { get; set; }
+        public string UrlFirmar { get; set; }
+        public string ErrorDocumento { get; set; }
     }
 
     public class ValidarAocrSolicitudItemViewModel
@@ -69,8 +115,10 @@ namespace CapaPresentacion.Models
         public string UrlEditar { get; set; }
         public string UrlVer { get; set; }
         public string UrlDescargar { get; set; }
+        public string UrlFirmar { get; set; }
         public DateTime? FechaDocumento { get; set; }
         public bool Disponible { get; set; }
+        public bool Firmado { get; set; }
     }
 
     public class AocrDocumentoEdicionViewModel
@@ -148,6 +196,122 @@ namespace CapaPresentacion.Models
         public string PosicionFirmaY { get; set; }
         public string AnchoFirma { get; set; }
         public string AltoFirma { get; set; }
+    }
+
+    public class FirmarAocrRequest : AocrDocumentoEdicionViewModel
+    {
+        public int? AocrId { get; set; }
+        public string ModoFirma { get; set; }
+        public System.Web.HttpPostedFileBase CertificadoDigital { get; set; }
+        public string PasswordCertificado { get; set; }
+        public decimal? PosicionX { get; set; }
+        public decimal? PosicionY { get; set; }
+        public decimal? AnchoFirmaDecimal { get; set; }
+        public decimal? AltoFirmaDecimal { get; set; }
+        public int? PaginaFirma { get; set; }
+        public string NombreFirmante { get; set; }
+        public string CargoFirmante { get; set; }
+        public string RutaPdfOrigen { get; set; }
+        public int? DocumentoId { get; set; }
+    }
+
+    public class FirmaAocrResult
+    {
+        public bool Ok { get; set; }
+        public int Code { get; set; }
+        public string Message { get; set; }
+        public int SolicitudId { get; set; }
+        public int AocrId { get; set; }
+        public string RutaOrigen { get; set; }
+        public string RutaFirmada { get; set; }
+        public string HashPdfFirmado { get; set; }
+        public long TamanioPdfFirmado { get; set; }
+        public string EstadoNuevo { get; set; }
+        public string UrlDescarga { get; set; }
+        public string RedirectUrl { get; set; }
+    }
+
+    public class FirmaAocrInstitucionalViewModel
+    {
+        public int SolicitudId { get; set; }
+        public int AocrId { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string Operadora { get; set; }
+        public string CodigoAocr { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public string EstadoAocr { get; set; }
+        public string InformeTecnicoEstado { get; set; }
+        public string ResultadoTecnico { get; set; }
+        public string ResponsableFirma { get; set; }
+        public string UsuarioActual { get; set; }
+        public string RolActual { get; set; }
+        public string CargoFirmante { get; set; }
+        public DateTime? FechaGeneracion { get; set; }
+        public DateTime? FechaFirma { get; set; }
+        public string NombreArchivoPdf { get; set; }
+        public string NombreArchivoFirmado { get; set; }
+        public bool PdfExiste { get; set; }
+        public bool PdfFirmadoExiste { get; set; }
+        public long TamanioPdf { get; set; }
+        public long TamanioPdfFirmado { get; set; }
+        public string HashPdfFirmado { get; set; }
+        public string RutaPdf { get; set; }
+        public string RutaPdfFirmado { get; set; }
+        public bool PuedeGenerar { get; set; }
+        public bool PuedeRegenerar { get; set; }
+        public bool PuedeFirmar { get; set; }
+        public bool InformeAprobado { get; set; }
+        public bool DocumentoCompleto { get; set; }
+        public string MotivoBloqueo { get; set; }
+        public List<string> CamposFaltantes { get; set; } = new List<string>();
+        public string EstadoExplotador { get; set; }
+        public DateTime? FechaVencimiento { get; set; }
+        public DateTime? FechaEmisionDocumento { get; set; }
+        public string AocOriginalNumero { get; set; }
+        public string PermisoOperacionCnac { get; set; }
+        public string CondicionBaseOperacion { get; set; }
+        public bool PuedeGuardarDatos { get; set; }
+        public string UrlGuardarDatos { get; set; }
+        public string UrlGenerar { get; set; }
+        public string UrlVerPdf { get; set; }
+        public string UrlDescargarPdf { get; set; }
+        public string UrlVerPdfFirmado { get; set; }
+        public string UrlDescargarFirmado { get; set; }
+        public string UrlFirmar { get; set; }
+        public string UrlVolverBandeja { get; set; }
+        public string UrlCompletarDatos { get; set; }
+    }
+
+    public class FirmarAocrInstitucionalRequest
+    {
+        public int SolicitudId { get; set; }
+        public int? AocrId { get; set; }
+        public System.Web.HttpPostedFileBase CertificadoDigital { get; set; }
+        public string PasswordCertificado { get; set; }
+        public int PaginaFirma { get; set; }
+        public string PosicionFirma { get; set; }
+    }
+
+    public class GuardarDatosFirmaAocrRequest
+    {
+        public int SolicitudId { get; set; }
+        public string EstadoExplotador { get; set; }
+        public DateTime? FechaVencimiento { get; set; }
+    }
+
+    public class FirmarAocrInstitucionalResult
+    {
+        public bool Ok { get; set; }
+        public string Message { get; set; }
+        public int SolicitudId { get; set; }
+        public int AocrId { get; set; }
+        public string RutaPdfOrigen { get; set; }
+        public string RutaPdfFirmado { get; set; }
+        public string HashPdfFirmado { get; set; }
+        public long TamanioPdfFirmado { get; set; }
+        public string EstadoAocrNuevo { get; set; }
+        public string EstadoSolicitudNuevo { get; set; }
+        public string UrlDescarga { get; set; }
     }
 
     public class AocrCondicionAeronaveFilaViewModel

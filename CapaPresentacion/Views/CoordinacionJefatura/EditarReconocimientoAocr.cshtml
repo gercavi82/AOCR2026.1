@@ -4,6 +4,14 @@
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Completar Reconocimiento AOCR";
+    var puedeFirmarDigitalmente = User.IsInRole("Administrador")
+        || User.IsInRole("DIRDAC")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("DirectorGeneral")
+        || User.IsInRole("DireccionJefaturaTecnica")
+        || User.IsInRole("JefaturaTecnica");
+    var urlGenerarDocumento = Url.Action("GenerarDocumentoValidacionAocr", "CoordinacionJefatura");
+    var urlFirmarDocumento = Url.Action("FirmarAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId });
 }
 
 <style>
@@ -625,7 +633,7 @@
                 <div class="aocr-editor-hero-side">
                     <p class="aocr-editor-hero-side-copy">Utilice este módulo para consolidar la información del reconocimiento, validar los responsables institucionales y dejar lista la ubicación de la firma autorizada antes de descargar el PDF.</p>
                     <div class="aocr-editor-top-actions">
-                        <a class="btn btn-outline-secondary" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">Volver a la bandeja</a>
+                        <a class="btn btn-outline-secondary" href="@Url.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId })">Volver a la bandeja</a>
                         <a class="btn btn-outline-dark" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.SolicitudId })">Abrir tramite</a>
                     </div>
                 </div>
@@ -633,7 +641,7 @@
         </div>
     </div>
 
-    @using (Html.BeginForm("GenerarDocumentoValidacionAocr", "CoordinacionJefatura", FormMethod.Post, new { target = "_blank", enctype = "multipart/form-data", id = "formDocumentoAocr" }))
+    @using (Html.BeginForm("FirmarAocr", "CoordinacionJefatura", FormMethod.Post, new { enctype = "multipart/form-data", id = "frmFirmarAocr", data_generar_action = urlGenerarDocumento, data_firmar_action = urlFirmarDocumento }))
     {
         @Html.AntiForgeryToken()
         @Html.HiddenFor(m => m.SolicitudId)
@@ -1053,9 +1061,17 @@
                     <p class="aocr-editor-footer-copy">Revise la información, confirme la posición de firma y luego genere, descargue o firme digitalmente el reconocimiento AOCR.</p>
                 </div>
                 <div class="aocr-editor-footer-actions">
-                    <button type="submit" name="accion" value="VISUALIZAR" class="btn btn-primary">Vista previa PDF</button>
-                    <button type="submit" name="accion" value="DESCARGAR" class="btn btn-success">Descargar PDF</button>
-                    <button type="submit" name="accion" value="FIRMAR_DESCARGAR" class="btn btn-dark aocr-btn-priority">Firmar digitalmente y descargar</button>
+                    <button type="submit" name="accion" value="VISUALIZAR" class="btn btn-outline-primary" formaction="@urlGenerarDocumento" formtarget="_blank">Vista previa PDF</button>
+                    <button type="submit" name="accion" value="DESCARGAR" class="btn btn-outline-success" formaction="@urlGenerarDocumento" formtarget="_blank">Descargar PDF</button>
+                    <button type="submit"
+                            id="btnFirmarAocr"
+                            name="accion"
+                            value="FIRMAR_DESCARGAR"
+                            class="btn btn-dark aocr-btn-priority"
+                            formaction="@urlFirmarDocumento"
+                            @(puedeFirmarDigitalmente ? null : Html.Raw("disabled=\"disabled\" title=\"Solo los roles institucionales autorizados pueden firmar digitalmente este documento.\""))>
+                        Firmar oficialmente AOCR
+                    </button>
                 </div>
             </div>
         </div>
@@ -1075,10 +1091,12 @@
         }
 
         var status = document.getElementById('firmaDigitalStatus');
-        var form = document.getElementById('formDocumentoAocr');
+        var form = document.getElementById('frmFirmarAocr');
         var archivo = document.getElementById('certificadoDigital');
         var password = document.getElementById('passwordCertificado');
         var firmante = document.getElementById('FirmanteNombre');
+        var cargoFirmante = document.getElementById('FirmanteCargo');
+        var btnFirmar = document.getElementById('btnFirmarAocr');
         var previewFrame = document.querySelector('.aocr-sign-preview-frame');
         var overlay = document.getElementById('firmaPreviewOverlay');
         var stage = document.getElementById('firmaPreviewStage');
@@ -1448,6 +1466,97 @@
                 guardarPosicion(fixedState, false, 'La ubicacion fija fue restablecida y guardada correctamente.');
             });
         }
+
+        var ultimoSubmitter = null;
+        Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"]'), function (button) {
+            button.addEventListener('click', function () {
+                ultimoSubmitter = button;
+            });
+        });
+
+        form.addEventListener('submit', function (event) {
+            var submitter = event.submitter || ultimoSubmitter;
+            if (!submitter || submitter.value !== 'FIRMAR_DESCARGAR') {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (btnFirmar.dataset.loading === 'true') {
+                return;
+            }
+
+            var state = readState();
+            writeState(state, true);
+
+            var formData = new FormData(form);
+            formData.set('accion', 'FIRMAR_DESCARGAR');
+            formData.set('tipoDocumento', document.getElementById('TipoDocumento').value);
+            formData.set('paginaFirma', pageField.value || '1');
+            formData.set('posicionX', xField.value || '');
+            formData.set('posicionY', yField.value || '');
+            formData.set('anchoFirma', widthField.value || '');
+            formData.set('altoFirma', heightField.value || '');
+            formData.set('nombreFirmante', firmante ? firmante.value : '');
+            formData.set('cargoFirmante', cargoFirmante ? cargoFirmante.value : '');
+
+            if (!formData.get('SolicitudId')) {
+                mostrarEstado('alert-warning', 'No se encontro la solicitud.');
+                return;
+            }
+
+            var certificado = formData.get('certificadoDigital');
+            if (!certificado || !certificado.size) {
+                mostrarEstado('alert-warning', 'Debe seleccionar el certificado digital .p12 o .pfx.');
+                return;
+            }
+
+            if (!formData.get('passwordCertificado')) {
+                mostrarEstado('alert-warning', 'Debe ingresar la contrasena del certificado.');
+                return;
+            }
+
+            if (!formData.get('posicionX') || !formData.get('posicionY') || !formData.get('anchoFirma') || !formData.get('altoFirma')) {
+                mostrarEstado('alert-warning', 'Debe guardar la posicion de la firma antes de continuar.');
+                return;
+            }
+
+            btnFirmar.dataset.loading = 'true';
+            btnFirmar.disabled = true;
+            mostrarEstado('alert-info', 'Firmando digitalmente el AOCR...');
+
+            fetch(btnFirmar.getAttribute('formaction') || form.getAttribute('data-firmar-action') || form.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(function (response) {
+                return response.json().catch(function () { return null; }).then(function (json) {
+                    if (!response.ok || !json || !json.ok) {
+                        throw new Error((json && json.message) || 'No se pudo firmar el AOCR.');
+                    }
+                    return json;
+                });
+            })
+            .then(function (json) {
+                mostrarEstado('alert-success', json.message || 'AOCR firmada correctamente.');
+                if (json.data && json.data.urlDescarga) {
+                    window.location.href = json.data.urlDescarga;
+                } else if (json.data && json.data.redirectUrl) {
+                    window.location.href = json.data.redirectUrl;
+                } else {
+                    window.location.reload();
+                }
+            })
+            .catch(function (error) {
+                console.error('[AOCR][FIRMAR_AOCR][ERROR]', error);
+                mostrarEstado('alert-danger', error.message || 'Ocurrio un error al firmar digitalmente el AOCR.');
+            })
+            .finally(function () {
+                btnFirmar.dataset.loading = 'false';
+                btnFirmar.disabled = false;
+            });
+        });
 
         boton.addEventListener('click', function () {
             if (!archivo.files || !archivo.files.length) {

@@ -506,10 +506,12 @@ namespace CapaPresentacion.Infrastructure
             var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(session);
             var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(roles ?? Enumerable.Empty<string>());
             var rolActivo = RoleGroupingHelper.NormalizeSelectedRole(session["Rol"] as string ?? string.Empty);
-            var rolActivoRequiereCompania = RoleGroupingHelper.IsSolicitante(rolActivo);
-            var tieneRolInternoDisponible = rolesUnificados.Any(r => !RoleGroupingHelper.IsSolicitante(r));
+            var rolActivoRequiereCompania = RoleGroupingHelper.RolRequiereCompaniaActiva(rolActivo);
+            var rolActivoInstitucional = RoleGroupingHelper.EsRolInstitucional(rolActivo);
+            var tieneRolInternoDisponible = rolesUnificados.Any(RoleGroupingHelper.EsRolInstitucional);
             var puedeOmitirSeleccionCompania = !EsUsuarioRt(usuario)
                 || EsUsuarioAdministrador(usuario, roles)
+                || rolActivoInstitucional
                 || (tieneRolInternoDisponible && !rolActivoRequiereCompania);
 
             if (puedeOmitirSeleccionCompania)

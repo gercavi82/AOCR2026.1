@@ -5570,6 +5570,16 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Generar", CodigoSolicitudParameter = "id")]
         public ActionResult GenerarAOCR(int id)
         {
+            if (User != null
+                && (User.IsInRole("Direccion")
+                    || User.IsInRole("DireccionJefaturaTecnica")
+                    || User.IsInRole("DIRDAC")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("DirectorGeneral")))
+            {
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = id });
+            }
+
             try
             {
                 var usuarioId = ObtenerUsuarioActualId();
@@ -6126,12 +6136,12 @@ namespace CapaPresentacion.Controllers
                 UrlFinal = ConstruirUrlFinal(urlHelper, fila, tienePdfFirmado, usaFlujoCondiciones),
                 UrlGestion = puedeGestionarInterno
                     ? urlHelper.Action(
-                        "EditarDocumentoValidacionAocr",
-                        "CoordinacionJefatura",
-                        new { solicitudId = fila.SolicitudId, tipo = usaFlujoCondiciones ? DocumentoTipoCondicionesLimitaciones : DocumentoTipoReconocimiento })
+                        "Index",
+                        "FirmaAocr",
+                        new { solicitudId = fila.SolicitudId })
                     : null,
                 UrlValidacion = (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
-                    ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId })
+                    ? urlHelper.Action("Index", "FirmaAocr", new { solicitudId = fila.SolicitudId })
                     : null
             };
         }
@@ -6152,7 +6162,7 @@ namespace CapaPresentacion.Controllers
             {
                 if (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
                 {
-                    return urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId, tipo = DocumentoTipoCondicionesLimitaciones, descargar = false });
+                    return urlHelper.Action("VerPdf", "FirmaAocr", new { solicitudId = fila.SolicitudId, firmado = false });
                 }
 
                 return AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila)
@@ -6162,7 +6172,7 @@ namespace CapaPresentacion.Controllers
 
             if (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
             {
-                return urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId, tipo = DocumentoTipoReconocimiento, descargar = false });
+                return urlHelper.Action("VerPdf", "FirmaAocr", new { solicitudId = fila.SolicitudId, firmado = false });
             }
 
             return !string.IsNullOrWhiteSpace(fila.RutaAocrGenerada)

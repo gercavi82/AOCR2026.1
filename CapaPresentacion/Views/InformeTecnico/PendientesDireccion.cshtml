@@ -10,7 +10,94 @@
     var items = Model != null ? Model.ToList() : new List<CapaPresentacion.Models.ViewModels.PendienteRevisionDireccionItemViewModel>();
 }
 
-<div class="container-fluid mt-4">
+<style>
+    .aocr-pendientes-direccion .aocr-actions-cell {
+        min-width: 190px;
+    }
+
+    .aocr-pendientes-direccion .aocr-actions {
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review,
+    .aocr-pendientes-direccion .aocr-action-pdf {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        min-width: 118px;
+        border-radius: 6px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review {
+        background-color: #0f766e !important;
+        border-color: #0f766e !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(15, 118, 110, .22);
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review:hover,
+    .aocr-pendientes-direccion .aocr-action-review:focus {
+        background-color: #115e59 !important;
+        border-color: #115e59 !important;
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review i {
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-sign {
+        background-color: #0f5578 !important;
+        border-color: #0f5578 !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(15, 85, 120, .22);
+    }
+
+    .aocr-pendientes-direccion .aocr-action-sign:hover,
+    .aocr-pendientes-direccion .aocr-action-sign:focus {
+        background-color: #0a405c !important;
+        border-color: #0a405c !important;
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-signed {
+        background-color: #e7f7ed !important;
+        border-color: #b7ebc8 !important;
+        color: #166534 !important;
+        box-shadow: none;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-signed:hover,
+    .aocr-pendientes-direccion .aocr-action-signed:focus {
+        background-color: #d8f1e0 !important;
+        border-color: #9fe0b7 !important;
+        color: #14532d !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf {
+        background-color: #ffffff !important;
+        border-color: #0f4c81 !important;
+        color: #0f4c81 !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf:hover,
+    .aocr-pendientes-direccion .aocr-action-pdf:focus {
+        background-color: #e8f3fb !important;
+        border-color: #0b3b66 !important;
+        color: #0b3b66 !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf i {
+        color: inherit !important;
+    }
+</style>
+
+<div class="container-fluid mt-4 aocr-pendientes-direccion">
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">Dashboard Inspección</a></li>
@@ -65,10 +152,25 @@
                         <tbody>
                             @foreach (var item in items)
                             {
+                                var accion = item.AccionSiguienteDireccion ?? string.Empty;
+                                var claseAccion = accion == "ValidarAocr" || accion == "FirmarAocr" || accion == "FirmarCondiciones"
+                                    ? "aocr-action-sign"
+                                    : (accion == "DocumentosFirmados" ? "aocr-action-signed" : string.Empty);
                                 <tr>
                                     <td>
-                                        <strong>#@item.CodigoInforme</strong>
-                                        <div class="small text-muted">Inspección @item.CodigoInspeccion</div>
+                                        @if (item.CodigoInforme > 0)
+                                        {
+                                            <strong>#@item.CodigoInforme</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>Sin informe pendiente</strong>
+                                        }
+                                        @if (item.CodigoInspeccion > 0)
+                                        {
+                                            <div class="small text-muted">Inspección @item.CodigoInspeccion</div>
+                                        }
+                                        <div class="small text-muted">SolicitudId @item.CodigoSolicitud</div>
                                     </td>
                                     <td>@item.NumeroSolicitud</td>
                                     <td>@item.NombreOperadora</td>
@@ -78,14 +180,14 @@
                                     <td>
                                         <span class="badge @(item.NotificacionFormalEnviada ? "bg-warning text-dark" : "bg-secondary")">@item.EstadoInforme</span>
                                     </td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <a class="btn btn-sm btn-primary" href="@item.UrlRevision">
-                                                <i class="fas fa-balance-scale"></i> Revisar informe
+                                    <td class="aocr-actions-cell">
+                                        <div class="d-flex flex-wrap aocr-actions">
+                                            <a class="btn btn-sm aocr-action-review @claseAccion" href="@item.UrlRevision" title="@item.MotivoAccionSiguiente">
+                                                <i class="@item.IconoAccionPrincipal"></i> @item.EtiquetaAccionPrincipal
                                             </a>
                                             @if (!string.IsNullOrWhiteSpace(item.UrlPdfInformeFirmadoInspector))
                                             {
-                                                <a class="btn btn-sm btn-outline-secondary" href="@item.UrlPdfInformeFirmadoInspector" target="_blank" rel="noopener">
+                                                <a class="btn btn-sm aocr-action-pdf" href="@item.UrlPdfInformeFirmadoInspector" target="_blank" rel="noopener">
                                                     <i class="fas fa-file-pdf"></i> Ver PDF
                                                 </a>
                                             }

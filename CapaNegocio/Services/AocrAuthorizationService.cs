@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -211,26 +212,33 @@ namespace CapaNegocio.Services
 
             if (!EsContextoAutenticado(usuario))
             {
+                RegistrarDecisionAutorizacion("[AUTH][DENY]", moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoInforme, false, "SesionNoAutenticada");
                 return AocrAuthorizationResult.Denied(moduloNormalizado, accionNormalizada, "La sesión expiró o no ha iniciado sesión.");
             }
 
-            if (RequiereCompaniaSeleccionada(usuario, moduloNormalizado))
+            var requiereCompaniaActiva = usuario != null && RolRequiereCompaniaActiva(usuario.SelectedRole);
+
+            if (requiereCompaniaActiva && RequiereCompaniaSeleccionada(usuario, moduloNormalizado))
             {
+                RegistrarDecisionAutorizacion("[AUTH][DENY]", moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoInforme, true, "Debe seleccionar una compania activa antes de continuar.");
                 return AocrAuthorizationResult.Denied(moduloNormalizado, accionNormalizada, "Debe seleccionar una compañía activa antes de continuar.", true);
             }
 
             var rolesNormalizados = NormalizarRoles(usuario);
             if (!TieneAccesoPorMatriz(moduloNormalizado, accionNormalizada, rolesNormalizados))
             {
+                RegistrarDecisionAutorizacion("[AUTH][DENY]", moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoInforme, requiereCompaniaActiva, "No tiene permisos para acceder a este modulo.");
                 return AocrAuthorizationResult.Denied(moduloNormalizado, accionNormalizada, "No tiene permisos para acceder a este módulo.");
             }
 
             string motivo;
             if (!ValidarRecurso(moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoOrden, codigoInforme, out motivo))
             {
+                RegistrarDecisionAutorizacion("[AUTH][DENY]", moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoInforme, requiereCompaniaActiva, motivo);
                 return AocrAuthorizationResult.Denied(moduloNormalizado, accionNormalizada, motivo);
             }
 
+            RegistrarDecisionAutorizacion("[AUTH][ALLOW]", moduloNormalizado, accionNormalizada, usuario, codigoSolicitud, codigoInspeccion, codigoInforme, requiereCompaniaActiva, EsRolInstitucional(usuario.SelectedRole) ? "RolInstitucionalAutorizado" : "RolAutorizado");
             return AocrAuthorizationResult.Allowed(moduloNormalizado, accionNormalizada);
         }
 
@@ -703,9 +711,18 @@ namespace CapaNegocio.Services
                     return ValidarAprobacionDocumentalCoordinador(usuario, codigoSolicitud, out motivo);
                 }
 
+                if (Comparer.Equals(accion, "ValidarAocr"))
+                {
+                    if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                    {
+                        return true;
+                    }
+
+                    return ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo);
+                }
+
                 if (Comparer.Equals(accion, "GenerarDocumentoValidacionAocr")
-                    || Comparer.Equals(accion, "DocumentoValidacionAocr")
-                    || Comparer.Equals(accion, "ValidarAocr"))
+                    || Comparer.Equals(accion, "DocumentoValidacionAocr"))
                 {
                     return ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo);
                 }
@@ -935,9 +952,7 @@ namespace CapaNegocio.Services
 
             if (roles.Contains("InspectorTecnico", Comparer))
             {
-                var inspectorIds = ResolverIdsInspector(usuario.UserId, usuario.CodigoUsuario);
-                var inspecciones = _inspeccionDao.ListarPorSolicitud(codigoSolicitud.Value) ?? new List<Inspeccion>();
-                if (inspecciones.Any(i => i != null && i.CodigoInspector.HasValue && inspectorIds.Contains(i.CodigoInspector.Value)))
+                if (PuedeInspectorRevisarDocumentos(codigoSolicitud.Value, usuario.UserId))
                 {
                     return true;
                 }
@@ -1113,13 +1128,28 @@ namespace CapaNegocio.Services
 
         private static bool RequiereCompaniaSeleccionada(AocrAuthorizationContext usuario, string modulo)
         {
-            if (!EsRolActivoSolicitante(usuario))
+            if (usuario == null || EsRolInstitucional(usuario.SelectedRole) || !RolRequiereCompaniaActiva(usuario.SelectedRole))
             {
                 return false;
             }
 
             return (Comparer.Equals(modulo, "SolicitudAOCR") || Comparer.Equals(modulo, "OrdenRecaudacion"))
                 && string.IsNullOrWhiteSpace((usuario.CompanyCode ?? string.Empty).Trim());
+        }
+
+        private static bool RolRequiereCompaniaActiva(string rol)
+        {
+            return Comparer.Equals(NormalizarRol(rol), "Solicitante");
+        }
+
+        private static bool EsRolInstitucional(string rol)
+        {
+            var normalizado = NormalizarRol(rol);
+            return Comparer.Equals(normalizado, "Administrador")
+                || Comparer.Equals(normalizado, "Coordinacion")
+                || Comparer.Equals(normalizado, "DireccionJefaturaTecnica")
+                || Comparer.Equals(normalizado, "Financiero")
+                || Comparer.Equals(normalizado, "InspectorTecnico");
         }
 
         private static bool EsContextoAutenticado(AocrAuthorizationContext usuario)
@@ -1130,6 +1160,98 @@ namespace CapaNegocio.Services
         private static bool EsRolActivoSolicitante(AocrAuthorizationContext usuario)
         {
             return usuario != null && Comparer.Equals(NormalizarRol(usuario.SelectedRole), "Solicitante");
+        }
+
+        private void RegistrarDecisionAutorizacion(
+            string etiqueta,
+            string modulo,
+            string accion,
+            AocrAuthorizationContext usuario,
+            int? codigoSolicitud,
+            int? codigoInspeccion,
+            int? codigoInforme,
+            bool requiereCompaniaActiva,
+            string motivo)
+        {
+            try
+            {
+                var estadoInforme = ResolverEstadoInformeLog(codigoInforme);
+                var solicitudId = codigoSolicitud;
+                var inspeccionId = codigoInspeccion;
+
+                if ((!solicitudId.HasValue || solicitudId.Value <= 0) && codigoInforme.HasValue && codigoInforme.Value > 0)
+                {
+                    var informe = _informeDao.ObtenerPorId(codigoInforme.Value);
+                    if (informe != null && informe.CodigoInspeccion > 0)
+                    {
+                        inspeccionId = informe.CodigoInspeccion;
+                    }
+                }
+
+                if ((!solicitudId.HasValue || solicitudId.Value <= 0) && inspeccionId.HasValue && inspeccionId.Value > 0)
+                {
+                    var inspeccion = _inspeccionDao.ObtenerPorId(inspeccionId.Value);
+                    if (inspeccion != null && inspeccion.CodigoSolicitud > 0)
+                    {
+                        solicitudId = inspeccion.CodigoSolicitud;
+                    }
+                }
+
+                var estadoSolicitud = ResolverEstadoSolicitudLog(solicitudId);
+                Trace.TraceInformation(
+                    etiqueta +
+                    " UsuarioId=" + (usuario != null ? usuario.UserId.ToString(CultureInfo.InvariantCulture) : "0") +
+                    "; Login=" + (usuario != null ? (usuario.UserName ?? string.Empty) : string.Empty) +
+                    "; RolActivo=" + (usuario != null ? (usuario.SelectedRole ?? string.Empty) : string.Empty) +
+                    "; Accion=" + (accion ?? string.Empty) +
+                    "; Modulo=" + (modulo ?? string.Empty) +
+                    "; SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                    "; InformeId=" + (codigoInforme.HasValue ? codigoInforme.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                    "; EstadoSolicitud=" + estadoSolicitud +
+                    "; EstadoInforme=" + estadoInforme +
+                    "; CompaniaActiva=" + (usuario != null ? (usuario.CompanyCode ?? string.Empty) : string.Empty) +
+                    "; RequiereCompaniaActiva=" + requiereCompaniaActiva +
+                    "; Motivo=" + (motivo ?? string.Empty));
+            }
+            catch
+            {
+            }
+        }
+
+        private string ResolverEstadoSolicitudLog(int? codigoSolicitud)
+        {
+            if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
+                return solicitud != null ? (solicitud.Estado ?? string.Empty) : string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private string ResolverEstadoInformeLog(int? codigoInforme)
+        {
+            if (!codigoInforme.HasValue || codigoInforme.Value <= 0)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var informe = _informeDao.ObtenerPorId(codigoInforme.Value);
+                return informe != null ? (informe.EstadoInforme ?? string.Empty) : string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private static string NormalizarModulo(string modulo, string accion)
@@ -1195,7 +1317,7 @@ namespace CapaNegocio.Services
             if (Matches(normalized, "INSPECTOR", "TECNICO", "EVALUADORTECNICO", "INSPECTORTECNICO")) return "InspectorTecnico";
             if (Matches(normalized, "FINANCIERO", "COORDINADORFINANCIERO", "DIRECTORFINANCIERO")) return "Financiero";
             if (Matches(normalized, "COORDINACION", "COORDINADOR", "COORDINADORINSPECCIONES", "COORDINACIONLEGAL", "COORDINADORLEGAL")) return "Coordinacion";
-            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DIRECTORGENERAL", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
+            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DCAV", "DIRECTORGENERAL", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
             return rol == null ? string.Empty : rol.Trim();
         }
 

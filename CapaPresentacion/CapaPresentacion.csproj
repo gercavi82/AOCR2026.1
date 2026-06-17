@@ -412,6 +412,8 @@
     <Compile Include="Models\SeleccionCompaniaViewModel.cs" />
     <Compile Include="Models\SolicitudAOCRViewModel.cs" />
     <Compile Include="Models\Placeholders.cs" />
+    <Compile Include="Controllers\FirmaAocrController.cs" />
+    <Compile Include="Services\FirmaAocrServices.cs" />
     <Compile Include="Services\AocrUserContextService.cs" />
     <Compile Include="Services\InspectorDashboardService.cs" />
     <Compile Include="Services\SidebarMenuService.cs" />
@@ -427,6 +429,8 @@
     <Content Include="Content\aocr-informe-tecnico.css" />
     <Content Include="Content\aocr-responsive.css" />
     <Content Include="Content\aocr-document-cards.css" />
+    <Content Include="Content\aocr-firma-aocr.css" />
+    <Content Include="Content\firma-aocr.css" />
     <Content Include="Content\aocr-sidebar.css" />
     <Content Include="Content\aocr-modals.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
@@ -3123,6 +3127,8 @@
     <Content Include="Scripts\bootstrap.bundle.min.js.map" />
     <Content Include="Scripts\bootstrap.bundle.js.map" />
     <Content Include="Scripts\admin-usuarios.js" />
+    <Content Include="Scripts\aocr-firma-institucional.js" />
+    <Content Include="Scripts\firma-aocr.js" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

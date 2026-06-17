@@ -165,10 +165,14 @@
     <Compile Include="Services\NotificacionService.cs" />
     <Compile Include="Services\CorreoInstitucionalService.cs" />
     <Compile Include="Services\AocrBandejaRoleContext.cs" />
+    <Compile Include="Services\AocrContextResolverService.cs" />
     <Compile Include="Services\CoordinacionBandejaService.cs" />
     <Compile Include="Services\DireccionBandejaService.cs" />
+    <Compile Include="Services\DireccionWorkflowRouter.cs" />
+    <Compile Include="Services\InformeTecnicoEstadoService.cs" />
     <Compile Include="Services\InspectorBandejaService.cs" />
     <Compile Include="Services\AocrFinalWorkflowService.cs" />
+    <Compile Include="Services\AocrFinalizacionService.cs" />
     <Compile Include="Services\AocrEstadoService.cs" />
     <Compile Include="Services\AocrFlujoService.cs" />
     <Compile Include="Services\AocrSidebarCounterService.cs" />

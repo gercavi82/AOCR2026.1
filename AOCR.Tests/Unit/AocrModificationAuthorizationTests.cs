@@ -32,16 +32,16 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void CoordinacionJefatura_DigitalSignatureBootstrap_ShouldRequireInstitutionalRoles()
         {
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "CargarDatosFirmaDigitalAocr", "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "CargarDatosFirmaDigitalAocr", "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
         }
 
         [TestMethod]
         public void CoordinacionJefatura_ModificationDocumentWorkflow_ShouldExposeExpectedRoleContracts()
         {
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "EditarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "PreviewDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GenerarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
-            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GuardarPosicionFirmaAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "EditarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "PreviewDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GenerarDocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs", "GuardarPosicionFirmaAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
         }
 
         [TestMethod]

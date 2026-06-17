@@ -23,7 +23,7 @@ using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
     public class CoordinacionJefaturaController : Controller
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
@@ -38,22 +38,26 @@ namespace CapaPresentacion.Controllers
         private readonly DashboardInspeccionDAO _dashboardInspeccionDao = new DashboardInspeccionDAO();
         private readonly UsuarioInternoRTDAO _usuarioInternoRTDAO = new UsuarioInternoRTDAO();
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
+        private readonly AocrContextResolverService _aocrContextResolverService = new AocrContextResolverService();
+        private readonly AocrEstadoService _aocrEstadoService = new AocrEstadoService();
+        private readonly InformeTecnicoEstadoService _informeTecnicoEstadoService = new InformeTecnicoEstadoService();
+        private readonly AocrFinalizacionService _aocrFinalizacionService = new AocrFinalizacionService();
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
         {
             return RedirectToAction("DashboardGerencial", "Direccion");
         }
 
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DashboardInspeccion")]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion")]
         public ActionResult DashboardInspeccion(string compania = null, string inspector = null, string estado = null, string quickFilter = null)
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
             var puedeGestionarAsignacion = User.IsInRole("Administrador")
                 || User.IsInRole("Coordinador")
                 || User.IsInRole("CoordinadorInspecciones");
-            var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+            var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("DireccionJefaturaTecnica") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
             var puedeValidarAocr = User.IsInRole("Administrador")
                 || User.IsInRole("CoordinacionLegal")
                 || User.IsInRole("CoordinadorLegal")
@@ -274,7 +278,7 @@ namespace CapaPresentacion.Controllers
                     ? urlHelper.Action("PendientesDireccion", "Inspeccion")
                     : null;
                 var urlValidarAocr = puedeValidarAocr
-                    ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = codigoSolicitud })
+                    ? urlHelper.Action("Index", "FirmaAocr", new { solicitudId = codigoSolicitud })
                     : null;
                 var puedeAsignarInspector = puedeGestionarAsignacion
                     && !tieneInspector
@@ -320,7 +324,7 @@ namespace CapaPresentacion.Controllers
                 }
                 else if (puedeValidarFila && !string.IsNullOrWhiteSpace(urlValidarAocr))
                 {
-                    textoAccionPrincipal = "Validar AOCR";
+                    textoAccionPrincipal = "Firma institucional AOCR";
                     urlAccionPrincipal = urlValidarAocr;
                 }
                 else if (!string.IsNullOrWhiteSpace(urlVerDocumento) && string.Equals(estadoGeneral, "FINALIZADO", StringComparison.OrdinalIgnoreCase))
@@ -869,67 +873,300 @@ namespace CapaPresentacion.Controllers
         }
 
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "ValidarAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult ValidarAocr(int? solicitudId = null)
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult ValidarAocr(int? solicitudId = null, int? aocrId = null)
         {
+            if (solicitudId.HasValue && solicitudId.Value > 0)
+            {
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = solicitudId.Value });
+            }
+
+            if (UsarFirmaAocrNueva())
+            {
+                return RedirectToAction("PendientesDireccion", "Inspeccion");
+            }
+
             // Evitar fuga de TempData["Error"] establecido por otras acciones.
             TempData.Remove("Error");
+            RegistrarLogValidarAocrEntrada(solicitudId, aocrId);
 
             try
             {
-                var items = ConstruirItemsValidacionAocr();
-                if (solicitudId.HasValue && solicitudId.Value > 0)
+                var contexto = _aocrContextResolverService.ResolverContextoAocr(solicitudId, aocrId);
+                if (contexto == null || !contexto.Ok)
                 {
-                    items = items.Where(item => item != null && item.Solicitud != null && item.Solicitud.CodigoSolicitud == solicitudId.Value).ToList();
+                    var mensaje = contexto != null && !string.IsNullOrWhiteSpace(contexto.Mensaje)
+                        ? contexto.Mensaje
+                        : "No se recibio el identificador de la solicitud o del AOCR.";
+                    RegistrarLogValidarAocrEstados(contexto);
+                    RegistrarLogValidarAocrPrecondiciones(contexto, null, mensaje);
+                    return View("~/Views/CoordinacionJefatura/ValidarAocr.cshtml", new ValidarAocrViewModel
+                    {
+                        MensajeError = mensaje
+                    });
                 }
 
-                var model = new ValidarAocrViewModel
+                RegistrarLogValidarAocrEstados(contexto);
+
+                var informeAprobadoDireccion = _informeTecnicoEstadoService.EstaAprobadoPorDireccion(contexto.InformeTecnico);
+                if (!_aocrEstadoService.PuedeDireccionValidarAocr(contexto.EstadoSolicitud, contexto.EstadoAocr)
+                    && !informeAprobadoDireccion
+                    && !User.IsInRole("Administrador"))
                 {
-                    Items = items
-                };
+                    var motivo = "El tramite no se encuentra en la etapa requerida para esta accion.";
+                    RegistrarLogValidarAocrPrecondiciones(contexto, null, motivo);
+                    return View("~/Views/CoordinacionJefatura/ValidarAocr.cshtml", new ValidarAocrViewModel
+                    {
+                        MensajeError = motivo
+                    });
+                }
+
+                var items = ConstruirItemsValidacionAocr();
+                items = items
+                    .Where(item => item != null
+                        && item.Solicitud != null
+                        && contexto.SolicitudId.HasValue
+                        && item.Solicitud.CodigoSolicitud == contexto.SolicitudId.Value)
+                    .ToList();
+
+                if (!items.Any())
+                {
+                    var motivo = "No se encontro el AOCR asociado a la solicitud.";
+                    RegistrarLogValidarAocrPrecondiciones(contexto, null, motivo);
+                    return View("~/Views/CoordinacionJefatura/ValidarAocr.cshtml", new ValidarAocrViewModel
+                    {
+                        MensajeError = motivo
+                    });
+                }
+
+                RegistrarLogValidarAocrPrecondiciones(contexto, items.FirstOrDefault(), "Contexto valido.");
+
+                var model = ConstruirValidarAocrViewModel(contexto, items.FirstOrDefault());
+                model.Items = items;
+                model.MensajeInformativo = "Informe tecnico aprobado por Direccion. AOCR y Condiciones disponibles para validacion y firma institucional.";
+                RegistrarLogValidarAocrViewModel(model);
 
                 return View("~/Views/CoordinacionJefatura/ValidarAocr.cshtml", model);
             }
             catch (PostgresException exPg)
             {
                 var referencia = RegistrarErrorValidacionAocr("ValidarAocr.CargarBandeja", exPg);
-                TempData["Error"] = "No se pudo cargar la bandeja de Validar AOCR por un error de base de datos. Ref: " + referencia;
+                TempData["Error"] = "No se pudo cargar la bandeja de Firma institucional AOCR por un error de base de datos. Ref: " + referencia;
                 return RedirectToAction("DashboardInspeccion");
             }
             catch (Exception ex)
             {
                 var referencia = RegistrarErrorValidacionAocr("ValidarAocr.CargarBandeja", ex);
-                TempData["Error"] = "No se pudo cargar la bandeja de Validar AOCR. Ref: " + referencia;
+                TempData["Error"] = "No se pudo cargar la bandeja de Firma institucional AOCR. Ref: " + referencia;
                 return RedirectToAction("DashboardInspeccion");
             }
         }
 
-        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult DocumentoValidacionAocr(int solicitudId, string tipo, bool descargar = false)
+        [HttpGet]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "ValidarAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult FirmaAocr(int solicitudId)
         {
+            if (UsarFirmaAocrNueva())
+            {
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = solicitudId });
+            }
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR_PAGE][IN] SolicitudId=" + solicitudId +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog());
+
             try
             {
+                var model = ConstruirFirmaAocrInstitucionalViewModel(solicitudId);
+                System.Diagnostics.Trace.TraceInformation(
+                    "[FIRMA_AOCR_PAGE][MODEL] SolicitudId=" + solicitudId +
+                    "; EstadoSolicitud=" + (model != null ? model.EstadoSolicitud : string.Empty) +
+                    "; AocrId=" + (model != null ? model.AocrId.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                    "; EstadoAocr=" + (model != null ? model.EstadoAocr : string.Empty) +
+                    "; PdfExiste=" + (model != null && model.PdfExiste) +
+                    "; PdfFirmadoExiste=" + (model != null && model.PdfFirmadoExiste) +
+                    "; PuedeFirmar=" + (model != null && model.PuedeFirmar) +
+                    "; Motivo=" + (model != null ? model.MotivoBloqueo : "Modelo no disponible"));
+
+                return View("~/Views/CoordinacionJefatura/FirmaAocr.cshtml", model);
+            }
+            catch (PostgresException exPg)
+            {
+                var referencia = RegistrarErrorValidacionAocr("FirmaAocr.CargarPantalla", exPg, solicitudId);
+                TempData["Error"] = "No se pudo cargar la pantalla de firma AOCR. Ref: " + referencia;
+                return RedirectToAction("DashboardInspeccion");
+            }
+            catch (Exception ex)
+            {
+                var referencia = RegistrarErrorValidacionAocr("FirmaAocr.CargarPantalla", ex, solicitudId);
+                TempData["Error"] = "No se pudo cargar la pantalla de firma AOCR. Ref: " + referencia;
+                return RedirectToAction("DashboardInspeccion");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult GenerarPdfAocr(int solicitudId)
+        {
+            if (UsarFirmaAocrNueva())
+            {
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = solicitudId });
+            }
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[AOCR_OFICIAL_GENERATE][IN] SolicitudId=" + solicitudId +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog());
+
+            var resultado = GenerarPdfOficialAocrFisico(solicitudId);
+            Response.StatusCode = resultado.Ok ? 200 : resultado.Code;
+            return Json(new
+            {
+                ok = resultado.Ok,
+                message = resultado.Message,
+                data = resultado.Ok ? new
+                {
+                    solicitudId = resultado.SolicitudId,
+                    aocrId = resultado.AocrId,
+                    ruta = resultado.RutaOrigen,
+                    bytes = resultado.TamanioPdfFirmado,
+                    urlVer = Url.Action("VerPdfAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, firmado = false }),
+                    urlDescargar = Url.Action("DescargarPdfAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, firmado = false })
+                } : null
+            });
+        }
+
+        [HttpGet]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult VerPdfAocr(int solicitudId, bool firmado = false)
+        {
+            return RedirectToAction("VerPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = firmado });
+        }
+
+        [HttpGet]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult DescargarPdfAocr(int solicitudId, bool firmado = false)
+        {
+            return RedirectToAction("DescargarPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = firmado });
+        }
+
+        [HttpGet]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult DescargarAocrFirmado(int solicitudId)
+        {
+            return RedirectToAction("DescargarFirmado", "FirmaAocr", new { solicitudId = solicitudId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult FirmarAocrInstitucional(FirmarAocrInstitucionalRequest request, int solicitudId = 0)
+        {
+            if (UsarFirmaAocrNueva())
+            {
+                var idLegacy = solicitudId > 0 ? solicitudId : (request != null ? request.SolicitudId : 0);
+                Response.StatusCode = 409;
+                return Json(new
+                {
+                    ok = false,
+                    message = "La firma AOCR institucional fue migrada al modulo /FirmaAocr/Index.",
+                    data = new
+                    {
+                        solicitudId = idLegacy,
+                        redirectUrl = Url.Action("Index", "FirmaAocr", new { solicitudId = idLegacy })
+                    }
+                });
+            }
+
+            request = request ?? new FirmarAocrInstitucionalRequest();
+            if (request.SolicitudId <= 0)
+            {
+                request.SolicitudId = solicitudId;
+            }
+            if (request.CertificadoDigital == null && Request != null && Request.Files != null)
+            {
+                request.CertificadoDigital = Request.Files["certificadoDigital"];
+            }
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][IN] SolicitudId=" + request.SolicitudId +
+                "; AocrId=" + (request.AocrId.HasValue ? request.AocrId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog() +
+                "; TieneCertificado=" + (request.CertificadoDigital != null && request.CertificadoDigital.ContentLength > 0) +
+                "; TienePassword=" + !string.IsNullOrWhiteSpace(request.PasswordCertificado) +
+                "; PaginaFirma=" + request.PaginaFirma +
+                "; PosicionFirma=" + (request.PosicionFirma ?? string.Empty));
+
+            var result = FirmarAocrInstitucionalSeguro(request);
+            Response.StatusCode = result.Ok ? 200 : 400;
+            return Json(new
+            {
+                ok = result.Ok,
+                message = result.Message,
+                data = result.Ok ? new
+                {
+                    solicitudId = result.SolicitudId,
+                    aocrId = result.AocrId,
+                    estadoAocr = result.EstadoAocrNuevo,
+                    estadoSolicitud = result.EstadoSolicitudNuevo,
+                    rutaFirmada = result.RutaPdfFirmado,
+                    hash = result.HashPdfFirmado,
+                    bytes = result.TamanioPdfFirmado,
+                    urlDescarga = result.UrlDescarga
+                } : null
+            });
+        }
+
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "DocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult DocumentoValidacionAocr(int solicitudId, string tipo, bool descargar = false)
+        {
+            if (UsarFirmaAocrNueva())
+            {
+                return RedirectToAction(descargar ? "DescargarPdf" : "VerPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = false });
+            }
+
+            try
+            {
+                RegistrarLogDocumentoValidacionRequest(solicitudId, tipo, descargar);
+
                 var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
                 if (solicitud == null)
                 {
-                    return HttpNotFound("La solicitud AOCR indicada no existe.");
+                    return RespuestaDocumentoValidacionNoDisponible(solicitudId, tipo, null, "La solicitud AOCR indicada no existe.", 404);
                 }
 
                 var inspeccionesSolicitud = _inspeccionDao.ListarPorSolicitud(solicitudId) ?? new List<Inspeccion>();
                 var item = ConstruirItemValidacionAocr(solicitud, inspeccionesSolicitud);
                 if (item == null)
                 {
-                    return HttpNotFound("No existe contexto disponible para el documento AOCR solicitado.");
+                    return RespuestaDocumentoValidacionNoDisponible(solicitudId, tipo, solicitud, "No existe contexto disponible para el documento AOCR solicitado.", 404);
                 }
 
                 var tipoNormalizado = NormalizarTipoDocumento(tipo);
+                if (tipoNormalizado == null)
+                {
+                    return RespuestaDocumentoValidacionNoDisponible(solicitudId, tipo, solicitud, "Tipo de documento AOCR no valido. Use RECONOCIMIENTO, CONDICIONES_LIMITACIONES o UNIFICADO_AOCR.", 400);
+                }
                 if (tipoNormalizado == null)
                 {
                     return new HttpStatusCodeResult(400, "Tipo de documento AOCR no válido.");
                 }
 
                 var habilitadoPorModificacion = PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
+                if (!item.FirmaCompleta && !habilitadoPorModificacion)
+                {
+                    return RespuestaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado, solicitud, "El documento AOCR aun no esta disponible. El informe tecnico debe estar aprobado por Direccion antes de visualizarlo.", 409);
+                }
                 if (!item.FirmaCompleta && !habilitadoPorModificacion)
                 {
                     return new HttpStatusCodeResult(409, "La firma del informe técnico aún no está completa para habilitar este documento.");
@@ -944,6 +1181,11 @@ namespace CapaPresentacion.Controllers
                     : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
                 if (camposFaltantes.Any())
                 {
+                    return RespuestaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado, solicitud, "El documento AOCR no puede generarse porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".", 409);
+                }
+
+                if (camposFaltantes.Any())
+                {
                     return new HttpStatusCodeResult(409, "El documento AOCR no puede generarse porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
                 }
 
@@ -956,6 +1198,7 @@ namespace CapaPresentacion.Controllers
                         var nombreArchivoExistente = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, item.Certificado != null ? item.Certificado.FechaEmision : (DateTime?)null);
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
+                        RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFisicaCertificado);
                         return File(rutaFisicaCertificado, "application/pdf");
                     }
                 }
@@ -969,6 +1212,7 @@ namespace CapaPresentacion.Controllers
                         var nombreArchivoExistente = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, item.Certificado != null ? item.Certificado.FechaEmision : (DateTime?)null);
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
+                        RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFisica);
                         return File(rutaFisica, "application/pdf");
                     }
                 }
@@ -982,18 +1226,15 @@ namespace CapaPresentacion.Controllers
                         var nombreArchivoFirmado = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, documentoFirmado != null ? documentoFirmado.FechaFirma : (DateTime?)null);
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoFirmado);
+                        RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFirmada);
                         return File(rutaFirmada, "application/pdf");
                     }
                 }
 
-                var viewName = usarPlantillaOficial
-                    ? "~/Views/Certificado/CertificadoAOCR.cshtml"
-                    : (tipoNormalizado == "RECONOCIMIENTO"
-                        ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
-                        : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml");
-                var pdfModel = usarPlantillaOficial
-                    ? (object)ConstruirCertificadoAocrViewModelOficial(documentoModel)
-                    : documentoModel;
+                var viewName = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+                var pdfModel = (object)documentoModel;
                 var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
 
                 var pdf = new ViewAsPdf(viewName, pdfModel)
@@ -1006,6 +1247,7 @@ namespace CapaPresentacion.Controllers
                 var pdfBytes = pdf.BuildFile(ControllerContext);
                 Response.Headers["X-Content-Type-Options"] = "nosniff";
                 PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivo);
+                RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, "PDF_GENERADO_EN_MEMORIA", pdfBytes != null ? pdfBytes.LongLength : 0);
                 return File(pdfBytes, "application/pdf");
             }
             catch (PostgresException exPg)
@@ -1021,9 +1263,14 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo)
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo, string modo = null)
         {
+            if (UsarFirmaAocrNueva())
+            {
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = solicitudId });
+            }
+
             if (Request != null)
             {
                 return EditarDocumentoValidacionAocrSeguro(solicitudId, tipo);
@@ -1133,7 +1380,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult PreviewDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -1166,11 +1413,6 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(409, "La vista previa AOCR requiere completar estos campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
                 }
 
-                if (usarPlantillaOficial)
-                {
-                    return View("~/Views/Certificado/CertificadoAOCR.cshtml", ConstruirCertificadoAocrViewModelOficial(documentoModel));
-                }
-
                 var viewName = tipoNormalizado == "RECONOCIMIENTO"
                     ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
                     : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
@@ -1191,9 +1433,20 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult CargarDatosFirmaDigitalAocr(HttpPostedFileBase certificadoDigital, string passwordCertificado)
         {
+            if (UsarFirmaAocrNueva())
+            {
+                Response.StatusCode = 409;
+                return Json(new
+                {
+                    ok = false,
+                    mensaje = "La carga de certificado AOCR fue migrada al modulo /FirmaAocr/Index.",
+                    redirectUrl = Url.Action("Index", "FirmaAocr")
+                });
+            }
+
             string mensajeValidacion;
             if (!EsCertificadoDigitalValido(certificadoDigital, out mensajeValidacion))
             {
@@ -1230,17 +1483,448 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult FirmarAocr(FirmarAocrRequest request, int solicitudId = 0, int? aocrId = null)
+        {
+            if (UsarFirmaAocrNueva())
+            {
+                var idLegacy = solicitudId > 0 ? solicitudId : (request != null ? request.SolicitudId : 0);
+                Response.StatusCode = 409;
+                return Json(new
+                {
+                    ok = false,
+                    message = "La firma AOCR fue migrada al modulo /FirmaAocr/Index.",
+                    data = new
+                    {
+                        solicitudId = idLegacy,
+                        redirectUrl = Url.Action("Index", "FirmaAocr", new { solicitudId = idLegacy })
+                    }
+                });
+            }
+
+            request = request ?? new FirmarAocrRequest();
+            if (request.SolicitudId <= 0)
+            {
+                request.SolicitudId = solicitudId;
+            }
+            if (!request.AocrId.HasValue)
+            {
+                request.AocrId = aocrId;
+            }
+
+            return JsonFirmaAocr(FirmarDocumentoValidacionAocr(request, "RECONOCIMIENTO"));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult FirmarCondiciones(FirmarAocrRequest request, int solicitudId = 0, int? condicionesId = null)
+        {
+            if (UsarFirmaAocrNueva())
+            {
+                var idLegacy = solicitudId > 0 ? solicitudId : (request != null ? request.SolicitudId : 0);
+                Response.StatusCode = 409;
+                return Json(new
+                {
+                    ok = false,
+                    message = "La firma de Condiciones AOCR fue migrada al modulo unificado /FirmaAocr/Index.",
+                    data = new
+                    {
+                        solicitudId = idLegacy,
+                        redirectUrl = Url.Action("Index", "FirmaAocr", new { solicitudId = idLegacy })
+                    }
+                });
+            }
+
+            request = request ?? new FirmarAocrRequest();
+            if (request.SolicitudId <= 0)
+            {
+                request.SolicitudId = solicitudId;
+            }
+            if (!request.DocumentoId.HasValue)
+            {
+                request.DocumentoId = condicionesId;
+            }
+
+            return JsonFirmaAocr(FirmarDocumentoValidacionAocr(request, "CONDICIONES_LIMITACIONES"));
+        }
+
+        private ActionResult PrepararFirmaDocumentoValidacionAocr(int solicitudId, int? documentoId, string tipoDocumento, string nombreAccion)
+        {
+            if (!UsuarioActualPuedeFirmarDocumentoValidacionAocr())
+            {
+                return new HttpStatusCodeResult(403, "Solo Direccion/Jefatura tecnica puede firmar documentos AOCR finales.");
+            }
+
+            if (solicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(400, "No se recibio un identificador de solicitud AOCR valido.");
+            }
+
+            var item = ObtenerContextoDocumentoValidacion(solicitudId);
+            if (item == null || item.Solicitud == null)
+            {
+                return HttpNotFound("No existe contexto disponible para la solicitud AOCR indicada.");
+            }
+
+            if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoDocumento))
+            {
+                return new HttpStatusCodeResult(409, "El informe tecnico no se encuentra aprobado por Direccion para firmar este documento.");
+            }
+
+            if (!_aocrEstadoService.PuedeDireccionValidarAocr(item.EstadoSolicitud, item.Certificado != null ? item.Certificado.Estado : null)
+                && !_informeTecnicoEstadoService.EstaAprobadoPorDireccion(item.Informe)
+                && !User.IsInRole("Administrador"))
+            {
+                return new HttpStatusCodeResult(409, "El tramite no se encuentra en una etapa firmable por Direccion.");
+            }
+
+            var firmaExistente = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, tipoDocumento);
+            if (firmaExistente != null && !string.IsNullOrWhiteSpace(firmaExistente.RutaDocumento))
+            {
+                TempData["Info"] = "El documento ya fue firmado previamente.";
+                return RedirectToAction("DocumentoValidacionAocr", new { solicitudId = solicitudId, tipo = tipoDocumento, descargar = false });
+            }
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][PREP] SolicitudId=" + solicitudId +
+                "; DocumentoId=" + (documentoId.HasValue ? documentoId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; TipoDocumento=" + tipoDocumento +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog() +
+                "; Accion=" + nombreAccion);
+
+            TempData["Info"] = "Cargue el certificado digital y seleccione Firmar oficialmente AOCR.";
+            return RedirectToAction("EditarDocumentoValidacionAocr", new { solicitudId = solicitudId, tipo = tipoDocumento });
+        }
+
+        private ActionResult JsonFirmaAocr(FirmaAocrResult result)
+        {
+            result = result ?? CrearResultadoFirmaAocr(false, 500, "No se obtuvo respuesta del proceso de firma.", 0);
+            Response.StatusCode = result.Ok ? 200 : result.Code;
+            return Json(new
+            {
+                ok = result.Ok,
+                code = result.Code,
+                message = result.Message,
+                data = result.Ok ? new
+                {
+                    solicitudId = result.SolicitudId,
+                    aocrId = result.AocrId,
+                    estado = result.EstadoNuevo,
+                    rutaFirmada = result.RutaFirmada,
+                    hash = result.HashPdfFirmado,
+                    bytes = result.TamanioPdfFirmado,
+                    urlDescarga = result.UrlDescarga,
+                    redirectUrl = result.RedirectUrl
+                } : null
+            });
+        }
+
+        private FirmaAocrResult FirmarDocumentoValidacionAocr(FirmarAocrRequest request, string tipoDocumentoForzado)
+        {
+            request = request ?? new FirmarAocrRequest();
+            var solicitudId = request.SolicitudId;
+            var tipoNormalizado = NormalizarTipoDocumento(!string.IsNullOrWhiteSpace(tipoDocumentoForzado) ? tipoDocumentoForzado : request.TipoDocumento);
+            ValidarAocrSolicitudItemViewModel item = null;
+
+            try
+            {
+                CompletarDocumentoEdicionDesdeFormulario(request);
+                request.TipoDocumento = tipoNormalizado;
+                AplicarAliasFormularioFirmaAocr(request);
+                solicitudId = request.SolicitudId;
+
+                RegistrarLogFirmaAocrIn(request, tipoNormalizado);
+
+                if (solicitudId <= 0 || tipoNormalizado == null)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, false, false, "Solicitud o tipo de documento no validos.");
+                    return CrearResultadoFirmaAocr(false, 400, "No se recibieron datos validos para firmar el AOCR.", solicitudId);
+                }
+
+                if (!UsuarioActualPuedeFirmarDocumentoValidacionAocr())
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, false, false, "Rol no autorizado.");
+                    return CrearResultadoFirmaAocr(false, 403, "Solo Direccion/Jefatura tecnica puede firmar documentos AOCR finales.", solicitudId);
+                }
+
+                string motivoAuth;
+                if (!AocrPresentacionAuthorizationHelper.EsPermitido(
+                    HttpContext,
+                    "CoordinacionJefatura",
+                    "GenerarDocumentoValidacionAocr",
+                    out motivoAuth,
+                    solicitudId))
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, false, false, motivoAuth ?? "No autorizado.");
+                    return CrearResultadoFirmaAocr(false, 403, motivoAuth ?? "No autorizado para firmar el documento AOCR.", solicitudId);
+                }
+
+                item = ObtenerContextoDocumentoValidacion(solicitudId);
+                if (item == null || item.Solicitud == null)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, false, false, "Contexto documental no encontrado.");
+                    return CrearResultadoFirmaAocr(false, 404, "No existe contexto disponible para la solicitud AOCR indicada.", solicitudId);
+                }
+
+                var estadoFirmable = (item.FirmaCompleta || PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
+                    && (_aocrEstadoService.PuedeDireccionValidarAocr(item.EstadoSolicitud, item.Certificado != null ? item.Certificado.Estado : null)
+                        || _informeTecnicoEstadoService.EstaAprobadoPorDireccion(item.Informe)
+                        || User.IsInRole("Administrador"));
+                if (!estadoFirmable)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, false, false, "Estado no firmable.");
+                    return CrearResultadoFirmaAocr(false, 409, "El tramite no se encuentra en una etapa firmable por Direccion.", solicitudId);
+                }
+
+                var firmaExistente = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, tipoNormalizado);
+                if (firmaExistente != null && RutaDocumentoExiste(firmaExistente.RutaDocumento))
+                {
+                    RegistrarLogFirmaAocrValidation(request, true, true, true, false, "Documento firmado previamente.");
+                    return CrearResultadoFirmaAocr(false, 409, "El documento AOCR ya fue firmado previamente.", solicitudId);
+                }
+
+                var certificado = request.CertificadoDigital ?? (Request != null && Request.Files != null ? Request.Files["certificadoDigital"] : null);
+                var tieneCertificado = certificado != null && certificado.ContentLength > 0;
+                if (!tieneCertificado)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, estadoFirmable, false, "Certificado no recibido.");
+                    return CrearResultadoFirmaAocr(false, 400, "Debe seleccionar el certificado digital .p12 o .pfx.", solicitudId);
+                }
+
+                if (string.IsNullOrWhiteSpace(request.PasswordCertificado))
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, estadoFirmable, false, "Password no recibido.");
+                    return CrearResultadoFirmaAocr(false, 400, "Debe ingresar la contrasena del certificado.", solicitudId);
+                }
+
+                string mensajeCertificado;
+                if (!EsCertificadoDigitalValido(certificado, out mensajeCertificado))
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, false, estadoFirmable, false, mensajeCertificado);
+                    return CrearResultadoFirmaAocr(false, 400, mensajeCertificado, solicitudId);
+                }
+
+                var posicionFirmaVisual = ConstruirPosicionFirmaVisualPdfRequerida(request);
+                if (posicionFirmaVisual == null || !posicionFirmaVisual.EsValida)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, true, estadoFirmable, false, "Coordenadas invalidas.");
+                    return CrearResultadoFirmaAocr(false, 400, "Debe guardar una posicion de firma valida antes de continuar.", solicitudId);
+                }
+
+                var documentoModel = ConstruirDocumentoPdfModel(item, request, tipoNormalizado);
+                var usarPlantillaOficial = item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
+                var camposFaltantes = usarPlantillaOficial
+                    ? ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel)
+                    : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
+                if (camposFaltantes.Any())
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, true, estadoFirmable, false, "Campos obligatorios faltantes: " + string.Join(", ", camposFaltantes));
+                    return CrearResultadoFirmaAocr(false, 409, "Primero complete los campos obligatorios antes de firmar: " + string.Join(", ", camposFaltantes) + ".", solicitudId);
+                }
+
+                var viewName = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+                var pdf = new ViewAsPdf(viewName, (object)documentoModel)
+                {
+                    PageSize = Rotativa.Options.Size.A4,
+                    PageOrientation = Rotativa.Options.Orientation.Portrait,
+                    CustomSwitches = ConstruirSwitchesPdfValidacionAocr()
+                };
+
+                var pdfBytes = pdf.BuildFile(ControllerContext);
+                var pdfExiste = pdfBytes != null && pdfBytes.LongLength > 0;
+                RegistrarLogFirmaAocrPdfOrigen("PDF_GENERADO_EN_MEMORIA", pdfExiste, pdfBytes != null ? pdfBytes.LongLength : 0);
+                if (!pdfExiste)
+                {
+                    RegistrarLogFirmaAocrValidation(request, false, true, estadoFirmable, false, "PDF origen no generado.");
+                    return CrearResultadoFirmaAocr(false, 409, "Primero debe generar el PDF AOCR antes de firmar.", solicitudId);
+                }
+
+                RegistrarLogFirmaAocrValidation(request, true, true, estadoFirmable, true, "Validacion correcta.");
+                RegistrarLogFirmaAocrCertificado(certificado, true);
+
+                byte[] certificadoBytes;
+                using (var ms = new MemoryStream())
+                {
+                    certificado.InputStream.CopyTo(ms);
+                    certificadoBytes = ms.ToArray();
+                }
+
+                var infoCertificado = _firmaDigitalService.LeerCertificado(certificadoBytes, request.PasswordCertificado);
+                if (!infoCertificado.Exitoso)
+                {
+                    return CrearResultadoFirmaAocr(false, 400, "No se pudo abrir el certificado digital. Verifique archivo y contrasena.", solicitudId);
+                }
+
+                var nombreFirmante = PrimerValorNoVacio(request.FirmanteNombre, request.NombreFirmante, infoCertificado.NombreTitular);
+                var cargoFirmante = PrimerValorNoVacio(request.FirmanteCargo, request.CargoFirmante);
+                request.FirmanteNombre = nombreFirmante;
+                request.FirmanteCargo = cargoFirmante;
+                var motivoFirma = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "Firma digital del reconocimiento AOCR"
+                    : "Firma digital del documento de condiciones y limitaciones AOCR";
+                var contenidoQr = ConstruirContenidoQrFirmaAocr(item, request, tipoNormalizado, infoCertificado, nombreFirmante);
+
+                var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                    pdfBytes,
+                    certificadoBytes,
+                    request.PasswordCertificado,
+                    nombreFirmante,
+                    motivoFirma,
+                    "Sistema AOCR DGAC",
+                    "AOCR_FIRMANTE",
+                    contenidoQr,
+                    posicionFirmaVisual);
+
+                if (!resultadoFirma.Exitoso || resultadoFirma.PdfFirmado == null || resultadoFirma.PdfFirmado.LongLength <= 0)
+                {
+                    return CrearResultadoFirmaAocr(false, 400, resultadoFirma.Mensaje ?? "No se pudo firmar digitalmente el AOCR.", solicitudId);
+                }
+
+                var nombreArchivo = Path.GetFileNameWithoutExtension(ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado)) + "_Firmado.pdf";
+                var rutaDocumentoFirmado = GuardarDocumentoFirmadoAocr(solicitudId, tipoNormalizado, nombreArchivo, resultadoFirma.PdfFirmado);
+                var rutaFisicaFirmada = ResolverRutaDocumento(rutaDocumentoFirmado);
+                var existeFirmada = !string.IsNullOrWhiteSpace(rutaFisicaFirmada) && System.IO.File.Exists(rutaFisicaFirmada);
+                var bytesFirmado = existeFirmada ? new FileInfo(rutaFisicaFirmada).Length : 0;
+                var hashFirmado = !string.IsNullOrWhiteSpace(resultadoFirma.HashSha256)
+                    ? resultadoFirma.HashSha256
+                    : (existeFirmada ? CalcularSha256Hex(System.IO.File.ReadAllBytes(rutaFisicaFirmada)) : null);
+
+                RegistrarLogFirmaAocrPdfFirmado(rutaDocumentoFirmado, existeFirmada, bytesFirmado, hashFirmado);
+                if (!existeFirmada || bytesFirmado <= 0 || string.IsNullOrWhiteSpace(hashFirmado))
+                {
+                    return CrearResultadoFirmaAocr(false, 500, "La firma se genero, pero no se pudo verificar el archivo PDF firmado.", solicitudId);
+                }
+
+                var estadoAnterior = item.Solicitud.Estado;
+                RegistrarFirmaDigitalAocr(
+                    item,
+                    request,
+                    tipoNormalizado,
+                    nombreArchivo,
+                    rutaDocumentoFirmado,
+                    hashFirmado,
+                    contenidoQr,
+                    infoCertificado,
+                    nombreFirmante,
+                    usarPlantillaOficial);
+
+                GuardarPosicionFirmaAocr(item, request, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
+
+                var estadoNuevo = tipoNormalizado == "RECONOCIMIENTO" ? "AOCR_FIRMADO_DIRECCION" : "CONDICIONES_FIRMADAS";
+                System.Diagnostics.Trace.TraceInformation(
+                    "[FIRMA_AOCR][DB_UPDATE] AocrId=" + ObtenerAocrIdLog(item) +
+                    "; EstadoAnterior=" + (estadoAnterior ?? string.Empty) +
+                    "; EstadoNuevo=" + estadoNuevo +
+                    "; FilasAfectadas=1");
+
+                _aocrFinalizacionService.IntentarFinalizarEmision(
+                    solicitudId,
+                    ObtenerUsuarioActualIdSeguro(),
+                    RutaDocumentoExiste);
+
+                if (item.Solicitud.TipoSolicitud.GetValueOrDefault() == 3
+                    && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(EstadoSolicitud.Normalizar(item.Solicitud.Estado), EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase))
+                {
+                    string mensajeCambio;
+                    _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
+                        solicitudId,
+                        EstadoSolicitud.FirmadoDcav,
+                        "Condiciones y Limitaciones firmadas por DCAV/DGAC.",
+                        ObtenerUsuarioActualIdSeguro(),
+                        _ => true,
+                        out mensajeCambio);
+                }
+
+                var urlDescarga = Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, tipo = tipoNormalizado, descargar = true });
+                var redirectUrl = Url.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = solicitudId });
+                System.Diagnostics.Trace.TraceInformation(
+                    "[FIRMA_AOCR][OK] SolicitudId=" + solicitudId +
+                    "; AocrId=" + ObtenerAocrIdLog(item) +
+                    "; RutaFirmada=" + (rutaDocumentoFirmado ?? string.Empty) +
+                    "; Hash=" + (hashFirmado ?? string.Empty) +
+                    "; Bytes=" + bytesFirmado);
+
+                return new FirmaAocrResult
+                {
+                    Ok = true,
+                    Code = 200,
+                    Message = tipoNormalizado == "RECONOCIMIENTO" ? "AOCR firmada correctamente." : "Condiciones y Limitaciones firmadas correctamente.",
+                    SolicitudId = solicitudId,
+                    AocrId = ObtenerAocrIdValor(item),
+                    RutaOrigen = "PDF_GENERADO_EN_MEMORIA",
+                    RutaFirmada = rutaDocumentoFirmado,
+                    HashPdfFirmado = hashFirmado,
+                    TamanioPdfFirmado = bytesFirmado,
+                    EstadoNuevo = estadoNuevo,
+                    UrlDescarga = urlDescarga,
+                    RedirectUrl = redirectUrl
+                };
+            }
+            catch (PostgresException exPg)
+            {
+                RegistrarLogFirmaAocrError(solicitudId, exPg.MessageText, exPg);
+                var referencia = RegistrarErrorValidacionAocr("FirmarAocr", exPg, solicitudId, null, tipoNormalizado);
+                return CrearResultadoFirmaAocr(false, 500, "Error de base de datos al firmar AOCR. Ref: " + referencia, solicitudId);
+            }
+            catch (Exception ex)
+            {
+                RegistrarLogFirmaAocrError(solicitudId, ex.Message, ex);
+                var referencia = RegistrarErrorValidacionAocr("FirmarAocr", ex, solicitudId, null, tipoNormalizado);
+                return CrearResultadoFirmaAocr(false, 500, "Error interno al firmar AOCR. Ref: " + referencia, solicitudId);
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult GenerarDocumentoValidacionAocr(int? solicitudId = null, string tipo = null)
+        {
+            var id = solicitudId.GetValueOrDefault();
+            if (id > 0)
+            {
+                TempData["Info"] = "Esta accion fue migrada a la firma institucional AOCR.";
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = id });
+            }
+
+            return VistaDocumentoValidacionNoDisponible(
+                0,
+                tipo,
+                null,
+                "Esta accion debe ejecutarse desde la pantalla Firma institucional AOCR.",
+                200);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult GenerarDocumentoValidacionAocr(AocrDocumentoEdicionViewModel model, string accion = null, HttpPostedFileBase certificadoDigital = null, string passwordCertificado = null)
         {
+            if (UsarFirmaAocrNueva())
+            {
+                var idLegacy = model != null ? model.SolicitudId : 0;
+                return RedirectToAction("Index", "FirmaAocr", new { solicitudId = idLegacy });
+            }
+
             try
             {
                 model = CompletarDocumentoEdicionDesdeFormulario(model);
                 var tipoNormalizado = NormalizarTipoDocumento(model != null ? model.TipoDocumento : null);
                 if (model == null || model.SolicitudId <= 0 || tipoNormalizado == null)
                 {
-                    return new HttpStatusCodeResult(400, "No se recibieron datos validos para generar el documento AOCR.");
+                    return RespuestaDocumentoValidacionNoDisponible(model != null ? model.SolicitudId : 0, model != null ? model.TipoDocumento : null, null, "No se recibieron datos validos para generar el documento AOCR.", 400);
                 }
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[GENERAR_VALIDACION_AOCR][IN] SolicitudId=" + model.SolicitudId +
+                    "; Tipo=" + tipoNormalizado +
+                    "; Usuario=" + ObtenerLoginActual() +
+                    "; Rol=" + ObtenerRolActualLog());
 
                 string motivoAuth;
                 if (!AocrPresentacionAuthorizationHelper.EsPermitido(
@@ -1266,17 +1950,13 @@ namespace CapaPresentacion.Controllers
                     : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
                 if (camposFaltantes.Any())
                 {
-                    return new HttpStatusCodeResult(400, "No se puede generar el documento AOCR porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
+                    return RespuestaDocumentoValidacionNoDisponible(model.SolicitudId, tipoNormalizado, item.Solicitud, "No se puede generar el documento AOCR porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".", 400);
                 }
 
-                var viewName = usarPlantillaOficial
-                    ? "~/Views/Certificado/CertificadoAOCR.cshtml"
-                    : (tipoNormalizado == "RECONOCIMIENTO"
-                        ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
-                        : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml");
-                var pdfModel = usarPlantillaOficial
-                    ? (object)ConstruirCertificadoAocrViewModelOficial(documentoModel)
-                    : documentoModel;
+                var viewName = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+                var pdfModel = (object)documentoModel;
                 var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
                 var descargar = string.Equals(accion, "DESCARGAR", StringComparison.OrdinalIgnoreCase);
                 var firmarDigitalmente = string.Equals(accion, "FIRMAR_DESCARGAR", StringComparison.OrdinalIgnoreCase);
@@ -1296,6 +1976,11 @@ namespace CapaPresentacion.Controllers
                 };
 
                 var pdfBytes = pdf.BuildFile(ControllerContext);
+                System.Diagnostics.Trace.TraceInformation(
+                    "[GENERAR_VALIDACION_AOCR][OK] SolicitudId=" + model.SolicitudId +
+                    "; Tipo=" + tipoNormalizado +
+                    "; Ruta=PDF_GENERADO_EN_MEMORIA" +
+                    "; Bytes=" + (pdfBytes != null ? pdfBytes.LongLength : 0));
                 if (firmarDigitalmente)
                 {
                     // Si el usuario no sube certificado, intentar usar el certificado institucional.
@@ -1384,6 +2069,21 @@ namespace CapaPresentacion.Controllers
                             nombreFirmante,
                             usarPlantillaOficial);
 
+                        System.Diagnostics.Trace.TraceInformation(
+                            (string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) ? "[FIRMA_CONDICIONES][OK]" : "[FIRMA_AOCR][OK]") +
+                            " SolicitudId=" + model.SolicitudId +
+                            "; AocrId=" + (item != null && item.Certificado != null ? item.Certificado.CodigoCertificado.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                            "; CondicionesId=" + (item != null && item.Certificado != null ? item.Certificado.CodigoCertificado.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                            "; RutaFirmada=" + (rutaDocumentoFirmado ?? string.Empty) +
+                            "; Hash=" + (resultadoFirma.HashSha256 ?? string.Empty) +
+                            "; Bytes=" + (pdfBytes != null ? pdfBytes.LongLength : 0) +
+                            "; Existe=" + RutaDocumentoExiste(rutaDocumentoFirmado));
+
+                        _aocrFinalizacionService.IntentarFinalizarEmision(
+                            model.SolicitudId,
+                            ObtenerUsuarioActualIdSeguro(),
+                            RutaDocumentoExiste);
+
                         if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
                         {
                             GuardarPosicionFirmaAocr(item, model, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
@@ -1447,9 +2147,20 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult GuardarPosicionFirmaAocr(AocrFirmaPosicionEdicionViewModel model)
         {
+            if (UsarFirmaAocrNueva())
+            {
+                Response.StatusCode = 409;
+                return Json(new
+                {
+                    ok = false,
+                    mensaje = "La firma por puntero fue desactivada. Use la posicion institucional fija en /FirmaAocr/Index.",
+                    redirectUrl = Url.Action("Index", "FirmaAocr", new { solicitudId = model != null ? model.SolicitudId : 0 })
+                });
+            }
+
             try
             {
                 var tipoNormalizado = NormalizarTipoDocumento(model != null ? model.TipoDocumento : null);
@@ -1561,7 +2272,7 @@ namespace CapaPresentacion.Controllers
 
             var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(solicitud, estadoSolicitud);
             var informeFirmado = informes
-                .FirstOrDefault(x => x.Informe.Finalizado && x.Informe.FirmadoInspector && x.Informe.FirmadoDirdac);
+                .FirstOrDefault(x => InformeTecnicoHabilitaAocr(x.Informe));
 
             var firmaCompleta = !esModificacionDirecta && informeFirmado != null;
 
@@ -1571,8 +2282,10 @@ namespace CapaPresentacion.Controllers
                 && (string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
 
-            var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+            var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase)
+                || _aocrEstadoService.PuedeDireccionValidarAocr(estadoSolicitud, null)
                 || estadoPermitidoConFirma
                 || esModificacionDirecta;
 
@@ -1668,6 +2381,12 @@ namespace CapaPresentacion.Controllers
                 item.MensajeEstado = "Pendiente de firma del informe técnico";
                 item.MensajeAdvertencia = "La firma institucional del informe técnico aún no está completa; por eso los documentos AOCR no se habilitan todavía.";
             }
+            else if (_informeTecnicoEstadoService.EstaAprobadoPorDireccion(item.Informe)
+                && string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase))
+            {
+                item.MensajeEstado = "Informe Tecnico aprobado por Direccion.";
+                item.MensajeAdvertencia = "AOCR y Condiciones disponibles para validacion y firma institucional.";
+            }
             else if (item.PuedeEnviarADirdac)
             {
                 item.MensajeEstado = "La AOCR está lista para revisión de Coordinación.";
@@ -1695,6 +2414,1011 @@ namespace CapaPresentacion.Controllers
             RegistrarTrazaAocrCoordinacion(item);
 
             return item;
+        }
+
+        private bool InformeTecnicoHabilitaAocr(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return false;
+            }
+
+            return _informeTecnicoEstadoService.EstaAprobadoPorDireccion(informe)
+                || (informe.Finalizado && informe.FirmadoInspector && informe.FirmadoDirdac);
+        }
+
+        private ValidarAocrViewModel ConstruirValidarAocrViewModel(AocrContextoResolucion contexto, ValidarAocrSolicitudItemViewModel item)
+        {
+            var solicitud = item != null ? item.Solicitud : (contexto != null ? contexto.Solicitud : null);
+            var certificado = item != null ? item.Certificado : (contexto != null ? contexto.Aocr : null);
+            var informe = item != null ? item.Informe : (contexto != null ? contexto.InformeTecnico : null);
+            var solicitudId = solicitud != null ? solicitud.CodigoSolicitud : (contexto != null && contexto.SolicitudId.HasValue ? contexto.SolicitudId.Value : 0);
+            var firmaAocr = solicitudId > 0 ? _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO") : null;
+            var firmaCondiciones = solicitudId > 0 ? _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES") : null;
+            var aocrRutaDisponible = RutaDocumentoExiste(certificado != null ? certificado.RutaDocumento : null)
+                || RutaDocumentoExiste(firmaAocr != null ? firmaAocr.RutaDocumento : null);
+            var condicionesRutaDisponible = RutaDocumentoExiste(firmaCondiciones != null ? firmaCondiciones.RutaDocumento : null)
+                || aocrRutaDisponible;
+            var informeAprobado = _informeTecnicoEstadoService.EstaAprobadoPorDireccion(informe);
+            var aocrFirmada = firmaAocr != null && RutaDocumentoExiste(firmaAocr.RutaDocumento);
+            var condicionesFirmadas = firmaCondiciones != null && RutaDocumentoExiste(firmaCondiciones.RutaDocumento);
+            var puedeFirmar = UsuarioActualPuedeFirmarDocumentoValidacionAocr()
+                && _aocrEstadoService.PuedeDireccionValidarAocr(solicitud != null ? solicitud.Estado : null, certificado != null ? certificado.Estado : null);
+
+            var model = new ValidarAocrViewModel
+            {
+                SolicitudId = solicitudId,
+                CodigoSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : solicitudId.ToString(CultureInfo.InvariantCulture),
+                Operadora = solicitud != null ? (solicitud.RazonSocial ?? solicitud.NombreOperador ?? solicitud.NombreComercial) : string.Empty,
+                EstadoSolicitud = solicitud != null ? solicitud.Estado : (contexto != null ? contexto.EstadoSolicitud : string.Empty),
+                CodigoAocr = item != null ? item.NumeroAocr : (certificado != null ? certificado.NumeroCertificado : string.Empty),
+                FechaGeneracionAocr = certificado != null ? (certificado.FechaEmision ?? certificado.CreatedAt ?? certificado.UpdatedAt) : null,
+                InformeAprobadoDireccion = informeAprobado,
+                AocrExiste = certificado != null && certificado.CodigoCertificado > 0,
+                AocrFirmada = aocrFirmada,
+                CondicionesExisten = condicionesRutaDisponible || (item != null && item.FirmaCompleta),
+                CondicionesFirmadas = condicionesFirmadas || (aocrFirmada && DocumentoAocrEsUnificado(item)),
+                DocumentoUnificado = DocumentoAocrEsUnificado(item),
+                UsuarioFirma = ObtenerLoginActual(),
+                RolFirma = ObtenerRolActualLog(),
+                FirmaDigitalCargada = false
+            };
+
+            model.PuedeGenerarAocr = informeAprobado && !aocrRutaDisponible && UsuarioActualPuedeFirmarDocumentoValidacionAocr();
+            model.PuedeVerAocr = aocrRutaDisponible;
+            model.PuedeDescargarAocr = aocrRutaDisponible;
+            model.PuedeFirmarAocr = aocrRutaDisponible && puedeFirmar && !aocrFirmada;
+            model.PuedeFirmarCondiciones = condicionesRutaDisponible && puedeFirmar && !model.CondicionesFirmadas;
+            model.PuedeFinalizar = model.AocrFirmada && model.CondicionesFirmadas;
+            model.DocumentosFirma = ConstruirDocumentosFirmaAocr(model, item, aocrRutaDisponible, condicionesRutaDisponible, firmaAocr, firmaCondiciones);
+            return model;
+        }
+
+        private IList<DocumentoFirmaAocrViewModel> ConstruirDocumentosFirmaAocr(
+            ValidarAocrViewModel model,
+            ValidarAocrSolicitudItemViewModel item,
+            bool aocrRutaDisponible,
+            bool condicionesRutaDisponible,
+            AocrFirmaDocumento firmaAocr,
+            AocrFirmaDocumento firmaCondiciones)
+        {
+            var documentos = new List<DocumentoFirmaAocrViewModel>();
+            var solicitudId = model != null ? model.SolicitudId : 0;
+            var fechaAocr = model != null ? model.FechaGeneracionAocr : null;
+            var fechaCondiciones = item != null ? item.FechaDisponibilidad : fechaAocr;
+
+            documentos.Add(new DocumentoFirmaAocrViewModel
+            {
+                Tipo = "RECONOCIMIENTO",
+                Titulo = "AOCR oficial",
+                Descripcion = "Reconocimiento de Certificado de Explotador de Servicios Aereos.",
+                Estado = model != null && model.AocrFirmada ? "FIRMADO" : (aocrRutaDisponible ? "DISPONIBLE" : "PENDIENTE"),
+                EstadoVisible = model != null && model.AocrFirmada ? "Firmado" : (aocrRutaDisponible ? "Disponible para firma" : "Documento no generado"),
+                Fecha = firmaAocr != null && firmaAocr.FechaFirma != DateTime.MinValue ? firmaAocr.FechaFirma : fechaAocr,
+                RutaDisponible = aocrRutaDisponible,
+                PuedeGenerar = model != null && model.PuedeGenerarAocr,
+                PuedeVer = aocrRutaDisponible,
+                PuedeDescargar = aocrRutaDisponible,
+                PuedeFirmar = model != null && model.PuedeFirmarAocr,
+                EstaFirmado = model != null && model.AocrFirmada,
+                EsUnificado = model != null && model.DocumentoUnificado,
+                UrlGenerar = Url.Action("Index", "FirmaAocr", new { solicitudId = solicitudId }),
+                UrlVer = aocrRutaDisponible ? Url.Action("VerPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlDescargar = aocrRutaDisponible ? Url.Action("DescargarPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlFirmar = model != null && model.PuedeFirmarAocr ? Url.Action("Index", "FirmaAocr", new { solicitudId = solicitudId }) : null,
+                ErrorDocumento = aocrRutaDisponible ? null : "Genere el documento antes de visualizarlo o firmarlo."
+            });
+
+            documentos.Add(new DocumentoFirmaAocrViewModel
+            {
+                Tipo = "CONDICIONES_LIMITACIONES",
+                Titulo = "Condiciones y Limitaciones",
+                Descripcion = "Condiciones asociadas al reconocimiento AOCR.",
+                Estado = model != null && model.CondicionesFirmadas ? "FIRMADO" : (condicionesRutaDisponible ? "DISPONIBLE" : "PENDIENTE"),
+                EstadoVisible = model != null && model.CondicionesFirmadas ? "Firmado" : (condicionesRutaDisponible ? "Disponible para firma" : "Documento no generado"),
+                Fecha = firmaCondiciones != null && firmaCondiciones.FechaFirma != DateTime.MinValue ? firmaCondiciones.FechaFirma : fechaCondiciones,
+                RutaDisponible = condicionesRutaDisponible,
+                PuedeGenerar = model != null && model.InformeAprobadoDireccion && !condicionesRutaDisponible && UsuarioActualPuedeFirmarDocumentoValidacionAocr(),
+                PuedeVer = condicionesRutaDisponible,
+                PuedeDescargar = condicionesRutaDisponible,
+                PuedeFirmar = model != null && model.PuedeFirmarCondiciones,
+                EstaFirmado = model != null && model.CondicionesFirmadas,
+                EsUnificado = model != null && model.DocumentoUnificado,
+                UrlGenerar = Url.Action("Index", "FirmaAocr", new { solicitudId = solicitudId }),
+                UrlVer = condicionesRutaDisponible ? Url.Action("VerPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlDescargar = condicionesRutaDisponible ? Url.Action("DescargarPdf", "FirmaAocr", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlFirmar = model != null && model.PuedeFirmarCondiciones ? Url.Action("Index", "FirmaAocr", new { solicitudId = solicitudId }) : null,
+                ErrorDocumento = condicionesRutaDisponible ? null : "Genere Condiciones y Limitaciones antes de visualizar o firmar."
+            });
+
+            return documentos;
+        }
+
+        private FirmaAocrInstitucionalViewModel ConstruirFirmaAocrInstitucionalViewModel(int solicitudId)
+        {
+            var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+            if (solicitud == null)
+            {
+                return new FirmaAocrInstitucionalViewModel
+                {
+                    SolicitudId = solicitudId,
+                    EstadoSolicitud = "No registrada",
+                    EstadoAocr = "No generado",
+                    MotivoBloqueo = "La solicitud AOCR indicada no existe.",
+                    UrlVolverBandeja = Url.Action("DashboardInspeccion", "CoordinacionJefatura")
+                };
+            }
+
+            var item = ObtenerContextoDocumentoValidacion(solicitudId);
+            var certificado = item != null ? item.Certificado : _certificadoDao.ObtenerPorSolicitud(solicitudId);
+            var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+            var rutaPdf = certificado != null ? certificado.RutaDocumento : null;
+            var rutaPdfFisica = ResolverRutaDocumento(rutaPdf);
+            var pdfExiste = !string.IsNullOrWhiteSpace(rutaPdfFisica) && System.IO.File.Exists(rutaPdfFisica);
+            var rutaFirmada = firma != null ? firma.RutaDocumento : null;
+            var rutaFirmadaFisica = ResolverRutaDocumento(rutaFirmada);
+            var pdfFirmadoExiste = !string.IsNullOrWhiteSpace(rutaFirmadaFisica) && System.IO.File.Exists(rutaFirmadaFisica);
+            var informe = item != null ? item.Informe : null;
+            var informeAprobado = _informeTecnicoEstadoService.EstaAprobadoPorDireccion(informe);
+            var documentoModel = item != null ? ConstruirDocumentoPdfModel(item, null, "RECONOCIMIENTO") : null;
+            var camposFaltantes = item != null
+                ? ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel)
+                : new List<string> { "Contexto documental AOCR" };
+            var documentoCompleto = !camposFaltantes.Any();
+            var usuarioPuedeFirmar = UsuarioActualPuedeFirmarDocumentoValidacionAocr();
+            var estadoFirmable = item != null
+                && item.Solicitud != null
+                && (item.FirmaCompleta
+                    || informeAprobado
+                    || _aocrEstadoService.PuedeDireccionValidarAocr(item.EstadoSolicitud, certificado != null ? certificado.Estado : null)
+                    || User.IsInRole("Administrador"));
+
+            var motivo = string.Empty;
+            if (!usuarioPuedeFirmar)
+            {
+                motivo = "Solo Direccion / DIRDAC puede firmar el AOCR final.";
+            }
+            else if (item == null)
+            {
+                motivo = "No existe contexto documental AOCR disponible para esta solicitud.";
+            }
+            else if (!informeAprobado && !item.FirmaCompleta && !User.IsInRole("Administrador"))
+            {
+                motivo = "El informe tecnico aun no esta aprobado por Direccion.";
+            }
+            else if (!documentoCompleto)
+            {
+                motivo = "AOCR incompleto.";
+            }
+            else if (!pdfExiste)
+            {
+                motivo = "Primero genere el PDF oficial AOCR.";
+            }
+            else if (pdfFirmadoExiste)
+            {
+                motivo = "El AOCR ya fue firmado oficialmente.";
+            }
+            else if (!estadoFirmable)
+            {
+                motivo = "El tramite no se encuentra en estado firmable.";
+            }
+
+            var model = new FirmaAocrInstitucionalViewModel
+            {
+                SolicitudId = solicitudId,
+                AocrId = certificado != null ? certificado.CodigoCertificado : 0,
+                NumeroSolicitud = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : solicitudId.ToString(CultureInfo.InvariantCulture),
+                Operadora = PrimerTextoAocrNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial, "No registrado"),
+                CodigoAocr = item != null ? item.NumeroAocr : certificado != null ? certificado.NumeroCertificado : GenerarNumeroAocr(solicitudId, DateTime.Now),
+                EstadoSolicitud = solicitud.Estado,
+                EstadoAocr = pdfFirmadoExiste ? "Firmado" : (pdfExiste ? "Pendiente de firma" : "No generado"),
+                InformeTecnicoEstado = informeAprobado ? "Aprobado por Direccion" : "Pendiente",
+                ResultadoTecnico = informe != null ? PrimerTextoAocrNoVacio(informe.Resultado, informe.EstadoInforme, "No registrado") : "No registrado",
+                ResponsableFirma = "Direccion / DIRDAC",
+                UsuarioActual = ObtenerLoginActual(),
+                RolActual = ObtenerRolActualLog(),
+                CargoFirmante = "Direccion General de Aviacion Civil",
+                FechaGeneracion = certificado != null ? (certificado.FechaEmision ?? certificado.UpdatedAt ?? certificado.CreatedAt) : null,
+                FechaFirma = firma != null && firma.FechaFirma != DateTime.MinValue ? (DateTime?)firma.FechaFirma : null,
+                NombreArchivoPdf = pdfExiste ? Path.GetFileName(rutaPdfFisica) : null,
+                NombreArchivoFirmado = pdfFirmadoExiste ? Path.GetFileName(rutaFirmadaFisica) : null,
+                PdfExiste = pdfExiste,
+                PdfFirmadoExiste = pdfFirmadoExiste,
+                TamanioPdf = pdfExiste ? new FileInfo(rutaPdfFisica).Length : 0,
+                TamanioPdfFirmado = pdfFirmadoExiste ? new FileInfo(rutaFirmadaFisica).Length : 0,
+                HashPdfFirmado = firma != null ? firma.HashDocumento : null,
+                RutaPdf = rutaPdf,
+                RutaPdfFirmado = rutaFirmada,
+                PuedeGenerar = usuarioPuedeFirmar && item != null && documentoCompleto && !pdfFirmadoExiste,
+                PuedeRegenerar = usuarioPuedeFirmar && pdfExiste && !pdfFirmadoExiste,
+                PuedeFirmar = usuarioPuedeFirmar && estadoFirmable && documentoCompleto && pdfExiste && !pdfFirmadoExiste,
+                InformeAprobado = informeAprobado,
+                DocumentoCompleto = documentoCompleto,
+                MotivoBloqueo = motivo,
+                CamposFaltantes = camposFaltantes,
+                UrlGenerar = Url.Action("GenerarPdfAocr", "CoordinacionJefatura"),
+                UrlVerPdf = pdfExiste ? Url.Action("VerPdfAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlDescargarPdf = pdfExiste ? Url.Action("DescargarPdfAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, firmado = false }) : null,
+                UrlVerPdfFirmado = pdfFirmadoExiste ? Url.Action("VerPdfAocr", "CoordinacionJefatura", new { solicitudId = solicitudId, firmado = true }) : null,
+                UrlDescargarFirmado = pdfFirmadoExiste ? Url.Action("DescargarAocrFirmado", "CoordinacionJefatura", new { solicitudId = solicitudId }) : null,
+                UrlFirmar = Url.Action("FirmarAocrInstitucional", "CoordinacionJefatura"),
+                UrlVolverBandeja = Url.Action("DashboardInspeccion", "CoordinacionJefatura"),
+                UrlCompletarDatos = Url.Action("Index", "FirmaAocr", new { solicitudId = solicitudId })
+            };
+
+            return model;
+        }
+
+        private FirmaAocrResult GenerarPdfOficialAocrFisico(int solicitudId)
+        {
+            try
+            {
+                if (solicitudId <= 0)
+                {
+                    return CrearResultadoFirmaAocr(false, 400, "No se recibio un identificador de solicitud AOCR valido.", solicitudId);
+                }
+
+                if (!UsuarioActualPuedeFirmarDocumentoValidacionAocr())
+                {
+                    return CrearResultadoFirmaAocr(false, 403, "Solo Direccion / DIRDAC puede generar el PDF oficial AOCR final.", solicitudId);
+                }
+
+                var item = ObtenerContextoDocumentoValidacion(solicitudId);
+                if (item == null || item.Solicitud == null)
+                {
+                    return CrearResultadoFirmaAocr(false, 404, "No existe contexto documental AOCR para generar el PDF oficial.", solicitudId);
+                }
+
+                var firmaExistente = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+                if (firmaExistente != null && RutaDocumentoExiste(firmaExistente.RutaDocumento))
+                {
+                    return CrearResultadoFirmaAocr(false, 409, "El AOCR ya esta firmado; no se puede regenerar el PDF preliminar.", solicitudId);
+                }
+
+                var documentoModel = ConstruirDocumentoPdfModel(item, null, "RECONOCIMIENTO");
+                var camposFaltantes = ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel);
+                System.Diagnostics.Trace.TraceInformation(
+                    "[AOCR_OFICIAL_GENERATE][VALIDATION] SolicitudId=" + solicitudId +
+                    "; Ok=" + !camposFaltantes.Any() +
+                    "; CamposFaltantes=" + string.Join(", ", camposFaltantes));
+
+                if (camposFaltantes.Any())
+                {
+                    return CrearResultadoFirmaAocr(false, 409, "AOCR incompleto. Faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".", solicitudId);
+                }
+
+                var pdf = new ViewAsPdf("~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml", (object)documentoModel)
+                {
+                    PageSize = Rotativa.Options.Size.A4,
+                    PageOrientation = Rotativa.Options.Orientation.Portrait,
+                    CustomSwitches = ConstruirSwitchesPdfValidacionAocr()
+                };
+
+                var pdfBytes = pdf.BuildFile(ControllerContext);
+                if (pdfBytes == null || pdfBytes.LongLength <= 0)
+                {
+                    return CrearResultadoFirmaAocr(false, 500, "No se pudo generar el PDF oficial AOCR.", solicitudId);
+                }
+
+                var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, "RECONOCIMIENTO");
+                var rutaRelativa = GuardarPdfOficialAocr(solicitudId, nombreArchivo, pdfBytes);
+                var rutaFisica = ResolverRutaDocumento(rutaRelativa);
+                var existe = !string.IsNullOrWhiteSpace(rutaFisica) && System.IO.File.Exists(rutaFisica);
+                var bytes = existe ? new FileInfo(rutaFisica).Length : 0;
+                if (!existe || bytes <= 0)
+                {
+                    return CrearResultadoFirmaAocr(false, 500, "El PDF oficial se genero, pero no se pudo verificar el archivo fisico.", solicitudId);
+                }
+
+                SincronizarCertificadoPdfOficial(item, documentoModel, rutaRelativa);
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[AOCR_OFICIAL_GENERATE][OK] SolicitudId=" + solicitudId +
+                    "; AocrId=" + ObtenerAocrIdLog(item) +
+                    "; Ruta=" + rutaRelativa +
+                    "; Bytes=" + bytes +
+                    "; Paginas=2");
+
+                return new FirmaAocrResult
+                {
+                    Ok = true,
+                    Code = 200,
+                    Message = "PDF oficial AOCR generado correctamente.",
+                    SolicitudId = solicitudId,
+                    AocrId = ObtenerAocrIdValor(item),
+                    RutaOrigen = rutaRelativa,
+                    TamanioPdfFirmado = bytes
+                };
+            }
+            catch (PostgresException exPg)
+            {
+                var referencia = RegistrarErrorValidacionAocr("GenerarPdfAocr", exPg, solicitudId);
+                return CrearResultadoFirmaAocr(false, 500, "Error de base de datos al generar PDF AOCR. Ref: " + referencia, solicitudId);
+            }
+            catch (Exception ex)
+            {
+                var referencia = RegistrarErrorValidacionAocr("GenerarPdfAocr", ex, solicitudId);
+                return CrearResultadoFirmaAocr(false, 500, "Error interno al generar PDF AOCR. Ref: " + referencia, solicitudId);
+            }
+        }
+
+        private ActionResult ServirPdfAocrInstitucional(int solicitudId, bool firmado, bool descargar)
+        {
+            var item = ObtenerContextoDocumentoValidacion(solicitudId);
+            var solicitud = item != null ? item.Solicitud : _solicitudDao.ObtenerPorId(solicitudId);
+            if (solicitud == null)
+            {
+                return HttpNotFound("La solicitud AOCR indicada no existe.");
+            }
+
+            string rutaRelativa;
+            DateTime? fechaDocumento = null;
+            if (firmado)
+            {
+                var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+                rutaRelativa = firma != null ? firma.RutaDocumento : null;
+                fechaDocumento = firma != null && firma.FechaFirma != DateTime.MinValue ? (DateTime?)firma.FechaFirma : null;
+            }
+            else
+            {
+                var certificado = item != null ? item.Certificado : _certificadoDao.ObtenerPorSolicitud(solicitudId);
+                rutaRelativa = certificado != null ? certificado.RutaDocumento : null;
+                fechaDocumento = certificado != null ? certificado.FechaEmision : null;
+            }
+
+            var rutaFisica = ResolverRutaDocumento(rutaRelativa);
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+            {
+                return new HttpStatusCodeResult(404, firmado ? "No existe AOCR firmado para descargar." : "No existe PDF oficial AOCR generado.");
+            }
+
+            var nombre = firmado
+                ? Path.GetFileNameWithoutExtension(ConstruirNombrePdfDocumentoValidacion(solicitud, "RECONOCIMIENTO", fechaDocumento)) + "-firmado.pdf"
+                : ConstruirNombrePdfDocumentoValidacion(solicitud, "RECONOCIMIENTO", fechaDocumento);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombre);
+            return File(rutaFisica, "application/pdf");
+        }
+
+        private FirmarAocrInstitucionalResult FirmarAocrInstitucionalSeguro(FirmarAocrInstitucionalRequest request)
+        {
+            var solicitudId = request != null ? request.SolicitudId : 0;
+            var logRequest = new FirmarAocrRequest { SolicitudId = solicitudId };
+            try
+            {
+                if (request == null || solicitudId <= 0)
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, false, false, false, false, "Solicitud invalida.");
+                    return CrearResultadoFirmaInstitucional(false, "No se recibieron datos validos para firmar el AOCR.", solicitudId);
+                }
+
+                if (!UsuarioActualPuedeFirmarDocumentoValidacionAocr())
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, false, false, false, false, "Rol no autorizado.");
+                    return CrearResultadoFirmaInstitucional(false, "Solo Direccion / DIRDAC puede firmar el AOCR final.", solicitudId);
+                }
+
+                var item = ObtenerContextoDocumentoValidacion(solicitudId);
+                if (item == null || item.Solicitud == null)
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, false, false, false, false, "Contexto no encontrado.");
+                    return CrearResultadoFirmaInstitucional(false, "No existe contexto documental AOCR para firmar.", solicitudId);
+                }
+
+                var firmaExistente = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+                if (firmaExistente != null && RutaDocumentoExiste(firmaExistente.RutaDocumento))
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, true, true, true, false, "Documento firmado previamente.");
+                    return CrearResultadoFirmaInstitucional(false, "El AOCR ya fue firmado oficialmente.", solicitudId);
+                }
+
+                var certificadoAocr = item.Certificado ?? _certificadoDao.ObtenerPorSolicitud(solicitudId);
+                var rutaPdfOrigen = certificadoAocr != null ? certificadoAocr.RutaDocumento : null;
+                var rutaFisicaOrigen = ResolverRutaDocumento(rutaPdfOrigen);
+                var pdfExiste = !string.IsNullOrWhiteSpace(rutaFisicaOrigen) && System.IO.File.Exists(rutaFisicaOrigen);
+                var bytesOrigen = pdfExiste ? new FileInfo(rutaFisicaOrigen).Length : 0;
+                RegistrarLogFirmaAocrPdfOrigen(rutaPdfOrigen, pdfExiste, bytesOrigen);
+                if (!pdfExiste || bytesOrigen <= 0)
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, false, false, false, false, "PDF origen no existe.");
+                    return CrearResultadoFirmaInstitucional(false, "Primero debe generar el PDF oficial AOCR.", solicitudId);
+                }
+
+                var documentoModel = ConstruirDocumentoPdfModel(item, null, "RECONOCIMIENTO");
+                var camposFaltantes = ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel);
+                var estadoFirmable = item.FirmaCompleta
+                    || _informeTecnicoEstadoService.EstaAprobadoPorDireccion(item.Informe)
+                    || _aocrEstadoService.PuedeDireccionValidarAocr(item.EstadoSolicitud, certificadoAocr != null ? certificadoAocr.Estado : null)
+                    || User.IsInRole("Administrador");
+                if (!estadoFirmable || camposFaltantes.Any())
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, pdfExiste, false, estadoFirmable, false, camposFaltantes.Any() ? string.Join(", ", camposFaltantes) : "Estado no firmable.");
+                    return CrearResultadoFirmaInstitucional(false, camposFaltantes.Any()
+                        ? "AOCR incompleto. Faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + "."
+                        : "El tramite no se encuentra en estado firmable.", solicitudId);
+                }
+
+                var archivoCertificado = request.CertificadoDigital;
+                if (archivoCertificado == null || archivoCertificado.ContentLength <= 0)
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, pdfExiste, false, estadoFirmable, false, "Certificado no recibido.");
+                    return CrearResultadoFirmaInstitucional(false, "Debe seleccionar el certificado digital .p12 o .pfx.", solicitudId);
+                }
+
+                if (string.IsNullOrWhiteSpace(request.PasswordCertificado))
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, pdfExiste, false, estadoFirmable, false, "Password no recibido.");
+                    return CrearResultadoFirmaInstitucional(false, "Debe ingresar la contrasena del certificado.", solicitudId);
+                }
+
+                string mensajeCertificado;
+                if (!EsCertificadoDigitalValido(archivoCertificado, out mensajeCertificado))
+                {
+                    RegistrarLogFirmaAocrValidation(logRequest, pdfExiste, false, estadoFirmable, false, mensajeCertificado);
+                    return CrearResultadoFirmaInstitucional(false, mensajeCertificado, solicitudId);
+                }
+
+                byte[] certificadoBytes;
+                using (var ms = new MemoryStream())
+                {
+                    archivoCertificado.InputStream.CopyTo(ms);
+                    certificadoBytes = ms.ToArray();
+                }
+
+                var infoCertificado = _firmaDigitalService.LeerCertificado(certificadoBytes, request.PasswordCertificado);
+                RegistrarLogFirmaAocrCertificado(archivoCertificado, true, infoCertificado != null && infoCertificado.Exitoso, infoCertificado != null && infoCertificado.Exitoso);
+                if (infoCertificado == null || !infoCertificado.Exitoso)
+                {
+                    return CrearResultadoFirmaInstitucional(false, "No se pudo abrir el certificado digital. Verifique archivo y contrasena.", solicitudId);
+                }
+
+                RegistrarLogFirmaAocrValidation(logRequest, pdfExiste, true, estadoFirmable, true, "Validacion correcta.");
+
+                var pdfBytes = System.IO.File.ReadAllBytes(rutaFisicaOrigen);
+                var nombreFirmante = PrimerValorNoVacio(infoCertificado.NombreTitular, ObtenerLoginActual());
+                var edicion = ConstruirDocumentoEdicionModel(item, "RECONOCIMIENTO");
+                edicion.FirmanteNombre = nombreFirmante;
+                edicion.FirmanteCargo = PrimerValorNoVacio(edicion.FirmanteCargo, "Direccion General de Aviacion Civil");
+                var contenidoQr = ConstruirContenidoQrFirmaAocr(item, edicion, "RECONOCIMIENTO", infoCertificado, nombreFirmante);
+                var posicionFirma = ConstruirPosicionFirmaInstitucionalFija(request);
+
+                var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                    pdfBytes,
+                    certificadoBytes,
+                    request.PasswordCertificado,
+                    nombreFirmante,
+                    "Firma institucional AOCR",
+                    "Sistema AOCR DGAC",
+                    "AOCR_FIRMANTE",
+                    contenidoQr,
+                    posicionFirma);
+
+                if (!resultadoFirma.Exitoso || resultadoFirma.PdfFirmado == null || resultadoFirma.PdfFirmado.LongLength <= 0)
+                {
+                    return CrearResultadoFirmaInstitucional(false, resultadoFirma.Mensaje ?? "No se pudo firmar digitalmente el AOCR.", solicitudId);
+                }
+
+                var nombreArchivoFirmado = Path.GetFileNameWithoutExtension(ConstruirNombrePdfDocumentoValidacion(item.Solicitud, "RECONOCIMIENTO")) + "_Firmado.pdf";
+                var rutaDocumentoFirmado = GuardarDocumentoFirmadoAocr(solicitudId, "RECONOCIMIENTO", nombreArchivoFirmado, resultadoFirma.PdfFirmado);
+                var rutaFisicaFirmada = ResolverRutaDocumento(rutaDocumentoFirmado);
+                var existeFirmada = !string.IsNullOrWhiteSpace(rutaFisicaFirmada) && System.IO.File.Exists(rutaFisicaFirmada);
+                var bytesFirmado = existeFirmada ? new FileInfo(rutaFisicaFirmada).Length : 0;
+                var hashFirmado = !string.IsNullOrWhiteSpace(resultadoFirma.HashSha256)
+                    ? resultadoFirma.HashSha256
+                    : (existeFirmada ? CalcularSha256Hex(System.IO.File.ReadAllBytes(rutaFisicaFirmada)) : null);
+                RegistrarLogFirmaAocrPdfFirmado(rutaDocumentoFirmado, existeFirmada, bytesFirmado, hashFirmado);
+
+                if (!existeFirmada || bytesFirmado <= 0 || string.IsNullOrWhiteSpace(hashFirmado))
+                {
+                    return CrearResultadoFirmaInstitucional(false, "La firma se genero, pero no se pudo verificar el archivo PDF firmado.", solicitudId);
+                }
+
+                var estadoAnterior = item.Solicitud.Estado;
+                RegistrarFirmaDigitalAocr(
+                    item,
+                    edicion,
+                    "RECONOCIMIENTO",
+                    nombreArchivoFirmado,
+                    rutaDocumentoFirmado,
+                    hashFirmado,
+                    contenidoQr,
+                    infoCertificado,
+                    nombreFirmante,
+                    false,
+                    bytesFirmado,
+                    "DIRECCION_DIRDAC");
+
+                GuardarPosicionFirmaAocr(item, edicion, "RECONOCIMIENTO", posicionFirma, "FIJA_INSTITUCIONAL");
+                System.Diagnostics.Trace.TraceInformation(
+                    "[FIRMA_AOCR][DB_UPDATE] AocrId=" + ObtenerAocrIdLog(item) +
+                    "; EstadoAnterior=" + (estadoAnterior ?? string.Empty) +
+                    "; EstadoNuevo=AOCR_FIRMADO_DIRECCION; FilasAfectadas=1");
+
+                var finalizacion = _aocrFinalizacionService.IntentarFinalizarEmision(
+                    solicitudId,
+                    ObtenerUsuarioActualIdSeguro(),
+                    RutaDocumentoExiste);
+                var estadoSolicitudNuevo = finalizacion != null && !string.IsNullOrWhiteSpace(finalizacion.EstadoNuevo)
+                    ? finalizacion.EstadoNuevo
+                    : EstadoSolicitud.AOCR_Legalizado;
+                var urlDescarga = Url.Action("DescargarAocrFirmado", "CoordinacionJefatura", new { solicitudId = solicitudId });
+
+                System.Diagnostics.Trace.TraceInformation(
+                    "[FIRMA_AOCR][OK] SolicitudId=" + solicitudId +
+                    "; AocrId=" + ObtenerAocrIdLog(item) +
+                    "; RutaFirmada=" + (rutaDocumentoFirmado ?? string.Empty) +
+                    "; Hash=" + (hashFirmado ?? string.Empty) +
+                    "; Bytes=" + bytesFirmado);
+
+                return new FirmarAocrInstitucionalResult
+                {
+                    Ok = true,
+                    Message = "AOCR firmada oficialmente por Direccion / DIRDAC.",
+                    SolicitudId = solicitudId,
+                    AocrId = ObtenerAocrIdValor(item),
+                    RutaPdfOrigen = rutaPdfOrigen,
+                    RutaPdfFirmado = rutaDocumentoFirmado,
+                    HashPdfFirmado = hashFirmado,
+                    TamanioPdfFirmado = bytesFirmado,
+                    EstadoAocrNuevo = "AOCR_FIRMADO_DIRECCION",
+                    EstadoSolicitudNuevo = estadoSolicitudNuevo,
+                    UrlDescarga = urlDescarga
+                };
+            }
+            catch (Exception ex)
+            {
+                RegistrarLogFirmaAocrError(solicitudId, ex.Message, ex);
+                return CrearResultadoFirmaInstitucional(false, "Error interno al firmar AOCR. " + ex.Message, solicitudId);
+            }
+        }
+
+        private static FirmarAocrInstitucionalResult CrearResultadoFirmaInstitucional(bool ok, string message, int solicitudId)
+        {
+            return new FirmarAocrInstitucionalResult
+            {
+                Ok = ok,
+                Message = message,
+                SolicitudId = solicitudId
+            };
+        }
+
+        private PosicionFirmaVisualPdf ConstruirPosicionFirmaInstitucionalFija(FirmarAocrInstitucionalRequest request)
+        {
+            return new PosicionFirmaVisualPdf
+            {
+                NumeroPagina = request != null && request.PaginaFirma > 0 ? request.PaginaFirma : 1,
+                PosicionXRatio = 0.02f,
+                PosicionYRatio = 0.06f,
+                AnchoRatio = 0.94f,
+                AltoRatio = 0.82f
+            };
+        }
+
+        private string GuardarPdfOficialAocr(int solicitudId, string nombreArchivo, byte[] contenido)
+        {
+            var carpetaRelativa = "~/App_Data/Uploads/AOCR/Oficiales/" + solicitudId;
+            var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
+            if (!Directory.Exists(carpetaAbsoluta))
+            {
+                Directory.CreateDirectory(carpetaAbsoluta);
+            }
+
+            var nombreSeguro = "aocr_oficial_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + solicitudId + ".pdf";
+            var rutaAbsoluta = Path.Combine(carpetaAbsoluta, nombreSeguro);
+            System.IO.File.WriteAllBytes(rutaAbsoluta, contenido ?? new byte[0]);
+            return VirtualPathUtility.ToAbsolute(carpetaRelativa.TrimStart('~') + "/" + nombreSeguro);
+        }
+
+        private void SincronizarCertificadoPdfOficial(ValidarAocrSolicitudItemViewModel item, AocrDocumentoPdfViewModel documentoModel, string rutaRelativa)
+        {
+            if (item == null || item.Solicitud == null)
+            {
+                return;
+            }
+
+            var certificado = item.Certificado ?? _certificadoDao.ObtenerPorSolicitud(item.Solicitud.CodigoSolicitud);
+            if (certificado == null || certificado.CodigoCertificado <= 0)
+            {
+                certificado = new Certificado
+                {
+                    CodigoSolicitud = item.Solicitud.CodigoSolicitud,
+                    NumeroCertificado = item.NumeroAocr,
+                    Tipo = "AOCR",
+                    Estado = "GENERADO",
+                    FechaEmision = DateTime.Now,
+                    FechaVencimiento = documentoModel != null ? documentoModel.FechaVencimiento : null,
+                    RutaDocumento = rutaRelativa,
+                    EmitidoPor = ObtenerLoginActual(),
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = ObtenerUsuarioActualIdSeguro(),
+                    UpdatedAt = DateTime.Now,
+                    UpdatedBy = ObtenerUsuarioActualIdSeguro()
+                };
+                var id = _certificadoDao.Crear(certificado);
+                certificado.CodigoCertificado = id;
+                item.Certificado = certificado;
+                return;
+            }
+
+            certificado.NumeroCertificado = string.IsNullOrWhiteSpace(certificado.NumeroCertificado) ? item.NumeroAocr : certificado.NumeroCertificado;
+            certificado.RutaDocumento = rutaRelativa;
+            certificado.RutaPdf = rutaRelativa;
+            certificado.Estado = "GENERADO";
+            certificado.FechaEmision = certificado.FechaEmision ?? DateTime.Now;
+            certificado.FechaVencimiento = documentoModel != null ? documentoModel.FechaVencimiento : certificado.FechaVencimiento;
+            certificado.EmitidoPor = string.IsNullOrWhiteSpace(certificado.EmitidoPor) ? ObtenerLoginActual() : certificado.EmitidoPor;
+            certificado.UpdatedAt = DateTime.Now;
+            certificado.UpdatedBy = ObtenerUsuarioActualIdSeguro();
+            _certificadoDao.Actualizar(certificado);
+            item.Certificado = certificado;
+        }
+
+        private bool RutaDocumentoExiste(string ruta)
+        {
+            var rutaFisica = ResolverRutaDocumento(ruta);
+            return !string.IsNullOrWhiteSpace(rutaFisica) && System.IO.File.Exists(rutaFisica);
+        }
+
+        private static FirmaAocrResult CrearResultadoFirmaAocr(bool ok, int code, string message, int solicitudId)
+        {
+            return new FirmaAocrResult
+            {
+                Ok = ok,
+                Code = code,
+                Message = message,
+                SolicitudId = solicitudId
+            };
+        }
+
+        private void AplicarAliasFormularioFirmaAocr(FirmarAocrRequest request)
+        {
+            if (request == null || Request == null || Request.Form == null)
+            {
+                return;
+            }
+
+            if (request.CertificadoDigital == null && Request.Files != null)
+            {
+                request.CertificadoDigital = Request.Files["certificadoDigital"];
+            }
+            request.PasswordCertificado = PrimerValorNoVacio(request.PasswordCertificado, Request.Form["passwordCertificado"]);
+            request.ModoFirma = PrimerValorNoVacio(request.ModoFirma, Request.Form["modoFirma"]);
+            request.NombreFirmante = PrimerValorNoVacio(request.NombreFirmante, Request.Form["nombreFirmante"], request.FirmanteNombre);
+            request.CargoFirmante = PrimerValorNoVacio(request.CargoFirmante, Request.Form["cargoFirmante"], request.FirmanteCargo);
+            request.RutaPdfOrigen = PrimerValorNoVacio(request.RutaPdfOrigen, Request.Form["rutaPdfOrigen"]);
+
+            int intValue;
+            if (!request.PaginaFirma.HasValue && int.TryParse(Request.Form["paginaFirma"], out intValue))
+            {
+                request.PaginaFirma = intValue;
+            }
+            if (request.PaginaFirma.HasValue && request.NumeroPaginaFirma <= 0)
+            {
+                request.NumeroPaginaFirma = request.PaginaFirma.Value;
+            }
+
+            decimal decimalValue;
+            if (!request.PosicionX.HasValue && TryParseDecimalInvariant(Request.Form["posicionX"], out decimalValue))
+            {
+                request.PosicionX = decimalValue;
+            }
+            if (!request.PosicionY.HasValue && TryParseDecimalInvariant(Request.Form["posicionY"], out decimalValue))
+            {
+                request.PosicionY = decimalValue;
+            }
+            if (!request.AnchoFirmaDecimal.HasValue && TryParseDecimalInvariant(Request.Form["anchoFirma"], out decimalValue))
+            {
+                request.AnchoFirmaDecimal = decimalValue;
+            }
+            if (!request.AltoFirmaDecimal.HasValue && TryParseDecimalInvariant(Request.Form["altoFirma"], out decimalValue))
+            {
+                request.AltoFirmaDecimal = decimalValue;
+            }
+        }
+
+        private static string PrimerValorNoVacio(params string[] valores)
+        {
+            if (valores == null)
+            {
+                return null;
+            }
+
+            return valores.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+        }
+
+        private PosicionFirmaVisualPdf ConstruirPosicionFirmaVisualPdfRequerida(FirmarAocrRequest request)
+        {
+            if (request == null)
+            {
+                return null;
+            }
+
+            decimal posicionX;
+            decimal posicionY;
+            decimal ancho;
+            decimal alto;
+
+            if (request.PosicionX.HasValue)
+            {
+                posicionX = request.PosicionX.Value;
+            }
+            else if (!TryParseDecimalInvariant(request.PosicionFirmaX, out posicionX))
+            {
+                return null;
+            }
+
+            if (request.PosicionY.HasValue)
+            {
+                posicionY = request.PosicionY.Value;
+            }
+            else if (!TryParseDecimalInvariant(request.PosicionFirmaY, out posicionY))
+            {
+                return null;
+            }
+
+            if (request.AnchoFirmaDecimal.HasValue)
+            {
+                ancho = request.AnchoFirmaDecimal.Value;
+            }
+            else if (!TryParseDecimalInvariant(request.AnchoFirma, out ancho))
+            {
+                return null;
+            }
+
+            if (request.AltoFirmaDecimal.HasValue)
+            {
+                alto = request.AltoFirmaDecimal.Value;
+            }
+            else if (!TryParseDecimalInvariant(request.AltoFirma, out alto))
+            {
+                return null;
+            }
+
+            if (posicionX < 0 || posicionX > 1 || posicionY < 0 || posicionY > 1 || ancho <= 0 || ancho > 1 || alto <= 0 || alto > 1)
+            {
+                return null;
+            }
+
+            return new PosicionFirmaVisualPdf
+            {
+                NumeroPagina = request.PaginaFirma.GetValueOrDefault(request.NumeroPaginaFirma > 0 ? request.NumeroPaginaFirma : 1),
+                PosicionXRatio = (float)posicionX,
+                PosicionYRatio = (float)posicionY,
+                AnchoRatio = (float)ancho,
+                AltoRatio = (float)alto
+            };
+        }
+
+        private static string CalcularSha256Hex(byte[] contenido)
+        {
+            if (contenido == null || contenido.Length == 0)
+            {
+                return null;
+            }
+
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                return BitConverter.ToString(sha.ComputeHash(contenido)).Replace("-", string.Empty).ToLowerInvariant();
+            }
+        }
+
+        private static int ObtenerAocrIdValor(ValidarAocrSolicitudItemViewModel item)
+        {
+            return item != null && item.Certificado != null ? item.Certificado.CodigoCertificado : 0;
+        }
+
+        private static string ObtenerAocrIdLog(ValidarAocrSolicitudItemViewModel item)
+        {
+            var valor = ObtenerAocrIdValor(item);
+            return valor > 0 ? valor.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        }
+
+        private void RegistrarLogFirmaAocrIn(FirmarAocrRequest request, string tipoDocumento)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][IN] SolicitudId=" + (request != null ? request.SolicitudId.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; AocrId=" + (request != null && request.AocrId.HasValue ? request.AocrId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; TipoDocumento=" + (tipoDocumento ?? string.Empty) +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog() +
+                "; TieneCertificado=" + (request != null && request.CertificadoDigital != null && request.CertificadoDigital.ContentLength > 0) +
+                "; TienePassword=" + (request != null && !string.IsNullOrWhiteSpace(request.PasswordCertificado)) +
+                "; PosX=" + (request != null ? (request.PosicionX.HasValue ? request.PosicionX.Value.ToString(CultureInfo.InvariantCulture) : request.PosicionFirmaX) : string.Empty) +
+                "; PosY=" + (request != null ? (request.PosicionY.HasValue ? request.PosicionY.Value.ToString(CultureInfo.InvariantCulture) : request.PosicionFirmaY) : string.Empty) +
+                "; Pagina=" + (request != null ? (request.PaginaFirma.GetValueOrDefault(request.NumeroPaginaFirma)).ToString(CultureInfo.InvariantCulture) : string.Empty));
+        }
+
+        private void RegistrarLogFirmaAocrValidation(FirmarAocrRequest request, bool pdfExiste, bool certificadoValido, bool estadoFirmable, bool puedeFirmar, string motivo)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][VALIDATION] SolicitudId=" + (request != null ? request.SolicitudId.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; PdfExiste=" + pdfExiste +
+                "; CertificadoValido=" + certificadoValido +
+                "; EstadoFirmable=" + estadoFirmable +
+                "; PuedeFirmar=" + puedeFirmar +
+                "; Motivo=" + (motivo ?? string.Empty));
+        }
+
+        private static void RegistrarLogFirmaAocrPdfOrigen(string ruta, bool existe, long bytes)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][PDF_ORIGEN] RutaPdf=" + (ruta ?? string.Empty) +
+                "; Existe=" + existe +
+                "; Bytes=" + bytes);
+        }
+
+        private static void RegistrarLogFirmaAocrCertificado(HttpPostedFileBase certificado, bool passwordRecibida, bool tieneClavePrivada = true, bool vigente = true)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][CERT] Archivo=" + (certificado != null ? (certificado.FileName ?? string.Empty) : string.Empty) +
+                "; Extension=" + (certificado != null ? Path.GetExtension(certificado.FileName ?? string.Empty) : string.Empty) +
+                "; Bytes=" + (certificado != null ? certificado.ContentLength : 0) +
+                "; PasswordRecibida=" + passwordRecibida +
+                "; TieneClavePrivada=" + tieneClavePrivada +
+                "; Vigente=" + vigente);
+        }
+
+        private static void RegistrarLogFirmaAocrPdfFirmado(string rutaFirmada, bool existe, long bytes, string hash)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[FIRMA_AOCR][PDF_FIRMADO] RutaFirmada=" + (rutaFirmada ?? string.Empty) +
+                "; Existe=" + existe +
+                "; Bytes=" + bytes +
+                "; Hash=" + (hash ?? string.Empty));
+        }
+
+        private void RegistrarLogFirmaAocrError(int solicitudId, string motivo, Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError(
+                "[FIRMA_AOCR][ERROR] SolicitudId=" + solicitudId +
+                "; Motivo=" + (motivo ?? string.Empty) +
+                "; Exception=" + (ex != null ? ex.GetType().FullName + ": " + ex.Message : string.Empty));
+        }
+
+        private static bool DocumentoAocrEsUnificado(ValidarAocrSolicitudItemViewModel item)
+        {
+            return item != null && item.FirmaCompleta;
+        }
+
+        private void RegistrarLogValidarAocrEntrada(int? solicitudId, int? aocrId)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[VALIDAR_AOCR][IN] Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog() +
+                "; SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; AocrId=" + (aocrId.HasValue ? aocrId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty));
+        }
+
+        private void RegistrarLogValidarAocrEstados(AocrContextoResolucion contexto)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[VALIDAR_AOCR][ESTADOS] SolicitudId=" + (contexto != null && contexto.SolicitudId.HasValue ? contexto.SolicitudId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; EstadoSolicitud=" + (contexto != null ? (contexto.EstadoSolicitud ?? string.Empty) : string.Empty) +
+                "; EstadoInforme=" + (contexto != null && contexto.InformeTecnico != null ? (contexto.InformeTecnico.EstadoInforme ?? string.Empty) : string.Empty) +
+                "; AocrId=" + (contexto != null && contexto.AocrId.HasValue ? contexto.AocrId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty) +
+                "; EstadoAocr=" + (contexto != null ? (contexto.EstadoAocr ?? string.Empty) : string.Empty) +
+                "; CondicionesId=" + ObtenerCondicionesIdLog(contexto) +
+                "; EstadoCondiciones=" + ObtenerEstadoCondicionesLog(contexto));
+        }
+
+        private void RegistrarLogValidarAocrPrecondiciones(AocrContextoResolucion contexto, ValidarAocrSolicitudItemViewModel item, string motivo)
+        {
+            var informeAprobado = contexto != null && _informeTecnicoEstadoService.EstaAprobadoPorDireccion(contexto.InformeTecnico);
+            var aocrExiste = contexto != null && contexto.ExisteAocr;
+            var condicionesExiste = item != null && item.Documentos != null && item.Documentos.Any(d => d != null && string.Equals(d.TipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) && d.Disponible);
+            var puedeVerAocr = item != null && item.Documentos != null && item.Documentos.Any(d => d != null && string.Equals(d.TipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(d.UrlVer));
+            var puedeFirmarAocr = item != null && item.Documentos != null && item.Documentos.Any(d => d != null && string.Equals(d.TipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(d.UrlFirmar));
+            var puedeFirmarCondiciones = item != null && item.Documentos != null && item.Documentos.Any(d => d != null && string.Equals(d.TipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(d.UrlFirmar));
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[VALIDAR_AOCR][PRECONDICIONES] InformeAprobadoDireccion=" + informeAprobado +
+                "; AocrExiste=" + aocrExiste +
+                "; CondicionesExiste=" + condicionesExiste +
+                "; PuedeVerAocr=" + puedeVerAocr +
+                "; PuedeFirmarAocr=" + puedeFirmarAocr +
+                "; PuedeFirmarCondiciones=" + puedeFirmarCondiciones +
+                "; Motivo=" + (motivo ?? string.Empty));
+        }
+
+        private void RegistrarLogValidarAocrViewModel(ValidarAocrViewModel model)
+        {
+            if (model == null)
+            {
+                return;
+            }
+
+            System.Diagnostics.Trace.TraceInformation(
+                "[VALIDAR_AOCR][VIEWMODEL] SolicitudId=" + model.SolicitudId +
+                "; EstadoSolicitud=" + (model.EstadoSolicitud ?? string.Empty) +
+                "; InformeAprobado=" + model.InformeAprobadoDireccion +
+                "; AocrExiste=" + model.AocrExiste +
+                "; AocrFirmada=" + model.AocrFirmada +
+                "; CondicionesExiste=" + model.CondicionesExisten +
+                "; CondicionesFirmadas=" + model.CondicionesFirmadas +
+                "; PuedeFirmarAocr=" + model.PuedeFirmarAocr +
+                "; PuedeFirmarCondiciones=" + model.PuedeFirmarCondiciones);
+        }
+
+        private void RegistrarLogDocumentoValidacionRequest(int solicitudId, string tipo, bool descargar)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[DOCUMENTO_VALIDACION_AOCR][REQUEST] SolicitudId=" + solicitudId +
+                "; Tipo=" + (tipo ?? string.Empty) +
+                "; Descargar=" + descargar +
+                "; Usuario=" + ObtenerLoginActual() +
+                "; Rol=" + ObtenerRolActualLog());
+        }
+
+        private void RegistrarLogDocumentoValidacionOk(int solicitudId, string tipo, string ruta)
+        {
+            var bytes = 0L;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(ruta) && System.IO.File.Exists(ruta))
+                {
+                    bytes = new FileInfo(ruta).Length;
+                }
+            }
+            catch
+            {
+            }
+
+            RegistrarLogDocumentoValidacionOk(solicitudId, tipo, ruta, bytes);
+        }
+
+        private void RegistrarLogDocumentoValidacionOk(int solicitudId, string tipo, string ruta, long bytes)
+        {
+            System.Diagnostics.Trace.TraceInformation(
+                "[DOCUMENTO_VALIDACION_AOCR][OK] SolicitudId=" + solicitudId +
+                "; Tipo=" + (tipo ?? string.Empty) +
+                "; Ruta=" + (ruta ?? string.Empty) +
+                "; Bytes=" + bytes);
+        }
+
+        private void RegistrarLogDocumentoValidacionBloqueado(int solicitudId, string tipo, string motivo)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "[DOCUMENTO_VALIDACION_AOCR][409] SolicitudId=" + solicitudId +
+                "; Tipo=" + (tipo ?? string.Empty) +
+                "; Motivo=" + (motivo ?? string.Empty));
+        }
+
+        private string ObtenerCondicionesIdLog(AocrContextoResolucion contexto)
+        {
+            if (contexto == null || !contexto.SolicitudId.HasValue)
+            {
+                return string.Empty;
+            }
+
+            var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(contexto.SolicitudId.Value, "CONDICIONES_LIMITACIONES");
+            return firma != null && firma.CodigoFirma > 0 ? firma.CodigoFirma.ToString(CultureInfo.InvariantCulture) : string.Empty;
+        }
+
+        private string ObtenerEstadoCondicionesLog(AocrContextoResolucion contexto)
+        {
+            if (contexto == null || !contexto.SolicitudId.HasValue)
+            {
+                return string.Empty;
+            }
+
+            var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(contexto.SolicitudId.Value, "CONDICIONES_LIMITACIONES");
+            return firma != null && !string.IsNullOrWhiteSpace(firma.RutaDocumento) ? "FIRMADO" : "PENDIENTE";
+        }
+
+        private string ObtenerLoginActual()
+        {
+            return User != null && User.Identity != null ? (User.Identity.Name ?? string.Empty) : string.Empty;
+        }
+
+        private string ObtenerRolActualLog()
+        {
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated)
+            {
+                return "ANONIMO";
+            }
+
+            return new[] { "Administrador", "DIRDAC", "Direccion", "DireccionJefaturaTecnica", "JefaturaTecnica", "DirectorGeneral", "Coordinacion", "Coordinador", "CoordinadorInspecciones", "CoordinacionLegal", "CoordinadorLegal", "Inspector" }
+                .FirstOrDefault(rol => User.IsInRole(rol)) ?? "AUTENTICADO";
         }
 
         private void RegistrarTrazaAocrCoordinacion(ValidarAocrSolicitudItemViewModel item)
@@ -1734,6 +3458,12 @@ namespace CapaPresentacion.Controllers
             var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(item != null ? item.Solicitud : null, estadoSolicitud);
             var condicionesFirmadas = string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase);
+            var solicitudId = item != null && item.Solicitud != null ? item.Solicitud.CodigoSolicitud : 0;
+            var firmaAocr = solicitudId > 0 ? _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO") : null;
+            var firmaCondiciones = solicitudId > 0 ? _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES") : null;
+            var aocrFirmado = firmaAocr != null && !string.IsNullOrWhiteSpace(firmaAocr.RutaDocumento);
+            var condicionesDocumentoFirmado = condicionesFirmadas || (firmaCondiciones != null && !string.IsNullOrWhiteSpace(firmaCondiciones.RutaDocumento));
+            var puedeFirmar = UsuarioActualPuedeFirmarDocumentoValidacionAocr();
 
             return new List<ValidarAocrDocumentoItemViewModel>
             {
@@ -1743,17 +3473,19 @@ namespace CapaPresentacion.Controllers
                     NombreVisible = item.FirmaCompleta
                         ? "AOCR oficial unificada (paginas 1 y 2)"
                         : "Reconocimiento de Certificado de Explotador de Servicios Aereos",
-                    Estado = item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? "No aplica" : "Pendiente"),
+                    Estado = aocrFirmado ? "Firmado" : (item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? "No aplica" : "Pendiente")),
                     Observacion = item.FirmaCompleta
                         ? "La salida oficial AOCR1 integra reconocimiento y condiciones/limitaciones en un solo PDF institucional."
                         : (esModificacionDirecta
                             ? "La modificación directa de Condiciones y Limitaciones no genera un reconocimiento adicional."
                             : "Falta firma final del informe tecnico para habilitar este documento."),
-                    UrlEditar = item.FirmaCompleta ? urlHelper.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO" }) : null,
-                    UrlVer = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO", descargar = false }) : null,
-                    UrlDescargar = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO", descargar = true }) : null,
+                    UrlEditar = item.FirmaCompleta ? urlHelper.Action("Index", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud }) : null,
+                    UrlVer = item.FirmaCompleta ? urlHelper.Action("VerPdf", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud, firmado = false }) : null,
+                    UrlDescargar = item.FirmaCompleta ? urlHelper.Action("DescargarPdf", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud, firmado = false }) : null,
+                    UrlFirmar = item.FirmaCompleta && puedeFirmar && !aocrFirmado ? urlHelper.Action("FirmarAocr", "CoordinacionJefatura") : null,
                     FechaDocumento = item.Certificado != null ? (item.Certificado.UpdatedAt ?? item.Certificado.FechaEmision ?? fechaBase) : fechaBase,
-                    Disponible = item.FirmaCompleta
+                    Disponible = item.FirmaCompleta,
+                    Firmado = aocrFirmado
                 },
                 new ValidarAocrDocumentoItemViewModel
                 {
@@ -1769,13 +3501,15 @@ namespace CapaPresentacion.Controllers
                                 ? "Documento firmado institucionalmente y listo para descarga final."
                                 : "Documento habilitado para edición y revisión en el flujo de modificación sin inspección.")
                             : "Falta firma final del informe tecnico para habilitar este documento."),
-                    UrlEditar = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" }) : null,
-                    UrlVer = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false }) : null,
+                    UrlEditar = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("Index", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud }) : null,
+                    UrlVer = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("VerPdf", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud, firmado = false }) : null,
                     UrlDescargar = item.FirmaCompleta
-                        ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = true })
-                        : (condicionesFirmadas ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = true }) : null),
+                        ? urlHelper.Action("DescargarPdf", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud, firmado = false })
+                        : (condicionesFirmadas ? urlHelper.Action("DescargarFirmado", "FirmaAocr", new { solicitudId = item.Solicitud.CodigoSolicitud }) : null),
+                    UrlFirmar = (item.FirmaCompleta || esModificacionDirecta) && puedeFirmar && !condicionesDocumentoFirmado ? urlHelper.Action("FirmarCondiciones", "CoordinacionJefatura") : null,
                     FechaDocumento = fechaBase,
-                    Disponible = item.FirmaCompleta || condicionesFirmadas
+                    Disponible = item.FirmaCompleta || condicionesDocumentoFirmado,
+                    Firmado = condicionesDocumentoFirmado
                 }
             };
         }
@@ -1808,8 +3542,14 @@ namespace CapaPresentacion.Controllers
                 && (User.IsInRole("Administrador")
                     || User.IsInRole("DIRDAC")
                     || User.IsInRole("Direccion")
+                    || User.IsInRole("DireccionJefaturaTecnica")
                     || User.IsInRole("DirectorGeneral")
                     || User.IsInRole("JefaturaTecnica"));
+        }
+
+        private static bool UsarFirmaAocrNueva()
+        {
+            return true;
         }
 
         private AocrDocumentoPdfViewModel ConstruirDocumentoPdfModel(ValidarAocrSolicitudItemViewModel item, AocrDocumentoEdicionViewModel edicion, string tipoDocumento)
@@ -2080,6 +3820,37 @@ namespace CapaPresentacion.Controllers
             return ConstruirItemValidacionAocr(solicitud, inspeccionesSolicitud);
         }
 
+        private ActionResult RespuestaDocumentoValidacionNoDisponible(int solicitudId, string tipoDocumento, SolicitudAOCR solicitud, string motivo, int statusCode)
+        {
+            RegistrarLogDocumentoValidacionBloqueado(solicitudId, tipoDocumento, motivo);
+            if (EsSolicitudJson())
+            {
+                Response.StatusCode = statusCode;
+                return Json(new
+                {
+                    ok = false,
+                    code = statusCode,
+                    message = motivo,
+                    data = new
+                    {
+                        solicitudId = solicitudId,
+                        tipo = tipoDocumento
+                    }
+                }, JsonRequestBehavior.AllowGet);
+            }
+
+            return VistaDocumentoValidacionNoDisponible(solicitudId, tipoDocumento, solicitud, motivo, statusCode);
+        }
+
+        private bool EsSolicitudJson()
+        {
+            var accept = Request != null ? Request.Headers["Accept"] : null;
+            var requestedWith = Request != null ? Request.Headers["X-Requested-With"] : null;
+            return (Request != null && Request.IsAjaxRequest())
+                || string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrWhiteSpace(accept) && accept.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
         private ActionResult VistaDocumentoValidacionNoDisponible(
             int solicitudId,
             string tipoDocumento,
@@ -2197,9 +3968,11 @@ namespace CapaPresentacion.Controllers
         private static string NormalizarTipoDocumento(string tipo)
         {
             var tipoNormalizado = (tipo ?? string.Empty).Trim().ToUpperInvariant();
-            if (tipoNormalizado == "RECONOCIMIENTO")
+            if (tipoNormalizado == "RECONOCIMIENTO"
+                || tipoNormalizado == "UNIFICADO_AOCR"
+                || tipoNormalizado == "AOCR_UNIFICADO")
             {
-                return tipoNormalizado;
+                return "RECONOCIMIENTO";
             }
 
             if (tipoNormalizado == "CONDICIONES"
@@ -2396,23 +4169,8 @@ namespace CapaPresentacion.Controllers
 
         private string ConstruirSwitchesPdfValidacionAocr()
         {
-            var switches = PdfBrandingHelper.StandardRotativaSwitches
-                + " --disable-smart-shrinking --margin-top 30mm --margin-bottom 26mm --margin-left 8mm --margin-right 8mm --header-spacing 0 --footer-spacing 0";
-
-            var headerHtmlPath = CrearArchivoBrandingTemporal(true);
-            var footerHtmlPath = CrearArchivoBrandingTemporal(false);
-
-            if (!string.IsNullOrWhiteSpace(headerHtmlPath))
-            {
-                switches += " --header-html \"" + ConvertirRutaFisicaAUrlArchivo(headerHtmlPath) + "\"";
-            }
-
-            if (!string.IsNullOrWhiteSpace(footerHtmlPath))
-            {
-                switches += " --footer-html \"" + ConvertirRutaFisicaAUrlArchivo(footerHtmlPath) + "\"";
-            }
-
-            return switches;
+            return PdfBrandingHelper.StandardRotativaSwitches
+                + " --disable-smart-shrinking --margin-top 8mm --margin-bottom 8mm --margin-left 8mm --margin-right 8mm --header-spacing 0 --footer-spacing 0";
         }
 
         private string CrearArchivoBrandingTemporal(bool esHeader)
@@ -2868,7 +4626,9 @@ namespace CapaPresentacion.Controllers
             string codigoQr,
             InformacionCertificadoDigital infoCertificado,
             string nombreFirmante,
-            bool sincronizarCertificadoOficial)
+            bool sincronizarCertificadoOficial,
+            long tamanioPdfFirmado = 0,
+            string firmadoPorRol = null)
         {
             var firma = new AocrFirmaDocumento
             {
@@ -2879,6 +4639,8 @@ namespace CapaPresentacion.Controllers
                 NombreArchivo = nombreArchivo,
                 RutaDocumento = rutaDocumento,
                 HashDocumento = hashDocumento,
+                TamanioPdfFirmado = tamanioPdfFirmado > 0 ? (long?)tamanioPdfFirmado : null,
+                FirmadoPorRol = !string.IsNullOrWhiteSpace(firmadoPorRol) ? firmadoPorRol : null,
                 CodigoQr = codigoQr,
                 SujetoCertificado = infoCertificado != null ? infoCertificado.SujetoCertificado : null,
                 NombreFirmante = nombreFirmante,
@@ -3008,7 +4770,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
-            var observacion = accion + " documento AOCR [" + tipoDocumento + "] desde Validar AOCR.";
+            var observacion = accion + " documento AOCR [" + tipoDocumento + "] desde Firma institucional AOCR.";
             _historialEstadoDao.RegistrarCambio(solicitud.CodigoSolicitud, estadoActual, estadoActual, usuarioId, observacion);
         }
 
@@ -3033,7 +4795,7 @@ namespace CapaPresentacion.Controllers
             var referencia = Guid.NewGuid().ToString("N").Substring(0, 10).ToUpperInvariant();
             var detalle = ConstruirDetalleExcepcion(ex);
             var mensaje = string.Format(
-                "Validar AOCR fallo. Ref={0}; Operacion={1}; SolicitudId={2}; InspeccionId={3}; TipoDocumento={4}",
+                "Firma institucional AOCR fallo. Ref={0}; Operacion={1}; SolicitudId={2}; InspeccionId={3}; TipoDocumento={4}",
                 referencia,
                 operacion ?? "N/A",
                 solicitudId.HasValue ? solicitudId.Value.ToString() : "N/A",

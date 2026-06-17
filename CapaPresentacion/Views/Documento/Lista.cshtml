@@ -1065,12 +1065,396 @@
             width: 100%;
         }
     }
-</style>
 
-@Html.Partial("_PageHeader", null, new ViewDataDictionary {
-    { "Title", tituloPaginaModulo },
-    { "Subtitle", subtituloPaginaModulo }
-})
+    .aocr-review-page {
+        display: grid;
+        gap: 14px;
+    }
+
+    .aocr-review-page .documentos-view-banner,
+    .aocr-review-page .documentos-review-tools__context,
+    .aocr-review-page .documentos-review-tools,
+    .aocr-review-page .aocr-review-doc-shell {
+        background: #fff;
+        border: 1px solid #dbe8f3;
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(15, 50, 80, 0.06);
+    }
+
+    .aocr-review-page .documentos-view-banner {
+        margin-bottom: 0;
+        padding: 16px 18px;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+        background: #fff;
+    }
+
+    .aocr-review-page .documentos-view-banner__title {
+        font-size: 1.25rem;
+        letter-spacing: 0;
+    }
+
+    .aocr-review-page .documentos-view-banner__copy {
+        margin-top: 4px;
+        line-height: 1.45;
+    }
+
+    .aocr-review-page .documentos-view-highlight {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .aocr-review-page .documentos-view-highlight__card {
+        border-radius: 10px;
+        padding: 10px 12px;
+    }
+
+    .aocr-review-page .aocr-summary-strip,
+    .aocr-review-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 0 !important;
+    }
+
+    .aocr-review-page .aocr-summary-strip .aocr-metric-card,
+    .aocr-review-page .aocr-summary-strip > * {
+        min-width: 0;
+    }
+
+    .aocr-review-page .documentos-review-tools {
+        grid-template-columns: repeat(5, minmax(135px, 1fr));
+        gap: 10px;
+        margin-bottom: 0;
+        padding: 12px;
+        align-items: end;
+    }
+
+    .aocr-review-page .documentos-review-tools__context {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        padding: 12px;
+        box-shadow: none;
+        background: #f8fbfd;
+    }
+
+    .aocr-review-page .documentos-review-tools__context-item {
+        min-width: 0;
+    }
+
+    .aocr-review-page .documentos-review-tools__context-item .documentos-review-tools__label {
+        display: block;
+        margin-bottom: 6px;
+        color: #3f5f76;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    .aocr-review-page .documentos-review-tools__context-item strong {
+        display: block;
+        color: #102f45;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.25;
+    }
+
+    .aocr-review-page .documentos-review-tools__field label,
+    .aocr-review-page .aocr-field-label {
+        display: block;
+        margin-bottom: 5px;
+        color: #12324a;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .aocr-review-page .documentos-review-tools__field select,
+    .aocr-review-page .documentos-review-tools__field input {
+        height: 34px;
+        border: 1px solid #c9dae8;
+        border-radius: 8px;
+        font-size: 12px;
+    }
+
+    .aocr-review-page .aocr-review-doc-shell {
+        overflow: hidden;
+    }
+
+    .aocr-review-page .documentos-table-card__header {
+        padding: 12px 14px;
+        background: #fff;
+    }
+
+    .aocr-review-page .aocr-review-table-wrap {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .aocr-review-page .aocr-review-table {
+        min-width: 670px;
+        table-layout: fixed;
+        font-size: 12px;
+    }
+
+    .aocr-review-page .aocr-review-table th {
+        background: #0f5578;
+        color: #fff;
+        padding: 9px 8px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .aocr-review-page .aocr-review-table td {
+        padding: 8px;
+        vertical-align: middle;
+        line-height: 1.3;
+    }
+
+    .aocr-review-page .aocr-review-table tr:hover td {
+        background: #f7fbfe;
+    }
+
+    .aocr-review-page .aocr-col-tipo,
+    .aocr-review-page .aocr-review-cell-type {
+        width: 180px;
+        min-width: 180px;
+        max-width: 180px;
+    }
+
+    .aocr-review-page .aocr-col-operadora {
+        width: 130px;
+    }
+
+    .aocr-review-page .aocr-col-estado,
+    .aocr-review-page .aocr-review-cell-state {
+        width: 150px;
+        min-width: 150px;
+    }
+
+    .aocr-review-page .aocr-col-observacion,
+    .aocr-review-page .documentos-observacion {
+        width: 180px;
+        min-width: 180px;
+        max-width: 180px;
+    }
+
+    .aocr-review-page .aocr-col-revisado {
+        width: 130px;
+    }
+
+    .aocr-review-page .aocr-col-acciones,
+    .aocr-review-page .aocr-review-actions {
+        width: 86px;
+        min-width: 86px;
+    }
+
+    .aocr-review-page .aocr-file-name {
+        max-width: 245px;
+        color: #12324a;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .aocr-review-page .aocr-review-type-main {
+        font-size: 12px;
+    }
+
+    .aocr-review-page .aocr-review-type-meta,
+    .aocr-review-page .aocr-review-cell-file .aocr-file-sub {
+        font-size: 10px;
+    }
+
+    .aocr-review-page .aocr-doc-state-select,
+    .aocr-review-page .aocr-review-select {
+        width: 130px;
+        min-width: 0;
+        height: 32px;
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+    }
+
+    .aocr-review-page .aocr-observation-input,
+    .aocr-review-page .aocr-review-observation {
+        width: 145px;
+        min-width: 0;
+        min-height: 42px;
+        max-height: 72px;
+        padding: 6px;
+        font-size: 12px;
+        border-radius: 8px;
+    }
+
+    .aocr-review-page .aocr-status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 84px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        background: #e9f1f7;
+        color: #345;
+        border: 0;
+    }
+
+    .aocr-review-page .aocr-actions-icons .btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+    }
+
+    .aocr-review-page .aocr-icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid #bfd3e3;
+        background: #fff;
+        color: #0f6694;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+        transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+        box-shadow: 0 2px 6px rgba(15, 85, 120, 0.08);
+    }
+
+    .aocr-review-page .aocr-icon-btn:hover {
+        background: #eef8fc;
+        border-color: #78b8d6;
+        color: #084d73;
+        transform: translateY(-1px);
+    }
+
+    .aocr-review-page .aocr-icon-btn:focus {
+        outline: 3px solid rgba(15, 102, 148, .22);
+        outline-offset: 2px;
+    }
+
+    .aocr-review-page .aocr-icon-btn i {
+        font-size: 13px;
+    }
+
+    .aocr-review-page .aocr-review-card-list,
+    .aocr-review-page .aocr-review-mobile-list {
+        display: none;
+    }
+
+    .aocr-review-page .aocr-review-footer {
+        background: #f8fbfd !important;
+        padding: 12px 14px !important;
+    }
+
+    .aocr-review-page .aocr-review-save-btn {
+        min-width: 240px;
+        height: 42px;
+        border-radius: 10px;
+        font-weight: 800;
+    }
+
+    @@media (max-width: 992px) {
+        .aocr-review-page .documentos-view-banner {
+            grid-template-columns: 1fr;
+        }
+
+        .aocr-review-page .aocr-summary-strip,
+        .aocr-review-page .aocr-review-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .aocr-review-page .documentos-review-tools,
+        .aocr-review-page .documentos-review-tools__context {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .aocr-review-page {
+            gap: 12px;
+        }
+
+        .aocr-review-page .documentos-view-banner {
+            padding: 14px;
+        }
+
+        .aocr-review-page .aocr-summary-strip,
+        .aocr-review-page .aocr-review-kpis,
+        .aocr-review-page .documentos-review-tools,
+        .aocr-review-page .documentos-review-tools__context {
+            grid-template-columns: 1fr;
+        }
+
+        .aocr-review-page .aocr-review-table-wrap {
+            display: none !important;
+        }
+
+        .aocr-review-page .aocr-review-card-list,
+        .aocr-review-page .aocr-review-mobile-list {
+            display: grid;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .aocr-review-page .aocr-review-card {
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 20px rgba(15, 50, 80, 0.06);
+        }
+
+        .aocr-review-page .aocr-review-card-header {
+            align-items: flex-start;
+        }
+
+        .aocr-review-page .aocr-review-card-body {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .aocr-review-page .aocr-review-card-line {
+            min-width: 0;
+        }
+
+        .aocr-review-page .aocr-review-card-line:has(.aocr-observation-input),
+        .aocr-review-page .aocr-review-card-line:has(.js-estado-documento) {
+            grid-column: 1 / -1;
+        }
+
+        .aocr-review-page .aocr-doc-state-select,
+        .aocr-review-page .aocr-review-select,
+        .aocr-review-page .aocr-observation-input,
+        .aocr-review-page .aocr-review-observation {
+            width: 100%;
+        }
+
+        .aocr-review-page .aocr-review-card-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .aocr-review-page .aocr-review-card-actions .btn {
+            width: 34px;
+            height: 34px;
+        }
+
+        .aocr-review-page .aocr-review-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 20;
+        }
+
+        .aocr-review-page .aocr-review-save-btn {
+            width: 100%;
+            min-width: 0;
+        }
+    }
+</style>
 
 @if (TempData["Error"] != null)
 {
@@ -1099,10 +1483,11 @@
     </div>
 }
 
-<section class="documentos-view-banner @(esModoRevisionDocumental ? "documentos-view-banner--review" : string.Empty)">
+<div class="aocr-review-page">
+<section class="documentos-view-banner aocr-review-header @(esModoRevisionDocumental ? "documentos-view-banner--review" : string.Empty)">
     <div>
         <span class="documentos-view-banner__eyebrow">@bannerEyebrow</span>
-        <h2 class="documentos-view-banner__title">@bannerTitulo</h2>
+        <h1 class="documentos-view-banner__title">@tituloPaginaModulo</h1>
         <p class="documentos-view-banner__copy">@bannerDescripcion</p>
         <div class="documentos-view-banner__chips">
             @if (esModoVerDocumentacion)
@@ -1133,7 +1518,7 @@
     </div>
 </section>
 
-<div class="aocr-summary-strip mb-3">
+<div class="aocr-summary-strip aocr-review-kpis mb-3">
     @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" }, { "ValueId", "metricTotalDocs" } })
     @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" }, { "ValueId", "metricPendientesDocs" } })
     @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Aceptados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" }, { "ValueId", "metricAceptadosDocs" } })
@@ -1149,8 +1534,8 @@
 
 <div id="documentoRevisionAlerts"></div>
 
-<div class="documentos-review-tools @(esModoVerDocumentacion ? "documentos-review-tools--view" : "documentos-review-tools--review")">
-    <div class="documentos-review-tools__context">
+<div class="documentos-review-tools aocr-review-filters @(esModoVerDocumentacion ? "documentos-review-tools--view" : "documentos-review-tools--review")">
+    <div class="documentos-review-tools__context aocr-review-summary">
         <div class="documentos-review-tools__context-item">
             <span class="documentos-review-tools__label">Solicitud</span>
             <strong>@(tieneSolicitudId ? ("#" + solicitudIdNumero) : "N/D")</strong>
@@ -1175,7 +1560,7 @@
         </div>
     </div>
 
-    <div class="documentos-review-tools__field">
+    <div class="documentos-review-tools__field aocr-filter-group">
         <label for="filtroTipo" class="aocr-field-label">Filtrar por tipo</label>
         <select id="filtroTipo" class="form-select form-select-sm">
             <option value="">-- Todos --</option>
@@ -1186,7 +1571,7 @@
         </select>
     </div>
 
-    <div class="documentos-review-tools__field">
+    <div class="documentos-review-tools__field aocr-filter-group">
         <label for="filtroOperadora" class="aocr-field-label">Operadora / EAE</label>
         <select id="filtroOperadora" class="form-select form-select-sm">
             <option value="">-- Todas --</option>
@@ -1197,7 +1582,7 @@
         </select>
     </div>
 
-    <div class="documentos-review-tools__field">
+    <div class="documentos-review-tools__field aocr-filter-group">
         <label for="filtroFechaRapida" class="aocr-field-label">Fecha de carga</label>
         <select id="filtroFechaRapida" class="form-select form-select-sm">
             <option value="">-- Todas --</option>
@@ -1207,18 +1592,18 @@
         </select>
     </div>
 
-    <div class="documentos-review-tools__field">
+    <div class="documentos-review-tools__field aocr-filter-group">
         <label for="filtroFechaDesde" class="aocr-field-label">Desde</label>
         <input type="date" id="filtroFechaDesde" class="form-control form-control-sm" />
     </div>
 
-    <div class="documentos-review-tools__field">
+    <div class="documentos-review-tools__field aocr-filter-group">
         <label for="filtroFechaHasta" class="aocr-field-label">Hasta</label>
         <input type="date" id="filtroFechaHasta" class="form-control form-control-sm" />
     </div>
 </div>
 
-<div class="card aocr-table-card aocr-review-doc-shell">
+<div class="card aocr-table-card aocr-review-doc-shell aocr-review-board">
     <div class="documentos-table-card__header">
         <div>
             <h3 class="documentos-table-card__title">@tablaTitulo</h3>
@@ -1231,16 +1616,12 @@
             <table class="table table-dgac mb-0 documentos-table aocr-review-table" id="tablaDocumentos">
                 <thead>
                     <tr>
-                        <th class="aocr-review-cell-type">Tipo</th>
-                        <th class="aocr-review-cell-file">Archivo</th>
-                        <th>Versión</th>
-                        <th>Operadora / EAE</th>
-                        <th>Fecha de carga</th>
-                        <th class="aocr-review-cell-state">Estado</th>
-                        <th>Observación / motivo</th>
-                        <th>Revisado por</th>
-                        <th>Fecha revisión</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="aocr-review-cell-type aocr-col-tipo">Tipo</th>
+                        <th class="aocr-col-operadora">Operadora / EAE</th>
+                        <th class="aocr-review-cell-state aocr-col-estado">Estado</th>
+                        <th class="aocr-col-observacion">Observación</th>
+                        <th class="aocr-col-revisado">Revisado por</th>
+                        <th class="text-center aocr-col-acciones">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1275,6 +1656,7 @@
                                 : observacionFila;
                             <tr id="doc-row-@doc.CodigoDocumento"
                                 data-document-id="@doc.CodigoDocumento"
+                                data-documento-id="@doc.CodigoDocumento"
                                 data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
                                 data-tipo-documento="@Html.AttributeEncode(tipoDocumentoCodigo ?? string.Empty)"
                                 data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)"
@@ -1292,17 +1674,11 @@
                                         <span class="aocr-review-type-meta">@Html.Encode(tipoDocumentoCodigo.Replace("_", " "))</span>
                                     }
                                 </td>
-                                <td class="documentos-table__cell documentos-table__cell--filename aocr-review-cell-file" data-column-label="Archivo">
-                                    <span class="aocr-file-name" title="@Html.AttributeEncode(archivoVisible)">@Html.Encode(archivoVisible)</span>
-                                    <span class="aocr-file-sub">@Html.Encode(System.IO.Path.GetExtension(archivoOriginal) ?? string.Empty)</span>
-                                </td>
-                                <td class="documentos-table__cell" data-column-label="Versión">@(doc.Version.HasValue ? doc.Version.Value.ToString() : "1")</td>
-                                <td class="documentos-table__cell" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
-                                <td class="documentos-table__cell" data-column-label="Fecha de carga">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td class="documentos-table__cell aocr-col-operadora" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
                                 <td class="documentos-table__cell js-doc-state aocr-review-cell-state" data-column-label="Estado">
                                     @if (puedeRevisarFila)
                                     {
-                                        <select class="form-select form-select-sm js-estado-documento js-decision-combo js-decision-documento aocr-review-select" data-document-id="@doc.CodigoDocumento">
+                                        <select class="form-select form-select-sm js-estado-documento js-decision-combo js-decision-documento aocr-review-select aocr-doc-state-select" data-document-id="@doc.CodigoDocumento" data-documento-id="@doc.CodigoDocumento">
                                             <option value="PENDIENTE" @(string.IsNullOrWhiteSpace(decisionActual) ? "selected=\"selected\"" : null)>Pendiente</option>
                                             <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected=\"selected\"" : null)>Aceptada</option>
                                             <option value="DEVUELTO_INSPECTOR" @(esDecisionRechazada ? "selected=\"selected\"" : null)>Rechazada</option>
@@ -1313,14 +1689,15 @@
                                         <span class="badge @(esDocumentoSoloConsultaFila ? "bg-info text-dark" : badgeFila) aocr-status-badge">@(esDocumentoSoloConsultaFila ? "Solo consulta" : estadoFilaVisible)</span>
                                     }
                                 </td>
-                                <td class="documentos-table__cell documentos-observacion js-doc-observacion" data-column-label="Observación / motivo">
+                                <td class="documentos-table__cell documentos-observacion js-doc-observacion aocr-col-observacion" data-column-label="Observación / motivo">
                                     @if (puedeRevisarFila)
                                     {
-                                        <textarea class="form-control form-control-sm js-decision-observacion js-observacion-documento aocr-review-observation @(esDecisionRechazada ? string.Empty : "d-none")"
+                                        <textarea class="form-control form-control-sm js-decision-observacion js-observacion-documento aocr-review-observation aocr-observation-input @(esDecisionRechazada ? string.Empty : "d-none")"
                                                   rows="2"
                                                   maxlength="1000"
                                                   placeholder="Ingrese observación si rechaza"
-                                                  data-document-id="@doc.CodigoDocumento">@Html.Encode(observacionRevisionActual)</textarea>
+                                                  data-document-id="@doc.CodigoDocumento"
+                                                  data-documento-id="@doc.CodigoDocumento">@Html.Encode(observacionRevisionActual)</textarea>
                                     }
                                     else if (!string.IsNullOrWhiteSpace(observacionFila))
                                     {
@@ -1331,7 +1708,7 @@
                                         <span class="documentos-muted">-</span>
                                     }
                                 </td>
-                                <td class="documentos-table__cell js-doc-reviewer" data-column-label="Revisado por">
+                                <td class="documentos-table__cell js-doc-reviewer aocr-col-revisado" data-column-label="Revisado por">
                                     @if (!string.IsNullOrWhiteSpace(revisorFila))
                                     {
                                         @Html.Encode(revisorFila)
@@ -1341,13 +1718,12 @@
                                         <span class="documentos-muted">-</span>
                                     }
                                 </td>
-                                <td class="documentos-table__cell js-doc-review-date" data-column-label="Fecha revisión">@(doc.FechaRevision.HasValue ? doc.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
-                                <td class="documentos-table__cell text-center js-doc-actions aocr-review-actions" data-column-label="Acciones">
+                                <td class="documentos-table__cell text-center js-doc-actions aocr-review-actions aocr-col-acciones" data-column-label="Acciones">
                                     <div class="documentos-actions aocr-actions-icons">
                                         @if (esPdf)
                                         {
                                             <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                               class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                                class="btn btn-sm aocr-icon-btn aocr-pdf-open"
                                                data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
                                                data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
                                                data-title="@archivoVisible"
@@ -1359,7 +1735,7 @@
                                             </a>
                                         }
                                         <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
-                                           class="btn btn-sm btn-aocr-primary"
+                                           class="btn btn-sm aocr-icon-btn"
                                            title="Descargar"
                                            aria-label="Descargar @Html.AttributeEncode(archivoVisible)"
                                            data-bs-toggle="tooltip">
@@ -1382,7 +1758,7 @@
                         }
 
                         <tr id="filaSinResultados" style="display:none;">
-                            <td colspan="10">
+                            <td colspan="6">
                                 @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                                     { "Icon", "fas fa-filter" },
                                     { "Title", "Sin coincidencias" },
@@ -1393,7 +1769,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="10">
+                        <tr><td colspan="6">
                             @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                                 { "Icon", "fas fa-folder-open" },
                                 { "Title", "Sin documentos" },
@@ -1404,7 +1780,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="aocr-review-mobile-list" id="listaDocumentosMobile">
+        <div class="aocr-review-mobile-list aocr-review-card-list" id="listaDocumentosMobile">
             @if (documentos.Any())
             {
                 foreach (var doc in documentos)
@@ -1437,6 +1813,7 @@
                     <article class="aocr-review-card js-review-mobile-card"
                              id="doc-card-@doc.CodigoDocumento"
                              data-document-id="@doc.CodigoDocumento"
+                             data-documento-id="@doc.CodigoDocumento"
                              data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
                              data-tipo-documento="@Html.AttributeEncode(tipoDocumentoCodigo ?? string.Empty)"
                              data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)"
@@ -1457,33 +1834,22 @@
                             </div>
                             <span class="@(esDocumentoSoloConsultaFila ? "badge bg-info text-dark" : badgeFila) aocr-status-badge">@(esDocumentoSoloConsultaFila ? "Solo consulta" : estadoFilaVisible)</span>
                         </header>
-                        <div class="aocr-review-card-body">
-                            <div class="aocr-review-card-line">
-                                <span class="label">Archivo</span>
-                                <span class="value aocr-file-name" title="@Html.AttributeEncode(archivoVisible)">@Html.Encode(archivoVisible)</span>
-                            </div>
-                            <div class="aocr-review-card-line">
-                                <span class="label">Versión</span>
-                                <span class="value">@(doc.Version.HasValue ? doc.Version.Value.ToString() : "1")</span>
-                            </div>
+                        <div class="aocr-review-card-body aocr-card-meta">
                             <div class="aocr-review-card-line">
                                 <span class="label">Operadora / EAE</span>
                                 <span class="value">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</span>
-                            </div>
-                            <div class="aocr-review-card-line">
-                                <span class="label">Fecha de carga</span>
-                                <span class="value">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</span>
                             </div>
                             <div class="aocr-review-card-line">
                                 <span class="label">Observación / motivo</span>
                                 <span class="value js-doc-observacion-card">
                                     @if (puedeRevisarFila)
                                     {
-                                        <textarea class="form-control form-control-sm js-decision-observacion js-observacion-documento aocr-review-observation @(esDecisionRechazada ? string.Empty : "d-none")"
+                                        <textarea class="form-control form-control-sm js-decision-observacion js-observacion-documento aocr-review-observation aocr-observation-input @(esDecisionRechazada ? string.Empty : "d-none")"
                                                   rows="3"
                                                   maxlength="1000"
                                                   placeholder="Ingrese observación si rechaza"
-                                                  data-document-id="@doc.CodigoDocumento">@Html.Encode(observacionRevisionActual)</textarea>
+                                                  data-document-id="@doc.CodigoDocumento"
+                                                  data-documento-id="@doc.CodigoDocumento">@Html.Encode(observacionRevisionActual)</textarea>
                                     }
                                     else if (!string.IsNullOrWhiteSpace(observacionFila))
                                     {
@@ -1499,7 +1865,7 @@
                             {
                                 <div class="aocr-review-card-line">
                                     <span class="label">Estado</span>
-                                    <select class="form-select form-select-sm js-estado-documento js-decision-combo js-decision-documento aocr-review-select" data-document-id="@doc.CodigoDocumento">
+                                    <select class="form-select form-select-sm js-estado-documento js-decision-combo js-decision-documento aocr-review-select aocr-doc-state-select" data-document-id="@doc.CodigoDocumento" data-documento-id="@doc.CodigoDocumento">
                                         <option value="PENDIENTE" @(string.IsNullOrWhiteSpace(decisionActual) ? "selected=\"selected\"" : null)>Pendiente</option>
                                         <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected=\"selected\"" : null)>Aceptada</option>
                                         <option value="DEVUELTO_INSPECTOR" @(esDecisionRechazada ? "selected=\"selected\"" : null)>Rechazada</option>
@@ -1524,7 +1890,7 @@
                             @if (esPdf)
                             {
                                 <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                   class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                   class="btn btn-sm aocr-icon-btn aocr-pdf-open"
                                    data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
                                    data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
                                    data-title="@archivoVisible"
@@ -1536,7 +1902,7 @@
                                 </a>
                             }
                             <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
-                               class="btn btn-sm btn-aocr-primary"
+                               class="btn btn-sm aocr-icon-btn"
                                title="Descargar"
                                aria-label="Descargar @Html.AttributeEncode(archivoVisible)"
                                data-bs-toggle="tooltip">
@@ -1592,7 +1958,7 @@
                           data-origen="@Html.AttributeEncode(string.IsNullOrWhiteSpace(origenDocumentos) ? "revision-documental" : origenDocumentos)">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="revisionesJson" id="revisionesJsonGuardar" value="" />
-                        <button type="button" class="btn btn-primary btn-lg w-100 w-lg-auto" id="btnGuardarRevisionDocumental">
+                        <button type="button" class="btn btn-primary btn-lg w-100 w-lg-auto aocr-review-save-btn" id="btnGuardarRevisionDocumental">
                             <i class="fas fa-save me-1"></i> Guardar revisión documental
                         </button>
                     </form>
@@ -1600,6 +1966,7 @@
             </div>
         }
     </div>
+</div>
 </div>
 
 <div class="modal fade" id="modalDevolverDocumento" tabindex="-1" aria-labelledby="modalDevolverDocumentoTitulo" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
@@ -1831,7 +2198,7 @@
 
                 if (doc.esPdf && doc.previewUrl) {
                     html.push(
-                        '<a href="', escapeHtml(doc.previewUrl), '" class="btn btn-sm btn-outline-secondary aocr-pdf-open"',
+                        '<a href="', escapeHtml(doc.previewUrl), '" class="btn btn-sm aocr-icon-btn aocr-pdf-open"',
                         ' data-pdf-url="', escapeHtml(doc.previewUrl), '"',
                         ' data-download-url="', escapeHtml(doc.downloadUrl || ''), '"',
                         ' data-title="', escapeHtml(doc.archivo || ''), '"',
@@ -1842,7 +2209,7 @@
                 }
 
                 html.push(
-                    '<a href="', escapeHtml(doc.downloadUrl || ''), '" class="btn btn-sm btn-aocr-primary"',
+                    '<a href="', escapeHtml(doc.downloadUrl || ''), '" class="btn btn-sm aocr-icon-btn"',
                     ' title="Descargar" aria-label="Descargar ', escapeHtml(doc.archivo || 'documento'), '" data-bs-toggle="tooltip">',
                     '<i class="fas fa-download" aria-hidden="true"></i></a>'
                 );

@@ -201,6 +201,7 @@ namespace CapaPresentacion.Helpers
                 "DIRDAC",
                 "DCAV",
                 "DIRECTORGENERAL",
+                "DIRECCIONJEFATURA",
                 "DIRECCIONJEFATURATECNICA"))
             {
                 return DireccionJefaturaTecnica;
@@ -276,6 +277,21 @@ namespace CapaPresentacion.Helpers
         public static bool IsCoordinacion(string role)
         {
             return NormalizeSelectedRole(role).Equals(Coordinacion, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool RolRequiereCompaniaActiva(string role)
+        {
+            return IsSolicitante(role);
+        }
+
+        public static bool EsRolInstitucional(string role)
+        {
+            var normalized = NormalizeSelectedRole(role);
+            return normalized.Equals(Administrador, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(Coordinacion, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(Financiero, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(InspectorTecnico, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool HasAnyRawRole(IEnumerable<string> rawRoles, params string[] aliases)

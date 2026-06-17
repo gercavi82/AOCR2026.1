@@ -1,179 +1,170 @@
 @inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
+@using System
 @using System.Globalization
 @using System.Linq
-@using System.Web.Mvc
-@using System.Web.Mvc.Html
+@using System.Web
 
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
-    var solicitud = Model != null ? Model.Solicitud : null;
-    var informe = Model != null ? Model.Informe : null;
-    var certificado = Model != null ? Model.Certificado : null;
-    var fechaDoc = Model != null ? Model.FechaEmisionDocumento : DateTime.Now;
     var cultura = new CultureInfo("es-EC");
-
-    Func<string, string> normalizarTextoVisible = CapaPresentacion.Helpers.VisibleTextHelper.Normalize;
-    Func<string, string> textoCampo = value => !string.IsNullOrWhiteSpace(normalizarTextoVisible(value)) ? normalizarTextoVisible(value) : "No aplica";
-    Func<DateTime?, string> fechaCampo = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "No aplica";
-    Func<string, string> claseCampo = value => !string.IsNullOrWhiteSpace(value) ? "field-value" : "field-value pending";
-
-    var operador = Model != null ? Model.NombreExplotador : null;
-    var contacto = Model != null ? Model.PuntoContactoEcuador : null;
-    var telefonoCorreo = Model != null ? string.Join(" / ", new[] { Model.CorreoExplotador, Model.TelefonoExplotador }.Where(x => !string.IsNullOrWhiteSpace(x))) : null;
-    var direccionCompleta = Model != null ? Model.DireccionExplotador : null;
-    var baseLegal = Model != null ? Model.BaseLegalReferencia : null;
-    var observaciones = Model != null ? Model.ObservacionesReconocimiento : null;
-    var elaboradoPor = Model != null ? Model.ElaboradoPor : null;
-    var revisadoPor = Model != null ? Model.RevisadoPor : null;
-    var firmadoPor = Model != null ? Model.FirmanteFinal : null;
-    var cargoFirmante = Model != null ? Model.CargoFirmante : null;
+    var solicitud = Model != null ? Model.Solicitud : null;
+    var aeronaves = Model != null && Model.AeronavesCondiciones != null
+        ? Model.AeronavesCondiciones
+        : new System.Collections.Generic.List<CapaPresentacion.Models.AocrCondicionAeronaveFilaViewModel>();
+    Func<string, string> clean = CapaPresentacion.Helpers.VisibleTextHelper.Normalize;
+    Func<string, string> val = value => !string.IsNullOrWhiteSpace(clean(value)) ? clean(value) : "---";
+    Func<DateTime?, string> fecha = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "---";
+    var logoFisico = Server.MapPath("~/Content/assets/imganes/selloDGAC.png");
+    var logo = System.IO.File.Exists(logoFisico) ? new Uri(logoFisico).AbsoluteUri : Url.Content("~/Content/assets/imganes/selloDGAC.png");
+    var fechaEmision = Model != null && Model.FechaEmisionDocumento != default(DateTime) ? Model.FechaEmisionDocumento : DateTime.Now;
+    var aocOriginal = val(Model != null ? Model.AocOriginalNumero : null);
+    var aocVence = fecha(Model != null ? Model.FechaVencimiento : null);
 }
 
 @section PdfHead {
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; }
-        .sheet { border: 2px solid #1f1f1f; padding: 18px; }
-        .head-table, .grid, .footer-table, .signature-table { width: 100%; border-collapse: collapse; }
-        .head-table td, .grid td, .grid th, .footer-table td, .signature-table td { border: 1px solid #222; padding: 6px; vertical-align: top; }
-        .title { text-align: center; font-weight: bold; font-size: 13pt; letter-spacing: .4px; }
-        .title-block { max-width: 86%; margin: 0 auto; line-height: 1.08; }
-        .subtitle { text-align: center; font-size: 10pt; }
-        .small { font-size: 8pt; color: #444; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10pt; }
+        .aocr-page { width: 194mm; min-height: 281mm; margin: 0 auto; page-break-after: always; position: relative; box-sizing: border-box; padding-top: 10mm; }
+        .aocr-page:last-child { page-break-after: auto; }
+        .topline { display: flex; justify-content: space-between; border-bottom: 1px solid #111; padding: 0 4mm 1mm; font-size: 10pt; }
+        .official-box { margin: 18mm 1mm 0; border: 2px solid #000; }
+        .official-box.page2 { margin-top: 30mm; }
+        .row { display: table; width: 100%; table-layout: fixed; border-collapse: collapse; }
+        .cell { display: table-cell; border: 1px solid #000; vertical-align: top; padding: 2mm; box-sizing: border-box; }
+        .noborder { border: 0 !important; }
+        .title { text-align: center; font-weight: 700; font-size: 13pt; line-height: 1.05; padding: 2mm; }
+        .subtitle { font-weight: 400; }
         .center { text-align: center; }
-        .label { font-weight: bold; }
-        .spacer { height: 14px; }
-        .section-title { font-weight: bold; font-size: 10.5pt; background: #e9eef5; padding: 7px 8px; border: 1px solid #222; }
-        .field-label { display: block; font-weight: bold; font-size: 8.5pt; margin-bottom: 4px; text-transform: uppercase; }
-        .field-value { display: block; min-height: 20px; padding: 4px 6px; border: 1px dashed #666; background: #fbfbfb; }
-        .field-value.pending { color: #7a4d00; font-style: italic; background: #fff8e8; }
-        .note-box { border: 1px solid #222; background: #f7fafc; padding: 10px 12px; }
-        .signature-line { height: 34px; border-bottom: 1px solid #222; margin-bottom: 6px; }
-        .signature-role { font-weight: bold; text-transform: uppercase; font-size: 8.5pt; }
-        .checklist { margin: 0; padding-left: 18px; }
-        .checklist li { margin-bottom: 4px; }
-        .signature-table { page-break-inside: avoid; break-inside: avoid; }
-        .signature-slot { height: 120px; min-height: 120px; border: 1px dashed #999; background: #fff; margin-top: 6px; overflow: hidden; position: relative; }
+        .bold { font-weight: 700; }
+        .small { font-size: 7.4pt; }
+        .tiny { font-size: 6.8pt; }
+        .xl { font-size: 13pt; line-height: 1.05; }
+        .section-head { font-weight: 700; font-size: 11pt; line-height: 1.08; }
+        .brand-crop { width: 36mm; height: 31mm; margin: 2mm auto; overflow: hidden; }
+        .brand-crop img { height: 30mm; width: auto; max-width: none; display: block; }
+        .h-34 { height: 34mm; }
+        .h-135 { height: 135mm; }
+        .legal { height: 31mm; font-size: 9.6pt; line-height: 1.08; padding: 1mm 2mm; }
+        .field-space { min-height: 8mm; display: block; padding-top: 2mm; }
+        .footer-sign { height: 27mm; }
+        .footerline { position: absolute; left: 4mm; right: 4mm; bottom: 1mm; border-top: 1px solid #111; padding-top: 1mm; display: flex; justify-content: space-between; font-family: "Times New Roman", serif; font-style: italic; font-weight: 700; }
+        .op-block { font-size: 8.2pt; line-height: 1.23; }
+        .op-title { text-align: center; font-size: 12pt; line-height: 1.08; font-weight: 700; margin: 6mm 0; }
+        .data-center { text-align: center; font-size: 12pt; font-weight: 700; margin: 4mm 0; }
+        .official-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .official-table th, .official-table td { border: 1px solid #777; padding: 1mm 2mm; vertical-align: middle; }
+        .official-table th { font-weight: 400; font-size: 12pt; }
+        .legend { font-size: 12pt; line-height: 1.25; margin: 8mm 0 0 8mm; }
+        .gray { background: #e8e8e8; }
         .firma-anchor { font-size: 1px; color: #fff; line-height: 1px; height: 1px; overflow: hidden; display: block; }
     </style>
 }
 
-<div class="sheet">
-    <table class="head-table">
-        <tr>
-            <td colspan="3" class="title">
-                <div class="title-block">
-                    RECONOCIMIENTO DE CERTIFICADO DE<br />
-                    EXPLOTADOR DE SERVICIOS AEREOS
+<div class="aocr-page">
+    <div class="topline"><span>RDAC 129</span><span>Direccion General de Aviacion Civil</span></div>
+    <div class="official-box">
+        <div class="title">
+            RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS<br />
+            <span class="subtitle">AIR OPERATOR CERTIFICATE RECOGNIZED</span>
+        </div>
+        <div class="row h-34">
+            <div class="cell center" style="width:35%;">
+                <div class="brand-crop"><img src="@logo" /></div>
+            </div>
+            <div class="cell center" style="width:31%;">
+                <div class="section-head">REPUBLICA DEL ECUADOR</div>
+                <div class="xl" style="margin-top:9mm;">REPUBLIC OF ECUADOR</div>
+                <div style="border-top:2px solid #000; margin:1mm -2mm 0; padding-top:1mm;" class="section-head">DIRECCION GENERAL<br />DE AVIACION CIVIL</div>
+                <div class="xl" style="margin-top:8mm;">CIVIL AVIATION<br />GENERAL DIRECTORATE</div>
+            </div>
+            <div class="cell center" style="width:34%;">
+                <div class="section-head" style="margin-top:4mm;">PERMISO OPERACION CNAC</div>
+                <div class="xl">CNAC OPERATION PERMIT</div>
+                <div class="section-head" style="margin-top:8mm;">Fecha de Emision <span class="subtitle">/ Date of issue:</span></div>
+                <div class="field-space">@fecha(fechaEmision)</div>
+                <div class="section-head">Fecha de Vencimiento <span class="subtitle">/ Expiry date:</span></div>
+                <div class="field-space">@fecha(Model != null ? Model.FechaVencimiento : null)</div>
+            </div>
+        </div>
+        <div class="row h-135">
+            <div class="cell" style="width:35%;">
+                <div class="section-head">AOCR #:</div>
+                <div class="field-space">@val(Model != null ? Model.NumeroAocr : null)</div>
+                <div class="xl">Otorgado en base al AOC No. @aocOriginal<br />emitido por @val(Model != null ? Model.EstadoExplotador : null)</div>
+                <div class="small">Issued based on the original AOC granted by (State of the Operator)</div>
+                <div class="section-head" style="margin-top:9mm;">Fecha de Vencimiento:</div>
+                <div class="small">/ Expiry date</div>
+                <div class="field-space">@aocVence</div>
+                <div class="op-title">PUNTOS DE CONTACTO<br />OPERACIONALES:<br />/OPERATIONAL POINTS OF<br />CONTACT:</div>
+                <div class="op-block">
+                    <div class="bold">La informacion de contacto donde se puede ubicar a las autoridades de gestion operacional sin demoras indebidas se proporciona en:</div>
+                    <div>/Contact details where operational management authorities can be contacted without undue delay, are listed in:</div>
+                    <div><u><em>"Gerencia de Seguridad Operacional"</em></u></div>
+                    <div><em>"Operational Safety Manage's office".</em></div>
+                    <br />
+                    <div><span class="bold">Direccion</span> /Address: @val(Model != null ? Model.PuntosContactoOperacionales : null)</div><br />
+                    <div><span class="bold">Telefono:</span> /Telephone: @val(Model != null ? Model.ContactoTelefono : null)</div><br />
+                    <div><span class="bold">Correo-e</span> /Email: @val(Model != null ? Model.ContactoCorreo : null)</div><br />
+                    <div><u><em><span class="bold">"Representante Tecnico"</span></em></u> / <em>"Technical Representative"</em></div>
+                    <div><span class="bold">Direccion</span> /Address: @val(Model != null ? Model.ContactoDireccion : null)</div><br />
+                    <div><span class="bold">Telefono</span> /Telephone: @val(Model != null ? Model.ContactoTelefono : null)</div><br />
+                    <div><span class="bold">Correo e</span> /Email: @val(Model != null ? Model.ContactoCorreo : null)</div>
                 </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" class="subtitle">AIR OPERATOR CERTIFICATE RECOGNIZED</td>
-        </tr>
-        <tr>
-            <td class="center" style="width:33%;"><strong>REPUBLICA DEL ECUADOR</strong><br /><span class="small">REPUBLIC OF ECUADOR</span></td>
-            <td class="center" style="width:34%;"><strong>DIRECCION GENERAL DE AVIACION CIVIL</strong><br /><span class="small">CIVIL AVIATION GENERAL DIRECTORATE</span></td>
-            <td class="center" style="width:33%;"><strong>PERMISO OPERACION CNAC</strong><br /><span class="small">CNAC OPERATION PERMIT</span></td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-
-    <div class="section-title">I. Datos generales del reconocimiento AOCR</div>
-
-    <table class="grid">
-        <tr>
-            <td style="width:33%;"><span class="field-label">AOCR #</span><span class="@claseCampo(Model != null ? Model.NumeroAocr : null)">@textoCampo(Model != null ? Model.NumeroAocr : null)</span></td>
-            <td style="width:34%;"><span class="field-label">Nombre del explotador</span><span class="@claseCampo(operador)">@textoCampo(operador)</span></td>
-            <td style="width:33%;"><span class="field-label">Punto de contacto en Ecuador</span><span class="@claseCampo(contacto)">@textoCampo(contacto)</span></td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Fecha de emision</span><span class="field-value">@fechaDoc.ToString("dd/MM/yyyy", cultura)</span></td>
-            <td><span class="field-label">Estado del explotador</span><span class="@claseCampo(Model != null ? Model.EstadoExplotador : null)">@textoCampo(Model != null ? Model.EstadoExplotador : null)</span></td>
-            <td><span class="field-label">Correo / Telefono</span><span class="@claseCampo(telefonoCorreo)">@textoCampo(telefonoCorreo)</span></td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Direccion operacional</span><span class="@claseCampo(direccionCompleta)">@textoCampo(direccionCompleta)</span></td>
-            <td><span class="field-label">Numero certificado original</span><span class="@claseCampo(Model != null ? Model.AocOriginalNumero : null)">@textoCampo(Model != null ? Model.AocOriginalNumero : null)</span></td>
-            <td><span class="field-label">Representante tecnico</span><span class="@claseCampo(Model != null ? Model.RepresentanteTecnico : null)">@textoCampo(Model != null ? Model.RepresentanteTecnico : null)</span></td>
-        </tr>
-        <tr>
-            <td><span class="field-label">Estado otorgante</span><span class="@claseCampo(Model != null ? Model.EstadoOtorgante : null)">@textoCampo(Model != null ? Model.EstadoOtorgante : null)</span></td>
-            <td><span class="field-label">Razon social</span><span class="@claseCampo(Model != null ? Model.RazonSocial : null)">@textoCampo(Model != null ? Model.RazonSocial : null)</span></td>
-            <td><span class="field-label">Vigencia sugerida hasta</span><span class="field-value @(Model != null && Model.FechaVencimiento.HasValue ? string.Empty : "pending")">@fechaCampo(Model != null ? Model.FechaVencimiento : null)</span></td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-
-    <div class="section-title">II. Campos a completar por Coordinacion / Jefatura</div>
-
-    <table class="grid">
-        <tr>
-            <td style="width:50%;">
-                <span class="field-label">Base legal / referencia institucional</span>
-                <span class="@claseCampo(baseLegal)">@textoCampo(baseLegal)</span>
-            </td>
-            <td style="width:50%;">
-                <span class="field-label">Numero de solicitud / tramite base</span>
-                <span class="@claseCampo(solicitud != null ? solicitud.NumeroSolicitud : null)">@textoCampo(solicitud != null ? solicitud.NumeroSolicitud : null)</span>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <span class="field-label">Puntos de contacto operacionales</span>
-                <span class="@claseCampo(Model != null ? Model.PuntosContactoOperacionales : null)">@Html.Raw((textoCampo(Model != null ? Model.PuntosContactoOperacionales : null) ?? string.Empty).Replace(Environment.NewLine, "<br />"))</span>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <span class="field-label">Observaciones del reconocimiento</span>
-                <span class="@claseCampo(observaciones)">@textoCampo(observaciones)</span>
-            </td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-
-    <div class="note-box">
-        <strong>Uso de la plantilla</strong>
-        <ol class="checklist">
-            <li>Verificar que todos los campos institucionales del expediente esten completos.</li>
-            <li>Completar manualmente o desde sistema los campos marcados como pendientes.</li>
-            <li>Confirmar coherencia entre operador, vigencia, aeronaves y condiciones operativas.</li>
-            <li>Una vez validado el contenido, registrar la firma correspondiente de Coordinacion/Jefatura.</li>
-        </ol>
+            </div>
+            <div class="cell center" style="width:31%;">
+                <div class="section-head xl" style="margin-top:5mm;">NOMBRE DEL EXPLOTADOR<br />OPERATOR NAME</div>
+                <div class="section-head" style="margin-top:8mm;">Estado del Explotador:</div>
+                <div class="small">/ Operator State:</div>
+                <div class="data-center">@val(Model != null ? Model.EstadoExplotador : null)</div>
+                <div class="section-head" style="margin-top:10mm;">Razon Social:</div>
+                <div class="small">/ trade name:</div>
+                <div class="data-center">@val(Model != null ? Model.RazonSocial : null)</div>
+                <div class="section-head" style="margin-top:10mm;">Direccion del explotador:</div>
+                <div class="small">/ Operator address</div>
+                <div class="data-center">@val(Model != null ? Model.DireccionExplotador : null)</div>
+                <div class="section-head" style="margin-top:10mm;">Telefono <span class="small">/ telephone:</span></div>
+                <div class="data-center">@val(Model != null ? Model.TelefonoExplotador : null)</div>
+                <div class="section-head" style="margin-top:10mm;">Correo-e <span class="small">/ E-mail:</span></div>
+                <div class="data-center">@val(Model != null ? Model.CorreoExplotador : null)</div>
+            </div>
+            <div class="cell center" style="width:34%;">
+                <div class="section-head xl" style="margin-top:5mm;">PUNTO DE CONTACTO<br />ECUADOR:<br />/ ECUADOR CONTACT POINT:</div>
+                <div class="op-block" style="margin-top:22mm;">
+                    <div class="bold">La informacion de contacto donde se puede ubicar al Representante Legal.</div>
+                    <div>/The contact information where you can locate the Legal Representative.</div>
+                    <div class="data-center">@val(Model != null ? Model.PuntoContactoEcuador : null)</div>
+                    <div><span class="bold">Direccion</span> /Address:</div>
+                    <div class="data-center">@val(Model != null ? Model.ContactoDireccion : null)</div>
+                    <div><span class="bold">Telefono</span> /Telephone:</div>
+                    <div class="data-center">@val(Model != null ? Model.ContactoTelefono : null)</div>
+                    <div><span class="bold">Correo-e</span> /Email:</div>
+                    <div class="data-center">@val(Model != null ? Model.ContactoCorreo : null)</div>
+                </div>
+            </div>
+        </div>
+        <div class="legal">
+            Este Certificado es expedido en base al <span class="bold">AOC # @aocOriginal vigente hasta @aocVence</span>, y cualquier cambio al AOC original, o de las condiciones o limitaciones, que afecte las operaciones del explotador en su Estado, deberan ser notificados a esta AAC, dentro de 30 dias de dicho cambio.<br />
+            Este Certificado deja de tener efecto inmediatamente despues de la expiracion, suspension, revocacion, cancelacion o cualquier accion similar sobre el AOC.<br /><br />
+            This certificate is issued based on the current <span class="bold">AOC # @aocOriginal until @aocVence</span>, and any changes to the original AOC or to the conditions or limitations that affect the operator's operations in its State, shall be notified to this CAA within 30 days of such change.<br />
+            This certificate ceases to have effect immediately upon expiration, suspension, revocation, cancellation or any similar action on the AOC.
+        </div>
+        <div class="row footer-sign">
+            <div class="cell" style="width:35%;">
+                <div class="section-head">Fecha de expedicion <span class="small">/ Date of issue:</span></div>
+                <div class="field-space">@fecha(Model != null ? Model.FechaExpedicion : null)</div>
+                <div class="section-head" style="margin-top:8mm;">Fecha de renovacion <span class="small">/ Date of Renovation</span></div>
+                <div class="field-space">@fecha(Model != null ? Model.FechaRenovacion : null)</div>
+            </div>
+            <div class="cell center" style="width:65%;" data-firma-rol="AOCR_FIRMANTE">
+                <div class="xl">Nombre y firma <span class="small">/ Name and signature :</span></div>
+                <span class="firma-anchor">ANCLA_FIRMA_AUTORIZACION_AOCR</span>
+                <div class="field-space">@val(Model != null ? Model.FirmanteFinal : null)</div>
+                <div class="xl" style="margin-top:14mm;">Titulo: <span class="bold">DIRECTOR GENERAL DE AVIACION CIVIL.</span></div>
+                <div class="small">/ Title: <span class="bold">Director General of Civil Aviation</span></div>
+            </div>
+        </div>
     </div>
-
-    <div class="spacer"></div>
-
-    <div class="section-title">III. Revision y firmas</div>
-
-    <table class="signature-table" style="margin-top:12px;">
-        <tr>
-            <td style="width:33%;">
-                <div class="signature-line"></div>
-                <div class="signature-role">Elaborado por</div>
-                <div class="@claseCampo(elaboradoPor)">@textoCampo(elaboradoPor)</div>
-                <div class="small">Coordinacion / Jefatura Tecnica</div>
-            </td>
-            <td style="width:33%;">
-                <div class="signature-line"></div>
-                <div class="signature-role">Revisado por</div>
-                <div class="@claseCampo(revisadoPor)">@textoCampo(revisadoPor)</div>
-                <div class="small">Fecha revision: @fechaCampo(informe != null ? informe.FechaFirma2 : null)</div>
-            </td>
-            <td style="width:34%;" data-firma-rol="AOCR_FIRMANTE">
-                <div class="signature-role">FIRMA DE AUTORIZACION AOCR</div>
-                <div class="small">Firma digital autorizada.</div>
-                <div class="signature-slot">
-                    <span class="firma-anchor">ANCLA_FIRMA_AUTORIZACION_AOCR</span>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2"><span class="field-label">Observaciones de validacion final</span><span class="@(string.IsNullOrWhiteSpace(Model != null ? Model.ObservacionesValidacionFinal : null) ? "field-value pending" : "field-value")">@textoCampo(Model != null ? Model.ObservacionesValidacionFinal : null)</span></td>
-            <td><span class="field-label">Validacion de firma</span><span class="field-value pending">La firma digital se inserta automaticamente en el recuadro al firmar.</span></td>
-        </tr>
-    </table>
+    <div class="footerline"><span>Enmienda No.: 1</span><span>9</span><span>Actualizada: xxx</span></div>
 </div>
+
+@Html.Partial("~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml", Model)

@@ -15,6 +15,7 @@ using CapaPresentacion.Infrastructure;
 using System.Web.Routing;
 using Newtonsoft.Json.Linq;
 using AocrAuthorizationContextType = CapaNegocio.Services.AocrAuthorizationContext;
+using AocrContextResolverServiceType = CapaNegocio.Services.AocrContextResolverService;
 using AocrAuthorizationResultType = CapaNegocio.Services.AocrAuthorizationResult;
 using AocrAuthorizationServiceType = CapaNegocio.Services.AocrAuthorizationService;
 
@@ -257,11 +258,37 @@ namespace CapaPresentacion.Filters
             var codigoInspeccion = ResolveIntParameter(httpContext, CodigoInspeccionParameter, "codigoInspeccion", "inspeccionId");
             var codigoOrden = ResolveIntParameter(httpContext, CodigoOrdenParameter, "codigoOrden", "ordenId");
             var codigoInforme = ResolveIntParameter(httpContext, CodigoInformeParameter, "codigoInforme", "informeId");
+            var codigoAocr = ResolveIntParameter(httpContext, null, "aocrId", "codigoAocr");
 
             if (string.Equals(controller, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase) && !codigoSolicitud.HasValue)
             {
                 var idGenerico = ResolveIntParameter(httpContext, null, "id");
                 codigoSolicitud = idGenerico;
+            }
+
+            if (string.Equals(controller, "Documento", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(action, "Descargar", StringComparison.OrdinalIgnoreCase)
+                && (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0))
+            {
+                codigoSolicitud = ResolveCodigoSolicitudFromDocumentoId(httpContext);
+            }
+
+            if (string.Equals(controller, "CoordinacionJefatura", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(action, "ValidarAocr", StringComparison.OrdinalIgnoreCase)
+                && (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                && codigoAocr.HasValue
+                && codigoAocr.Value > 0)
+            {
+                codigoSolicitud = ResolveCodigoSolicitudFromAocrId(codigoAocr.Value);
+            }
+
+            if (string.Equals(controller, "Inspeccion", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(action, "RevisionDireccion", StringComparison.OrdinalIgnoreCase)
+                && (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                && codigoInforme.HasValue
+                && codigoInforme.Value > 0)
+            {
+                codigoSolicitud = ResolveCodigoSolicitudFromInformeTecnicoId(codigoInforme.Value);
             }
 
             if (string.Equals(controller, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase)
@@ -299,7 +326,7 @@ namespace CapaPresentacion.Filters
 
             if (RequireCompanySelection
                 && string.IsNullOrWhiteSpace(context.CompanyCode)
-                && string.Equals(RoleGroupingHelper.NormalizeSelectedRole(context.SelectedRole), RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+                && RoleGroupingHelper.RolRequiereCompaniaActiva(context.SelectedRole))
             {
                 var esAdmin = context.Roles != null && context.Roles.Any(r =>
                     string.Equals(r, "Administrador", StringComparison.OrdinalIgnoreCase)
@@ -330,6 +357,7 @@ namespace CapaPresentacion.Filters
             result.CodigoInspeccion = codigoInspeccion;
             result.CodigoOrden = codigoOrden;
             result.CodigoInforme = codigoInforme;
+            LogContextResolve(httpContext, controller, action, codigoSolicitud, codigoAocr, codigoInforme, result);
             return result;
         }
 
@@ -466,6 +494,88 @@ namespace CapaPresentacion.Filters
             }
 
             return null;
+        }
+
+        private static int? ResolveCodigoSolicitudFromDocumentoId(HttpContextBase httpContext)
+        {
+            var codigoDocumento = ResolveIntParameter(httpContext, null, "id", "documentoId", "codigoDocumento");
+            if (!codigoDocumento.HasValue || codigoDocumento.Value <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                var documento = new CapaDatos.DAOs.DocumentoDAO().ObtenerPorId(codigoDocumento.Value);
+                if (documento != null && documento.CodigoSolicitud > 0)
+                {
+                    return documento.CodigoSolicitud;
+                }
+            }
+            catch
+            {
+                // Si no se puede resolver aqui, la autorizacion principal mantendra el bloqueo.
+            }
+
+            return null;
+        }
+
+        private static int? ResolveCodigoSolicitudFromAocrId(int aocrId)
+        {
+            try
+            {
+                var contexto = new AocrContextResolverServiceType().ResolverDesdeAocrId(aocrId);
+                return contexto != null && contexto.Ok ? contexto.SolicitudId : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static int? ResolveCodigoSolicitudFromInformeTecnicoId(int informeTecnicoId)
+        {
+            try
+            {
+                var contexto = new AocrContextResolverServiceType().ResolverDesdeInformeTecnicoId(informeTecnicoId);
+                return contexto != null && contexto.Ok ? contexto.SolicitudId : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static void LogContextResolve(
+            HttpContextBase httpContext,
+            string controller,
+            string action,
+            int? codigoSolicitud,
+            int? codigoAocr,
+            int? codigoInforme,
+            AocrAuthorizationResultType result)
+        {
+            try
+            {
+                var request = httpContext != null ? httpContext.Request : null;
+                var routeId = request != null ? Convert.ToString(request.RequestContext.RouteData.Values["id"] ?? string.Empty) : string.Empty;
+                var path = request != null && request.Url != null ? request.Url.AbsolutePath : string.Empty;
+                Logger.LogInfo(string.Format(
+                    "[AUTH][CONTEXT_RESOLVE] Path={0}; Action={1}/{2}; RouteId={3}; SolicitudId={4}; AocrId={5}; DocumentoId={6}; InformeTecnicoId={7}; Resultado={8}; Motivo={9}",
+                    path,
+                    controller ?? string.Empty,
+                    action ?? string.Empty,
+                    routeId,
+                    codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString() : string.Empty,
+                    codigoAocr.HasValue ? codigoAocr.Value.ToString() : string.Empty,
+                    string.Equals(controller, "Documento", StringComparison.OrdinalIgnoreCase) ? routeId : string.Empty,
+                    codigoInforme.HasValue ? codigoInforme.Value.ToString() : string.Empty,
+                    result != null && result.Permitido,
+                    result != null ? (result.Motivo ?? string.Empty) : string.Empty));
+            }
+            catch
+            {
+            }
         }
 
         private static int? ResolveCodigoSolicitudFromJsonBody(HttpContextBase httpContext)

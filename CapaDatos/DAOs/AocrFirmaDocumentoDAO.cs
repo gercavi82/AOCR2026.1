@@ -34,6 +34,8 @@ namespace CapaDatos.DAOs
                         nombre_archivo,
                         ruta_documento,
                         hash_documento,
+                        tamanio_pdf_firmado,
+                        firmado_por_rol,
                         codigo_qr,
                         sujeto_certificado,
                         nombre_firmante,
@@ -52,6 +54,8 @@ namespace CapaDatos.DAOs
                         @nombre_archivo,
                         @ruta_documento,
                         @hash_documento,
+                        @tamanio_pdf_firmado,
+                        @firmado_por_rol,
                         @codigo_qr,
                         @sujeto_certificado,
                         @nombre_firmante,
@@ -71,6 +75,8 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@nombre_archivo", (object)firma.NombreArchivo ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta_documento", (object)firma.RutaDocumento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@hash_documento", (object)firma.HashDocumento ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@tamanio_pdf_firmado", (object)firma.TamanioPdfFirmado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@firmado_por_rol", (object)firma.FirmadoPorRol ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@codigo_qr", (object)firma.CodigoQr ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@sujeto_certificado", (object)firma.SujetoCertificado ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@nombre_firmante", (object)firma.NombreFirmante ?? DBNull.Value);
@@ -104,6 +110,8 @@ namespace CapaDatos.DAOs
                            nombre_archivo,
                            ruta_documento,
                            hash_documento,
+                           tamanio_pdf_firmado,
+                           firmado_por_rol,
                            codigo_qr,
                            sujeto_certificado,
                            nombre_firmante,
@@ -140,6 +148,8 @@ namespace CapaDatos.DAOs
                             NombreArchivo = rd["nombre_archivo"] != DBNull.Value ? rd["nombre_archivo"].ToString() : null,
                             RutaDocumento = rd["ruta_documento"] != DBNull.Value ? rd["ruta_documento"].ToString() : null,
                             HashDocumento = rd["hash_documento"] != DBNull.Value ? rd["hash_documento"].ToString() : null,
+                            TamanioPdfFirmado = rd["tamanio_pdf_firmado"] != DBNull.Value ? (long?)Convert.ToInt64(rd["tamanio_pdf_firmado"]) : null,
+                            FirmadoPorRol = rd["firmado_por_rol"] != DBNull.Value ? rd["firmado_por_rol"].ToString() : null,
                             CodigoQr = rd["codigo_qr"] != DBNull.Value ? rd["codigo_qr"].ToString() : null,
                             SujetoCertificado = rd["sujeto_certificado"] != DBNull.Value ? rd["sujeto_certificado"].ToString() : null,
                             NombreFirmante = rd["nombre_firmante"] != DBNull.Value ? rd["nombre_firmante"].ToString() : null,
@@ -179,6 +189,8 @@ namespace CapaDatos.DAOs
                         nombre_archivo VARCHAR(260) NULL,
                         ruta_documento VARCHAR(500) NULL,
                         hash_documento VARCHAR(256) NULL,
+                        tamanio_pdf_firmado BIGINT NULL,
+                        firmado_por_rol VARCHAR(80) NULL,
                         codigo_qr TEXT NULL,
                         sujeto_certificado TEXT NULL,
                         nombre_firmante VARCHAR(250) NULL,
@@ -193,7 +205,13 @@ namespace CapaDatos.DAOs
                         ON public.aocr_tbfirma_documento(codigo_solicitud, fecha_firma DESC);
 
                     CREATE INDEX IF NOT EXISTS idx_aocr_firma_documento_hash
-                        ON public.aocr_tbfirma_documento(hash_documento);";
+                        ON public.aocr_tbfirma_documento(hash_documento);
+
+                    ALTER TABLE public.aocr_tbfirma_documento
+                        ADD COLUMN IF NOT EXISTS tamanio_pdf_firmado BIGINT NULL;
+
+                    ALTER TABLE public.aocr_tbfirma_documento
+                        ADD COLUMN IF NOT EXISTS firmado_por_rol VARCHAR(80) NULL;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {

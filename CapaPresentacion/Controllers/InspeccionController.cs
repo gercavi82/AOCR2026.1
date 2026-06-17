@@ -55,6 +55,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL;
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly GeneracionAOCRService _generacionAocrService;
+        private readonly DireccionWorkflowRouter _direccionWorkflowRouter;
 
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
@@ -65,6 +66,7 @@ namespace CapaPresentacion.Controllers
         private const string ROL_JEFATURA = "JefaturaTecnica";
         private const string ROL_JEFE = "Jefe";
         private const string ROL_DIRECCION = "Direccion";
+        private const string ROL_DIRECCION_JEFATURA_TECNICA = "DireccionJefaturaTecnica";
         private const string ROL_DIRECTOR = "Director";
         private const string ROL_DIRECTOR_GENERAL = "DirectorGeneral";
         private const string ROL_DIRDAC = "DIRDAC";
@@ -74,12 +76,12 @@ namespace CapaPresentacion.Controllers
         private const string ROL_SOLICITANTE = "Solicitante";
 
         private const string ROLES_COORDINACION_Y_JEFATURA =
-            ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_LEGAL + "," + ROL_COORD_LEGAL + "," + ROL_COORDINADOR_LEGAL + "," + ROL_ADMIN;
+            ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECCION_JEFATURA_TECNICA + "," + ROL_DIRECTOR + "," + ROL_LEGAL + "," + ROL_COORD_LEGAL + "," + ROL_COORDINADOR_LEGAL + "," + ROL_ADMIN;
         private const string ROLES_GESTION_INSPECCION =
             ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
             ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
-        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
+        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECCION_JEFATURA_TECNICA + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
         // La decisión institucional final es exclusiva de DIRDAC/Dirección/Jefatura (más Administrador).
         // Inspector y Coordinador no deben tener acceso ni siquiera a nivel de atributo: el guard interno
         // EsRolDireccionOJefatura() ya los rechazaba, esto alinea la primera capa de autorización.
@@ -118,6 +120,7 @@ namespace CapaPresentacion.Controllers
             _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
             _generacionAocrService = new GeneracionAOCRService();
+            _direccionWorkflowRouter = new DireccionWorkflowRouter();
             _logger = LoggingFactoryType.Create();
         }
 
@@ -226,6 +229,7 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
+                ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR,
                 ROL_DIRDAC,
                 ROL_LEGAL,
@@ -247,6 +251,7 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
+                ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR,
                 ROL_DIRDAC);
         }
@@ -261,6 +266,7 @@ namespace CapaPresentacion.Controllers
             return UsuarioTieneAlMenosUnRol(
                 ROL_DIRDAC,
                 ROL_DIRECCION,
+                ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR_GENERAL,
                 ROL_DIRECTOR,
                 ROL_JEFATURA,
@@ -303,6 +309,7 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
+                ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR,
                 ROL_DIRDAC,
                 ROL_LEGAL,
@@ -1188,6 +1195,21 @@ namespace CapaPresentacion.Controllers
                     .Select(x => ConstruirPendienteRevisionDireccionItem(x.Inspeccion, x.Solicitud, x.Informe))
                     .ToList();
 
+                var codigosIncluidos = new HashSet<int>(pendientes.Select(p => p.CodigoSolicitud).Where(id => id > 0));
+                var solicitudesEjecutivas = _solicitudDAO.ObtenerParaBandejaEjecutivaAprobacion() ?? new List<SolicitudAOCR>();
+                foreach (var solicitudEjecutiva in solicitudesEjecutivas.Where(s => s != null && s.CodigoSolicitud > 0 && !codigosIncluidos.Contains(s.CodigoSolicitud)))
+                {
+                    var inspeccionEjecutiva = (_inspeccionDAO.ListarPorSolicitud(solicitudEjecutiva.CodigoSolicitud) ?? new List<Inspeccion>())
+                        .OrderByDescending(i => i.CodigoInspeccion)
+                        .FirstOrDefault();
+                    var informeEjecutivo = inspeccionEjecutiva != null
+                        ? _informeDAO.ObtenerUltimoPorInspeccion(inspeccionEjecutiva.CodigoInspeccion)
+                        : null;
+
+                    pendientes.Add(ConstruirPendienteRevisionDireccionItem(inspeccionEjecutiva, solicitudEjecutiva, informeEjecutivo));
+                    codigosIncluidos.Add(solicitudEjecutiva.CodigoSolicitud);
+                }
+
                 return View("~/Views/InformeTecnico/PendientesDireccion.cshtml", pendientes);
             }
             catch (Exception ex)
@@ -1252,7 +1274,12 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            if (!PuedeAccederInspeccion(inspeccion) && !User.IsInRole(ROL_DIRECCION) && !User.IsInRole(ROL_DIRECTOR) && !User.IsInRole(ROL_DIRDAC) && !EsAdmin())
+            if (!PuedeAccederInspeccion(inspeccion)
+                && !User.IsInRole(ROL_DIRECCION)
+                && !User.IsInRole(ROL_DIRECCION_JEFATURA_TECNICA)
+                && !User.IsInRole(ROL_DIRECTOR)
+                && !User.IsInRole(ROL_DIRDAC)
+                && !EsAdmin())
             {
                 return new HttpStatusCodeResult(403, "No autorizado para visualizar la firma del informe técnico.");
             }
@@ -6535,11 +6562,17 @@ namespace CapaPresentacion.Controllers
 
         private PendienteRevisionDireccionItemViewModel ConstruirPendienteRevisionDireccionItem(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe)
         {
+            var codigoSolicitud = solicitud != null ? solicitud.CodigoSolicitud : (inspeccion != null ? inspeccion.CodigoSolicitud : 0);
+            var workflow = codigoSolicitud > 0 ? _direccionWorkflowRouter.ObtenerAccionSiguiente(codigoSolicitud) : null;
+            var urlAccion = ConstruirUrlAccionDireccion(workflow, informe, codigoSolicitud);
+            var etiquetaAccion = ObtenerEtiquetaAccionDireccion(workflow);
+            var iconoAccion = ObtenerIconoAccionDireccion(workflow);
+
             return new PendienteRevisionDireccionItemViewModel
             {
                 CodigoInforme = informe != null ? informe.CodigoInforme : 0,
                 CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
-                CodigoSolicitud = solicitud != null ? solicitud.CodigoSolicitud : (inspeccion != null ? inspeccion.CodigoSolicitud : 0),
+                CodigoSolicitud = codigoSolicitud,
                 NumeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud),
                 NombreOperadora = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible"),
                 NombreInspector = FirstNonEmpty(
@@ -6551,11 +6584,93 @@ namespace CapaPresentacion.Controllers
                 ResultadoTecnicoFinal = FirstNonEmpty(informe != null ? informe.Resultado : null, inspeccion != null ? inspeccion.Resultado : null, "No definido"),
                 EstadoInforme = FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "BORRADOR"),
                 NotificacionFormalEnviada = informe != null && informe.CorreoEnviado,
-                UrlRevision = informe != null ? ConstruirUrlRevisionDireccion(informe.CodigoInforme) : string.Empty,
+                UrlRevision = urlAccion,
+                EtiquetaAccionPrincipal = etiquetaAccion,
+                IconoAccionPrincipal = iconoAccion,
+                AccionSiguienteDireccion = workflow != null ? workflow.Accion.ToString() : string.Empty,
+                MotivoAccionSiguiente = workflow != null ? workflow.Motivo : string.Empty,
                 UrlPdfInformeFirmadoInspector = informe != null && informe.CodigoInforme > 0
                     ? Url.Action("VerInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme = informe.CodigoInforme })
                     : string.Empty
             };
+        }
+
+        private string ConstruirUrlAccionDireccion(DireccionWorkflowSiguiente workflow, InspeccionInformeTecnico informe, int codigoSolicitud)
+        {
+            if (workflow == null)
+            {
+                return codigoSolicitud > 0 ? Url.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud }) : string.Empty;
+            }
+
+            switch (workflow.Accion)
+            {
+                case DireccionWorkflowAccion.RevisionDireccion:
+                    var codigoInforme = workflow.Contexto != null && workflow.Contexto.InformeTecnicoId.HasValue
+                        ? workflow.Contexto.InformeTecnicoId.Value
+                        : (informe != null ? informe.CodigoInforme : 0);
+                    return codigoInforme > 0
+                        ? ConstruirUrlRevisionDireccion(codigoInforme)
+                        : (codigoSolicitud > 0 ? Url.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud }) : string.Empty);
+                case DireccionWorkflowAccion.ValidarAocr:
+                case DireccionWorkflowAccion.FirmarAocr:
+                case DireccionWorkflowAccion.FirmarCondiciones:
+                    return codigoSolicitud > 0
+                        ? Url.Action("Index", "FirmaAocr", new { solicitudId = codigoSolicitud })
+                        : string.Empty;
+                case DireccionWorkflowAccion.DocumentosFirmados:
+                    return codigoSolicitud > 0
+                        ? Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { solicitudId = codigoSolicitud })
+                        : string.Empty;
+                default:
+                    return codigoSolicitud > 0 ? Url.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud }) : string.Empty;
+            }
+        }
+
+        private static string ObtenerEtiquetaAccionDireccion(DireccionWorkflowSiguiente workflow)
+        {
+            if (workflow == null)
+            {
+                return "Abrir tramite";
+            }
+
+            switch (workflow.Accion)
+            {
+                case DireccionWorkflowAccion.RevisionDireccion:
+                    return "Revisar informe";
+                case DireccionWorkflowAccion.ValidarAocr:
+                    return "Firma institucional AOCR";
+                case DireccionWorkflowAccion.FirmarAocr:
+                    return "Firma institucional AOCR";
+                case DireccionWorkflowAccion.FirmarCondiciones:
+                    return "Firmar condiciones";
+                case DireccionWorkflowAccion.DocumentosFirmados:
+                    return "Ver documentos";
+                default:
+                    return "Abrir tramite";
+            }
+        }
+
+        private static string ObtenerIconoAccionDireccion(DireccionWorkflowSiguiente workflow)
+        {
+            if (workflow == null)
+            {
+                return "fas fa-route";
+            }
+
+            switch (workflow.Accion)
+            {
+                case DireccionWorkflowAccion.RevisionDireccion:
+                    return "fas fa-balance-scale";
+                case DireccionWorkflowAccion.ValidarAocr:
+                    return "fas fa-stamp";
+                case DireccionWorkflowAccion.FirmarAocr:
+                case DireccionWorkflowAccion.FirmarCondiciones:
+                    return "fas fa-signature";
+                case DireccionWorkflowAccion.DocumentosFirmados:
+                    return "fas fa-file-circle-check";
+                default:
+                    return "fas fa-route";
+            }
         }
 
         private RevisionInformeTecnicoDireccionViewModel ConstruirRevisionInformeTecnicoDireccionViewModel(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, IList<InspeccionHistorialEstado> historial)
@@ -6650,6 +6765,7 @@ namespace CapaPresentacion.Controllers
                 ROL_ADMIN,
                 ROL_DIRDAC,
                 ROL_DIRECCION,
+                ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR,
                 ROL_DIRECTOR_GENERAL,
                 ROL_JEFATURA,
@@ -7476,6 +7592,7 @@ namespace CapaPresentacion.Controllers
                 {
                     ROL_DIRDAC,
                     ROL_DIRECCION,
+                    ROL_DIRECCION_JEFATURA_TECNICA,
                     "DirectorGeneral",
                     ROL_DIRECTOR,
                     ROL_JEFATURA,
@@ -7539,6 +7656,7 @@ namespace CapaPresentacion.Controllers
                 {
                     ROL_DIRDAC,
                     ROL_DIRECCION,
+                    ROL_DIRECCION_JEFATURA_TECNICA,
                     ROL_DIRECTOR_GENERAL,
                     ROL_DIRECTOR,
                     ROL_JEFATURA,
@@ -8843,6 +8961,7 @@ namespace CapaPresentacion.Controllers
                 if (User.IsInRole(ROL_JEFATURA)) roles.Add(ROL_JEFATURA);
                 if (User.IsInRole(ROL_JEFE)) roles.Add(ROL_JEFE);
                 if (User.IsInRole(ROL_DIRECCION)) roles.Add(ROL_DIRECCION);
+                if (User.IsInRole(ROL_DIRECCION_JEFATURA_TECNICA)) roles.Add(ROL_DIRECCION_JEFATURA_TECNICA);
                 if (User.IsInRole(ROL_DIRECTOR)) roles.Add(ROL_DIRECTOR);
                 if (User.IsInRole(ROL_DIRECTOR_GENERAL)) roles.Add(ROL_DIRECTOR_GENERAL);
                 if (User.IsInRole(ROL_DIRDAC)) roles.Add(ROL_DIRDAC);

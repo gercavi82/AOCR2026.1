@@ -60,7 +60,7 @@ else
                                 </a>
                                 @if (puedeValidarAocrRevision)
                                 {
-                                    <a class="btn btn-outline-warning" title="Validar" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                                    <a class="btn btn-outline-warning" title="Firma institucional AOCR" href="@Url.Action("Index", "FirmaAocr", new { solicitudId = item.CodigoSolicitud })">
                                         <i class="fas fa-stamp"></i>
                                     </a>
                                 }

@@ -54,7 +54,7 @@
         <div class="card-footer bg-white d-flex flex-wrap gap-2">
             @if (Model == null || Model.PuedeVolverBandeja)
             {
-                <a class="btn btn-primary" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                <a class="btn btn-primary" href="@Url.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId })">
                     <i class="fas fa-list mr-1"></i> Volver a validaci&oacute;n AOCR
                 </a>
             }

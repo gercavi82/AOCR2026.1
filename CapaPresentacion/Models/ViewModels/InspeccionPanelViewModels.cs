@@ -213,6 +213,10 @@ namespace CapaPresentacion.Models.ViewModels
         public string EstadoInforme { get; set; }
         public bool NotificacionFormalEnviada { get; set; }
         public string UrlRevision { get; set; }
+        public string EtiquetaAccionPrincipal { get; set; }
+        public string IconoAccionPrincipal { get; set; }
+        public string AccionSiguienteDireccion { get; set; }
+        public string MotivoAccionSiguiente { get; set; }
         public string UrlPdfInformeFirmadoInspector { get; set; }
 
         public PendienteRevisionDireccionItemViewModel()
@@ -223,6 +227,10 @@ namespace CapaPresentacion.Models.ViewModels
             ResultadoTecnicoFinal = string.Empty;
             EstadoInforme = string.Empty;
             UrlRevision = string.Empty;
+            EtiquetaAccionPrincipal = "Abrir tramite";
+            IconoAccionPrincipal = "fas fa-route";
+            AccionSiguienteDireccion = string.Empty;
+            MotivoAccionSiguiente = string.Empty;
             UrlPdfInformeFirmadoInspector = string.Empty;
         }
     }

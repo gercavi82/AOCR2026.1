@@ -12,6 +12,8 @@ namespace CapaModelo
         public string NombreArchivo { get; set; }
         public string RutaDocumento { get; set; }
         public string HashDocumento { get; set; }
+        public long? TamanioPdfFirmado { get; set; }
+        public string FirmadoPorRol { get; set; }
         public string CodigoQr { get; set; }
         public string SujetoCertificado { get; set; }
         public string NombreFirmante { get; set; }

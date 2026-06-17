@@ -20,6 +20,7 @@ namespace CapaNegocio.Services
         bool EsEstadoActivoProceso(string estado);
         bool PermiteEdicionRt(string estado);
         bool EsEstadoRevisablePorInspector(string estado);
+        bool PuedeDireccionValidarAocr(string estadoSolicitud, string estadoAocr);
         IReadOnlyList<string> EstadosInstitucionales { get; }
         string NormalizarDesdeLegacyCatalogo(string estadoLegacy);
     }
@@ -146,6 +147,21 @@ namespace CapaNegocio.Services
             }
         }
 
+        public bool PuedeDireccionValidarAocr(string estadoSolicitud, string estadoAocr)
+        {
+            var estados = new[]
+            {
+                estadoSolicitud,
+                estadoAocr,
+                Normalizar(estadoSolicitud),
+                Normalizar(estadoAocr),
+                NormalizarClaveInstitucional(estadoSolicitud),
+                NormalizarClaveInstitucional(estadoAocr)
+            };
+
+            return estados.Any(EsEstadoValidablePorDireccion);
+        }
+
         /// <summary>
         /// Traduce constantes del catálogo legacy simplificado al canon <see cref="EstadoSolicitud"/>.
         /// </summary>
@@ -244,6 +260,45 @@ namespace CapaNegocio.Services
                     return "ANULADO";
                 default:
                     return claveEdicion;
+            }
+        }
+
+        private static bool EsEstadoValidablePorDireccion(string estado)
+        {
+            var valor = (estado ?? string.Empty).Trim();
+            if (valor.Length == 0)
+            {
+                return false;
+            }
+
+            var token = valor
+                .ToUpperInvariant()
+                .Replace(" ", "_")
+                .Replace("-", "_")
+                .Replace("/", "_");
+
+            switch (token)
+            {
+                case "AOCR_EN_ELABORACION":
+                case "AOCR_EN_REVISION":
+                case "AOCR_EN_REVISION_DIRECCION":
+                case "AOCR_EN_VALIDACION_DIRECCION":
+                case "AOCR_EN_REVISION_COORDINADOR":
+                case "AOCR_PENDIENTE_VALIDACION_DIRECCION":
+                case "PENDIENTE_VALIDACION_AOCR":
+                case "AOCR_GENERADO":
+                case "AOCR_GENERADO_PENDIENTE_REVISION":
+                case "AOCR_PENDIENTE_FIRMA_DIRECCION":
+                case "AOCR_ENVIADO_DIRDAC":
+                case "AOCR_VALIDADO":
+                case "GENERADO_CONDICIONES_Y_LIMITACIONES":
+                case "EN_REVISION_COORDINADOR_FINAL":
+                case "ENVIADO_DCAV":
+                case "GENERADO":
+                case "APROBADO":
+                    return true;
+                default:
+                    return false;
             }
         }
     }

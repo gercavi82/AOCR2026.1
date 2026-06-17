@@ -70,7 +70,7 @@
 
     if (puedeValidarAocrRevision)
     {
-        toolbarLinks.Add("<a href=\"" + Url.Action("ValidarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Validar AOCR</span></a>");
+        toolbarLinks.Add("<a href=\"" + Url.Action("PendientesDireccion", "Inspeccion") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Firma institucional AOCR</span></a>");
     }
 
     if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
