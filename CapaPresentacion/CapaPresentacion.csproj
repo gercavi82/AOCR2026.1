@@ -3026,6 +3026,8 @@
     <Content Include="Views\ControlFR3\Detalles.cshtml" />
     <Content Include="Views\ControlFR3\Nuevo.cshtml" />
     <Content Include="Views\ControlFR3\Editar.cshtml" />
+    <Content Include="Views\SyncAdmin\Index.cshtml" />
+    <Content Include="Views\SyncAdmin\Fr3.cshtml" />
     <Content Include="Views\Orden\Detalle.cshtml" />
     <Content Include="Views\Orden\MisOrdenes.cshtml" />
     <Content Include="Views\Direccion\Crear.cshtml" />
