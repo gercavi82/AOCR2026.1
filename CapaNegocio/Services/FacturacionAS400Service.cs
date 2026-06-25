@@ -547,9 +547,10 @@ namespace CapaNegocio.Services
                 codigoSolicitud > 0 ? codigoSolicitud.ToString(CultureInfo.InvariantCulture) : "N/A",
                 orden != null ? (orden.NumeroOrden ?? orden.Id.ToString(CultureInfo.InvariantCulture)) : "N/A");
 
+            // Colocar la correlación siempre al inicio para evitar que se trunque en campos de longitud corta (como OPCOBS de 60 chars)
             if (!string.IsNullOrWhiteSpace(observaciones))
             {
-                return Truncar(observaciones.Trim() + " | " + correlacion, 250);
+                return Truncar(correlacion + " | " + observaciones.Trim(), 250);
             }
 
             var cp = !string.IsNullOrWhiteSpace(pago != null ? pago.NumeroComprobante : null)
@@ -557,7 +558,7 @@ namespace CapaNegocio.Services
                 : (numeroFactura ?? string.Empty);
 
             return Truncar(
-                string.Format("AOCR | {0} | C/PAGO:{1} | FACT:{2}", correlacion, cp, numeroFactura ?? string.Empty),
+                string.Format("{0} | C/PAGO:{1} | FACT:{2}", correlacion, cp, numeroFactura ?? string.Empty),
                 250);
         }
 

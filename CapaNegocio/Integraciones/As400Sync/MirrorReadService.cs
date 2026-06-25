@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Npgsql;
 using CapaNegocio.Services;
@@ -869,6 +869,167 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
 
             return list;
+        }
+
+        public void SincronizarFr3DesdeEspejo()
+        {
+            LogBL.RegistrarInfo("[FR3_SYNC][START] Iniciando sincronización de FR3 desde el espejo hacia la base local.", "FR3_SYNC");
+            
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    // Asegurar que las columnas existen en la base de datos
+                    using (var cmdAlter = new NpgsqlCommand(@"
+                        ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS numero_fr3 VARCHAR(50);
+                        ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS fecha_fr3 TIMESTAMP;
+                        ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP;
+                    ", conn))
+                    {
+                        cmdAlter.ExecuteNonQuery();
+                    }
+
+                    // Log de filas leídas en el espejo
+                    int filasEspejo = 0;
+                    using (var cmdCount = new NpgsqlCommand("SELECT COUNT(*) FROM mirror_raw.opcar5 WHERE COALESCE(_is_deleted, false) = false", conn))
+                    {
+                        filasEspejo = Convert.ToInt32(cmdCount.ExecuteScalar());
+                    }
+                    LogBL.RegistrarInfo(string.Format("[FR3_SYNC][AS400_ROWS] Filas en espejo AS400 (PostgreSQL): {0}", filasEspejo), "FR3_SYNC");
+
+                    // 1. Actualizar aocr_tb_factura_pago con los datos del espejo
+                    const string sqlUpdateFacturas = @"
+                        UPDATE aocr_tb_factura_pago fp
+                        SET
+                            fr3_estado = 'FR3_GENERADO',
+                            fr3_numero = TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano),
+                            fr3_secuencial = f.opcsec,
+                            fr3_aeropuerto = f.opcaer,
+                            fr3_anio = f.opcano,
+                            fr3_generado_en = CASE
+                                WHEN f.opcda4 IS NOT NULL AND f.opcda4 > 0 
+                                THEN TO_TIMESTAMP(f.opcda4::text || ' ' || LPAD(COALESCE(f.opch01, 0)::text, 6, '0'), 'YYYYMMDD HH24MISS')
+                                ELSE NOW()
+                            END,
+                            updated_at = NOW()
+                        FROM mirror_raw.opcar5 f
+                        JOIN aocr_or_orden o ON (
+                            (f.opcobs LIKE '%' || o.numero_orden || '%')
+                            OR (f.opcobs LIKE '%ORD:' || o.id::text || '%')
+                            OR (
+                                TRIM(fp.numero_factura) = TRIM(f.opcnum::text)
+                                AND TRIM(fp.numero_factura) <> '' 
+                                AND TRIM(fp.numero_factura) <> '0'
+                                AND TRIM(f.opcnum::text) <> ''
+                                AND TRIM(f.opcnum::text) <> '0'
+                            )
+                            OR (
+                                TRIM(fp.numero_factura) = TRIM(f.opcche)
+                                AND TRIM(fp.numero_factura) <> '' 
+                                AND TRIM(fp.numero_factura) <> '0'
+                                AND TRIM(f.opcche) <> ''
+                                AND TRIM(f.opcche) <> '0'
+                            )
+                        )
+                        WHERE fp.orden_id = o.id
+                          AND f.opcsec IS NOT NULL
+                          AND f.opcsec > 0
+                          AND (fp.fr3_numero IS NULL OR fp.fr3_numero <> TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano) OR fp.fr3_estado <> 'FR3_GENERADO')";
+
+                    int facturasActualizadas = 0;
+                    using (var cmdFacturas = new NpgsqlCommand(sqlUpdateFacturas, conn))
+                    {
+                        facturasActualizadas = cmdFacturas.ExecuteNonQuery();
+                    }
+                    if (facturasActualizadas > 0)
+                    {
+                        LogBL.RegistrarInfo(string.Format("[FR3_SYNC][UPSERT_OK] Filas insertadas/actualizadas en factura_pago: {0}", facturasActualizadas), "FR3_SYNC");
+                    }
+
+                    // 2. Actualizar aocr_or_orden con los datos del espejo
+                    const string sqlUpdateOrdenes = @"
+                        UPDATE aocr_or_orden o
+                        SET
+                            numero_fr3 = TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano),
+                            fecha_fr3 = CASE
+                                WHEN f.opcda4 IS NOT NULL AND f.opcda4 > 0 
+                                THEN TO_TIMESTAMP(f.opcda4::text || ' ' || LPAD(COALESCE(f.opch01, 0)::text, 6, '0'), 'YYYYMMDD HH24MISS')
+                                ELSE NOW()
+                            END,
+                            estado = CASE
+                                WHEN UPPER(COALESCE(o.estado, '')) = 'FACTURADA' THEN 'COMPLETADA'
+                                ELSE o.estado
+                            END,
+                            fecha_actualizacion = NOW()
+                        FROM mirror_raw.opcar5 f
+                        LEFT JOIN aocr_tb_factura_pago fp ON (
+                            (TRIM(fp.numero_factura) = TRIM(f.opcnum::text)
+                             AND TRIM(fp.numero_factura) <> ''
+                             AND TRIM(fp.numero_factura) <> '0'
+                             AND TRIM(f.opcnum::text) <> ''
+                             AND TRIM(f.opcnum::text) <> '0')
+                            OR
+                            (TRIM(fp.numero_factura) = TRIM(f.opcche)
+                             AND TRIM(fp.numero_factura) <> ''
+                             AND TRIM(fp.numero_factura) <> '0'
+                             AND TRIM(f.opcche) <> ''
+                             AND TRIM(f.opcche) <> '0')
+                        )
+                        WHERE (
+                            (f.opcobs LIKE '%' || o.numero_orden || '%')
+                            OR (f.opcobs LIKE '%ORD:' || o.id::text || '%')
+                            OR (fp.orden_id = o.id)
+                        )
+                        AND f.opcsec IS NOT NULL
+                        AND f.opcsec > 0
+                        AND (o.numero_fr3 IS NULL OR o.numero_fr3 <> TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano))";
+
+                    int ordenesActualizadas = 0;
+                    using (var cmdOrdenes = new NpgsqlCommand(sqlUpdateOrdenes, conn))
+                    {
+                        ordenesActualizadas = cmdOrdenes.ExecuteNonQuery();
+                    }
+
+                    LogBL.RegistrarInfo(string.Format("[FR3_SYNC][ORDEN_UPDATE_OK] Filas actualizadas en orden_recaudacion: {0}", ordenesActualizadas), "FR3_SYNC");
+
+                    // 3. Consultar y registrar logs detallados de las órdenes asociadas
+                    const string sqlDetalleCambios = @"
+                        SELECT o.numero_orden, o.numero_fr3, o.ruc_cedula, o.total
+                        FROM aocr_or_orden o
+                        WHERE o.fecha_actualizacion >= NOW() - INTERVAL '5 seconds'
+                          AND o.numero_fr3 IS NOT NULL 
+                          AND TRIM(o.numero_fr3) <> ''";
+
+                    using (var cmdDetalle = new NpgsqlCommand(sqlDetalleCambios, conn))
+                    using (var reader = cmdDetalle.ExecuteReader())
+                    {
+                        bool matchesFound = false;
+                        while (reader.Read())
+                        {
+                            matchesFound = true;
+                            var numOrden = reader.GetString(0);
+                            var numFr3 = reader.GetString(1);
+                            var ruc = reader.IsDBNull(2) ? "N/D" : reader.GetString(2);
+                            var total = reader.IsDBNull(3) ? 0m : reader.GetDecimal(3);
+                            
+                            LogBL.RegistrarInfo(string.Format(
+                                "[FR3_SYNC][UPSERT_OK] Asociada Orden: {0} con FR3: {1}. RUC: {2}, Monto: {3:C}", 
+                                numOrden, numFr3, ruc, total), "FR3_SYNC");
+                        }
+
+                        if (!matchesFound && facturasActualizadas == 0 && ordenesActualizadas == 0)
+                        {
+                            LogBL.RegistrarInfo("[FR3_SYNC][NO_MATCH] No se encontraron nuevas asociaciones entre órdenes locales y el espejo.", "FR3_SYNC");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarError("[FR3_SYNC][ERROR] Error completo durante la sincronización: " + ex.ToString(), "FR3_SYNC");
+            }
         }
     } // class MirrorReadService
 } // namespace

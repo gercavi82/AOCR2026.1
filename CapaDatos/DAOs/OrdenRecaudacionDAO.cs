@@ -726,7 +726,7 @@ namespace CapaDatos.DAOs
             // Intentar obtener el número de FR3 si está en el resultado
             try
             {
-                var fr3Ordinal = reader.GetOrdinal("fr3_numero");
+                var fr3Ordinal = reader.GetOrdinal("numero_fr3");
                 if (!reader.IsDBNull(fr3Ordinal))
                 {
                     orden.NumeroFr3 = reader.GetString(fr3Ordinal);
@@ -734,7 +734,46 @@ namespace CapaDatos.DAOs
             }
             catch
             {
-                // La columna fr3_numero no está en el resultado o no existe
+                try
+                {
+                    var fr3OrdinalOld = reader.GetOrdinal("fr3_numero");
+                    if (!reader.IsDBNull(fr3OrdinalOld))
+                    {
+                        orden.NumeroFr3 = reader.GetString(fr3OrdinalOld);
+                    }
+                }
+                catch
+                {
+                    // La columna no está en el resultado o no existe
+                }
+            }
+
+            // Intentar obtener la fecha de FR3 si está en el resultado
+            try
+            {
+                var fechaFr3Ordinal = reader.GetOrdinal("fecha_fr3");
+                if (!reader.IsDBNull(fechaFr3Ordinal))
+                {
+                    orden.FechaFr3 = reader.GetDateTime(fechaFr3Ordinal);
+                }
+            }
+            catch
+            {
+                // Ignorar si no existe
+            }
+
+            // Intentar obtener la fecha de actualización si está en el resultado
+            try
+            {
+                var fechaActOrdinal = reader.GetOrdinal("fecha_actualizacion");
+                if (!reader.IsDBNull(fechaActOrdinal))
+                {
+                    orden.FechaActualizacion = reader.GetDateTime(fechaActOrdinal);
+                }
+            }
+            catch
+            {
+                // Ignorar si no existe
             }
 
             // Intentar obtener el nombre del concepto si estÃ¡ en el resultado
@@ -792,11 +831,17 @@ namespace CapaDatos.DAOs
 
             try
             {
+                EnsureNewColumnsExist();
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, fp.fr3_numero,
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, 
+                                       COALESCE(
+                                           NULLIF(TRIM(o.numero_fr3), ''),
+                                           NULLIF(TRIM(fp.fr3_numero), ''),
+                                           'Pendiente de sincronización'
+                                       ) AS fr3_numero,
                                        COALESCE(
                                            NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
                                            u.nombreusuario,
@@ -1293,11 +1338,17 @@ namespace CapaDatos.DAOs
 
             try
             {
+                EnsureNewColumnsExist();
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, fp.fr3_numero,
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, 
+                                       COALESCE(
+                                           NULLIF(TRIM(o.numero_fr3), ''),
+                                           NULLIF(TRIM(fp.fr3_numero), ''),
+                                           'Pendiente de sincronización'
+                                       ) AS fr3_numero,
                                        COALESCE(
                                            NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
                                            u.nombreusuario,
@@ -3056,20 +3107,29 @@ namespace CapaDatos.DAOs
                         }
 
                         const string sqlUpdateOrden = @"
-                            UPDATE aocr_or_orden
-                            SET
-                                estado = CASE
-                                    WHEN @fr3_estado = 'FR3_GENERADO'
-                                         AND UPPER(COALESCE(estado, '')) = 'FACTURADA'
-                                    THEN 'COMPLETADA'
-                                    ELSE estado
-                                END,
-                                observacion = CASE
-                                    WHEN @nota IS NULL OR TRIM(@nota) = '' THEN observacion
-                                    WHEN observacion IS NULL OR TRIM(observacion) = '' THEN @nota
-                                    ELSE observacion || ' | ' || @nota
-                                END
-                            WHERE id = @orden_id";
+                             UPDATE aocr_or_orden
+                             SET
+                                 estado = CASE
+                                     WHEN @fr3_estado = 'FR3_GENERADO'
+                                          AND UPPER(COALESCE(estado, '')) = 'FACTURADA'
+                                     THEN 'COMPLETADA'
+                                     ELSE estado
+                                 END,
+                                 observacion = CASE
+                                     WHEN @nota IS NULL OR TRIM(@nota) = '' THEN observacion
+                                     WHEN observacion IS NULL OR TRIM(observacion) = '' THEN @nota
+                                     ELSE observacion || ' | ' || @nota
+                                 END,
+                                 numero_fr3 = CASE
+                                     WHEN @fr3_estado = 'FR3_GENERADO' AND (@fr3_numero IS NOT NULL AND TRIM(@fr3_numero) <> '') THEN @fr3_numero
+                                     ELSE numero_fr3
+                                 END,
+                                 fecha_fr3 = CASE
+                                     WHEN @fr3_estado = 'FR3_GENERADO' THEN NOW()
+                                     ELSE fecha_fr3
+                                 END,
+                                 fecha_actualizacion = NOW()
+                             WHERE id = @orden_id";
                         using (var cmdOrden = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
                         {
                             var nota = estadoNormalizado == "FR3_GENERADO"
@@ -3078,6 +3138,7 @@ namespace CapaDatos.DAOs
 
                             cmdOrden.Parameters.AddWithValue("@nota", nota);
                             cmdOrden.Parameters.AddWithValue("@fr3_estado", estadoNormalizado);
+                            cmdOrden.Parameters.Add(new NpgsqlParameter("@fr3_numero", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)fr3Numero ?? DBNull.Value });
                             cmdOrden.Parameters.AddWithValue("@orden_id", ordenId);
                             cmdOrden.ExecuteNonQuery();
                         }
@@ -3861,11 +3922,59 @@ namespace CapaDatos.DAOs
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_email_attachment_queue_id
-                    ON public.email_attachment(email_queue_id);";
+                    ON public.email_attachment(email_queue_id);
+
+                ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS numero_fr3 VARCHAR(50);
+                ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS fecha_fr3 TIMESTAMP;
+                ALTER TABLE public.aocr_or_orden ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP;
+                CREATE INDEX IF NOT EXISTS idx_aocr_or_orden_numero_fr3 ON public.aocr_or_orden(numero_fr3);";
 
             using (var cmd = new NpgsqlCommand(sql, conn, tx))
             {
                 cmd.ExecuteNonQuery();
+            }
+        }
+
+        public void EnsureNewColumnsExist()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        EnsureFacturacionSchema(conn, tx);
+                        tx.Commit();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en EnsureNewColumnsExist");
+            }
+        }
+
+        public bool ExisteOrdenFacturadaSinFr3()
+        {
+            try
+            {
+                EnsureNewColumnsExist();
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT COUNT(1) FROM aocr_or_orden WHERE estado = 'FACTURADA' AND (numero_fr3 IS NULL OR TRIM(numero_fr3) = '')";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        var count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ExisteOrdenFacturadaSinFr3");
+                return false;
             }
         }
 

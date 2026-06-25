@@ -16,37 +16,51 @@
 
     @if (TempData["SyncError"] != null)
     {
-        <div class="alert alert-warning">@TempData["SyncError"]</div>
+        <div class="alert alert-danger">@TempData["SyncError"]</div>
+    }
+    @if (TempData["SyncOK"] != null)
+    {
+        <div class="alert alert-success">@TempData["SyncOK"]</div>
     }
 
-    @using (Html.BeginForm("Fr3", "SyncAdmin", FormMethod.Get, new { @class = "form-inline" }))
-    {
-        <div class="form-group">
-            <label>Aeropuerto:</label>
-            <input type="text" name="aeropuerto" value="@Model.Aeropuerto" class="form-control input-sm" placeholder="SEQU, ULUL..." maxlength="4" />
-        </div>
-        <div style="width:8px;display:inline-block;"></div>
-        <div class="form-group">
-            <label>Anio:</label>
-            <input type="text" name="anio" value="@Model.Anio" class="form-control input-sm" placeholder="2026" maxlength="4" />
-        </div>
-        <div style="width:8px;display:inline-block;"></div>
-        <div class="form-group">
-            <label>Max. filas:</label>
-            <select name="take" class="form-control input-sm">
-                @foreach (var n in new[] { 25, 50, 100, 200 })
-                {
-                    <option value="@n" @(Request.QueryString["take"] == n.ToString() ? "selected" : "")>@n</option>
-                }
-            </select>
-        </div>
-        <div style="width:8px;display:inline-block;"></div>
-        <button type="submit" class="btn btn-sm btn-primary">
-            <span class="glyphicon glyphicon-search"></span> Filtrar
-        </button>
-        <div style="width:8px;display:inline-block;"></div>
+    <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        @using (Html.BeginForm("Fr3", "SyncAdmin", FormMethod.Get, new { @class = "form-inline", style = "display:inline-block; margin:0;" }))
+        {
+            <div class="form-group">
+                <label>Aeropuerto:</label>
+                <input type="text" name="aeropuerto" value="@Model.Aeropuerto" class="form-control input-sm" placeholder="SEQU, ULUL..." maxlength="4" />
+            </div>
+            <div style="width:8px;display:inline-block;"></div>
+            <div class="form-group">
+                <label>Anio:</label>
+                <input type="text" name="anio" value="@Model.Anio" class="form-control input-sm" placeholder="2026" maxlength="4" />
+            </div>
+            <div style="width:8px;display:inline-block;"></div>
+            <div class="form-group">
+                <label>Max. filas:</label>
+                <select name="take" class="form-control input-sm">
+                    @foreach (var n in new[] { 25, 50, 100, 200 })
+                    {
+                        <option value="@n" @(Request.QueryString["take"] == n.ToString() ? "selected" : "")>@n</option>
+                    }
+                </select>
+            </div>
+            <div style="width:8px;display:inline-block;"></div>
+            <button type="submit" class="btn btn-sm btn-primary">
+                <span class="glyphicon glyphicon-search"></span> Filtrar
+            </button>
+        }
+
+        @using (Html.BeginForm("SincronizarFr3Manual", "SyncAdmin", FormMethod.Post, new { style = "display:inline-block; margin:0;" }))
+        {
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-success">
+                <span class="glyphicon glyphicon-refresh"></span> Sincronizar FR3 desde AS400
+            </button>
+        }
+
         @Html.ActionLink("Volver al sync", "Index", "SyncAdmin", null, new { @class = "btn btn-sm btn-default" })
-    }
+    </div>
 
     <br />
 

@@ -126,6 +126,48 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index");
         }
 
+        // POST: /SyncAdmin/SincronizarFr3Manual
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SincronizarFr3Manual()
+        {
+            try
+            {
+                if (!ParseBool(ConfigurationManager.AppSettings["Sync:Enabled"]))
+                {
+                    TempData["SyncError"] = "Sync:Enabled=false. Actívelo en web.config primero.";
+                    return RedirectToAction("Fr3");
+                }
+
+                _logger.LogInfo("SyncAdmin.SincronizarFr3Manual: iniciando sincronización de FR3 por " + User.Identity.Name);
+                
+                // 1. Correr sync del espejo para OPCAR5 y OPCAR6 (detalle)
+                var resultCab = As400MirrorSyncJob.RunOnceTable("OPCAR5");
+                var resultDet = As400MirrorSyncJob.RunOnceTable("OPCAR6");
+                
+                // 2. Correr la sincronización local hacia aocr_or_orden y aocr_tb_factura_pago
+                var reader = new MirrorReadService();
+                reader.SincronizarFr3DesdeEspejo();
+                
+                TempData["SyncOK"] = string.Format(
+                    "Sincronización FR3 completada. Cabecera (OPCAR5): {0} (leídas={1}, aplicadas={2}) | Detalle (OPCAR6): {3} (leídas={4}, aplicadas={5})",
+                    resultCab.Status, resultCab.RowsRead, resultCab.RowsApplied,
+                    resultDet.Status, resultDet.RowsRead, resultDet.RowsApplied);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext
+                {
+                    Controller = "SyncAdmin",
+                    Action = "SincronizarFr3Manual",
+                    UserId = User.Identity.Name
+                });
+                TempData["SyncError"] = "Error en sincronización manual de FR3: " + ex.Message;
+            }
+
+            return RedirectToAction("Fr3");
+        }
+
         // POST: /SyncAdmin/RunInspectoresRt
         [HttpPost]
         [ValidateAntiForgeryToken]

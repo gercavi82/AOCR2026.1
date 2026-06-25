@@ -11,6 +11,7 @@ using CapaDatos.Services;
 using EmailServiceData = CapaDatos.Services.EmailService;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaPresentacion.Models;
 using CapaPresentacion.Filters;
 using CapaPresentacion.Helpers;
@@ -827,6 +828,42 @@ namespace CapaPresentacion.Controllers
         public ActionResult TodasOrdenes(string estado)
         {
             var estadoFiltro = NormalizarFiltroDashboard(estado);
+
+            // 1. Reconciliación local inicial desde el espejo
+            try
+            {
+                var reader = new MirrorReadService();
+                reader.SincronizarFr3DesdeEspejo();
+            }
+            catch (Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarAdvertencia("Error en reconciliación de FR3 inicial: " + ex.Message, "FinancieroController");
+            }
+
+            // 2. Sincronización automática/bajo demanda en segundo plano (no bloqueante)
+            try
+            {
+                if (_ordenDAO.ExisteOrdenFacturadaSinFr3())
+                {
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            As400MirrorSyncJob.RunOnceTable("OPCAR5");
+                            As400MirrorSyncJob.RunOnceTable("OPCAR6");
+                        }
+                        catch (Exception exSync)
+                        {
+                            CapaNegocio.LogBL.RegistrarAdvertencia("[FR3_SYNC][BACKGROUND] Sincronización automática falló: " + exSync.Message, "FR3_BACKGROUND");
+                        }
+                    });
+                }
+            }
+            catch (Exception exCheck)
+            {
+                CapaNegocio.LogBL.RegistrarAdvertencia("Error al validar órdenes sin FR3 para sincronización: " + exCheck.Message, "FinancieroController");
+            }
+
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
             var contextos = ConstruirContextosFinancieros(ordenesEnt)
                 .Where(c => !FinancialOrderStateHelper.DebeOcultarDeBandejaFinanciera(

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using CapaNegocio.Services;
 
 namespace CapaNegocio.Integraciones.As400Sync
 {
@@ -9,13 +10,36 @@ namespace CapaNegocio.Integraciones.As400Sync
         public static IList<SyncBatchResult> RunOnceAll()
         {
             var svc = As400MirrorSyncService.CreateDefault();
-            return svc.RunAllEnabled();
+            var results = svc.RunAllEnabled();
+            try
+            {
+                var reader = new MirrorReadService();
+                reader.SincronizarFr3DesdeEspejo();
+            }
+            catch (Exception ex)
+            {
+                LoggingServiceFactory.Create().LogError(ex, new LogContext { Controller = "As400MirrorSyncJob", Action = "RunOnceAll" });
+            }
+            return results;
         }
 
         public static SyncBatchResult RunOnceTable(string tableName)
         {
             var svc = As400MirrorSyncService.CreateDefault();
-            return svc.RunTable(tableName);
+            var result = svc.RunTable(tableName);
+            if (string.Equals(tableName, "OPCAR5", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var reader = new MirrorReadService();
+                    reader.SincronizarFr3DesdeEspejo();
+                }
+                catch (Exception ex)
+                {
+                    LoggingServiceFactory.Create().LogError(ex, new LogContext { Controller = "As400MirrorSyncJob", Action = "RunOnceTable", AdditionalData = new Dictionary<string, object> { ["Table"] = tableName } });
+                }
+            }
+            return result;
         }
 
         public static string Summarize(IList<SyncBatchResult> results)
