@@ -736,7 +736,17 @@
         }
     </style>
     <script>
-        $(document).ready(function() {
+    (function (window, document) {
+        'use strict';
+
+        function inicializarOrdenDetalles() {
+            if (!window.jQuery) {
+                console.error('[AOCR][JS] jQuery no está cargado. No se puede inicializar OrdenRecaudacion/Detalles.');
+                return;
+            }
+
+            var $ = window.jQuery;
+
             var debeAbrirModalPago = '@abrirModalPagoJs' === 'true';
             if (debeAbrirModalPago) {
                 var modalPago = document.getElementById('modalPago');
@@ -746,7 +756,7 @@
             }
 
             // Validar monto máximo en modal de pago
-            $('input[name="Monto"]').on('change', function() {
+            $('input[name="Monto"]').off('change.aocr').on('change.aocr', function() {
                 var max = parseFloat('@saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)');
                 var value = parseFloat($(this).val());
 
@@ -757,7 +767,7 @@
             });
 
             // Validar archivo de comprobante
-            $('input[name="ComprobanteArchivo"]').on('change', function() {
+            $('input[name="ComprobanteArchivo"]').off('change.aocr').on('change.aocr', function() {
                 var file = this.files[0];
                 if (file) {
                     var fileSize = file.size / 1024 / 1024; // en MB
@@ -778,7 +788,7 @@
                 return true;
             });
 
-            $('#archivoSolicitudFirmada').on('change', function() {
+            $('#archivoSolicitudFirmada').off('change.aocr').on('change.aocr', function() {
                 var file = this.files[0];
                 if (file) {
                     var fileSize = file.size / 1024 / 1024;
@@ -806,7 +816,7 @@
             var $btnConfirmarAnulacion = $('#btnConfirmarAnulacion');
             var enviandoAnulacion = false;
 
-            $('#btnAbrirModalAnularOrden').on('click', function (e) {
+            $('#btnAbrirModalAnularOrden').off('click.aocr').on('click.aocr', function (e) {
                 e.preventDefault();
                 if (window.AOCR && typeof window.AOCR.abrirModalAocr === 'function') {
                     window.AOCR.abrirModalAocr('#modalAnular');
@@ -822,7 +832,7 @@
                 }
             });
 
-            $modalAnular.on('hidden.bs.modal', function () {
+            $modalAnular.off('hidden.bs.modal.aocr').on('hidden.bs.modal.aocr', function () {
                 $motivoAnulacion.val('').removeClass('is-invalid');
                 $motivoAnulacionError.addClass('d-none');
                 enviandoAnulacion = false;
@@ -830,7 +840,7 @@
                     .html('<i class="fas fa-times me-1"></i> Confirmar Anulación');
             });
 
-            $formAnular.on('submit', function (e) {
+            $formAnular.off('submit.aocr').on('submit.aocr', function (e) {
                 var motivo = ($motivoAnulacion.val() || '').trim();
                 if (!motivo) {
                     e.preventDefault();
@@ -850,78 +860,92 @@
                     .html('<i class="fas fa-spinner fa-spin me-1"></i> Anulando...');
                 return true;
             });
-        });
 
-        function obtenerDatosPagoDesdeFila(button) {
-            var grupo = button ? button.closest('.btn-group') : null;
-            if (!grupo) {
-                return { pagoId: 0, numeroFactura: '' };
+            function obtenerDatosPagoDesdeFila(button) {
+                var grupo = button ? button.closest('.btn-group') : null;
+                if (!grupo) {
+                    return { pagoId: 0, numeroFactura: '' };
+                }
+
+                var pagoIdInput = grupo.querySelector('.js-pago-id');
+                var numeroFacturaInput = grupo.querySelector('.js-numero-factura');
+                return {
+                    pagoId: pagoIdInput ? pagoIdInput.value : 0,
+                    numeroFactura: numeroFacturaInput ? numeroFacturaInput.value : ''
+                };
             }
 
-            var pagoIdInput = grupo.querySelector('.js-pago-id');
-            var numeroFacturaInput = grupo.querySelector('.js-numero-factura');
-            return {
-                pagoId: pagoIdInput ? pagoIdInput.value : 0,
-                numeroFactura: numeroFacturaInput ? numeroFacturaInput.value : ''
-            };
-        }
-
-        function validarPagoDesdeFila(button) {
-            var datos = obtenerDatosPagoDesdeFila(button);
-            validarPago(datos.pagoId, datos.numeroFactura);
-        }
-
-        function rechazarPagoDesdeFila(button) {
-            var datos = obtenerDatosPagoDesdeFila(button);
-            rechazarPago(datos.pagoId, datos.numeroFactura);
-        }
-
-        // Función para validar pago
-        function validarPago(pagoId, numeroFactura) {
-            if (confirm('¿Está seguro de que desea validar el pago ' + numeroFactura + '?')) {
-                var form = $('<form>', {
-                    'method': 'POST',
-                    'action': '@Url.Action("ValidarPago", "OrdenRecaudacion")'
-                }).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'ordenId',
-                    'value': '@orden.Id'
-                })).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'pagoId',
-                    'value': pagoId
-                })).append($('@Html.AntiForgeryToken()'));
-
-                $('body').append(form);
-                form.submit();
+            function validarPagoDesdeFila(button) {
+                var datos = obtenerDatosPagoDesdeFila(button);
+                validarPago(datos.pagoId, datos.numeroFactura);
             }
-        }
 
-        // Función para rechazar pago
-        function rechazarPago(pagoId, numeroFactura) {
-            var motivo = prompt('Ingrese el motivo del rechazo para el pago ' + numeroFactura + ':');
-            if (motivo && motivo.trim() !== '') {
-                var form = $('<form>', {
-                    'method': 'POST',
-                    'action': '@Url.Action("RechazarPago", "OrdenRecaudacion")'
-                }).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'ordenId',
-                    'value': '@orden.Id'
-                })).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'pagoId',
-                    'value': pagoId
-                })).append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'motivo',
-                    'value': motivo
-                })).append($('@Html.AntiForgeryToken()'));
-
-                $('body').append(form);
-                form.submit();
+            function rechazarPagoDesdeFila(button) {
+                var datos = obtenerDatosPagoDesdeFila(button);
+                rechazarPago(datos.pagoId, datos.numeroFactura);
             }
+
+            function validarPago(pagoId, numeroFactura) {
+                if (confirm('¿Está seguro de que desea validar el pago ' + numeroFactura + '?')) {
+                    var form = $('<form>', {
+                        'method': 'POST',
+                        'action': '@Url.Action("ValidarPago", "OrdenRecaudacion")'
+                    }).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'ordenId',
+                        'value': '@orden.Id'
+                    })).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'pagoId',
+                        'value': pagoId
+                    })).append($('@Html.AntiForgeryToken()'));
+
+                    $('body').append(form);
+                    form.submit();
+                }
+            }
+
+            function rechazarPago(pagoId, numeroFactura) {
+                var motivo = prompt('Ingrese el motivo del rechazo para el pago ' + numeroFactura + ':');
+                if (motivo && motivo.trim() !== '') {
+                    var form = $('<form>', {
+                        'method': 'POST',
+                        'action': '@Url.Action("RechazarPago", "OrdenRecaudacion")'
+                    }).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'ordenId',
+                        'value': '@orden.Id'
+                    })).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'pagoId',
+                        'value': pagoId
+                    })).append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'motivo',
+                        'value': motivo
+                    })).append($('@Html.AntiForgeryToken()'));
+
+                    $('body').append(form);
+                    form.submit();
+                }
+            }
+
+            // Exponer al ámbito de window para que los onclicks en el HTML no se rompan
+            window.validarPagoDesdeFila = validarPagoDesdeFila;
+            window.rechazarPagoDesdeFila = rechazarPagoDesdeFila;
+            window.validarPago = validarPago;
+            window.rechazarPago = rechazarPago;
         }
+
+        if (window.jQuery) {
+            inicializarOrdenDetalles();
+        } else if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarOrdenDetalles);
+        } else {
+            setTimeout(inicializarOrdenDetalles, 100);
+        }
+
+    })(window, document);
     </script>
 }
 

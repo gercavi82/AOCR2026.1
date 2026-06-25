@@ -1013,6 +1013,9 @@ namespace CapaPresentacion.Controllers
                 FechaCreacion = o.FechaCreacion,
                 NombreContribuyente = o.NombreContribuyente,
                 CodigoUsuario = usuarioId,
+                UsuarioNombre = !string.IsNullOrWhiteSpace(o.UsuarioNombre)
+                    ? o.UsuarioNombre
+                    : ("Usuario ID: " + usuarioId),
                 CodigoSolicitud = o.CodigoSolicitud?.ToString(),
                 LugarEmision = o.LugarEmision,
                 Compania = o.NombreContribuyente,

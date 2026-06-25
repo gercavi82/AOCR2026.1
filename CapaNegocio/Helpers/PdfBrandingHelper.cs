@@ -236,16 +236,21 @@ namespace CapaNegocio.Helpers
 
         private static byte[] ApplyLetterheadBackgroundInternal(byte[] pdfBytes, Func<string, string> mapPath, string source)
         {
+            LogInfo(
+                source,
+                string.Format(
+                    "Inicio aplicacion hoja membretada. PdfBytes={0}. MotorPdf=itextsharp. Ensamblado={1}.",
+                    pdfBytes == null ? 0 : pdfBytes.Length,
+                    GetITextSharpAssemblyInfo()));
+
             if (pdfBytes == null || pdfBytes.Length == 0)
             {
-                LogError(source, "No se recibieron bytes del PDF para aplicar hoja membretada.");
-                return pdfBytes;
+                return ReturnOriginalPdf(source, pdfBytes, "No se recibieron bytes del PDF para aplicar hoja membretada.");
             }
 
             if (mapPath == null)
             {
-                LogError(source, "No se pudo resolver MapPath para aplicar hoja membretada.");
-                return pdfBytes;
+                return ReturnOriginalPdf(source, pdfBytes, "No se pudo resolver MapPath para aplicar hoja membretada.");
             }
 
             var letterheadPhysicalPath = SafeMapPath(mapPath, LetterheadVirtualPath, source, "Hoja_membretada_DGAC_2025.pdf");
@@ -263,43 +268,103 @@ namespace CapaNegocio.Helpers
 
             if (!letterheadExists)
             {
-                LogError(
+                return ReturnOriginalPdf(
                     source,
+                    pdfBytes,
                     string.Format(
                         "No se encontro la hoja membretada PDF requerida. VirtualPath={0}. PhysicalPath={1}.",
                         LetterheadVirtualPath,
                         string.IsNullOrWhiteSpace(letterheadPhysicalPath) ? "[no-resuelta]" : letterheadPhysicalPath));
-                return pdfBytes;
+            }
+
+            if (letterheadLength <= 0L)
+            {
+                return ReturnOriginalPdf(
+                    source,
+                    pdfBytes,
+                    string.Format(
+                        "La hoja membretada PDF esta vacia. PhysicalPath={0}. Length={1}.",
+                        letterheadPhysicalPath,
+                        letterheadLength));
             }
 
             try
             {
-                using (var sourceReader = new PdfReader(pdfBytes))
-                using (var letterheadReader = new PdfReader(letterheadPhysicalPath))
                 using (var output = new MemoryStream())
                 {
-                    var pageCount = sourceReader.NumberOfPages;
-                    using (var stamper = new PdfStamper(sourceReader, output))
+                    var sourceStream = new MemoryStream(pdfBytes);
+
+                    var sourceReader7 = new iText.Kernel.Pdf.PdfReader(sourceStream);
+                    sourceReader7.SetCloseStream(false);
+
+                    var writer7 = new iText.Kernel.Pdf.PdfWriter(output);
+                    writer7.SetCloseStream(false);
+
+                    using (var sourcePdf = new iText.Kernel.Pdf.PdfDocument(sourceReader7, writer7))
+                    using (var letterheadPdf = new iText.Kernel.Pdf.PdfDocument(
+                        new iText.Kernel.Pdf.PdfReader(letterheadPhysicalPath)))
                     {
-                        var letterheadPage = stamper.GetImportedPage(letterheadReader, 1);
-                        var letterheadSize = letterheadReader.GetPageSizeWithRotation(1);
+                        var pageCount = sourcePdf.GetNumberOfPages();
+                        var letterheadPageCount = letterheadPdf.GetNumberOfPages();
+
+                        if (pageCount <= 0)
+                        {
+                            return ReturnOriginalPdf(source, pdfBytes, "El PDF fuente no tiene páginas para aplicar hoja membretada.");
+                        }
+
+                        if (letterheadPageCount <= 0)
+                        {
+                            return ReturnOriginalPdf(source, pdfBytes, "La hoja membretada no tiene páginas.");
+                        }
+
+                        var letterheadPage = letterheadPdf.GetPage(1);
+                        var letterheadSize = letterheadPage.GetPageSizeWithRotation();
+
+                        LogInfo(source, string.Format("[DIAG] letterheadSize: {0} x {1}, MediaBox: {2}, CropBox: {3}", 
+                            letterheadSize.GetWidth(), letterheadSize.GetHeight(),
+                            letterheadPage.GetMediaBox() != null ? letterheadPage.GetMediaBox().ToString() : "null",
+                            letterheadPage.GetCropBox() != null ? letterheadPage.GetCropBox().ToString() : "null"));
 
                         for (var pageNumber = 1; pageNumber <= pageCount; pageNumber++)
                         {
-                            var pageSize = sourceReader.GetPageSizeWithRotation(pageNumber);
-                            var scaleX = pageSize.Width / letterheadSize.Width;
-                            var scaleY = pageSize.Height / letterheadSize.Height;
-                            var canvas = stamper.GetOverContent(pageNumber);
-                            canvas.AddTemplate(letterheadPage, scaleX, 0f, 0f, scaleY, pageSize.Left, pageSize.Bottom);
+                            var page = sourcePdf.GetPage(pageNumber);
+                            var pageSize = page.GetPageSizeWithRotation();
+
+                            LogInfo(source, string.Format("[DIAG] Page {0} Size: {1} x {2}, MediaBox: {3}, CropBox: {4}",
+                                pageNumber, pageSize.GetWidth(), pageSize.GetHeight(),
+                                page.GetMediaBox() != null ? page.GetMediaBox().ToString() : "null",
+                                page.GetCropBox() != null ? page.GetCropBox().ToString() : "null"));
+
+                            var scaleX = pageSize.GetWidth() / letterheadSize.GetWidth();
+                            var scaleY = pageSize.GetHeight() / letterheadSize.GetHeight();
+
+                            var letterheadForm = letterheadPage.CopyAsFormXObject(sourcePdf);
+
+                            var canvas = new iText.Kernel.Pdf.Canvas.PdfCanvas(page);
+
+                            canvas.AddXObjectWithTransformationMatrix(
+                                letterheadForm,
+                                scaleX,
+                                0f,
+                                0f,
+                                scaleY,
+                                pageSize.GetLeft(),
+                                pageSize.GetBottom()
+                            );
                         }
                     }
 
                     var stampedBytes = output.ToArray();
+
+                    if (stampedBytes == null || stampedBytes.Length == 0)
+                    {
+                        return ReturnOriginalPdf(source, pdfBytes, "La aplicación de hoja membretada generó un PDF vacío.");
+                    }
+
                     LogInfo(
                         source,
                         string.Format(
-                            "Hoja membretada aplicada correctamente. Paginas={0}. PdfOriginalBytes={1}. PdfFinalBytes={2}.",
-                            pageCount,
+                            "Hoja membretada aplicada correctamente con iText7. PdfOriginalBytes={0}. PdfFinalBytes={1}.",
                             pdfBytes.Length,
                             stampedBytes.Length));
 
@@ -308,8 +373,53 @@ namespace CapaNegocio.Helpers
             }
             catch (Exception ex)
             {
-                LogError(source, "No se pudo aplicar la hoja membretada al PDF final.", ex);
-                return pdfBytes;
+                return ReturnOriginalPdf(source, pdfBytes, "No se pudo aplicar la hoja membretada al PDF final (iText7).", ex);
+            }
+        }
+
+        private static byte[] ReturnOriginalPdf(string source, byte[] pdfBytes, string reason, Exception ex = null)
+        {
+            LogError(
+                source,
+                string.Format(
+                    "{0} Resultado=Se devuelve PDF original. PdfOriginalBytes={1}.",
+                    string.IsNullOrWhiteSpace(reason) ? "No se pudo aplicar hoja membretada." : reason,
+                    pdfBytes == null ? 0 : pdfBytes.Length),
+                ex);
+
+            return pdfBytes;
+        }
+
+        private static string GetITextSharpAssemblyInfo()
+        {
+            try
+            {
+                var assembly = typeof(PdfReader).Assembly;
+                var location = assembly.Location;
+                var fileVersion = string.Empty;
+
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(location) && File.Exists(location))
+                    {
+                        fileVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(location).FileVersion;
+                    }
+                }
+                catch
+                {
+                    fileVersion = "[no-disponible]";
+                }
+
+                return string.Format(
+                    "Name={0}; AssemblyVersion={1}; FileVersion={2}; Location={3}",
+                    assembly.GetName().Name,
+                    assembly.GetName().Version,
+                    string.IsNullOrWhiteSpace(fileVersion) ? "[no-disponible]" : fileVersion,
+                    string.IsNullOrWhiteSpace(location) ? "[sin-location]" : location);
+            }
+            catch (Exception ex)
+            {
+                return "No se pudo obtener informacion de itextsharp.dll: " + ex.Message;
             }
         }
 
@@ -446,12 +556,12 @@ namespace CapaNegocio.Helpers
                 }
                 else
                 {
-                    System.Diagnostics.Trace.TraceError(finalMessage + " | Exception=" + ex.Message);
+                    System.Diagnostics.Trace.TraceError(finalMessage + " | Exception=" + ex.ToString());
                 }
             }
             catch
             {
-                // Ignorar errores secundarios de trazas.
+                // Ignorar errores secundarios
             }
         }
 

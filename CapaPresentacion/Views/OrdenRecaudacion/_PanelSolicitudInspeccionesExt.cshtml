@@ -154,7 +154,17 @@
     if (!Model.EsNuevaOrden && (Model.PuedeGenerarSolicitud || Model.PuedeRechazarGeneracionSolicitud))
     {
         <script>
-            $(function () {
+        (function (window, document) {
+            'use strict';
+
+            function inicializarPanelSolicitudInspecciones() {
+                if (!window.jQuery) {
+                    console.error('[AOCR][JS] jQuery no está cargado. No se puede inicializar el panel de solicitud de inspecciones.');
+                    return;
+                }
+
+                var $ = window.jQuery;
+
                 function solicitarConfirmacionGeneracion(onConfirm) {
                     if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {
                         window.AOCR.confirmarGeneracionSolicitudInspeccion(onConfirm);
@@ -181,8 +191,9 @@
                     }
                 }
 
-                $('#btnGenerarSolicitudInspeccionOrden').on('click', function () {
-                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
+                $('#btnGenerarSolicitudInspeccionOrden').off('click.aocrGenerar').on('click.aocrGenerar', function () {
+                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                    $('#AeropuertosSolicitados').val(aeropuertos);
                     if (!aeropuertos) {
                         if (window.AOCR && typeof window.AOCR.notify === 'function') {
                             window.AOCR.notify('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.', 'error');
@@ -200,14 +211,24 @@
                     });
                 });
 
-                $('#btnRechazarGeneracionSolicitud').on('click', function () {
+                $('#btnRechazarGeneracionSolicitud').off('click.aocrRechazar').on('click.aocrRechazar', function () {
                     solicitarConfirmacionRechazo(function () {
                         var $btn = $('#btnRechazarGeneracionSolicitud');
                         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Procesando...');
                         $('#formRechazarGeneracionSolicitud').trigger('submit');
                     });
                 });
-            });
+            }
+
+            if (window.jQuery) {
+                inicializarPanelSolicitudInspecciones();
+            } else if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', inicializarPanelSolicitudInspecciones);
+            } else {
+                setTimeout(inicializarPanelSolicitudInspecciones, 100);
+            }
+
+        })(window, document);
         </script>
     }
 }

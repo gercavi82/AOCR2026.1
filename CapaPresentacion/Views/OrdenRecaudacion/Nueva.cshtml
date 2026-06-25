@@ -713,7 +713,8 @@
 
                                 var solicitaGenerarInspeccion = $('#GenerarSolicitudInspeccionAlGuardar').val() === 'true' || $('#GenerarSolicitudInspeccionAlGuardar').val() === 'True';
                                 if (solicitaGenerarInspeccion) {
-                                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
+                                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                                    $('#AeropuertosSolicitados').val(aeropuertos);
                                     if (!aeropuertos) {
                                         $('#mensajeSolicitudInspeccion')
                                             .removeClass('d-none')
@@ -731,7 +732,8 @@
                             });
 
                             $('#btnGenerarSolicitudInspeccionNueva').on('click', function () {
-                                var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
+                                var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                                $('#AeropuertosSolicitados').val(aeropuertos);
                                 $('#mensajeSolicitudInspeccion').addClass('d-none').text('');
 
                                 if (!aeropuertos) {

@@ -169,6 +169,12 @@ namespace CapaDatos.Entidades
         }
 
         /// <summary>
+        /// Nombre completo del usuario solicitante (no persistido)
+        /// </summary>
+        [NotMapped]
+        public string UsuarioNombre { get; set; }
+
+        /// <summary>
         /// Fecha de modificación
         /// </summary>
         [NotMapped]

@@ -479,6 +479,11 @@ namespace CapaPresentacion.Controllers
                     return View(model);
                 }
 
+                if (model != null)
+                {
+                    model.AeropuertosSolicitados = (model.AeropuertosSolicitados ?? string.Empty).Trim().ToUpperInvariant();
+                }
+
                 var scope = RtCompaniaScope.FromSession(Session, idUsuario);
                 var bloqueoProceso = scope.EvaluarBloqueoNuevaOrden();
                 if (bloqueoProceso.Bloqueado)
@@ -2299,6 +2304,8 @@ namespace CapaPresentacion.Controllers
         private ActionResult EjecutarGenerarSolicitudInspeccion(int id, string aeropuertosSolicitados, int idUsuario)
         {
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            aeropuertosSolicitados = (aeropuertosSolicitados ?? string.Empty).Trim().ToUpperInvariant();
 
             if (id <= 0)
             {

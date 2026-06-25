@@ -709,6 +709,20 @@ namespace CapaDatos.DAOs
                 ConceptoId = GetSafeNullableInt(reader, "concepto_id")
             };
 
+            // Intentar obtener el nombre del usuario si está en el resultado
+            try
+            {
+                var usuarioNombreOrdinal = reader.GetOrdinal("usuario_nombre");
+                if (!reader.IsDBNull(usuarioNombreOrdinal))
+                {
+                    orden.UsuarioNombre = reader.GetString(usuarioNombreOrdinal);
+                }
+            }
+            catch
+            {
+                // La columna usuario_nombre no está en el resultado o no existe
+            }
+
             // Intentar obtener el nombre del concepto si estÃ¡ en el resultado
             try
             {
@@ -768,9 +782,18 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                                       COALESCE(
+                                           NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
+                                           u.nombreusuario,
+                                           u.correo,
+                                           u.codigousuario,
+                                           'Usuario ID: ' || o.codigo_usuario::text,
+                                           'Sin Usuario'
+                                       ) AS usuario_nombre
                                 FROM aocr_or_orden o
-                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id";
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario";
 
                     var filtros = new List<string>();
                     if (!string.IsNullOrWhiteSpace(codigoUsuario))
@@ -1021,7 +1044,10 @@ namespace CapaDatos.DAOs
                 Correo = orden.Correo,
                 Telefono = orden.Telefono,
                 Observacion = orden.Observacion,
-                Admin = orden.Admin ?? 0m
+                Admin = orden.Admin ?? 0m,
+                UsuarioNombre = !string.IsNullOrWhiteSpace(orden.UsuarioNombre)
+                    ? orden.UsuarioNombre
+                    : ("Usuario ID: " + (orden.CodigoUsuario ?? 0))
             };
 
             if (orden.Detalles != null && orden.Detalles.Count > 0)
@@ -1251,9 +1277,18 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                                       COALESCE(
+                                           NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
+                                           u.nombreusuario,
+                                           u.correo,
+                                           u.codigousuario,
+                                           'Usuario ID: ' || o.codigo_usuario::text,
+                                           'Sin Usuario'
+                                       ) AS usuario_nombre
                                 FROM aocr_or_orden o
                                 LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario
                                 WHERE 1=1";
 
                     var filtros = new List<string>();
@@ -4642,9 +4677,18 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                                       COALESCE(
+                                           NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
+                                           u.nombreusuario,
+                                           u.correo,
+                                           u.codigousuario,
+                                           'Usuario ID: ' || o.codigo_usuario::text,
+                                           'Sin Usuario'
+                                       ) AS usuario_nombre
                                 FROM aocr_or_orden o
                                 LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario
                                 WHERE (o.numero_orden ILIKE @criterio OR o.ruc_cedula ILIKE @criterio)";
 
                     if (!string.IsNullOrWhiteSpace(codigo))
