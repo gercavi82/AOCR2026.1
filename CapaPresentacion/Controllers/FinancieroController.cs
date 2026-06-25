@@ -1016,6 +1016,7 @@ namespace CapaPresentacion.Controllers
                 UsuarioNombre = !string.IsNullOrWhiteSpace(o.UsuarioNombre)
                     ? o.UsuarioNombre
                     : ("Usuario ID: " + usuarioId),
+                NumeroFr3 = o.NumeroFr3,
                 CodigoSolicitud = o.CodigoSolicitud?.ToString(),
                 LugarEmision = o.LugarEmision,
                 Compania = o.NombreContribuyente,

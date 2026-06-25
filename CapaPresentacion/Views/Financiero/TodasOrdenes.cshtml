@@ -455,6 +455,7 @@
                             <th>ID</th>
                             <th>Número orden</th>
                             <th>Usuario</th>
+                            <th>N° FR3</th>
                             <th>Fecha creación</th>
                             <th>Estado</th>
                             <th>Trámite</th>
@@ -470,6 +471,16 @@
                                 <td>@orden.Id</td>
                                 <td><span class="fo-code">@Html.Encode(orden.NumeroOrden)</span></td>
                                 <td>@orden.UsuarioNombre</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(orden.NumeroFr3))
+                                    {
+                                        @orden.NumeroFr3
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No generado</span>
+                                    }
+                                </td>
                                 <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
                                 <td><span class="@GetBadgeEstado(orden.Estado)">@GetTextoEstado(orden.Estado)</span></td>
                                 <td>@GetTextoTramite(orden.Estado)</td>

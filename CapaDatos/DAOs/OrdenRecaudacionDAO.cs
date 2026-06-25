@@ -723,6 +723,20 @@ namespace CapaDatos.DAOs
                 // La columna usuario_nombre no está en el resultado o no existe
             }
 
+            // Intentar obtener el número de FR3 si está en el resultado
+            try
+            {
+                var fr3Ordinal = reader.GetOrdinal("fr3_numero");
+                if (!reader.IsDBNull(fr3Ordinal))
+                {
+                    orden.NumeroFr3 = reader.GetString(fr3Ordinal);
+                }
+            }
+            catch
+            {
+                // La columna fr3_numero no está en el resultado o no existe
+            }
+
             // Intentar obtener el nombre del concepto si estÃ¡ en el resultado
             try
             {
@@ -782,7 +796,7 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, fp.fr3_numero,
                                        COALESCE(
                                            NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
                                            u.nombreusuario,
@@ -793,7 +807,12 @@ namespace CapaDatos.DAOs
                                        ) AS usuario_nombre
                                 FROM aocr_or_orden o
                                 LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
-                                LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario";
+                                LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario
+                                LEFT JOIN (
+                                    SELECT DISTINCT ON (orden_id) orden_id, fr3_numero
+                                    FROM aocr_tb_factura_pago
+                                    ORDER BY orden_id, creado_en DESC
+                                ) fp ON fp.orden_id = o.id";
 
                     var filtros = new List<string>();
                     if (!string.IsNullOrWhiteSpace(codigoUsuario))
@@ -1047,7 +1066,8 @@ namespace CapaDatos.DAOs
                 Admin = orden.Admin ?? 0m,
                 UsuarioNombre = !string.IsNullOrWhiteSpace(orden.UsuarioNombre)
                     ? orden.UsuarioNombre
-                    : ("Usuario ID: " + (orden.CodigoUsuario ?? 0))
+                    : ("Usuario ID: " + (orden.CodigoUsuario ?? 0)),
+                NumeroFr3 = orden.NumeroFr3
             };
 
             if (orden.Detalles != null && orden.Detalles.Count > 0)
@@ -1277,7 +1297,7 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, fp.fr3_numero,
                                        COALESCE(
                                            NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
                                            u.nombreusuario,
@@ -1289,6 +1309,11 @@ namespace CapaDatos.DAOs
                                 FROM aocr_or_orden o
                                 LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
                                 LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario
+                                LEFT JOIN (
+                                    SELECT DISTINCT ON (orden_id) orden_id, fr3_numero
+                                    FROM aocr_tb_factura_pago
+                                    ORDER BY orden_id, creado_en DESC
+                                ) fp ON fp.orden_id = o.id
                                 WHERE 1=1";
 
                     var filtros = new List<string>();
@@ -4677,7 +4702,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = @"SELECT o.*, c.nombre as concepto_nombre,
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre, fp.fr3_numero,
                                        COALESCE(
                                            NULLIF(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')), ''),
                                            u.nombreusuario,
@@ -4689,7 +4714,12 @@ namespace CapaDatos.DAOs
                                 FROM aocr_or_orden o
                                 LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
                                 LEFT JOIN usuario u ON u.idusuario = o.codigo_usuario
-                                WHERE (o.numero_orden ILIKE @criterio OR o.ruc_cedula ILIKE @criterio)";
+                                LEFT JOIN (
+                                    SELECT DISTINCT ON (orden_id) orden_id, fr3_numero
+                                    FROM aocr_tb_factura_pago
+                                    ORDER BY orden_id, creado_en DESC
+                                ) fp ON fp.orden_id = o.id
+                                WHERE (o.numero_orden ILIKE @criterio OR o.ruc_cedula ILIKE @criterio OR fp.fr3_numero ILIKE @criterio)";
 
                     if (!string.IsNullOrWhiteSpace(codigo))
                     {

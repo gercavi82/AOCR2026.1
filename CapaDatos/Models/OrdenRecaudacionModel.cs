@@ -36,6 +36,7 @@ namespace CapaDatos.Models
         // Props de apoyo UI (NO DB)
         public string NombreUsuario { get; set; }
         public string UsuarioNombre { get; set; }
+        public string NumeroFr3 { get; set; }
         public string CorreoUsuario { get; set; }
         public string CreadoPor { get; set; }
         public DateTime? FechaCreacionRegistro { get; set; }

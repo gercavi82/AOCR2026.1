@@ -175,6 +175,12 @@ namespace CapaDatos.Entidades
         public string UsuarioNombre { get; set; }
 
         /// <summary>
+        /// Número de FR3 generado (no persistido)
+        /// </summary>
+        [NotMapped]
+        public string NumeroFr3 { get; set; }
+
+        /// <summary>
         /// Fecha de modificación
         /// </summary>
         [NotMapped]
