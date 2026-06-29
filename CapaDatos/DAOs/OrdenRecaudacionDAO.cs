@@ -825,7 +825,7 @@ namespace CapaDatos.DAOs
         // Helpers internos
         // =============================
 
-        private List<OrdenRecaudacion> ObtenerOrdenesInterno(string codigoUsuario, string estado)
+        private List<OrdenRecaudacion> ObtenerOrdenesInterno(string codigoUsuario, string estado, string companiaId = null)
         {
             var ordenes = new List<OrdenRecaudacion>();
 
@@ -868,6 +868,10 @@ namespace CapaDatos.DAOs
                     {
                         filtros.Add("o.estado = @estado");
                     }
+                    if (!string.IsNullOrWhiteSpace(companiaId))
+                    {
+                        filtros.Add("UPPER(TRIM(COALESCE(o.compania_id, ''))) = UPPER(TRIM(@companiaId))");
+                    }
 
                     if (filtros.Count > 0)
                     {
@@ -885,6 +889,10 @@ namespace CapaDatos.DAOs
                         if (!string.IsNullOrWhiteSpace(estado))
                         {
                             cmd.Parameters.AddWithValue("@estado", estado);
+                        }
+                        if (!string.IsNullOrWhiteSpace(companiaId))
+                        {
+                            cmd.Parameters.AddWithValue("@companiaId", companiaId.Trim());
                         }
 
                         using (var reader = cmd.ExecuteReader())
@@ -1292,19 +1300,19 @@ namespace CapaDatos.DAOs
 
         public bool Ping() => ProbarConexion();
 
-        public List<OrdenRecaudacion> ListarPorUsuario(int codigoUsuario, string estado)
+        public List<OrdenRecaudacion> ListarPorUsuario(int codigoUsuario, string estado, string companiaId = null)
         {
-            return ListarPorUsuario((int?)codigoUsuario, estado);
+            return ListarPorUsuario((int?)codigoUsuario, estado, companiaId);
         }
 
-        public List<OrdenRecaudacion> ListarPorUsuario(int? codigoUsuario, string estado)
+        public List<OrdenRecaudacion> ListarPorUsuario(int? codigoUsuario, string estado, string companiaId = null)
         {
             var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
             var codigoUsuarioFiltro = codigoUsuario.HasValue && codigoUsuario.Value > 0
                 ? codigoUsuario.Value.ToString()
                 : null;
 
-            return ObtenerOrdenesInterno(codigoUsuarioFiltro, estadoFiltro);
+            return ObtenerOrdenesInterno(codigoUsuarioFiltro, estadoFiltro, companiaId);
         }
 
         public List<OrdenRecaudacion> ObtenerTodasLasOrdenes(string estado)
@@ -1321,14 +1329,14 @@ namespace CapaDatos.DAOs
             return MapearOrdenModel(orden);
         }
 
-        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int codigoUsuario, string estado)
+        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int codigoUsuario, string estado, string companiaId = null)
         {
-            return ListarPorUsuarioModel((int?)codigoUsuario, estado);
+            return ListarPorUsuarioModel((int?)codigoUsuario, estado, companiaId);
         }
 
-        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int? codigoUsuario, string estado)
+        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int? codigoUsuario, string estado, string companiaId = null)
         {
-            var ordenes = ListarPorUsuario(codigoUsuario, estado);
+            var ordenes = ListarPorUsuario(codigoUsuario, estado, companiaId);
             return ordenes.Select(MapearOrdenModel).ToList();
         }
 
@@ -4766,16 +4774,16 @@ namespace CapaDatos.DAOs
         // IOrdenRecaudacionDAO (explicita)
         // =============================
 
-        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ListarPorUsuario(int codigoUsuario, string estado)
+        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ListarPorUsuario(int codigoUsuario, string estado, string companiaId)
         {
-            return ListarPorUsuarioModel(codigoUsuario, estado);
+            return ListarPorUsuarioModel(codigoUsuario, estado, companiaId);
         }
 
-        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ObtenerOrdenes(int? codigoUsuario, string estado)
+        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ObtenerOrdenes(int? codigoUsuario, string estado, string companiaId)
         {
             var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
             var codigo = codigoUsuario.HasValue ? codigoUsuario.Value.ToString() : null;
-            var ordenes = ObtenerOrdenesInterno(codigo, estadoFiltro);
+            var ordenes = ObtenerOrdenesInterno(codigo, estadoFiltro, companiaId);
             return ordenes.Select(MapearOrdenModel).ToList();
         }
 

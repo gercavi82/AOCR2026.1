@@ -123,9 +123,14 @@ namespace CapaNegocio.Services
                 return true;
             }
 
-            if (!_idempotency.TryAcquire(claveIdempotencia, "FR3_GENERAR"))
+            string resultadoPrevioLock;
+            if (!_idempotency.TryAcquire(claveIdempotencia, "FR3_GENERAR", ordenId, usuario, out resultadoPrevioLock))
             {
                 mensaje = "Operación FR3 ya en proceso para esta orden (concurrencia).";
+                if (!string.IsNullOrWhiteSpace(resultadoPrevioLock))
+                {
+                    mensaje = resultadoPrevioLock;
+                }
                 return false;
             }
 

@@ -12,10 +12,10 @@ namespace CapaDatos.DAOs
         bool ExisteORMinima(int codigoUsuario);
 
         // ===================== Dashboard / Listados ======================
-        List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado);
+        List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado, string companiaId = null);
 
         // ===================== CRUD principal ============================
-        List<OrdenRecaudacionModel> ObtenerOrdenes(int? codigoUsuario, string estado);
+        List<OrdenRecaudacionModel> ObtenerOrdenes(int? codigoUsuario, string estado, string companiaId = null);
         OrdenRecaudacionModel ObtenerOrdenPorId(int id);
         int CrearOrden(OrdenRecaudacionModel orden);
         bool ActualizarOrden(OrdenRecaudacionModel orden);

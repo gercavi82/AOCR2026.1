@@ -335,39 +335,69 @@ namespace CapaDatos.DAOs
             if (colsCabecera.Contains("OPCNUM") && !string.IsNullOrWhiteSpace(record.NumeroFactura))
             {
                 var numeroFacturaLookup = NormalizarValorBusquedaNumeroFactura(conn, tx, record.NumeroFactura);
-                var filtros = new List<string> { "OPCNUM = ?" };
-                var parametros = new List<object> { numeroFacturaLookup };
-
-                if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
+                var numeroFacturaLookupText = Convert.ToString(numeroFacturaLookup, CultureInfo.InvariantCulture);
+                if (string.IsNullOrWhiteSpace(numeroFacturaLookupText)
+                    || numeroFacturaLookupText.Trim().TrimStart('0').Length == 0)
                 {
-                    filtros.Add("OPCAER = ?");
-                    parametros.Add(aeropuerto);
+                    _logger.LogWarning(string.Format(
+                        "FR3 duplicado por OPCNUM omitido: OrdenId={0}, Factura={1}, ValorNormalizado={2}",
+                        record.OrdenId,
+                        record.NumeroFactura,
+                        numeroFacturaLookupText ?? string.Empty));
                 }
-                if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+                else
                 {
-                    filtros.Add("OPCANO = ?");
-                    parametros.Add(anio);
-                }
+                    var filtros = new List<string> { "OPCNUM = ?" };
+                    var parametros = new List<object> { numeroFacturaLookup };
 
-                var sql = string.Format(
-                    "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
-                    colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
-                    _schema,
-                    _tablaCabecera,
-                    string.Join(" AND ", filtros));
-
-                using (var cmd = new OdbcCommand(sql, conn, tx))
-                {
-                    foreach (var parametro in parametros)
+                    if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
                     {
-                        AddParameter(cmd, parametro, GetOdbcType(parametro));
+                        filtros.Add("OPCAER = ?");
+                        parametros.Add(aeropuerto);
+                    }
+                    if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+                    {
+                        filtros.Add("OPCANO = ?");
+                        parametros.Add(anio);
                     }
 
-                    var valor = cmd.ExecuteScalar();
-                    if (valor != null && valor != DBNull.Value)
+                    var filtrosFuertes = AgregarFiltrosFuertesFacturaExistente(filtros, parametros, colsCabecera, record);
+                    if (filtrosFuertes < 2)
                     {
-                        secuencial = SafeDecimal(valor);
-                        return true;
+                        _logger.LogWarning(string.Format(
+                            "FR3 duplicado por OPCNUM omitido por filtros insuficientes: OrdenId={0}, Factura={1}, FiltrosFuertes={2}",
+                            record.OrdenId,
+                            record.NumeroFactura,
+                            filtrosFuertes));
+                    }
+                    else
+                    {
+                        var sql = string.Format(
+                            "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
+                            colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
+                            _schema,
+                            _tablaCabecera,
+                            string.Join(" AND ", filtros));
+
+                        using (var cmd = new OdbcCommand(sql, conn, tx))
+                        {
+                            foreach (var parametro in parametros)
+                            {
+                                AddParameter(cmd, parametro, GetOdbcType(parametro));
+                            }
+
+                            var valor = cmd.ExecuteScalar();
+                            if (valor != null && valor != DBNull.Value)
+                            {
+                                secuencial = SafeDecimal(valor);
+                                _logger.LogWarning(string.Format(
+                                    "FR3 duplicado confirmado por OPCNUM con filtros fuertes: OrdenId={0}, Factura={1}, Sec={2}",
+                                    record.OrdenId,
+                                    record.NumeroFactura,
+                                    secuencial));
+                                return true;
+                            }
+                        }
                     }
                 }
             }
@@ -391,31 +421,98 @@ namespace CapaDatos.DAOs
                         parametros.Add(anio);
                     }
 
-                    var sql = string.Format(
-                        "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
-                        colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
-                        _schema,
-                        _tablaCabecera,
-                        string.Join(" AND ", filtros));
-
-                    using (var cmd = new OdbcCommand(sql, conn, tx))
+                    var filtrosFuertes = AgregarFiltrosFuertesFacturaExistente(filtros, parametros, colsCabecera, record);
+                    if (filtrosFuertes < 2)
                     {
-                        foreach (var parametro in parametros)
-                        {
-                            AddParameter(cmd, parametro, GetOdbcType(parametro));
-                        }
+                        _logger.LogWarning(string.Format(
+                            "FR3 duplicado por OPCOBS omitido por filtros insuficientes: OrdenId={0}, Token={1}, FiltrosFuertes={2}",
+                            record.OrdenId,
+                            tokenCorrelacion,
+                            filtrosFuertes));
+                    }
+                    else
+                    {
+                        var sql = string.Format(
+                            "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
+                            colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
+                            _schema,
+                            _tablaCabecera,
+                            string.Join(" AND ", filtros));
 
-                        var valor = cmd.ExecuteScalar();
-                        if (valor != null && valor != DBNull.Value)
+                        using (var cmd = new OdbcCommand(sql, conn, tx))
                         {
-                            secuencial = SafeDecimal(valor);
-                            return true;
+                            foreach (var parametro in parametros)
+                            {
+                                AddParameter(cmd, parametro, GetOdbcType(parametro));
+                            }
+
+                            var valor = cmd.ExecuteScalar();
+                            if (valor != null && valor != DBNull.Value)
+                            {
+                                secuencial = SafeDecimal(valor);
+                                _logger.LogWarning(string.Format(
+                                    "FR3 duplicado confirmado por OPCOBS con filtros fuertes: OrdenId={0}, Token={1}, Sec={2}",
+                                    record.OrdenId,
+                                    tokenCorrelacion,
+                                    secuencial));
+                                return true;
+                            }
                         }
                     }
                 }
             }
 
             return false;
+        }
+
+        private static int AgregarFiltrosFuertesFacturaExistente(
+            IList<string> filtros,
+            IList<object> parametros,
+            HashSet<string> colsCabecera,
+            FacturaAs400Record record)
+        {
+            var filtrosFuertes = 0;
+
+            if (colsCabecera.Contains("OPCRU1") && !string.IsNullOrWhiteSpace(record.Ruc))
+            {
+                filtros.Add("TRIM(OPCRU1) = ?");
+                parametros.Add(record.Ruc.Trim());
+                filtrosFuertes++;
+            }
+
+            if (colsCabecera.Contains("OPCTOT"))
+            {
+                filtros.Add("OPCTOT = ?");
+                parametros.Add(record.Total);
+                filtrosFuertes++;
+            }
+            else if (colsCabecera.Contains("OPCGRA"))
+            {
+                filtros.Add("OPCGRA = ?");
+                parametros.Add(record.Total);
+                filtrosFuertes++;
+            }
+
+            if (colsCabecera.Contains("OPCC08") && !string.IsNullOrWhiteSpace(record.CodigoOACICia))
+            {
+                filtros.Add("UPPER(TRIM(OPCC08)) = ?");
+                parametros.Add(record.CodigoOACICia.Trim().ToUpperInvariant());
+                filtrosFuertes++;
+            }
+            else if (colsCabecera.Contains("OPCNO4") && !string.IsNullOrWhiteSpace(record.Compania))
+            {
+                filtros.Add("UPPER(TRIM(OPCNO4)) = ?");
+                parametros.Add(record.Compania.Trim().ToUpperInvariant());
+                filtrosFuertes++;
+            }
+            else if (colsCabecera.Contains("OPCNO5") && !string.IsNullOrWhiteSpace(record.Compania))
+            {
+                filtros.Add("UPPER(TRIM(OPCNO5)) = ?");
+                parametros.Add(record.Compania.Trim().ToUpperInvariant());
+                filtrosFuertes++;
+            }
+
+            return filtrosFuertes;
         }
 
         private void TryBloquearTablaCabecera(OdbcConnection conn, OdbcTransaction tx)
@@ -1478,7 +1575,7 @@ namespace CapaDatos.DAOs
 
             var raw = observaciones.Trim();
             var upper = raw.ToUpperInvariant();
-            var idx = upper.IndexOf("SOL:");
+            var idx = upper.IndexOf("ORD:");
             if (idx < 0)
             {
                 return null;

@@ -60,39 +60,73 @@ namespace CapaNegocio.Services
             {
                 conn.Open();
 
-                const string sql = @"
-                    SELECT COALESCE(
-                        MAX(CAST(regexp_replace(numero_orden, '.*AOCR', '') AS INTEGER)),
-                        0
-                    ) + 1
-                    FROM public.aocr_or_orden
-                    WHERE numero_orden ~ ('^DGAC-OR-' || @anio::text || '-AOCR[0-9]+$');";
-
-                var siguiente = 1;
-                using (var cmd = new NpgsqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@anio", anio);
-                    var scalar = cmd.ExecuteScalar();
-                    if (scalar != null && scalar != DBNull.Value)
-                    {
-                        siguiente = Convert.ToInt32(scalar);
-                    }
-                }
+                AsegurarSecuenciaOrden(conn, anio);
 
                 for (var intentos = 0; intentos < 20; intentos++)
                 {
+                    int siguiente;
+                    using (var cmd = new NpgsqlCommand("SELECT nextval('public.seq_aocr_orden_recaudacion');", conn))
+                    {
+                        var scalar = cmd.ExecuteScalar();
+                        siguiente = Convert.ToInt32(scalar);
+                    }
+
+                    _logger.LogInfo(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[ORDEN_NUM][NEXTVAL] Anio={0}; Consecutivo={1}",
+                        anio,
+                        siguiente));
+
                     var numeroOrden = string.Format(CultureInfo.InvariantCulture, "DGAC-OR-{0}-AOCR{1}", anio, siguiente.ToString("D3", CultureInfo.InvariantCulture));
                     if (!_ordenDao.ExisteNumeroOrden(numeroOrden))
                     {
+                        _logger.LogInfo(string.Format(
+                            CultureInfo.InvariantCulture,
+                            "[ORDEN_NUM][GENERATED] Anio={0}; Consecutivo={1}; NumeroOrden={2}",
+                            anio,
+                            siguiente,
+                            numeroOrden));
                         return numeroOrden;
                     }
-
-                    siguiente++;
                 }
             }
 
             _logger.LogWarning("OrdenRecaudacionService.GenerarNumeroOrdenInstitucional: se agotaron los intentos para generar un número único.");
             return string.Format(CultureInfo.InvariantCulture, "DGAC-OR-{0}-AOCR{1}", anio, (DateTime.Now.Ticks % 1000L).ToString("D3", CultureInfo.InvariantCulture));
+        }
+
+        private void AsegurarSecuenciaOrden(NpgsqlConnection conn, int anio)
+        {
+            const string sql = @"
+                CREATE SEQUENCE IF NOT EXISTS public.seq_aocr_orden_recaudacion
+                    START WITH 1
+                    INCREMENT BY 1
+                    NO MINVALUE
+                    NO MAXVALUE
+                    CACHE 1;
+
+                WITH maximo AS (
+                    SELECT COALESCE(
+                        MAX(CAST(regexp_replace(numero_orden, '.*AOCR', '') AS INTEGER)),
+                        0
+                    ) AS valor
+                    FROM public.aocr_or_orden
+                    WHERE numero_orden ~ ('^DGAC-OR-' || @anio::text || '-AOCR[0-9]+$')
+                )
+                SELECT setval(
+                    'public.seq_aocr_orden_recaudacion',
+                    GREATEST(
+                        (SELECT valor FROM maximo),
+                        (SELECT last_value FROM public.seq_aocr_orden_recaudacion)
+                    ),
+                    true
+                );";
+
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@anio", anio);
+                cmd.ExecuteNonQuery();
+            }
         }
 
         public string GenerarNumeroOrdenAocr(int anio)

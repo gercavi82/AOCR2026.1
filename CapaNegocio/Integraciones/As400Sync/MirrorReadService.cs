@@ -64,6 +64,8 @@ namespace CapaNegocio.Integraciones.As400Sync
         public string Deposito { get; set; }
         public string NumeroFactura { get; set; }
         public string FechaCreacion { get; set; }
+        public string HoraCreacionRaw { get; set; }
+        public string HoraCreacion { get; set; }
         public string Procesado { get; set; }
         public DateTime MirrorSyncedAt { get; set; }
     }
@@ -700,20 +702,20 @@ namespace CapaNegocio.Integraciones.As400Sync
             if (string.IsNullOrWhiteSpace(_connectionString)) return list;
             if (take <= 0) take = 100;
 
-            var whereParts = new List<string> { "COALESCE(_is_deleted, false) = false" };
+            var whereParts = new List<string> { "COALESCE(is_deleted, false) = false" };
             if (!string.IsNullOrWhiteSpace(aeropuerto))
-                whereParts.Add("UPPER(TRIM(opcaer)) = UPPER(@aer)");
+                whereParts.Add("UPPER(TRIM(aeropuerto_codigo)) = UPPER(@aer)");
             if (!string.IsNullOrWhiteSpace(anio))
-                whereParts.Add("TRIM(opcano) = @anio");
+                whereParts.Add("TRIM(anio) = @anio");
 
             var sql = @"
-                SELECT opcsec, opcaer, opcano, opcfe4, opctip, opcrut, opcnro,
-                       opctot, opcgra, opcaut, opcobs, opcru1, opcno4, opcest,
-                       opcnac, opcno5, opcmat, opcva6, opcfor, opcban, opcche,
-                       opcnum, opcda4, opcpro, _mirror_synced_at
-                  FROM mirror_raw.opcar5
+                SELECT secuencial_fr3, aeropuerto_codigo, anio, fecha_control_vuelo_raw, tipo_operacion_codigo, ruta_plan_vuelo, numero_aterrizajes_pais,
+                       total, gran_total, autorizacion, observacion, ruc_cedula, contribuyente_nombre, estado_raw,
+                       nacional_internacional, compania_nombre, matricula, valor_charter, forma_pago_codigo, banco_codigo, deposito,
+                       numero_documento, fecha_registro_raw, hora_creacion_raw, hora_creacion, procesado, mirror_synced_at
+                  FROM mirror_clean.v_fr3_cabecera
                  WHERE " + string.Join(" AND ", whereParts) + @"
-              ORDER BY opcda4 DESC, opch01 DESC, opcsec DESC
+              ORDER BY fecha_registro_raw DESC, hora_creacion_raw DESC, secuencial_fr3 DESC
                  LIMIT @take";
 
             try
@@ -757,8 +759,10 @@ namespace CapaNegocio.Integraciones.As400Sync
                                 Deposito          = rd.IsDBNull(20) ? null : rd.GetString(20),
                                 NumeroFactura     = rd.IsDBNull(21) ? null : rd.GetString(21),
                                 FechaCreacion     = rd.IsDBNull(22) ? null : rd.GetString(22),
-                                Procesado         = rd.IsDBNull(23) ? null : rd.GetString(23),
-                                MirrorSyncedAt    = rd.IsDBNull(24) ? DateTime.MinValue : rd.GetDateTime(24)
+                                HoraCreacionRaw   = rd.IsDBNull(23) ? null : rd.GetString(23),
+                                HoraCreacion      = rd.IsDBNull(24) ? null : rd.GetString(24),
+                                Procesado         = rd.IsDBNull(25) ? null : rd.GetString(25),
+                                MirrorSyncedAt    = rd.IsDBNull(26) ? DateTime.MinValue : rd.GetDateTime(26)
                             });
                         }
                     }

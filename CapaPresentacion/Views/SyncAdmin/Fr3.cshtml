@@ -81,6 +81,7 @@
                         <th>Aer</th>
                         <th>Anio</th>
                         <th>Fecha CR</th>
+                        <th>Hora CR</th>
                         <th>Tipo</th>
                         <th>Ruta</th>
                         <th>NAC/INT</th>
@@ -103,6 +104,16 @@
                             <td>@r.Aeropuerto</td>
                             <td>@r.Anio</td>
                             <td>@r.FechaCreacion</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(r.HoraCreacion))
+                                {
+                                    @r.HoraCreacion
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin hora</span>
+                                }
+                            </td>
                             <td><small>@r.TipoOperacion</small></td>
                             <td><small>@r.RutaPlanVuelo</small></td>
                             <td>
