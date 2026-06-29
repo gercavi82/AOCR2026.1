@@ -51,10 +51,7 @@ namespace CapaNegocio.Services
             var estadoSolicitudToken = Normalizar(estadoSolicitud);
             var estadoAocr = Normalizar(contexto.EstadoAocr);
 
-            if (estadoInforme == "ENVIADO_A_DIRDAC"
-                || estadoInforme == "PENDIENTE_REVISION_DIRECCION"
-                || estadoInforme == "FIRMADO_INSPECTOR"
-                || estadoInforme == "FIRMADO_POR_INSPECTOR")
+            if (InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(estadoInforme))
             {
                 return CrearResultado(DireccionWorkflowAccion.RevisionDireccion, contexto, "Informe tecnico pendiente de decision institucional.");
             }

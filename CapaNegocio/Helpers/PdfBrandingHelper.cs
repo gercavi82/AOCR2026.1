@@ -291,22 +291,14 @@ namespace CapaNegocio.Helpers
             try
             {
                 using (var output = new MemoryStream())
+                using (var sourceReader = new PdfReader(pdfBytes))
+                using (var letterheadReader = new PdfReader(letterheadPhysicalPath))
                 {
-                    var sourceStream = new MemoryStream(pdfBytes);
+                    var pageCount = sourceReader.NumberOfPages;
+                    var letterheadPageCount = letterheadReader.NumberOfPages;
 
-                    var sourceReader7 = new iText.Kernel.Pdf.PdfReader(sourceStream);
-                    sourceReader7.SetCloseStream(false);
-
-                    var writer7 = new iText.Kernel.Pdf.PdfWriter(output);
-                    writer7.SetCloseStream(false);
-
-                    using (var sourcePdf = new iText.Kernel.Pdf.PdfDocument(sourceReader7, writer7))
-                    using (var letterheadPdf = new iText.Kernel.Pdf.PdfDocument(
-                        new iText.Kernel.Pdf.PdfReader(letterheadPhysicalPath)))
+                    using (var stamper = new PdfStamper(sourceReader, output))
                     {
-                        var pageCount = sourcePdf.GetNumberOfPages();
-                        var letterheadPageCount = letterheadPdf.GetNumberOfPages();
-
                         if (pageCount <= 0)
                         {
                             return ReturnOriginalPdf(source, pdfBytes, "El PDF fuente no tiene páginas para aplicar hoja membretada.");
@@ -317,40 +309,37 @@ namespace CapaNegocio.Helpers
                             return ReturnOriginalPdf(source, pdfBytes, "La hoja membretada no tiene páginas.");
                         }
 
-                        var letterheadPage = letterheadPdf.GetPage(1);
-                        var letterheadSize = letterheadPage.GetPageSizeWithRotation();
+                        var letterheadSize = letterheadReader.GetPageSizeWithRotation(1);
 
                         LogInfo(source, string.Format("[DIAG] letterheadSize: {0} x {1}, MediaBox: {2}, CropBox: {3}", 
-                            letterheadSize.GetWidth(), letterheadSize.GetHeight(),
-                            letterheadPage.GetMediaBox() != null ? letterheadPage.GetMediaBox().ToString() : "null",
-                            letterheadPage.GetCropBox() != null ? letterheadPage.GetCropBox().ToString() : "null"));
+                            letterheadSize.Width, letterheadSize.Height,
+                            letterheadReader.GetPageN(1) != null ? letterheadReader.GetPageN(1).GetAsArray(PdfName.MEDIABOX)?.ToString() : "null",
+                            letterheadReader.GetPageN(1) != null ? letterheadReader.GetPageN(1).GetAsArray(PdfName.CROPBOX)?.ToString() : "null"));
 
                         for (var pageNumber = 1; pageNumber <= pageCount; pageNumber++)
                         {
-                            var page = sourcePdf.GetPage(pageNumber);
-                            var pageSize = page.GetPageSizeWithRotation();
+                            var pageSize = sourceReader.GetPageSizeWithRotation(pageNumber);
 
                             LogInfo(source, string.Format("[DIAG] Page {0} Size: {1} x {2}, MediaBox: {3}, CropBox: {4}",
-                                pageNumber, pageSize.GetWidth(), pageSize.GetHeight(),
-                                page.GetMediaBox() != null ? page.GetMediaBox().ToString() : "null",
-                                page.GetCropBox() != null ? page.GetCropBox().ToString() : "null"));
+                                pageNumber, pageSize.Width, pageSize.Height,
+                                sourceReader.GetPageN(pageNumber) != null ? sourceReader.GetPageN(pageNumber).GetAsArray(PdfName.MEDIABOX)?.ToString() : "null",
+                                sourceReader.GetPageN(pageNumber) != null ? sourceReader.GetPageN(pageNumber).GetAsArray(PdfName.CROPBOX)?.ToString() : "null"));
 
-                            var scaleX = pageSize.GetWidth() / letterheadSize.GetWidth();
-                            var scaleY = pageSize.GetHeight() / letterheadSize.GetHeight();
+                            var scaleX = pageSize.Width / letterheadSize.Width;
+                            var scaleY = pageSize.Height / letterheadSize.Height;
 
-                            var letterheadForm = letterheadPage.CopyAsFormXObject(sourcePdf);
+                            var letterheadForm = stamper.GetImportedPage(letterheadReader, 1);
 
-                            var canvas = new iText.Kernel.Pdf.Canvas.PdfCanvas(page);
+                            var canvas = stamper.GetOverContent(pageNumber);
 
-                            canvas.AddXObjectWithTransformationMatrix(
+                            canvas.AddTemplate(
                                 letterheadForm,
                                 scaleX,
                                 0f,
                                 0f,
                                 scaleY,
-                                pageSize.GetLeft(),
-                                pageSize.GetBottom()
-                            );
+                                pageSize.Left,
+                                pageSize.Bottom);
                         }
                     }
 
@@ -364,7 +353,7 @@ namespace CapaNegocio.Helpers
                     LogInfo(
                         source,
                         string.Format(
-                            "Hoja membretada aplicada correctamente con iText7. PdfOriginalBytes={0}. PdfFinalBytes={1}.",
+                            "Hoja membretada aplicada correctamente con iTextSharp. PdfOriginalBytes={0}. PdfFinalBytes={1}.",
                             pdfBytes.Length,
                             stampedBytes.Length));
 
@@ -373,7 +362,7 @@ namespace CapaNegocio.Helpers
             }
             catch (Exception ex)
             {
-                return ReturnOriginalPdf(source, pdfBytes, "No se pudo aplicar la hoja membretada al PDF final (iText7).", ex);
+                return ReturnOriginalPdf(source, pdfBytes, "No se pudo aplicar la hoja membretada al PDF final (iTextSharp).", ex);
             }
         }
 

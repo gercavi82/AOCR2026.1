@@ -308,6 +308,27 @@ namespace CapaModelo
         }
     }
 
+    public class ResultadoCierreDocumentalDto
+    {
+        public bool Ok { get; set; }
+        public bool Cerrada { get; set; }
+        public bool YaCerrada { get; set; }
+        public bool HabilitaLv { get; set; }
+        public string EstadoAnterior { get; set; }
+        public string EstadoNuevo { get; set; }
+        public string Mensaje { get; set; }
+        public string MotivoSkip { get; set; }
+        public EstadoRevisionDocumental EstadoRevision { get; set; }
+
+        public ResultadoCierreDocumentalDto()
+        {
+            EstadoAnterior = string.Empty;
+            EstadoNuevo = string.Empty;
+            Mensaje = string.Empty;
+            MotivoSkip = string.Empty;
+        }
+    }
+
     // ====== ENUMS PARA ESTADOS Y TIPOS ======
     public enum EstadoDocumento
     {

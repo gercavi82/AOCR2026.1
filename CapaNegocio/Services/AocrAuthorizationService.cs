@@ -405,11 +405,49 @@ namespace CapaNegocio.Services
         {
             if (codigoInforme <= 0 || codigoUsuario <= 0)
             {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; UsuarioId=" + codigoUsuario + "; Estado=; Motivo=Parametros invalidos;");
                 return false;
             }
 
-            var pendientes = _informeDao.ListarPendientesFirmaDirdac() ?? new List<InspeccionInformeTecnico>();
-            return pendientes.Any(i => i != null && i.CodigoInforme == codigoInforme && i.FirmadoInspector && !i.FirmadoDirdac);
+            Trace.TraceInformation("[INFTEC_DIR][AUTH_IN] InformeId=" + codigoInforme + "; UsuarioId=" + codigoUsuario + ";");
+
+            var informe = _informeDao.ObtenerPorId(codigoInforme);
+            if (informe == null)
+            {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; Estado=; Motivo=Informe no existe;");
+                return false;
+            }
+
+            var estadoNormalizado = InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme);
+            var puedeRevisar = InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme);
+            Trace.TraceInformation("[INFTEC_DIR][AUTH_ESTADO] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + "; PuedeRevisar=" + puedeRevisar + ";");
+
+            if (!puedeRevisar)
+            {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + "; Motivo=Estado no permitido para revision institucional;");
+                return false;
+            }
+
+            if (!informe.FirmadoInspector)
+            {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + "; Motivo=Informe sin firma de inspector;");
+                return false;
+            }
+
+            if (informe.FirmadoDirdac)
+            {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + "; Motivo=Informe ya firmado por Direccion/Jefatura;");
+                return false;
+            }
+
+            if (informe.CodigoInspeccion <= 0)
+            {
+                Trace.TraceWarning("[INFTEC_DIR][AUTH_DENY] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + "; Motivo=Informe sin inspeccion valida;");
+                return false;
+            }
+
+            Trace.TraceInformation("[INFTEC_DIR][AUTH_OK] InformeId=" + codigoInforme + "; Estado=" + estadoNormalizado + ";");
+            return true;
         }
 
         public bool PuedeInspectorFirmarInforme(int codigoInspeccion, int codigoUsuario)

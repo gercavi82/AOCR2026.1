@@ -90,7 +90,7 @@ namespace CapaPresentacion.Controllers
                     fila.PendienteConfirmacionInspector = true;
                     fila.EstadoDocumentalCodigo = "PENDIENTE_CONFIRMACION_INSPECTOR";
                     fila.EstadoDocumentalNombre = "Pendiente confirmación del inspector";
-                    fila.EstadoDocumentalDetalle = "Revise la documentación y confirme el cierre documental antes de habilitar la LV/EAE.";
+                    fila.EstadoDocumentalDetalle = "Revise la documentación. Al aceptar todos los documentos requeridos, la LV/EAE se habilitará automáticamente.";
                 }
 
                 solicitudes.Add(fila);

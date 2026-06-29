@@ -358,8 +358,7 @@ namespace CapaPresentacion.Controllers
         private static bool InformeEstaEnRevisionInstitucionalDirdac(InspeccionInformeTecnico informe)
         {
             var estado = ObtenerEstadoInformeNormalizado(informe);
-            return string.Equals(estado, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, "PENDIENTE_REVISION_DIRDAC", StringComparison.OrdinalIgnoreCase);
+            return InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(estado);
         }
 
         private static bool InformeTieneDecisionInstitucionalFinal(InspeccionInformeTecnico informe)
@@ -378,9 +377,7 @@ namespace CapaPresentacion.Controllers
             return informe != null
                 && !InformeTieneDecisionInstitucionalFinal(informe)
                 && !InformeEstaDevueltoParaCorreccion(informe)
-                && (string.Equals(estado, "FIRMADO_INSPECTOR", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(estado, "FIRMADO_POR_INSPECTOR", StringComparison.OrdinalIgnoreCase)
-                    || InformeEstaEnRevisionInstitucionalDirdac(informe));
+                && InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(estado);
         }
 
         private static bool InformePuedeEditarsePorInspector(InspeccionInformeTecnico informe)
@@ -920,6 +917,8 @@ namespace CapaPresentacion.Controllers
                 ViewBag.DocumentosSolicitante = new List<DocumentoInspeccion>();
             }
 
+            CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
+            inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion) ?? inspeccion;
             ViewBag.EstadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
             try
             {
@@ -1178,6 +1177,8 @@ namespace CapaPresentacion.Controllers
 
             try
             {
+                _logger.LogInfo("[INFTEC_DIR][BANDEJA_IN] Usuario=" + ObtenerUsuarioActual() + "; Rol=" + ObtenerRolActual() + ";");
+
                 var pendientes = (_informeDAO.ListarPendientesFirmaDirdac() ?? new List<InspeccionInformeTecnico>())
                     .Select(informe =>
                     {
@@ -1210,6 +1211,16 @@ namespace CapaPresentacion.Controllers
                     codigosIncluidos.Add(solicitudEjecutiva.CodigoSolicitud);
                 }
 
+                foreach (var item in pendientes.Where(p => p != null))
+                {
+                    _logger.LogInfo("[INFTEC_DIR][BANDEJA_ROW] InformeId=" + item.CodigoInforme
+                        + "; SolicitudId=" + item.CodigoSolicitud
+                        + "; InspeccionId=" + item.CodigoInspeccion
+                        + "; Estado=" + (item.EstadoInforme ?? string.Empty)
+                        + "; UrlRevision=" + (item.UrlRevision ?? string.Empty)
+                        + ";");
+                }
+
                 return View("~/Views/InformeTecnico/PendientesDireccion.cshtml", pendientes);
             }
             catch (Exception ex)
@@ -1225,6 +1236,7 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         public ActionResult RevisionDireccion(int codigoInforme)
         {
+            _logger.LogInfo("[INFTEC_DIR][AUTH_IN] InformeId=" + codigoInforme + "; Usuario=" + ObtenerUsuarioActual() + "; Rol=" + ObtenerRolActual() + ";");
             if (codigoInforme <= 0)
             {
                 return new HttpStatusCodeResult(400, "Código de informe inválido.");
@@ -1235,6 +1247,17 @@ namespace CapaPresentacion.Controllers
             {
                 return HttpNotFound("Informe técnico no encontrado.");
             }
+
+            var estadoInformeRevision = InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme);
+            var puedeRevisarDireccion = InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme)
+                && informe.FirmadoInspector
+                && !informe.FirmadoDirdac;
+            _logger.LogInfo("[INFTEC_DIR][AUTH_ESTADO] InformeId=" + codigoInforme
+                + "; Estado=" + estadoInformeRevision
+                + "; PuedeRevisar=" + puedeRevisarDireccion
+                + "; FirmadoInspector=" + informe.FirmadoInspector
+                + "; FirmadoDireccion=" + informe.FirmadoDirdac
+                + ";");
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
             if (inspeccion == null)
@@ -1255,6 +1278,12 @@ namespace CapaPresentacion.Controllers
             var vm = ConstruirRevisionInformeTecnicoDireccionViewModel(inspeccion, solicitud, informe, historial);
 
             RegistrarAperturaRevisionInstitucionalSiCorresponde(inspeccion, informe, historial);
+
+            _logger.LogInfo("[INFTEC_DIR][REVISION_OPEN_OK] InformeId=" + codigoInforme
+                + "; SolicitudId=" + inspeccion.CodigoSolicitud
+                + "; InspeccionId=" + inspeccion.CodigoInspeccion
+                + "; Estado=" + estadoInformeRevision
+                + ";");
 
             return View("~/Views/InformeTecnico/RevisionDireccion.cshtml", vm);
         }
@@ -3343,16 +3372,38 @@ namespace CapaPresentacion.Controllers
             }
 
             var usuarioId = ObtenerCodigoUsuario();
-            var pdfFuente = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista);
-            var rutaPdfActualizada = GuardarOReemplazarListaVerificacionOperacionalEaePdfHistorico(lista, pdfFuente, usuarioId);
-            if (!string.IsNullOrWhiteSpace(rutaPdfActualizada))
+            byte[] pdfFuente;
+            string mensajePdfFuente;
+            if (!TryLeerPdfListaVerificacionOperacionalEaeFinalizada(lista, out pdfFuente, out mensajePdfFuente))
             {
-                lista.RutaPdf = rutaPdfActualizada;
+                _logger.LogError("[FIRMA_LV][PDF_ORIGEN_ERROR] InspeccionId=" + codigoInspeccion
+                    + ", ListaId=" + (lista != null ? lista.CodigoListaVerificacion : 0)
+                    + ", RutaPdf=" + (lista != null ? lista.RutaPdf : string.Empty)
+                    + ", Mensaje=" + (mensajePdfFuente ?? string.Empty));
+
+                if (esSolicitudAjax)
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(409, mensajePdfFuente);
+                }
+
+                TempData["Error"] = mensajePdfFuente;
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
             }
 
             var nombreFirmanteCertificado = !string.IsNullOrWhiteSpace(infoCertificado.NombreTitular)
                 ? infoCertificado.NombreTitular
                 : ObtenerUsuarioActual();
+
+            _logger.LogInfo("[FIRMA_LV][PDF_ORIGEN_OK] InspeccionId=" + codigoInspeccion
+                + ", ListaId=" + lista.CodigoListaVerificacion
+                + ", Version=" + lista.Version
+                + ", RutaPdf=" + (lista.RutaPdf ?? string.Empty)
+                + ", Bytes=" + pdfFuente.Length
+                + ", Paginas=" + ObtenerNumeroPaginasPdf(pdfFuente));
+
+            _logger.LogInfo("[FIRMA_LV][SIGN_IN] InspeccionId=" + codigoInspeccion
+                + ", ListaId=" + lista.CodigoListaVerificacion
+                + ", Firmante=" + (nombreFirmanteCertificado ?? string.Empty));
 
             var resultadoFirma = _firmaDigitalService.FirmarPdf(
                 pdfFuente,
@@ -3367,6 +3418,10 @@ namespace CapaPresentacion.Controllers
 
             if (!resultadoFirma.Exitoso)
             {
+                _logger.LogError("[FIRMA_LV][ERROR] InspeccionId=" + codigoInspeccion
+                    + ", ListaId=" + lista.CodigoListaVerificacion
+                    + ", Mensaje=" + (resultadoFirma.Mensaje ?? string.Empty));
+
                 if (esSolicitudAjax)
                 {
                     return DevolverResultadoListaVerificacionOperacionalEae(400, resultadoFirma.Mensaje);
@@ -3377,6 +3432,30 @@ namespace CapaPresentacion.Controllers
             }
 
             var rutaFirmada = GuardarListaVerificacionOperacionalEaeFirmadaPdf(codigoInspeccion, lista.Version, resultadoFirma.PdfFirmado);
+            var paginasFirmadas = ObtenerNumeroPaginasPdfArchivo(rutaFirmada);
+            if (string.IsNullOrWhiteSpace(rutaFirmada) || paginasFirmadas <= 0)
+            {
+                var mensajeFirmaGuardada = "El PDF firmado de la LV/EAE no pudo guardarse o no es un PDF valido.";
+                _logger.LogError("[FIRMA_LV][PERSIST_ERROR] InspeccionId=" + codigoInspeccion
+                    + ", ListaId=" + lista.CodigoListaVerificacion
+                    + ", RutaFirmada=" + (rutaFirmada ?? string.Empty)
+                    + ", Paginas=" + paginasFirmadas);
+
+                if (esSolicitudAjax)
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(500, mensajeFirmaGuardada);
+                }
+
+                TempData["Error"] = mensajeFirmaGuardada;
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            _logger.LogInfo("[FIRMA_LV][SIGN_OK] InspeccionId=" + codigoInspeccion
+                + ", ListaId=" + lista.CodigoListaVerificacion
+                + ", RutaFirmada=" + rutaFirmada
+                + ", Hash=" + (resultadoFirma.HashSha256 ?? string.Empty)
+                + ", Paginas=" + paginasFirmadas);
+
             _listaVerificacionOperacionalEaeDAO.RegistrarFirmaTecnico(
                 lista.CodigoListaVerificacion,
                 rutaFirmada,
@@ -3385,6 +3464,11 @@ namespace CapaPresentacion.Controllers
                 nombreFirmanteCertificado,
                 "LV_FIRMADA",
                 usuarioId);
+
+            _logger.LogInfo("[FIRMA_LV][ESTADO_OK] InspeccionId=" + codigoInspeccion
+                + ", ListaId=" + lista.CodigoListaVerificacion
+                + ", Estado=LV_FIRMADA"
+                + ", RutaDocumentoFirmado=" + rutaFirmada);
 
             TempData["Success"] = "Lista de verificación operacional EAE firmada correctamente. Ahora puede trabajar el informe técnico.";
 
@@ -3779,10 +3863,7 @@ namespace CapaPresentacion.Controllers
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
 
-            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "PENDIENTE_REVISION_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "FIRMADO_INSPECTOR", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "FIRMADO_POR_INSPECTOR", StringComparison.OrdinalIgnoreCase))
+            if (!InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -3837,12 +3918,19 @@ namespace CapaPresentacion.Controllers
                 + ", InformeId=" + informe.CodigoInforme
                 + ", Usuario=" + usuarioActual);
 
+            _logger.LogInfo("[INFTEC_DIR][APROBAR_OK] InformeId=" + informe.CodigoInforme
+                + "; InspeccionId=" + id
+                + "; SolicitudId=" + (solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud)
+                + "; EstadoNuevo=APROBADO_DIRECCION"
+                + "; Usuario=" + usuarioActual
+                + ";");
+
             TempData[resultadoSincronizacionAocr.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
                 resultadoSincronizacionAocr.Mensaje,
                 resultadoSincronizacionAocr.Exitoso
                     ? "DIRDAC / Dirección - Jefatura aprobó el informe y la AOCR quedó habilitada para generación."
                     : "DIRDAC / Dirección - Jefatura aprobó el informe, pero no fue posible habilitar la AOCR automáticamente.");
-            return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
+            return RedirectToAction("PendientesDireccion");
         }
 
         [HttpPost]
@@ -3925,10 +4013,7 @@ namespace CapaPresentacion.Controllers
                 return respuestaPermiso;
             }
 
-            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "PENDIENTE_REVISION_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "FIRMADO_INSPECTOR", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, "FIRMADO_POR_INSPECTOR", StringComparison.OrdinalIgnoreCase))
+            if (!InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -4441,7 +4526,59 @@ namespace CapaPresentacion.Controllers
 
         private bool InspectorTieneRevisionDocumentalConfirmada(Inspeccion inspeccion)
         {
-            return RevisionDocumentalService.InspectorConfirmoCierreDocumental(inspeccion);
+            if (RevisionDocumentalService.InspectorConfirmoCierreDocumental(inspeccion))
+            {
+                return true;
+            }
+
+            var cierre = CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
+            return cierre != null && cierre.HabilitaLv;
+        }
+
+        private ResultadoCierreDocumentalDto CerrarRevisionDocumentalAutomaticamenteSiCorresponde(Inspeccion inspeccion)
+        {
+            if (inspeccion == null || inspeccion.CodigoSolicitud <= 0)
+            {
+                return null;
+            }
+
+            if (!EsRolInspector() && !EsAdmin())
+            {
+                return null;
+            }
+
+            int inspectorId;
+            try
+            {
+                inspectorId = ObtenerCodigoUsuario();
+            }
+            catch
+            {
+                inspectorId = 0;
+            }
+
+            _logger.LogInfo(
+                "[REV_DOC][CIERRE_AUTO_IN] SolicitudId=" + inspeccion.CodigoSolicitud +
+                "; InspectorId=" + inspectorId + ";");
+
+            var resultado = _solicitudAocrInfraBL.CerrarRevisionDocumentalAutomaticamenteSiCorresponde(
+                inspeccion.CodigoSolicitud,
+                inspectorId);
+
+            if (resultado != null && resultado.HabilitaLv)
+            {
+                _logger.LogInfo(
+                    "[REV_DOC][CIERRE_AUTO_OK] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; EstadoNuevo=" + (resultado.EstadoNuevo ?? string.Empty) + ";");
+            }
+            else
+            {
+                _logger.LogInfo(
+                    "[REV_DOC][CIERRE_AUTO_SKIP] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; Motivo=" + (resultado != null ? resultado.MotivoSkip : "No aplica") + ";");
+            }
+
+            return resultado;
         }
 
         private bool PuedeInspectorAccederDetalleDocumental(Inspeccion inspeccion, SolicitudAOCR solicitudDetalle, out string mensaje)
@@ -5696,7 +5833,57 @@ namespace CapaPresentacion.Controllers
 
         private bool ValidarPrecondicionListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, out ListaVerificacionOperacionalEae lista, out string mensaje)
         {
-            return ValidarPrecondicionInformeTecnico(inspeccion, solicitud, true, out lista, out mensaje);
+            lista = null;
+            mensaje = string.Empty;
+
+            var inspectorId = 0;
+            try
+            {
+                inspectorId = ObtenerCodigoUsuario();
+            }
+            catch
+            {
+                inspectorId = 0;
+            }
+
+            _logger.LogInfo(
+                "[LV_EAE][OPEN_IN] SolicitudId=" + (inspeccion != null ? inspeccion.CodigoSolicitud : 0) +
+                "; InspectorId=" + inspectorId + ";");
+
+            if (inspeccion == null)
+            {
+                mensaje = "No existe inspección asociada para abrir la LV/EAE.";
+                _logger.LogWarning("[LV_EAE][OPEN_BLOCKED] SolicitudId=0; Motivo=" + mensaje + ";");
+                return false;
+            }
+
+            var cierre = CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
+            var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
+            if (estadoRevisionDocumental.TotalDocumentosVigentes > 0 && !estadoRevisionDocumental.DocumentacionAprobada)
+            {
+                mensaje = string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
+                    ? ObtenerMensajeBloqueoRevisionDocumentalInspector()
+                    : estadoRevisionDocumental.MensajeBloqueoDocumental;
+                _logger.LogWarning(
+                    "[LV_EAE][OPEN_BLOCKED] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; Motivo=" + mensaje + ";");
+                return false;
+            }
+
+            if (!UsaFlujoListaVerificacionOperacionalEae(solicitud))
+            {
+                _logger.LogInfo(
+                    "[LV_EAE][OPEN_OK] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; Habilitada=True;");
+                return true;
+            }
+
+            lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(inspeccion.CodigoInspeccion);
+            HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
+            _logger.LogInfo(
+                "[LV_EAE][OPEN_OK] SolicitudId=" + inspeccion.CodigoSolicitud +
+                "; Habilitada=True;");
+            return true;
         }
 
         private bool ValidarPrecondicionInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud, bool requiereListaFirmada, out ListaVerificacionOperacionalEae lista, out string mensaje)
@@ -5706,6 +5893,7 @@ namespace CapaPresentacion.Controllers
 
             if (inspeccion != null)
             {
+                CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
                 var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
                 if (estadoRevisionDocumental.TotalDocumentosVigentes > 0 && !estadoRevisionDocumental.DocumentacionAprobada)
                 {
@@ -6307,6 +6495,67 @@ namespace CapaPresentacion.Controllers
             catch
             {
                 return 0;
+            }
+        }
+
+        private bool TryLeerPdfListaVerificacionOperacionalEaeFinalizada(ListaVerificacionOperacionalEae lista, out byte[] pdfBytes, out string mensaje)
+        {
+            pdfBytes = null;
+            mensaje = null;
+
+            if (lista == null || lista.CodigoListaVerificacion <= 0)
+            {
+                mensaje = "No existe una lista de verificacion operacional EAE valida para firmar.";
+                return false;
+            }
+
+            var rutaRelativa = NormalizarRutaRelativaInforme(lista.RutaPdf);
+            if (string.IsNullOrWhiteSpace(rutaRelativa))
+            {
+                mensaje = "Debe finalizar la LV/EAE para generar el PDF antes de firmar.";
+                return false;
+            }
+
+            var rutaFisica = ResolverRutaAbsolutaInforme(rutaRelativa);
+            var baseDir = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !EsRutaDentroDeBase(rutaFisica, baseDir))
+            {
+                mensaje = "La ruta del PDF de la LV/EAE no pertenece al repositorio seguro de listas de verificacion.";
+                return false;
+            }
+
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                mensaje = "El PDF finalizado de la LV/EAE no existe en el servidor. Genere/finalice la lista antes de firmar.";
+                return false;
+            }
+
+            var fileInfo = new FileInfo(rutaFisica);
+            if (fileInfo.Length <= 0)
+            {
+                mensaje = "El PDF finalizado de la LV/EAE esta vacio o no se encuentra disponible.";
+                return false;
+            }
+
+            try
+            {
+                pdfBytes = System.IO.File.ReadAllBytes(rutaFisica);
+                var paginas = ObtenerNumeroPaginasPdf(pdfBytes);
+                if (paginas <= 0)
+                {
+                    pdfBytes = null;
+                    mensaje = "El archivo finalizado de la LV/EAE no es un PDF valido.";
+                    return false;
+                }
+
+                lista.RutaPdf = rutaRelativa;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                pdfBytes = null;
+                mensaje = "No se pudo leer el PDF finalizado de la LV/EAE: " + ex.Message;
+                return false;
             }
         }
 

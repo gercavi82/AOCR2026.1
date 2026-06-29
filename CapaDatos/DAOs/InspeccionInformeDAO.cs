@@ -200,7 +200,18 @@ namespace CapaDatos.DAOs
                       FROM ultimos
                       WHERE finalizado = TRUE
                      AND COALESCE(firmado_dirdac, FALSE) = FALSE
-                            AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') IN ('ENVIADO_A_DIRDAC', 'PENDIENTE_REVISION_DIRDAC', 'FIRMADO_INSPECTOR', 'FIRMADO_POR_INSPECTOR')
+                            AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') IN (
+                                'ENVIADO_A_DIRDAC',
+                                'ENVIADO_A_DIRECCION',
+                                'PENDIENTE_REVISION_DIRDAC',
+                                'PENDIENTE_REVISION_DIRECCION',
+                                'PENDIENTE_REVISION_INSTITUCIONAL',
+                                'PENDIENTE_FIRMA_DIRECCION',
+                                'PENDIENTE_FIRMA_INSTITUCIONAL',
+                                'FIRMADO_INSPECTOR',
+                                'FIRMADO_POR_INSPECTOR',
+                                'INFORME_TECNICO_FIRMADO_INSPECTOR'
+                            )
                       ORDER BY COALESCE(fecha_envio_dirdac, fecha_finalizacion, updated_at, created_at) DESC,
                          codigo_inspeccion DESC;";
 

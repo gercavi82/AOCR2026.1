@@ -1197,17 +1197,6 @@
                     @Html.Partial("_DocumentoWorkflowActions", vm.AccesosDocumentales)
                 </div>
 
-                @if (vm.PuedeConfirmarRevisionDocumental)
-                {
-                    using (Html.BeginForm("ConfirmarRevisionDocumentalInspector", "Inspeccion", FormMethod.Post, new { @class = "mb-0" }))
-                    {
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-check-double me-1"></i> Confirmar cierre documental
-                        </button>
-                    }
-                }
             </div>
 
             <div class="alert alert-light alert-inline mb-3">

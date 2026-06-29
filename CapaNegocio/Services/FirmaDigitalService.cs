@@ -88,6 +88,7 @@ namespace CapaNegocio.Services
                     return ResultadoFirmaDigital.Error("El certificado digital no está vigente o se encuentra expirado.");
                 }
 
+                RegistrarDiagnosticoITextSharp("SIGN_IN", rolFirmante);
                 EnsureITextVersionInitialized();
 
                 var fechaFirma = DateTime.Now;
@@ -124,6 +125,7 @@ namespace CapaNegocio.Services
                         MakeSignature.SignDetached(appearance, signature, cadena, null, null, null, 0, CryptoStandard.CMS);
 
                         var pdfFirmado = output.ToArray();
+                        RegistrarDiagnosticoITextSharp("SIGN_OK", rolFirmante);
                         return ResultadoFirmaDigital.Ok(pdfFirmado, CalcularHash(pdfFirmado), certificado.SubjectDN != null ? certificado.SubjectDN.ToString() : null);
                     }
                     finally
@@ -143,7 +145,8 @@ namespace CapaNegocio.Services
             }
             catch (Exception ex)
             {
-                return ResultadoFirmaDigital.Error("No se pudo aplicar la firma digital al PDF: " + ex.Message);
+                System.Diagnostics.Trace.TraceError("[FirmaDigital][ERROR] " + ObtenerDetalleExcepcion(ex));
+                return ResultadoFirmaDigital.Error("No se pudo aplicar la firma digital al PDF: " + ObtenerDetalleExcepcion(ex));
             }
         }
 
@@ -309,20 +312,72 @@ namespace CapaNegocio.Services
 
         private static void EnsureITextVersionInitialized()
         {
-            var versionType = typeof(iTextSharp.text.Version);
-            var versionField = versionType.GetField("version", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
-            if (versionField == null || versionField.GetValue(null) != null)
+            try
             {
-                return;
+                var assembly = typeof(PdfReader).Assembly;
+                var version = assembly.GetName().Version;
+                var versionTexto = version != null ? version.ToString() : string.Empty;
+                var location = assembly.Location ?? string.Empty;
+
+                if (!versionTexto.StartsWith("5.5.13.5", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Version iTextSharp no compatible para firma digital AOCR. Se esperaba 5.5.13.5 y se cargo " + versionTexto + " desde " + location + ".");
+                }
+
+                var versionType = typeof(iTextSharp.text.Version);
+                var versionField = versionType.GetField("version", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                if (versionField != null && versionField.GetValue(null) == null)
+                {
+                    var constructor = versionType.GetConstructor(Type.EmptyTypes);
+                    if (constructor != null)
+                    {
+                        versionField.SetValue(null, constructor.Invoke(null));
+                    }
+                }
+
+                iTextSharp.text.Version.GetInstance();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("No se pudo inicializar iTextSharp 5.5.13.5 para firma digital. Revise que no exista itextsharp.dll antiguo en bin/Temporary ASP.NET Files. Detalle: " + ObtenerDetalleExcepcion(ex), ex);
+            }
+        }
+
+        private static void RegistrarDiagnosticoITextSharp(string etapa, string rolFirmante)
+        {
+            try
+            {
+                var assembly = typeof(PdfReader).Assembly;
+                var version = assembly.GetName().Version;
+                System.Diagnostics.Trace.TraceInformation(string.Format(
+                    "[FirmaDigital][{0}] Rol={1}, iTextSharpVersion={2}, iTextSharpLocation={3}",
+                    etapa,
+                    rolFirmante ?? string.Empty,
+                    version != null ? version.ToString() : string.Empty,
+                    assembly.Location ?? string.Empty));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("[FirmaDigital][" + etapa + "] No se pudo registrar diagnostico iTextSharp. " + ObtenerDetalleExcepcion(ex));
+            }
+        }
+
+        private static string ObtenerDetalleExcepcion(Exception ex)
+        {
+            if (ex == null)
+            {
+                return string.Empty;
             }
 
-            var constructor = versionType.GetConstructor(Type.EmptyTypes);
-            if (constructor == null)
+            var detalles = ex.GetType().FullName + ": " + ex.Message;
+            var inner = ex.InnerException;
+            while (inner != null)
             {
-                return;
+                detalles += " | Inner: " + inner.GetType().FullName + ": " + inner.Message;
+                inner = inner.InnerException;
             }
 
-            versionField.SetValue(null, constructor.Invoke(null));
+            return detalles;
         }
 
         private static byte[] EstamparBloqueFirmaVisual(byte[] pdfBytes, string contenidoQr, string nombreFirmante, string rolFirmante, DateTime fechaFirma, PosicionFirmaVisualPdf posicionFirmaVisual, string motivoFirma, string ubicacionFirma, string sujetoCertificado)

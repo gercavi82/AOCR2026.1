@@ -512,6 +512,10 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public JsonResult AceptarDocumentoSolicitud(int idDocumento, int codigoSolicitud, int? codigoInspeccion)
         {
+            Trace.TraceInformation(
+                "[REV_DOC][ACEPTAR_DOCUMENTO_IN] SolicitudId=" + codigoSolicitud +
+                "; DocumentoId=" + idDocumento +
+                "; InspectorId=" + (Session["IdUsuario"] ?? Session["UserId"] ?? string.Empty) + ";");
             return ProcesarRevisionDocumentoSolicitud(idDocumento, codigoSolicitud, codigoInspeccion, "ACEPTADO", null);
         }
 
@@ -890,6 +894,14 @@ namespace CapaPresentacion.Controllers
                     && totalDocumentos > 0
                     && pendientesDocumentos == 0
                     && rechazadosDocumentos == 0;
+                ResultadoCierreDocumentalDto cierreAutomatico = null;
+                if (autoAbrirLvEae)
+                {
+                    cierreAutomatico = _solicitudAocrInfraBL.CerrarRevisionDocumentalAutomaticamenteSiCorresponde(
+                        codigoSolicitud,
+                        usuarioId);
+                    autoAbrirLvEae = cierreAutomatico != null && cierreAutomatico.HabilitaLv;
+                }
                 var redirectUrl = autoAbrirLvEae
                     ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion, lvAutoFlow = "open" })
                     : string.Empty;
@@ -912,7 +924,10 @@ namespace CapaPresentacion.Controllers
                     documento = ConstruirDocumentoResponse(documentoActualizado, true, puedeReabrir),
                     contadores = contadores,
                     redirectUrl = redirectUrl,
-                    autoAbrirLvEae = autoAbrirLvEae
+                    autoAbrirLvEae = autoAbrirLvEae,
+                    revisionDocumentalCompleta = autoAbrirLvEae,
+                    cierreDocumentalAutomatico = cierreAutomatico != null && (cierreAutomatico.Cerrada || cierreAutomatico.YaCerrada),
+                    habilitaLv = autoAbrirLvEae
                 });
             }
             catch (Exception ex)
