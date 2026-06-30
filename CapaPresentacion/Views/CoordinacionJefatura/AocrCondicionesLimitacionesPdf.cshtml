@@ -1,182 +1,153 @@
 @inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
-@using System.Web.Mvc
-@using System.Web.Mvc.Html
+@using System
 @using System.Globalization
 @using System.Linq
 
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
-    var solicitud = Model != null ? Model.Solicitud : null;
-    var informe = Model != null ? Model.Informe : null;
-    var certificado = Model != null ? Model.Certificado : null;
-    var aeronaves = Model != null ? Model.AeronavesCondiciones ?? new System.Collections.Generic.List<CapaPresentacion.Models.AocrCondicionAeronaveFilaViewModel>() : new System.Collections.Generic.List<CapaPresentacion.Models.AocrCondicionAeronaveFilaViewModel>();
     var cultura = new CultureInfo("es-EC");
-
-    Func<string, string> normalizarTextoVisible = CapaPresentacion.Helpers.VisibleTextHelper.Normalize;
-    Func<string, string> textoCampo = value => !string.IsNullOrWhiteSpace(normalizarTextoVisible(value)) ? normalizarTextoVisible(value) : "No aplica";
-    Func<string, string> claseCampo = value => !string.IsNullOrWhiteSpace(value) ? "field-value" : "field-value pending";
-    Func<DateTime?, string> fechaCampo = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "No aplica";
-
-    var representanteTecnico = Model != null ? Model.RepresentanteTecnico : null;
-    var operacionAeropuertos = Model != null ? Model.CondicionBaseOperacion : null;
-    var restricciones = Model != null ? Model.RestriccionesCondiciones : null;
-    var firmadoPor = Model != null ? Model.FirmanteFinal : null;
-    var cargoFirmante = Model != null ? Model.CargoFirmante : null;
+    var aeronaves = Model != null && Model.AeronavesCondiciones != null
+        ? Model.AeronavesCondiciones
+        : new System.Collections.Generic.List<CapaPresentacion.Models.AocrCondicionAeronaveFilaViewModel>();
+    Func<string, string> clean = CapaPresentacion.Helpers.VisibleTextHelper.Normalize;
+    Func<string, string> val = value => !string.IsNullOrWhiteSpace(clean(value)) ? clean(value) : "---";
+    Func<DateTime?, string> fecha = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "---";
+    var logoFisico = Server.MapPath("~/Content/imganes/logo1.png");
+    var logo = System.IO.File.Exists(logoFisico) ? new Uri(logoFisico).AbsoluteUri : Url.Content("~/Content/imganes/logo1.png");
+    var filas = aeronaves.Take(5).ToList();
 }
 
 @section PdfHead {
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; }
-        .sheet { border: 2px solid #222; padding: 18px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #222; padding: 6px; vertical-align: top; }
-        .title { text-align: center; font-weight: bold; font-size: 13pt; }
-        .subtitle { text-align: center; font-size: 10pt; }
-        .small { font-size: 8pt; color: #444; }
-        .section-title { font-weight: bold; font-size: 10.5pt; background: #e9eef5; padding: 7px 8px; border: 1px solid #222; margin-top: 14px; }
-        .field-label { display: block; font-weight: bold; font-size: 8.5pt; margin-bottom: 4px; text-transform: uppercase; }
-        .field-value { display: block; min-height: 20px; padding: 4px 6px; border: 1px dashed #666; background: #fbfbfb; }
-        .field-value.pending { color: #7a4d00; font-style: italic; background: #fff8e8; }
-        ul { margin: 10px 0 0 20px; }
-        .signature-line { height: 34px; border-bottom: 1px solid #222; margin-bottom: 6px; }
-        .signature-role { font-weight: bold; text-transform: uppercase; font-size: 8.5pt; }
-        table { page-break-inside: auto; }
-        .signature-slot { height: 120px; min-height: 120px; border: 1px dashed #999; background: #fff; margin-top: 6px; overflow: hidden; position: relative; }
-        .firma-anchor { font-size: 1px; color: #fff; line-height: 1px; height: 1px; overflow: hidden; display: block; }
-        .signature-table-safe { page-break-inside: avoid; break-inside: avoid; }
+        body { font-family: Arial, Helvetica, sans-serif; color:#000; font-size: 9pt; }
+        .aocr-page { width: 188mm; min-height: 268mm; margin: 0 auto; position: relative; box-sizing: border-box; padding-top: 6mm; padding-bottom: 5mm; overflow: hidden; }
+        .topline { display:flex; justify-content:space-between; border-bottom:1px solid #111; padding:0 4mm .6mm; font-size:8.4pt; }
+        .official-box { margin: 25mm 2mm 0; border:2px solid #000; page-break-inside:avoid; }
+        .row { display:table; width:100%; table-layout:fixed; border-collapse:collapse; }
+        .cell { display:table-cell; border:1px solid #000; vertical-align:top; box-sizing:border-box; padding:1.1mm; }
+        .title { text-align:center; font-weight:700; font-size:11.5pt; line-height:1.0; padding:1.7mm; }
+        .subtitle { font-weight:400; }
+        .center { text-align:center; }
+        .bold { font-weight:700; }
+        .small { font-size:6.2pt; line-height:1.0; }
+        .xl { font-size:10.5pt; line-height:1.02; }
+        .head-row { height:29mm; }
+        .brand { width:68mm; height:27mm; margin:.5mm auto 0; text-align:center; overflow:hidden; }
+        .brand img { height:26mm !important; width:auto !important; max-width:98% !important; max-height:98% !important; display:inline-block; vertical-align:middle; }
+        .middle-head { font-weight:700; font-size:10pt; line-height:1.0; }
+        .main-area { height:124mm; padding:9mm 4mm 0; }
+        table.cond { width:100%; border-collapse:collapse; table-layout:fixed; }
+        table.cond td, table.cond th { border:1px solid #333; padding:1.1mm 2mm; vertical-align:middle; }
+        table.cond th { font-weight:400; font-size:10.5pt; text-align:left; }
+        table.cond .gray { background:#e6e6e6; height:4.5mm; }
+        table.cond .center { text-align:center; }
+        .legend { font-size:10.2pt; line-height:1.22; margin:8mm 0 0 8mm; }
+        .signature-row { height:31mm; }
+        .signature-left { font-size:10pt; line-height:1.05; }
+        .signature-right { font-size:9.8pt; line-height:1.08; }
+        .signature-space { height:17mm; position:relative; overflow:hidden; }
+        .firma-anchor { display:block; color:#fff; font-size:1px; line-height:1px; height:1px; overflow:hidden; }
+        .footerline { position:absolute; left:4mm; right:4mm; bottom:2mm; border-top:1px solid #111; padding-top:.6mm; display:flex; justify-content:space-between; font-family:"Times New Roman", serif; font-style:italic; font-weight:700; font-size:8pt; }
     </style>
 }
 
-<div class="sheet">
-    <table>
-        <tr>
-            <td colspan="2" class="title">CONDICIONES Y LIMITACIONES</td>
-        </tr>
-        <tr>
-            <td colspan="2" class="subtitle">CONDITIONS AND LIMITATIONS</td>
-        </tr>
-        <tr>
-            <td style="width:50%;"><strong>AOCR #:</strong> @(Model != null ? Model.NumeroAocr : "-")</td>
-            <td style="width:50%;"><strong>Fecha documento:</strong> @(Model != null ? Model.FechaEmisionDocumento.ToString("dd/MM/yyyy", cultura) : "-")</td>
-        </tr>
-    </table>
+<div class="aocr-page">
+    <div class="topline"><span>RDAC 129</span><span>Direccion General de Aviacion Civil</span></div>
 
-    <div class="section-title">I. Datos operativos a validar</div>
+    <div class="official-box">
+        <div class="title">
+            CONDICIONES Y LIMITACIONES<br />
+            <span class="subtitle">CONDITIONS AND LIMITATIONS</span>
+        </div>
 
-    <table style="margin-top:14px;">
-        <tr>
-            <th style="width:35%;">Representante Tecnico</th>
-            <th>Operacion / Aeropuertos autorizados</th>
-        </tr>
-        <tr>
-            <td><span class="@claseCampo(representanteTecnico)">@textoCampo(representanteTecnico)</span></td>
-            <td><span class="@claseCampo(operacionAeropuertos)">@textoCampo(operacionAeropuertos)</span></td>
-        </tr>
-        <tr>
-            <td>
-                <span class="field-label">Vigencia / renovacion</span>
-                <span class="field-value @(Model != null && Model.FechaVencimiento.HasValue ? string.Empty : "pending")">@fechaCampo(Model != null ? Model.FechaVencimiento : null)</span>
-            </td>
-            <td>
-                <span class="field-label">Condicion base de operacion</span>
-                <span class="@claseCampo(operacionAeropuertos)">@textoCampo(operacionAeropuertos)</span>
-            </td>
-        </tr>
-    </table>
+        <div class="row head-row">
+            <div class="cell center" style="width:39%;">
+                <div class="brand"><img src="@logo" /></div>
+            </div>
+            <div class="cell center" style="width:36%;">
+                <div class="middle-head">REPUBLICA DEL ECUADOR</div>
+                <div class="xl">REPUBLIC OF ECUADOR</div>
+                <div style="border-top:2px solid #000; margin:1mm -1.1mm 0; padding-top:1mm;" class="middle-head">DIRECCION GENERAL<br />DE AVIACION CIVIL</div>
+                <div class="xl" style="margin-top:4mm;">CIVIL AVIATION<br />GENERAL DIRECTORATE</div>
+            </div>
+            <div class="cell" style="width:25%;">
+                <div class="bold xl" style="margin-top:4mm;">AOCR #: @val(Model != null ? Model.NumeroAocr : null)</div>
+                <div class="bold xl" style="margin-top:7mm;">Fecha de Vencimiento:</div>
+                <div class="small">/ Expiry date</div>
+                <div>@fecha(Model != null ? Model.FechaVencimiento : null)</div>
+            </div>
+        </div>
 
-    <div class="section-title">II. Flota y datos tecnicos</div>
-
-    <table style="margin-top:14px;">
-        <thead>
-            <tr>
-                <th>Modelo y tipo de aeronave</th>
-                <th>Matricula</th>
-                <th>Serie</th>
-                <th>UIO</th>
-                <th>GYE</th>
-                <th>MEC</th>
-                <th>LTX</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (aeronaves.Any())
-            {
-                foreach (var aeronave in aeronaves)
+        <div class="main-area">
+            <table class="cond">
+                <tr>
+                    <th style="width:26%;">Representante Tecnico</th>
+                    <td colspan="4">@val(Model != null ? Model.RepresentanteTecnico : null)</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td colspan="4" class="gray"></td>
+                </tr>
+                <tr>
+                    <th rowspan="2">Modelo y tipo de<br />Aeronaves autorizadas</th>
+                    <td colspan="4" class="center xl">Aeropuertos Autorizados / Tipos de Operacion</td>
+                </tr>
+                <tr>
+                    <td class="center">UIO</td>
+                    <td class="center">GYE</td>
+                    <td class="center">MEC</td>
+                    <td class="center">LTX</td>
+                </tr>
+                @if (filas.Any())
+                {
+                    foreach (var fila in filas)
+                    {
+                        <tr>
+                            <td>@val(fila.ModeloTipo)</td>
+                            <td class="center">@val(fila.Uio)</td>
+                            <td class="center">@val(fila.Gye)</td>
+                            <td class="center">@val(fila.Mec)</td>
+                            <td class="center">@val(fila.Ltx)</td>
+                        </tr>
+                    }
+                }
+                @for (var i = filas.Count; i < 5; i++)
                 {
                     <tr>
-                        <td>@(aeronave.ModeloTipo ?? "-")</td>
-                        <td>@(aeronave.Matricula ?? "-")</td>
-                        <td>@(aeronave.Serie ?? "-")</td>
-                        <td>@(aeronave.Uio ?? "-")</td>
-                        <td>@(aeronave.Gye ?? "-")</td>
-                        <td>@(aeronave.Mec ?? "-")</td>
-                        <td>@(aeronave.Ltx ?? "-")</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
                     </tr>
                 }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="7">No existen aeronaves registradas para esta solicitud.</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+            </table>
 
-    <div class="section-title">III. Condiciones y restricciones</div>
+            <ul class="legend">
+                <li>R = Regular</li>
+                <li>NR = No regular</li>
+                <li>RC = Reabastecimiento combustible</li>
+                <li>ET = Escala tecnica</li>
+                <li>A = Alterno</li>
+            </ul>
+        </div>
 
-    <div style="margin-top:18px;">
-        <strong>Condiciones institucionales:</strong>
-        <ul>
-            <li>El AOCR solo puede continuar a envio al RT cuando la firma del informe tecnico se encuentre completa.</li>
-            <li>Las operaciones autorizadas quedan sujetas a las especificaciones operacionales y a la revision institucional vigente.</li>
-            <li>Cualquier cambio material en aeronaves, rutas o contacto del operador debe registrarse previamente en el expediente AOCR.</li>
-            <li>El incumplimiento de estas condiciones puede suspender la continuidad del tramite o requerir una nueva revision tecnica.</li>
-        </ul>
-    </div>
-
-    <table style="margin-top:14px;">
-        <tr>
-            <td>
-                <span class="field-label">Restricciones / observaciones especificas</span>
-                <span class="@claseCampo(restricciones)">@textoCampo(restricciones)</span>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <span class="field-label">Condiciones adicionales para completar</span>
-                <span class="@(string.IsNullOrWhiteSpace(Model != null ? Model.CondicionesAdicionales : null) ? "field-value pending" : "field-value")">@textoCampo(Model != null ? Model.CondicionesAdicionales : null)</span>
-            </td>
-        </tr>
-    </table>
-
-    <div class="section-title">IV. Firmas y conformidad</div>
-
-    <table class="signature-table-safe" style="margin-top:24px;">
-        <tr>
-            <td style="width:33%;">
-                <div class="signature-line"></div>
-                <div class="signature-role">Preparado por</div>
-                <div class="@claseCampo(Model != null ? Model.ElaboradoPor : null)">@textoCampo(Model != null ? Model.ElaboradoPor : null)</div>
-                <div class="small">Coordinacion / Jefatura Tecnica</div>
-            </td>
-            <td style="width:33%;">
-                <div class="signature-line"></div>
-                <div class="signature-role">Revisado por</div>
-                <div class="@claseCampo(Model != null ? Model.RevisadoPor : null)">@textoCampo(Model != null ? Model.RevisadoPor : null)</div>
-                <div class="small">Fecha revision: @fechaCampo(Model != null ? Model.FechaRenovacion : null)</div>
-            </td>
-            <td style="width:34%;" data-firma-rol="AOCR_FIRMANTE">
-                <div class="signature-role">FIRMA DE AUTORIZACION AOCR</div>
-                <div class="small">Firma digital autorizada.</div>
-                <div class="signature-slot">
+        <div class="row signature-row">
+            <div class="cell signature-left" style="width:39%;">
+                <div class="bold">Fecha de emision / renovacion /<br />modificacion: @fecha(Model != null ? (DateTime?)Model.FechaEmisionDocumento : null)</div>
+                <div class="small">/ Date of issue / renovation / modification</div>
+            </div>
+            <div class="cell signature-right" style="width:61%;">
+                <div>Nombre y firma: @val(Model != null ? Model.FirmanteFinal : null)</div>
+                <div class="small">/ Name and signature</div>
+                <div class="signature-space">
                     <span class="firma-anchor">ANCLA_FIRMA_AUTORIZACION_AOCR</span>
                 </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2"><span class="field-label">Constancia de revision</span><span class="@(string.IsNullOrWhiteSpace(Model != null ? Model.ObservacionesValidacionFinal : null) ? "field-value pending" : "field-value")">@textoCampo(Model != null ? Model.ObservacionesValidacionFinal : null)</span></td>
-            <td><span class="field-label">Validacion de firma</span><span class="field-value pending">La firma digital se inserta automaticamente en el recuadro al firmar.</span></td>
-        </tr>
-    </table>
+                <div class="xl">Titulo: <span class="bold">Director de Certificacion Aeronautica y Vigilancia Continua.</span></div>
+                <div class="small">/ Title: <span class="bold">Director General of Civil Aviation</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footerline"><span>Enmienda No.: 1</span><span>10</span><span>Actualizada: xxx</span></div>
 </div>

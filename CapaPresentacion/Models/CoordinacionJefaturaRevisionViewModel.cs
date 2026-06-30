@@ -280,12 +280,41 @@ namespace CapaPresentacion.Models
         public string UrlFirmar { get; set; }
         public string UrlVolverBandeja { get; set; }
         public string UrlCompletarDatos { get; set; }
+        public List<FirmaAocrDocumentoItemViewModel> Documentos { get; set; } = new List<FirmaAocrDocumentoItemViewModel>();
+        public bool AmbosDocumentosFirmados { get; set; }
+    }
+
+    public class FirmaAocrDocumentoItemViewModel
+    {
+        public string TipoDocumento { get; set; }
+        public string Titulo { get; set; }
+        public string Descripcion { get; set; }
+        public string Estado { get; set; }
+        public string NombreArchivoPdf { get; set; }
+        public string NombreArchivoFirmado { get; set; }
+        public bool PdfExiste { get; set; }
+        public bool Firmado { get; set; }
+        public bool PuedeGenerar { get; set; }
+        public bool PuedeFirmar { get; set; }
+        public int Paginas { get; set; }
+        public long TamanioPdf { get; set; }
+        public long TamanioPdfFirmado { get; set; }
+        public string HashPdfFirmado { get; set; }
+        public DateTime? FechaGeneracion { get; set; }
+        public DateTime? FechaFirma { get; set; }
+        public string UrlGenerar { get; set; }
+        public string UrlVerPdf { get; set; }
+        public string UrlDescargarPdf { get; set; }
+        public string UrlVerPdfFirmado { get; set; }
+        public string UrlDescargarFirmado { get; set; }
+        public string UrlFirmar { get; set; }
     }
 
     public class FirmarAocrInstitucionalRequest
     {
         public int SolicitudId { get; set; }
         public int? AocrId { get; set; }
+        public string TipoDocumento { get; set; }
         public System.Web.HttpPostedFileBase CertificadoDigital { get; set; }
         public string PasswordCertificado { get; set; }
         public int PaginaFirma { get; set; }

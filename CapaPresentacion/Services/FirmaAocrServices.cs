@@ -23,6 +23,10 @@ namespace CapaPresentacion.Services
         public InspeccionInformeTecnico Informe { get; set; }
         public Certificado Certificado { get; set; }
         public AocrFirmaDocumento Firma { get; set; }
+        public AocrFirmaDocumento FirmaReconocimiento { get; set; }
+        public AocrFirmaDocumento FirmaCondiciones { get; set; }
+        public AocrDocumentoGenerado DocumentoReconocimiento { get; set; }
+        public AocrDocumentoGenerado DocumentoCondiciones { get; set; }
         public List<AeronaveSolicitud> Aeronaves { get; set; }
         public AocrDocumentoPdfViewModel Documento { get; set; }
         public List<string> CamposFaltantes { get; set; }
@@ -78,6 +82,10 @@ namespace CapaPresentacion.Services
                 "; CamposFaltantes=" + (campos.Count > 0 ? string.Join("|", campos) : "ninguno") +
                 "; PuedeGenerarPdf=" + puedeGenerar +
                 "; PuedeFirmar=" + puedeFirmar);
+            Trace.TraceInformation(
+                "[FIRMA_AOCR][VALIDAR_RESULT] SolicitudId=" + (contexto != null && contexto.Solicitud != null ? contexto.Solicitud.CodigoSolicitud : 0) +
+                "; DatosCompletos=" + ok +
+                "; Pendientes=" + (campos.Count > 0 ? string.Join("|", campos) : "ninguno") + ";");
 
             return new FirmaAocrValidationResult
             {
@@ -119,6 +127,7 @@ namespace CapaPresentacion.Services
         private readonly CertificadoDAO _certificadoDao = new CertificadoDAO();
         private readonly AeronaveSolicitudDAO _aeronaveDao = new AeronaveSolicitudDAO();
         private readonly AocrFirmaDocumentoDAO _firmaDao = new AocrFirmaDocumentoDAO();
+        private readonly AocrDocumentoGeneradoDAO _documentoGeneradoDao = new AocrDocumentoGeneradoDAO();
         private readonly FirmaAocrAuthorizationService _authorizationService;
         private readonly FirmaAocrStorageService _storageService;
 
@@ -144,10 +153,27 @@ namespace CapaPresentacion.Services
             var informe = inspeccion != null ? _informeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion) : null;
             var certificado = _certificadoDao.ObtenerPorSolicitud(solicitudId);
             var firma = _firmaDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+            var firmaCondiciones = _firmaDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES")
+                ?? _firmaDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
+            var documentoReconocimiento = _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+            var documentoCondiciones = _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES")
+                ?? _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
             var aeronaves = _aeronaveDao.ObtenerPorSolicitud(solicitudId) ?? new List<AeronaveSolicitud>();
             var documento = ConstruirDocumentoPdfModel(solicitud, inspeccion, informe, certificado, aeronaves);
+            Trace.TraceInformation("[FIRMA_AOCR][INFORME_ESTADO] SolicitudId=" + solicitudId
+                + "; InformeId=" + (informe != null ? informe.CodigoInforme : 0)
+                + "; EstadoInforme=" + (informe != null ? informe.EstadoInforme : string.Empty)
+                + "; InformeAprobado=" + InformeAprobadoDireccion(informe) + ";");
+            Trace.TraceInformation("[FIRMA_AOCR][DATOS_LOAD] SolicitudId=" + solicitudId
+                + "; EstadoExplotador='" + (documento != null ? documento.EstadoExplotador : string.Empty) + "'"
+                + "; FechaVencimiento='" + (documento != null && documento.FechaVencimiento.HasValue ? documento.FechaVencimiento.Value.ToString("dd/MM/yyyy") : string.Empty) + "'"
+                + "; FechaEmision='" + (documento != null && documento.FechaEmisionDocumento != default(DateTime) ? documento.FechaEmisionDocumento.ToString("dd/MM/yyyy") : string.Empty) + "'"
+                + "; CodigoAocr='" + (documento != null ? documento.NumeroAocr : string.Empty) + "';");
 
-            var pdfFisico = certificado != null ? _storageService.ResolverRutaFisica(certificado.RutaDocumento) : null;
+            var rutaReconocimiento = documentoReconocimiento != null && !string.IsNullOrWhiteSpace(documentoReconocimiento.RutaDocumento)
+                ? documentoReconocimiento.RutaDocumento
+                : (certificado != null ? certificado.RutaDocumento : null);
+            var pdfFisico = _storageService.ResolverRutaFisica(rutaReconocimiento);
             var firmadoFisico = firma != null ? _storageService.ResolverRutaFisica(firma.RutaDocumento) : null;
             var pdfExiste = !string.IsNullOrWhiteSpace(pdfFisico) && File.Exists(pdfFisico);
             var firmadoExiste = !string.IsNullOrWhiteSpace(firmadoFisico) && File.Exists(firmadoFisico);
@@ -159,6 +185,10 @@ namespace CapaPresentacion.Services
                 Informe = informe,
                 Certificado = certificado,
                 Firma = firma,
+                FirmaReconocimiento = firma,
+                FirmaCondiciones = firmaCondiciones,
+                DocumentoReconocimiento = documentoReconocimiento,
+                DocumentoCondiciones = documentoCondiciones,
                 Aeronaves = aeronaves,
                 Documento = documento,
                 CamposFaltantes = ObtenerCamposObligatoriosFaltantesAocrOficial(documento),
@@ -188,10 +218,25 @@ namespace CapaPresentacion.Services
             var documentoCompleto = !camposFaltantes.Any();
             var informeAprobado = InformeAprobadoDireccion(contexto.Informe);
             var puedeFirmar = autorizado && contexto.PdfExiste && !contexto.PdfFirmadoExiste && documentoCompleto && informeAprobado;
-            var motivo = ConstruirMotivoBloqueo(autorizado, contexto.PdfExiste, contexto.PdfFirmadoExiste, documentoCompleto, informeAprobado);
+            var documentos = ConstruirDocumentosFirma(solicitudId, contexto, autorizado, documentoCompleto, informeAprobado, url);
+            var reconocimientoFirmado = documentos.Any(d => string.Equals(d.TipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && d.Firmado);
+            var condicionesFirmadas = documentos.Any(d => string.Equals(d.TipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) && d.Firmado);
+            var ambosFirmados = reconocimientoFirmado && condicionesFirmadas;
+            var algunPdfGenerado = documentos.Any(d => d.PdfExiste);
+            var algunaFirma = documentos.Any(d => d.Firmado);
+            var motivo = ConstruirMotivoBloqueo(autorizado, algunPdfGenerado, ambosFirmados, documentoCompleto, informeAprobado);
             var solicitud = contexto.Solicitud;
             var certificado = contexto.Certificado;
             var firma = contexto.Firma;
+            if (autorizado && documentoCompleto && informeAprobado && !contexto.PdfFirmadoExiste && !contexto.PdfExiste)
+            {
+                Trace.TraceInformation("[FIRMA_AOCR][GENERAR_PDF_ENABLED] SolicitudId=" + solicitudId + ";");
+            }
+
+            if (puedeFirmar)
+            {
+                Trace.TraceInformation("[FIRMA_AOCR][FIRMA_ENABLED] SolicitudId=" + solicitudId + ";");
+            }
 
             return new FirmaAocrInstitucionalViewModel
             {
@@ -201,7 +246,7 @@ namespace CapaPresentacion.Services
                 Operadora = PrimerValorNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial),
                 CodigoAocr = PrimerValorNoVacio(contexto.Documento.NumeroAocr, certificado != null ? certificado.NumeroCertificado : null),
                 EstadoSolicitud = solicitud.Estado,
-                EstadoAocr = contexto.PdfFirmadoExiste ? "AOCR_FIRMADO_DIRDAC" : (contexto.PdfExiste ? "PDF_OFICIAL_GENERADO" : "PENDIENTE_GENERAR_PDF"),
+                EstadoAocr = ambosFirmados ? "AOCR_LEGALIZADO" : (algunaFirma ? "FIRMA_PARCIAL" : (algunPdfGenerado ? "PDFS_PENDIENTES_FIRMA" : "PENDIENTE_GENERAR_PDF")),
                 InformeTecnicoEstado = contexto.Informe != null ? contexto.Informe.EstadoInforme : "Sin informe",
                 ResultadoTecnico = contexto.Informe != null ? contexto.Informe.Resultado : "Sin resultado",
                 ResponsableFirma = "Direccion / DIRDAC",
@@ -212,16 +257,16 @@ namespace CapaPresentacion.Services
                 FechaFirma = firma != null && firma.FechaFirma != DateTime.MinValue ? (DateTime?)firma.FechaFirma : null,
                 NombreArchivoPdf = contexto.PdfExiste ? Path.GetFileName(_storageService.ResolverRutaFisica(certificado.RutaDocumento)) : null,
                 NombreArchivoFirmado = contexto.PdfFirmadoExiste ? Path.GetFileName(_storageService.ResolverRutaFisica(firma.RutaDocumento)) : null,
-                PdfExiste = contexto.PdfExiste,
-                PdfFirmadoExiste = contexto.PdfFirmadoExiste,
+                PdfExiste = algunPdfGenerado,
+                PdfFirmadoExiste = ambosFirmados,
                 TamanioPdf = contexto.PdfBytes,
                 TamanioPdfFirmado = contexto.PdfFirmadoBytes,
                 HashPdfFirmado = firma != null ? firma.HashDocumento : null,
                 RutaPdf = certificado != null ? certificado.RutaDocumento : null,
                 RutaPdfFirmado = firma != null ? firma.RutaDocumento : null,
-                PuedeGenerar = autorizado && documentoCompleto && informeAprobado && !contexto.PdfFirmadoExiste,
-                PuedeRegenerar = autorizado && documentoCompleto && informeAprobado && !contexto.PdfFirmadoExiste,
-                PuedeFirmar = puedeFirmar,
+                PuedeGenerar = autorizado && documentoCompleto && informeAprobado && !ambosFirmados,
+                PuedeRegenerar = autorizado && documentoCompleto && informeAprobado && !ambosFirmados,
+                PuedeFirmar = documentos.Any(d => d.PuedeFirmar),
                 InformeAprobado = informeAprobado,
                 DocumentoCompleto = documentoCompleto,
                 MotivoBloqueo = motivo,
@@ -232,7 +277,7 @@ namespace CapaPresentacion.Services
                 AocOriginalNumero = contexto.Documento != null ? contexto.Documento.AocOriginalNumero : null,
                 PermisoOperacionCnac = solicitud.NumeroAOC,
                 CondicionBaseOperacion = contexto.Documento != null ? contexto.Documento.CondicionBaseOperacion : null,
-                PuedeGuardarDatos = autorizado && !contexto.PdfFirmadoExiste,
+                PuedeGuardarDatos = autorizado && !ambosFirmados,
                 UrlGuardarDatos = url.Action("GuardarDatos", "FirmaAocr", new { solicitudId }),
                 UrlGenerar = url.Action("GenerarPdf", "FirmaAocr", new { solicitudId }),
                 UrlVerPdf = url.Action("VerPdf", "FirmaAocr", new { solicitudId, firmado = false }),
@@ -241,7 +286,101 @@ namespace CapaPresentacion.Services
                 UrlDescargarFirmado = url.Action("DescargarFirmado", "FirmaAocr", new { solicitudId }),
                 UrlFirmar = url.Action("Firmar", "FirmaAocr", new { solicitudId }),
                 UrlVolverBandeja = url.Action("PendientesDireccion", "Inspeccion"),
-                UrlCompletarDatos = url.Action("Index", "FirmaAocr", new { solicitudId })
+                UrlCompletarDatos = url.Action("Index", "FirmaAocr", new { solicitudId }),
+                Documentos = documentos,
+                AmbosDocumentosFirmados = ambosFirmados
+            };
+        }
+
+        public void RegistrarDocumentoGenerado(FirmaAocrContexto contexto, string tipoDocumento, string rutaRelativa, long bytes, int usuarioId, string usuarioNombre)
+        {
+            if (contexto == null || contexto.Solicitud == null || string.IsNullOrWhiteSpace(rutaRelativa))
+            {
+                return;
+            }
+
+            var tipo = NormalizarTipoDocumento(tipoDocumento);
+            var rutaFisica = _storageService.ResolverRutaFisica(rutaRelativa);
+            _documentoGeneradoDao.Registrar(new AocrDocumentoGenerado
+            {
+                CodigoSolicitud = contexto.Solicitud.CodigoSolicitud,
+                CodigoInspeccion = contexto.Inspeccion != null ? (int?)contexto.Inspeccion.CodigoInspeccion : null,
+                TipoDocumento = tipo,
+                NumeroAocr = contexto.Documento != null ? contexto.Documento.NumeroAocr : null,
+                NombreArchivo = !string.IsNullOrWhiteSpace(rutaFisica) ? Path.GetFileName(rutaFisica) : null,
+                RutaDocumento = rutaRelativa,
+                TamanioPdf = bytes,
+                Estado = "GENERADO",
+                FechaGeneracion = DateTime.Now,
+                CodigoUsuario = usuarioId > 0 ? (int?)usuarioId : null,
+                UsuarioNombre = usuarioNombre
+            });
+
+            if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
+            {
+                SincronizarCertificadoPdfOficial(contexto, rutaRelativa, usuarioId, usuarioNombre);
+            }
+        }
+
+        public static string NormalizarTipoDocumento(string tipoDocumento)
+        {
+            var tipo = (tipoDocumento ?? string.Empty).Trim().ToUpperInvariant();
+            if (tipo == "CONDICIONES" || tipo == "CONDICIONES_LIMITACIONES")
+            {
+                return "CONDICIONES_LIMITACIONES";
+            }
+
+            return "RECONOCIMIENTO";
+        }
+
+        private List<FirmaAocrDocumentoItemViewModel> ConstruirDocumentosFirma(int solicitudId, FirmaAocrContexto contexto, bool autorizado, bool documentoCompleto, bool informeAprobado, UrlHelper url)
+        {
+            var resultado = new List<FirmaAocrDocumentoItemViewModel>();
+            resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "RECONOCIMIENTO", "Documento AOCR", "Reconocimiento de Certificado de Explotador de Servicios Aereos", contexto, contexto.DocumentoReconocimiento, contexto.FirmaReconocimiento, autorizado, documentoCompleto, informeAprobado, url));
+            resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "CONDICIONES_LIMITACIONES", "Documento Condiciones", "Condiciones y Limitaciones", contexto, contexto.DocumentoCondiciones, contexto.FirmaCondiciones, autorizado, documentoCompleto, informeAprobado, url));
+            return resultado;
+        }
+
+        private FirmaAocrDocumentoItemViewModel ConstruirDocumentoFirmaItem(int solicitudId, string tipoDocumento, string titulo, string descripcion, FirmaAocrContexto contexto, AocrDocumentoGenerado documento, AocrFirmaDocumento firma, bool autorizado, bool documentoCompleto, bool informeAprobado, UrlHelper url)
+        {
+            var tipo = NormalizarTipoDocumento(tipoDocumento);
+            var rutaPdf = documento != null ? documento.RutaDocumento : null;
+            if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(rutaPdf) && contexto.Certificado != null)
+            {
+                rutaPdf = contexto.Certificado.RutaDocumento;
+            }
+
+            var rutaPdfFisica = _storageService.ResolverRutaFisica(rutaPdf);
+            var pdfExiste = !string.IsNullOrWhiteSpace(rutaPdfFisica) && File.Exists(rutaPdfFisica);
+            var rutaFirmadaFisica = firma != null ? _storageService.ResolverRutaFisica(firma.RutaDocumento) : null;
+            var firmado = !string.IsNullOrWhiteSpace(rutaFirmadaFisica) && File.Exists(rutaFirmadaFisica);
+            var puedeGenerar = autorizado && documentoCompleto && informeAprobado && !firmado;
+            var puedeFirmar = puedeGenerar && pdfExiste;
+
+            return new FirmaAocrDocumentoItemViewModel
+            {
+                TipoDocumento = tipo,
+                Titulo = titulo,
+                Descripcion = descripcion,
+                Estado = firmado ? "Firmado" : (pdfExiste ? "Generado" : "Pendiente"),
+                NombreArchivoPdf = pdfExiste ? Path.GetFileName(rutaPdfFisica) : null,
+                NombreArchivoFirmado = firmado ? Path.GetFileName(rutaFirmadaFisica) : null,
+                PdfExiste = pdfExiste,
+                Firmado = firmado,
+                PuedeGenerar = puedeGenerar,
+                PuedeFirmar = puedeFirmar,
+                Paginas = 1,
+                TamanioPdf = pdfExiste ? new FileInfo(rutaPdfFisica).Length : 0,
+                TamanioPdfFirmado = firmado ? new FileInfo(rutaFirmadaFisica).Length : 0,
+                HashPdfFirmado = firma != null ? firma.HashDocumento : null,
+                FechaGeneracion = documento != null && documento.FechaGeneracion != DateTime.MinValue ? (DateTime?)documento.FechaGeneracion : (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && contexto.Certificado != null ? contexto.Certificado.FechaEmision : null),
+                FechaFirma = firma != null && firma.FechaFirma != DateTime.MinValue ? (DateTime?)firma.FechaFirma : null,
+                UrlGenerar = url.Action("GenerarPdf", "FirmaAocr", new { solicitudId, tipoDocumento = tipo }),
+                UrlVerPdf = pdfExiste ? url.Action("VerPdf", "FirmaAocr", new { solicitudId, tipoDocumento = tipo, firmado = false }) : null,
+                UrlDescargarPdf = pdfExiste ? url.Action("DescargarPdf", "FirmaAocr", new { solicitudId, tipoDocumento = tipo, firmado = false }) : null,
+                UrlVerPdfFirmado = firmado ? url.Action("VerPdf", "FirmaAocr", new { solicitudId, tipoDocumento = tipo, firmado = true }) : null,
+                UrlDescargarFirmado = firmado ? url.Action("DescargarFirmado", "FirmaAocr", new { solicitudId, tipoDocumento = tipo }) : null,
+                UrlFirmar = url.Action("Firmar", "FirmaAocr", new { solicitudId, tipoDocumento = tipo })
             };
         }
 
@@ -299,6 +438,7 @@ namespace CapaPresentacion.Services
             }
 
             var contextoActualizado = CargarContexto(solicitudId);
+            Trace.TraceInformation("[FIRMA_AOCR][VALIDAR_IN] SolicitudId=" + solicitudId + ";");
             var validacion = new FirmaAocrValidationService().ValidarDatosObligatorios(contextoActualizado);
             Trace.TraceInformation(
                 "[FIRMA_AOCR_V2][GUARDAR_DATOS_OK] SolicitudId=" + solicitudId +
@@ -367,9 +507,18 @@ namespace CapaPresentacion.Services
                 return false;
             }
 
-            var estado = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
-            var resultado = (informe.Resultado ?? string.Empty).Trim().ToUpperInvariant();
-            return estado.Contains("APROB") || resultado.Contains("APROB") || resultado.Contains("FAVORABLE");
+            var estado = InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme);
+            switch (estado)
+            {
+                case "APROBADO_DIRECCION":
+                case "APROBADO_DIRDAC":
+                case "INFORME_APROBADO_DIRECCION":
+                case "INFORME_TECNICO_APROBADO":
+                case "INFORME_TECNICO_APROBADO_DIRECCION":
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public static string PrimerValorNoVacio(params string[] valores)
@@ -541,7 +690,25 @@ namespace CapaPresentacion.Services
     {
         public byte[] GenerarPdfOficial(ControllerContext controllerContext, AocrDocumentoPdfViewModel model)
         {
+            return GenerarPdfReconocimiento(controllerContext, model);
+        }
+
+        public byte[] GenerarPdfReconocimiento(ControllerContext controllerContext, AocrDocumentoPdfViewModel model)
+        {
             var pdf = new ViewAsPdf("~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml", (object)model)
+            {
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
+                CustomSwitches = PdfBrandingHelper.StandardRotativaSwitchesInlineBranding
+            };
+
+            return pdf.BuildFile(controllerContext);
+        }
+
+        public byte[] GenerarPdfCondiciones(ControllerContext controllerContext, AocrDocumentoPdfViewModel model)
+        {
+            var pdf = new ViewAsPdf("~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml", (object)model)
             {
                 PageSize = Rotativa.Options.Size.A4,
                 PageOrientation = Rotativa.Options.Orientation.Portrait,
@@ -581,10 +748,10 @@ namespace CapaPresentacion.Services
             return new PosicionFirmaVisualPdf
             {
                 NumeroPagina = 1,
-                PosicionXRatio = 0.02f,
-                PosicionYRatio = 0.06f,
-                AnchoRatio = 0.94f,
-                AltoRatio = 0.82f
+                PosicionXRatio = 0.0f,
+                PosicionYRatio = 0.0f,
+                AnchoRatio = 1.0f,
+                AltoRatio = 1.0f
             };
         }
     }
@@ -603,9 +770,31 @@ namespace CapaPresentacion.Services
             return Guardar("Oficiales", solicitudId, "aocr_oficial", contenido);
         }
 
+        public string GuardarPdfDocumento(int solicitudId, string tipoDocumento, byte[] contenido)
+        {
+            var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+            if (string.Equals(tipo, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
+            {
+                return Guardar("Condiciones", solicitudId, "aocr_condiciones", contenido);
+            }
+
+            return Guardar("Oficiales", solicitudId, "aocr_reconocimiento", contenido);
+        }
+
         public string GuardarPdfFirmado(int solicitudId, byte[] contenido)
         {
             return Guardar("Firmados", solicitudId, "aocr_firmado", contenido);
+        }
+
+        public string GuardarPdfFirmado(int solicitudId, string tipoDocumento, byte[] contenido)
+        {
+            var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+            if (string.Equals(tipo, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
+            {
+                return Guardar("Firmados/Condiciones", solicitudId, "aocr_condiciones_firmado", contenido);
+            }
+
+            return Guardar("Firmados/Reconocimiento", solicitudId, "aocr_reconocimiento_firmado", contenido);
         }
 
         public string ResolverRutaFisica(string ruta)
@@ -628,7 +817,20 @@ namespace CapaPresentacion.Services
 
             if (normalizada.StartsWith("/", StringComparison.Ordinal))
             {
-                return _server.MapPath("~" + normalizada);
+                try
+                {
+                    var appRelative = VirtualPathUtility.ToAppRelative(normalizada);
+                    if (!string.IsNullOrWhiteSpace(appRelative) && appRelative.StartsWith("~/", StringComparison.Ordinal))
+                    {
+                        return _server.MapPath(appRelative);
+                    }
+                }
+                catch
+                {
+                    // Fallback para rutas antiguas almacenadas como /App_Data/...
+                }
+
+                return _server.MapPath("~/" + normalizada.TrimStart('/'));
             }
 
             return _server.MapPath("~/" + normalizada.TrimStart('~', '/', '\\'));
@@ -652,7 +854,7 @@ namespace CapaPresentacion.Services
             var nombre = prefijo + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + solicitudId + ".pdf";
             var rutaAbsoluta = Path.Combine(carpetaAbsoluta, nombre);
             File.WriteAllBytes(rutaAbsoluta, contenido ?? new byte[0]);
-            return VirtualPathUtility.ToAbsolute(carpetaRelativa.TrimStart('~') + "/" + nombre);
+            return carpetaRelativa + "/" + nombre;
         }
     }
 

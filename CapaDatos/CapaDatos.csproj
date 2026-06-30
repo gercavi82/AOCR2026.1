@@ -260,6 +260,7 @@
     <Compile Include="DAOs\AuditoriaDAO.cs" />
     <Compile Include="DAOs\AocrBandejaDAO.cs" />
     <Compile Include="DAOs\AocrFirmaDocumentoDAO.cs" />
+    <Compile Include="DAOs\AocrDocumentoGeneradoDAO.cs" />
     <Compile Include="DAOs\AocrFirmaPosicionDocumentoDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />

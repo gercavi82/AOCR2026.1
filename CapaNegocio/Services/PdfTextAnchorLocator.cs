@@ -49,8 +49,8 @@ namespace CapaNegocio.Services
         // de Nombre/Cargo/Fecha debajo del bloque.
         private const float AnchoLvEae = 268f;
         private const float AltoLvEae = 68f;
-        private const float AnchoAocr = 160f;      // ~34% columna A4
-        private const float AltoAocr = 96f;
+        private const float AnchoAocr = 166f;      // recuadro Firma de Autorizacion AOCR
+        private const float AltoAocr = 72f;
         private const float AnchoCertificado = 188f; // ancho util reducido para dejar aire dentro del slot del certificado
         private const float AltoCertificado = 46f;
 

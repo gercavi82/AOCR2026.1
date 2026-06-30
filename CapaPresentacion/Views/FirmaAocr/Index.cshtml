@@ -5,6 +5,8 @@
     var tienePdf = Model != null && Model.PdfExiste;
     var firmado = Model != null && Model.PdfFirmadoExiste;
     var puedeFirmar = Model != null && Model.PuedeFirmar;
+    var documentos = Model != null && Model.Documentos != null ? Model.Documentos : new System.Collections.Generic.List<CapaPresentacion.Models.FirmaAocrDocumentoItemViewModel>();
+    var todosFirmados = Model != null && Model.AmbosDocumentosFirmados;
 }
 
 <link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
@@ -28,9 +30,9 @@
     <section class="firma-aocr__steps" aria-label="Estado del flujo">
         <div class="@(Model != null && Model.InformeAprobado ? "is-complete" : "is-pending")"><span>1</span><strong>Informe aprobado</strong></div>
         <div class="@(Model != null && Model.DocumentoCompleto ? "is-complete" : "is-pending")"><span>2</span><strong>Datos AOCR completos</strong></div>
-        <div class="@(tienePdf ? "is-complete" : "is-pending")"><span>3</span><strong>PDF generado</strong></div>
-        <div class="@(firmado ? "is-complete" : tienePdf ? "is-pending" : "is-blocked")"><span>4</span><strong>Firma DIRDAC</strong></div>
-        <div class="@(firmado ? "is-complete" : "is-blocked")"><span>5</span><strong>Documento final liberado</strong></div>
+        <div class="@(documentos.Any(d => d.PdfExiste) ? "is-complete" : "is-pending")"><span>3</span><strong>PDFs generados</strong></div>
+        <div class="@(documentos.Any(d => d.Firmado) ? "is-complete" : documentos.Any(d => d.PdfExiste) ? "is-pending" : "is-blocked")"><span>4</span><strong>Firmas independientes</strong></div>
+        <div class="@(todosFirmados ? "is-complete" : "is-blocked")"><span>5</span><strong>AOCR legalizado</strong></div>
     </section>
 
     @if (Model != null && !string.IsNullOrWhiteSpace(Model.MotivoBloqueo) && !Model.PuedeFirmar && !firmado)
@@ -81,11 +83,11 @@
                         <div class="firma-aocr__form-grid">
                             <label class="firma-aocr__field">
                                 <span>Estado del explotador *</span>
-                                <input type="text" name="estadoExplotador" value="@(Model.EstadoExplotador ?? "")" autocomplete="off" />
+                                <input type="text" id="EstadoExplotador" name="EstadoExplotador" value="@(Model.EstadoExplotador ?? "")" autocomplete="off" />
                             </label>
                             <label class="firma-aocr__field">
                                 <span>Fecha de vencimiento *</span>
-                                <input type="date" name="fechaVencimiento" value="@(Model.FechaVencimiento.HasValue ? Model.FechaVencimiento.Value.ToString("yyyy-MM-dd") : "")" />
+                                <input type="date" id="FechaVencimiento" name="FechaVencimiento" value="@(Model.FechaVencimiento.HasValue ? Model.FechaVencimiento.Value.ToString("yyyy-MM-dd") : "")" />
                             </label>
                             <label class="firma-aocr__field">
                                 <span>Fecha de emision</span>
@@ -112,79 +114,97 @@
                 </article>
             }
 
-            <article class="firma-aocr__box">
-                <div class="firma-aocr__box-head">
-                    <div>
-                        <p class="firma-aocr__eyebrow">Documento oficial</p>
-                        <h2>PDF AOCR unificado</h2>
+            @foreach (var doc in documentos)
+            {
+                <article class="firma-aocr__box">
+                    <div class="firma-aocr__box-head">
+                        <div>
+                            <p class="firma-aocr__eyebrow">Documento oficial independiente</p>
+                            <h2>@doc.Titulo</h2>
+                            <p>@doc.Descripcion</p>
+                        </div>
+                        <span class="firma-aocr__badge @(doc.Firmado ? "is-success" : doc.PdfExiste ? "is-warning" : "")">
+                            @doc.Estado
+                        </span>
                     </div>
-                    <span class="firma-aocr__badge @(firmado ? "is-success" : tienePdf ? "is-warning" : "")">
-                        @(firmado ? "Firmado oficialmente" : tienePdf ? "Pendiente de firma" : "No generado")
-                    </span>
-                </div>
 
-                <dl class="firma-aocr__meta">
-                    <div><dt>Archivo</dt><dd>@(firmado ? Model.NombreArchivoFirmado : tienePdf ? Model.NombreArchivoPdf : "-")</dd></div>
-                    <div><dt>Paginas</dt><dd>2</dd></div>
-                    <div><dt>Tamano</dt><dd>@(firmado ? Model.TamanioPdfFirmado.ToString("N0") : Model != null ? Model.TamanioPdf.ToString("N0") : "0") bytes</dd></div>
-                    <div><dt>Hash firmado</dt><dd>@(firmado ? Model.HashPdfFirmado : "-")</dd></div>
-                </dl>
+                    <dl class="firma-aocr__meta">
+                        <div><dt>Archivo preliminar</dt><dd>@(doc.PdfExiste ? doc.NombreArchivoPdf : "-")</dd></div>
+                        <div><dt>Paginas</dt><dd>@doc.Paginas</dd></div>
+                        <div><dt>Tamano</dt><dd>@((doc.Firmado ? doc.TamanioPdfFirmado : doc.TamanioPdf).ToString("N0")) bytes</dd></div>
+                        <div><dt>Hash firmado</dt><dd>@(doc.Firmado ? doc.HashPdfFirmado : "-")</dd></div>
+                    </dl>
 
-                <div class="firma-aocr__actions">
-                    @if (!tienePdf && Model != null && Model.PuedeGenerar)
+                    <div class="firma-aocr__actions">
+                        @if (doc.Firmado)
+                        {
+                            <a class="firma-aocr__btn firma-aocr__btn--outline" href="@doc.UrlVerPdfFirmado" target="_blank" rel="noopener">Ver firmado</a>
+                            <a class="firma-aocr__btn firma-aocr__btn--success" href="@doc.UrlDescargarFirmado">Descargar firmado</a>
+                        }
+                        else
+                        {
+                            if (doc.PdfExiste)
+                            {
+                                <a class="firma-aocr__btn firma-aocr__btn--outline" href="@doc.UrlVerPdf" target="_blank" rel="noopener">Ver PDF</a>
+                                <a class="firma-aocr__btn firma-aocr__btn--outline" href="@doc.UrlDescargarPdf">Descargar preliminar</a>
+                            }
+
+                            if (doc.PuedeGenerar)
+                            {
+                                <form method="post" action="@doc.UrlGenerar" data-generar-documento>
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
+                                    <input type="hidden" name="tipoDocumento" value="@doc.TipoDocumento" />
+                                    <button type="submit" class="firma-aocr__btn @(doc.PdfExiste ? "firma-aocr__btn--outline" : "firma-aocr__btn--primary")">
+                                        @(doc.PdfExiste ? "Regenerar PDF" : "Generar PDF")
+                                    </button>
+                                </form>
+                            }
+                            else if (Model != null && !Model.DocumentoCompleto)
+                            {
+                                <button type="button" class="firma-aocr__btn firma-aocr__btn--outline" disabled>Generar PDF</button>
+                                <span class="firma-aocr__action-note">Complete los campos obligatorios.</span>
+                            }
+                        }
+                    </div>
+
+                    @if (doc.PuedeFirmar)
                     {
-                        <form id="frmGenerarPdf" method="post" action="@Model.UrlGenerar">
+                        <form method="post" enctype="multipart/form-data" action="@doc.UrlFirmar" data-firmar-documento>
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
-                            <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary">Generar PDF oficial</button>
+                            <input type="hidden" name="aocrId" value="@Model.AocrId" />
+                            <input type="hidden" name="tipoDocumento" value="@doc.TipoDocumento" />
+                            <input type="hidden" name="paginaFirma" value="1" />
+                            <input type="hidden" name="posicionFirma" value="FIJA_INSTITUCIONAL" />
+                            <div class="firma-aocr__form-grid">
+                                <label class="firma-aocr__field">
+                                    <span>Certificado digital</span>
+                                    <input type="file" name="certificadoDigital" accept=".p12,.pfx" />
+                                </label>
+                                <label class="firma-aocr__field">
+                                    <span>Contrasena</span>
+                                    <input type="password" name="passwordCertificado" autocomplete="off" />
+                                </label>
+                            </div>
+                            <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary">
+                                Firmar @doc.Titulo
+                            </button>
                         </form>
                     }
-                    else if (firmado)
-                    {
-                        <a class="firma-aocr__btn firma-aocr__btn--outline" href="@Model.UrlVerPdfFirmado" target="_blank" rel="noopener">Ver firmado</a>
-                        <a class="firma-aocr__btn firma-aocr__btn--success" href="@Model.UrlDescargarFirmado">Descargar firmado</a>
-                        <a class="firma-aocr__btn firma-aocr__btn--outline" href="@Model.UrlVolverBandeja">Volver</a>
-                    }
-                    else if (tienePdf)
-                    {
-                        <a class="firma-aocr__btn firma-aocr__btn--outline" href="@Model.UrlVerPdf" target="_blank" rel="noopener">Ver PDF</a>
-                        <a class="firma-aocr__btn firma-aocr__btn--outline" href="@Model.UrlDescargarPdf">Descargar preliminar</a>
-                        if (Model.PuedeRegenerar)
-                        {
-                            <form id="frmGenerarPdf" method="post" action="@Model.UrlGenerar">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
-                                <button type="submit" class="firma-aocr__btn firma-aocr__btn--outline">Generar PDF oficial</button>
-                            </form>
-                        }
-                    }
-                    else if (Model != null && !Model.DocumentoCompleto)
-                    {
-                        <button type="button" class="firma-aocr__btn firma-aocr__btn--outline" disabled>Generar PDF oficial</button>
-                        <span class="firma-aocr__action-note">Complete los campos obligatorios para generar el PDF.</span>
-                    }
-                </div>
-            </article>
+                </article>
+            }
 
             <article class="firma-aocr__preview">
                 <div class="firma-aocr__box-head">
                     <div>
-                        <p class="firma-aocr__eyebrow">Verificacion PDF</p>
-                        <h2>@(firmado ? "AOCR firmado" : "PDF oficial preliminar")</h2>
+                        <p class="firma-aocr__eyebrow">Estado de legalizacion</p>
+                        <h2>@(todosFirmados ? "AOCR legalizado" : "Documentos pendientes")</h2>
                     </div>
                 </div>
-                @if (firmado)
-                {
-                    <iframe title="AOCR firmado" src="@Model.UrlVerPdfFirmado"></iframe>
-                }
-                else if (tienePdf)
-                {
-                    <iframe title="PDF oficial AOCR" src="@Model.UrlVerPdf"></iframe>
-                }
-                else
-                {
-                    <div class="firma-aocr__empty">Genere el PDF oficial para revisarlo antes de firmar.</div>
-                }
+                <div class="firma-aocr__empty">
+                    @(todosFirmados ? "Ambos documentos oficiales estan firmados y el AOCR puede liberarse al RT." : "Genere y firme por separado el Documento AOCR y el Documento Condiciones.")
+                </div>
             </article>
         </main>
 
@@ -203,51 +223,28 @@
                 <div><dt>Posicion</dt><dd>Institucional fija</dd></div>
             </dl>
 
-            @if (firmado)
+            @if (todosFirmados)
             {
                 <div class="firma-aocr__result is-success">
-                    <strong>AOCR firmado oficialmente.</strong>
-                    <span>@(Model.FechaFirma.HasValue ? Model.FechaFirma.Value.ToString("dd/MM/yyyy HH:mm") : "")</span>
+                    <strong>AOCR legalizado.</strong>
+                    <span>Los dos documentos oficiales estan firmados.</span>
                 </div>
-            }
-            else if (puedeFirmar)
-            {
-                <form id="frmFirmaAocr" method="post" enctype="multipart/form-data" action="@Model.UrlFirmar">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
-                    <input type="hidden" name="aocrId" value="@Model.AocrId" />
-                    <input type="hidden" name="paginaFirma" value="1" />
-                    <input type="hidden" name="posicionFirma" value="FIJA_INSTITUCIONAL" />
-
-                    <label class="firma-aocr__field">
-                        <span>Certificado digital</span>
-                        <input type="file" name="certificadoDigital" accept=".p12,.pfx" />
-                    </label>
-                    <label class="firma-aocr__field">
-                        <span>Contrasena</span>
-                        <input type="password" name="passwordCertificado" autocomplete="off" />
-                    </label>
-                    <button type="submit" id="btnFirmarAocr" class="firma-aocr__btn firma-aocr__btn--primary">
-                        Firmar oficialmente AOCR
-                    </button>
-                </form>
             }
             else
             {
                 <div class="firma-aocr__result">
-                    <strong>Firma no disponible</strong>
-                    <span>@(Model != null ? Model.MotivoBloqueo : "No existe contexto disponible.")</span>
+                    <strong>Firma por documento</strong>
+                    <span>Use el boton Firmar dentro de cada tarjeta generada.</span>
                 </div>
             }
         </aside>
     </section>
 
     <section class="firma-aocr__final" id="firmaAocrResultado" aria-live="polite">
-        @if (firmado)
+        @if (todosFirmados)
         {
             <div class="firma-aocr__result is-success">
-                <strong>Documento final liberado.</strong>
-                <span>Ruta: @Model.RutaPdfFirmado</span>
+                <strong>Documentos finales liberados.</strong>
                 <span>Estado final: @Model.EstadoSolicitud</span>
             </div>
         }

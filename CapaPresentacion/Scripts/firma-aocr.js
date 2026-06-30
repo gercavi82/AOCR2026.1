@@ -12,6 +12,9 @@
 
         form.classList.toggle('firma-aocr-is-loading', !!busy);
         Array.prototype.forEach.call(form.querySelectorAll('button, input'), function (el) {
+            if (el && el.type === 'hidden') {
+                return;
+            }
             el.disabled = !!busy;
         });
     }
@@ -80,12 +83,13 @@
     }
 
     function installGenerate() {
-        var form = qs('#frmGenerarPdf');
-        if (!form) {
+        var forms = document.querySelectorAll('[data-generar-documento], #frmGenerarPdf');
+        if (!forms || !forms.length) {
             return;
         }
 
-        form.addEventListener('submit', function (event) {
+        Array.prototype.forEach.call(forms, function (form) {
+            form.addEventListener('submit', function (event) {
             event.preventDefault();
             if (form.classList.contains('firma-aocr-is-loading')) {
                 return;
@@ -122,6 +126,7 @@
                 .then(function () {
                     setBusy(form, false);
                 });
+            });
         });
     }
 
@@ -132,8 +137,8 @@
         }
 
         function validateLocal() {
-            var estado = qs('input[name="estadoExplotador"]', form);
-            var vencimiento = qs('input[name="fechaVencimiento"]', form);
+            var estado = qs('input[name="EstadoExplotador"]', form) || qs('input[name="estadoExplotador"]', form);
+            var vencimiento = qs('input[name="FechaVencimiento"]', form) || qs('input[name="fechaVencimiento"]', form);
             var missing = [];
             if (!estado || !estado.value.trim()) {
                 missing.push('Estado del explotador');
@@ -151,9 +156,35 @@
         var validateButton = qs('[data-validar-datos]', form);
         if (validateButton) {
             validateButton.addEventListener('click', function () {
-                if (validateLocal()) {
-                    showResult('Datos obligatorios listos para guardar.', true);
+                if (!validateLocal() || form.classList.contains('firma-aocr-is-loading')) {
+                    return;
                 }
+
+                var body = new FormData(form);
+
+                setBusy(form, true);
+                showResult('Validando y guardando datos AOCR...', true);
+
+                fetch(form.getAttribute('action'), {
+                    method: 'POST',
+                    body: body,
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'RequestVerificationToken': tokenFrom(form)
+                    }
+                })
+                    .then(parseJson)
+                    .then(function (payload) {
+                        showResult(payload.message || 'Datos AOCR validados correctamente.', true, payload.data || payload);
+                        window.setTimeout(function () { window.location.reload(); }, 650);
+                    })
+                    .catch(function (payload) {
+                        showResult(payload && payload.message ? payload.message : 'No se pudieron validar los datos AOCR.', false, payload ? payload.data : null);
+                    })
+                    .then(function () {
+                        setBusy(form, false);
+                    });
             });
         }
 
@@ -163,12 +194,14 @@
                 return;
             }
 
+            var body = new FormData(form);
+
             setBusy(form, true);
             showResult('Guardando datos AOCR...', true);
 
             fetch(form.getAttribute('action'), {
                 method: 'POST',
-                body: new FormData(form),
+                body: body,
                 credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -190,12 +223,13 @@
     }
 
     function installSignature() {
-        var form = qs('#frmFirmaAocr');
-        if (!form) {
+        var forms = document.querySelectorAll('[data-firmar-documento], #frmFirmaAocr');
+        if (!forms || !forms.length) {
             return;
         }
 
-        form.addEventListener('submit', function (event) {
+        Array.prototype.forEach.call(forms, function (form) {
+            form.addEventListener('submit', function (event) {
             event.preventDefault();
             if (form.classList.contains('firma-aocr-is-loading')) {
                 return;
@@ -219,12 +253,14 @@
                 return;
             }
 
+            var body = new FormData(form);
+
             setBusy(form, true);
             showResult('Firmando oficialmente el AOCR...', true);
 
             fetch(form.getAttribute('action'), {
                 method: 'POST',
-                body: new FormData(form),
+                body: body,
                 credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -242,6 +278,7 @@
                 .then(function () {
                     setBusy(form, false);
                 });
+            });
         });
     }
 

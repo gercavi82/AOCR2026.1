@@ -45,8 +45,12 @@ namespace CapaNegocio.Services
 
                 var firmaAocr = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
                 var firmaCondiciones = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES");
+                if (firmaCondiciones == null)
+                {
+                    firmaCondiciones = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
+                }
                 var aocrFirmada = DocumentoFirmadoExiste(firmaAocr != null ? firmaAocr.RutaDocumento : null, rutaExiste);
-                var condicionesFirmadas = DocumentoFirmadoExiste(firmaCondiciones != null ? firmaCondiciones.RutaDocumento : null, rutaExiste) || aocrFirmada;
+                var condicionesFirmadas = DocumentoFirmadoExiste(firmaCondiciones != null ? firmaCondiciones.RutaDocumento : null, rutaExiste);
 
                 if (!aocrFirmada || !condicionesFirmadas)
                 {
