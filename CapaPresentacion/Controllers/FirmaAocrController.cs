@@ -22,6 +22,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaAocrFinalizacionService _finalizacionService = new FirmaAocrFinalizacionService();
         private readonly FirmaAocrNotificationService _notificationService = new FirmaAocrNotificationService();
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
+        private readonly AocrProcesoNotificacionService _procesoNotificacionService = new AocrProcesoNotificacionService();
 
         private FirmaAocrStorageService StorageService
         {
@@ -371,6 +372,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 RegistrarFirma(contexto, tipoDocumento, rutaFirmada, resultadoFirma, contenidoQr, nombreFirmante, bytesFirmado);
+                NotificarDocumentoFirmadoSeguro(id, tipoDocumento);
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][DB_UPDATE] SolicitudId=" + id + "; EstadoAocrNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][DB_UPDATE] SolicitudId=" + id + "; EstadoAnterior=" + (contexto.Solicitud.Estado ?? string.Empty) + "; EstadoNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
 
@@ -385,6 +387,7 @@ namespace CapaPresentacion.Controllers
                 if (finalizacion != null && finalizacion.Finalizado)
                 {
                     _notificationService.NotificarLiberacion(id, rutaFirmada);
+                    _procesoNotificacionService.NotificarProcesoAocrFinalizado(id);
                 }
 
                 var urlDescarga = Url.Action("DescargarFirmado", "FirmaAocr", new { solicitudId = id, tipoDocumento });
@@ -417,6 +420,27 @@ namespace CapaPresentacion.Controllers
                 Trace.TraceError("[FIRMA_AOCR_NUEVA][ERROR] FIRMAR SolicitudId=" + id + "; Motivo=" + ex.Message + "; Exception=" + ex);
                 Trace.TraceError("[FIRMA_AOCR_V2][ERROR] SolicitudId=" + id + "; Motivo=" + ex.Message + "; Exception=" + ex);
                 return JsonError(500, "Error interno al firmar AOCR. " + ex.Message, id);
+            }
+        }
+
+        private void NotificarDocumentoFirmadoSeguro(int solicitudId, string tipoDocumento)
+        {
+            try
+            {
+                var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+                if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
+                {
+                    _procesoNotificacionService.NotificarAocrFirmado(solicitudId);
+                }
+                else if (string.Equals(tipo, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(tipo, "CONDICIONES", StringComparison.OrdinalIgnoreCase))
+                {
+                    _procesoNotificacionService.NotificarCondicionesFirmadas(solicitudId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[NOTIF_AOCR][SEND_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=FIRMA_DOCUMENTO; Email=; Error=" + ex.Message + ";");
             }
         }
 

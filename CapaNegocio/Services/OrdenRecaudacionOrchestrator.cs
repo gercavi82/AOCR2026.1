@@ -766,6 +766,11 @@ namespace CapaNegocio.Services
                     Error = "EMAIL_SERVICE_DISABLED"
                 });
             }
+
+            public Task<CapaDatos.Services.EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo, IEnumerable<CapaDatos.Services.EmailSendAttachment> adjuntos, string aliasRemitente = null)
+            {
+                return EnviarAsync(para, paraNombre, asunto, cuerpo, null, null, aliasRemitente);
+            }
         }
 
         #endregion

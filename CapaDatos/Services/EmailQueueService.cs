@@ -826,18 +826,30 @@ namespace CapaDatos.Services
 
                 byte[] adjuntoContenido = item.AdjuntoContenido;
                 string adjuntoNombre = item.AdjuntoNombre;
+                var adjuntosCorreo = new List<EmailSendAttachment>();
 
-                if ((adjuntoContenido == null || adjuntoContenido.Length == 0) &&
-                    item.Adjuntos != null && item.Adjuntos.Count > 0)
+                if (item.Adjuntos != null && item.Adjuntos.Count > 0)
                 {
-                    string attachmentError;
-                    if (!TryLoadAttachment(item.Adjuntos[0], out adjuntoContenido, out adjuntoNombre, out attachmentError))
+                    foreach (var adjunto in item.Adjuntos)
                     {
-                        await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", attachmentError);
-                        _logger.LogError(
-                            string.Format("Email {0} marcado en ERROR por adjunto inválido: {1}", item.Id, attachmentError),
-                            context);
-                        return;
+                        byte[] contenido;
+                        string nombre;
+                        string attachmentError;
+                        if (!TryLoadAttachment(adjunto, out contenido, out nombre, out attachmentError))
+                        {
+                            await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", attachmentError);
+                            _logger.LogError(
+                                string.Format("Email {0} marcado en ERROR por adjunto inválido: {1}", item.Id, attachmentError),
+                                context);
+                            return;
+                        }
+
+                        adjuntosCorreo.Add(new EmailSendAttachment
+                        {
+                            Content = contenido,
+                            FileName = nombre,
+                            ContentType = string.IsNullOrWhiteSpace(adjunto.ContentType) ? "application/pdf" : adjunto.ContentType
+                        });
                     }
                 }
 
@@ -846,14 +858,22 @@ namespace CapaDatos.Services
                         ? AocrEmailService.ResolverAliasPorTipoNotificacion(item.TipoNotificacion)
                         : item.AliasRemitente);
 
-                var result = await _emailService.EnviarAsync(
-                    item.Para,
-                    item.ParaNombre,
-                    item.Asunto,
-                    item.Cuerpo,
-                    adjuntoContenido,
-                    adjuntoNombre,
-                    aliasRemitente);
+                var result = adjuntosCorreo.Count > 0
+                    ? await _emailService.EnviarAsync(
+                        item.Para,
+                        item.ParaNombre,
+                        item.Asunto,
+                        item.Cuerpo,
+                        adjuntosCorreo,
+                        aliasRemitente)
+                    : await _emailService.EnviarAsync(
+                        item.Para,
+                        item.ParaNombre,
+                        item.Asunto,
+                        item.Cuerpo,
+                        adjuntoContenido,
+                        adjuntoNombre,
+                        aliasRemitente);
 
                 if (result.Success)
                 {

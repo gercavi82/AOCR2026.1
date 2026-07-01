@@ -215,7 +215,13 @@
                                     <div class="aocr-form-grid aocr-form-grid-split">
                                         <div class="aocr-form-field">
                                             <label for="fechasInspeccionManualFieldModal">Fecha o rango de inspección</label>
-                                            <input type="text" id="fechasInspeccionManualFieldModal" name="fechasInspeccionManual" class="form-control" value="@fechasInspeccionManual" placeholder="dd/MM/yyyy o rango de fechas" />
+                                            <input type="hidden" id="fechasInspeccionManualFieldModal" name="fechasInspeccionManual" value="@fechasInspeccionManual" />
+                                            <div class="aocr-date-range" data-aocr-date-range="inspeccion">
+                                                <input type="date" id="fechaInspeccionDesdeModal" class="form-control" autocomplete="off" aria-label="Fecha de inicio de inspección" />
+                                                <span class="aocr-date-range__separator">a</span>
+                                                <input type="date" id="fechaInspeccionHastaModal" class="form-control" autocomplete="off" aria-label="Fecha fin de inspección" />
+                                            </div>
+                                            <small class="aocr-field-help">Seleccione una fecha única o un rango de inspección.</small>
                                         </div>
                                         <div class="aocr-form-field">
                                             <label for="estacionesInspeccionManualFieldModal">Estación o cobertura</label>

@@ -621,11 +621,12 @@ namespace CapaPresentacion.Controllers
                 model.Orden.Compania = _companiaContextService.FormatearTextoCompaniaOrden(companiaActiva.Codigo, companiaActiva.Nombre);
                 model.Orden.NombreContribuyente = companiaActiva.Nombre;
 
+                var codigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null;
+                var numeroSolicitudGop = ObtenerNumeroSolicitudGop(codigoSolicitud);
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
-                var numeroOrden = await GenerarNumeroOrdenAsync();
-                System.Diagnostics.Debug.WriteLine($"Controller Nueva: numeroOrden generado = {numeroOrden}");
-                var codigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null;
+                var numeroOrden = await GenerarNumeroOrdenAsync(numeroSolicitudGop, codigoSolicitud);
+                System.Diagnostics.Debug.WriteLine($"Controller Nueva: numeroOrden generado = {numeroOrden}; numeroSolicitudGop = {numeroSolicitudGop}");
                 var lugarEmisionDb = ResolverLugarEmisionDesdeDb(codigoSolicitud, idUsuario);
 
                 var orden = new OrdenRecaudacion
@@ -1125,9 +1126,28 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        private async Task<string> GenerarNumeroOrdenAsync()
+        private async Task<string> GenerarNumeroOrdenAsync(string numeroSolicitudGop = null, int? codigoSolicitud = null)
         {
-            return await Task.FromResult(_ordenRecaudacionService.GenerarNumeroOrdenAocr(DateTime.Now.Year));
+            return await Task.FromResult(_ordenRecaudacionService.GenerarNumeroOrdenAocrVinculada(DateTime.Now.Year, numeroSolicitudGop, codigoSolicitud));
+        }
+
+        private string ObtenerNumeroSolicitudGop(int? codigoSolicitud)
+        {
+            if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
+                return solicitud != null ? solicitud.NumeroSolicitud : null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[ORDEN_NUM][GOP_LOOKUP_ERROR] CodigoSolicitud=" + codigoSolicitud.Value + "; " + ex.Message);
+                return null;
+            }
         }
 
         // GET: /OrdenRecaudacion/Detalles/5

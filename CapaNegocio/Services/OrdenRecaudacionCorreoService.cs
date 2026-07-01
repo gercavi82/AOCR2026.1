@@ -50,6 +50,8 @@ namespace CapaNegocio.Services
                 {
                     return ResultadoOperacion.Ok(null, "Evento de orden sin plantilla de correo configurada.");
                 }
+                var numeroOrdenVisible = ObtenerNumeroOrdenVisible(orden);
+                plantilla.Asunto = NormalizarAsuntoOrden(plantilla.Asunto, orden, numeroOrdenVisible);
 
                 var destinatarios = ResolverDestinatarios(orden, plantilla, emailDestino, nombreDestino);
                 if (destinatarios.Count == 0)
@@ -99,7 +101,7 @@ namespace CapaNegocio.Services
                             eventKeySuffix),
                         EsHtml = true,
                         AdjuntoContenido = adjuntoPdf,
-                        AdjuntoNombre = adjuntoPdf != null ? (nombreAdjunto ?? (orden.NumeroOrden ?? "orden") + ".pdf") : null,
+                        AdjuntoNombre = adjuntoPdf != null ? (nombreAdjunto ?? (numeroOrdenVisible ?? "orden") + ".pdf") : null,
                         AdjuntoMimeType = adjuntoPdf != null ? "application/pdf" : null
                     };
 
@@ -291,6 +293,8 @@ namespace CapaNegocio.Services
                 ? solicitud.RepresentanteLegal.Trim()
                 : "Representante Técnico";
 
+            var numeroOrdenVisible = ObtenerNumeroOrdenVisible(orden, solicitud, numeroSolicitud);
+
             var model = new EmailTemplateModel
             {
                 Titulo = plantilla.Titulo,
@@ -298,7 +302,7 @@ namespace CapaNegocio.Services
                 MensajePrincipal = plantilla.Mensaje,
                 Resumen = new List<EmailFieldItem>
                 {
-                    new EmailFieldItem("Número de Orden de Recaudación", orden.NumeroOrden ?? ("#" + orden.Id)),
+                    new EmailFieldItem("Número de Orden de Recaudación", numeroOrdenVisible ?? ("#" + orden.Id)),
                     new EmailFieldItem("Número de Solicitud AOCR", numeroSolicitud),
                     new EmailFieldItem("Operadora / Compañía", nombreOperadora),
                     new EmailFieldItem("RUC", ruc),
@@ -331,6 +335,47 @@ namespace CapaNegocio.Services
             {
                 return null;
             }
+        }
+
+        private static string ObtenerNumeroOrdenVisible(OrdenRecaudacion orden)
+        {
+            var solicitud = ObtenerSolicitud(orden);
+            var numeroSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud.Trim()
+                : null;
+            return ObtenerNumeroOrdenVisible(orden, solicitud, numeroSolicitud);
+        }
+
+        private static string ObtenerNumeroOrdenVisible(OrdenRecaudacion orden, SolicitudAOCR solicitud, string numeroSolicitud)
+        {
+            if (orden == null)
+            {
+                return null;
+            }
+
+            var numeroSolicitudGop = !string.IsNullOrWhiteSpace(numeroSolicitud)
+                ? numeroSolicitud
+                : (solicitud != null ? solicitud.NumeroSolicitud : null);
+            var vinculada = OrdenRecaudacionService.ConstruirNumeroOrdenDesdeNumeroSolicitud(
+                numeroSolicitudGop,
+                orden.FechaCreacion != default(DateTime) ? orden.FechaCreacion.Year : DateTime.Now.Year);
+
+            return !string.IsNullOrWhiteSpace(vinculada)
+                ? vinculada
+                : orden.NumeroOrden;
+        }
+
+        private static string NormalizarAsuntoOrden(string asunto, OrdenRecaudacion orden, string numeroOrdenVisible)
+        {
+            if (string.IsNullOrWhiteSpace(asunto)
+                || orden == null
+                || string.IsNullOrWhiteSpace(orden.NumeroOrden)
+                || string.IsNullOrWhiteSpace(numeroOrdenVisible))
+            {
+                return asunto;
+            }
+
+            return asunto.Replace(orden.NumeroOrden, numeroOrdenVisible);
         }
 
         private sealed class PlantillaOrdenCorreo

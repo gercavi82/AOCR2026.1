@@ -189,6 +189,7 @@
     <Compile Include="Services\InspectorBandejaService.cs" />
     <Compile Include="Services\AocrFinalWorkflowService.cs" />
     <Compile Include="Services\AocrFinalizacionService.cs" />
+    <Compile Include="Services\AocrProcesoNotificacionService.cs" />
     <Compile Include="Services\AocrEstadoService.cs" />
     <Compile Include="Services\AocrFlujoService.cs" />
     <Compile Include="Services\AocrSidebarCounterService.cs" />

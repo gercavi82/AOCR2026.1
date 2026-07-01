@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CapaDatos.Services;
@@ -21,10 +23,18 @@ namespace CapaNegocio.Services
         }
     }
 
+    public class EmailSendAttachment
+    {
+        public byte[] Content { get; set; }
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+    }
+
     public interface IEmailService
     {
         void EnviarConAdjunto(string para, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre);
         Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre);
+        Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, IEnumerable<EmailSendAttachment> adjuntos);
     }
 
     /// <summary>
@@ -87,6 +97,35 @@ namespace CapaNegocio.Services
                 {
                     enviado = _emailService.EnviarMensajeCorreo(para, asunto, html, AocrEmailService.AliasDefault);
                 }
+
+                return Task.FromResult(enviado
+                    ? EmailSendResult.Ok()
+                    : EmailSendResult.Fail(_emailService.LastError ?? "No fue posible enviar el correo."));
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult(EmailSendResult.Fail(ex.Message));
+            }
+        }
+
+        public Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, IEnumerable<EmailSendAttachment> adjuntos)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(para) || !EmailRegex.IsMatch(para))
+                    return Task.FromResult(EmailSendResult.Fail("Correo destino invÃ¡lido"));
+
+                if (string.IsNullOrWhiteSpace(asunto))
+                    return Task.FromResult(EmailSendResult.Fail("Asunto requerido"));
+
+                var lista = (adjuntos ?? Enumerable.Empty<EmailSendAttachment>())
+                    .Where(a => a != null && a.Content != null && a.Content.Length > 0)
+                    .Select(a => Tuple.Create(a.Content, string.IsNullOrWhiteSpace(a.FileName) ? "documento.pdf" : a.FileName, string.IsNullOrWhiteSpace(a.ContentType) ? "application/pdf" : a.ContentType))
+                    .ToList();
+
+                bool enviado = lista.Count > 0
+                    ? _emailService.EnviarMensajeCorreoConAdjuntos(para, asunto, html, lista, AocrEmailService.AliasDefault)
+                    : _emailService.EnviarMensajeCorreo(para, asunto, html, AocrEmailService.AliasDefault);
 
                 return Task.FromResult(enviado
                     ? EmailSendResult.Ok()

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -15,6 +17,13 @@ namespace CapaDatos.Services
         public string Error { get; set; }
     }
 
+    public class EmailSendAttachment
+    {
+        public byte[] Content { get; set; }
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+    }
+
     /// <summary>
     /// Interface para servicio de email
     /// </summary>
@@ -22,6 +31,9 @@ namespace CapaDatos.Services
     {
         Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
             byte[] adjunto = null, string adjuntoNombre = null, string aliasRemitente = null);
+
+        Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            IEnumerable<EmailSendAttachment> adjuntos, string aliasRemitente = null);
     }
 
     /// <summary>
@@ -51,6 +63,55 @@ namespace CapaDatos.Services
 
                 var enviado = (adjunto != null && adjunto.Length > 0)
                     ? _emailService.EnviarMensajeCorreoConAdjunto(para, asunto, cuerpo, adjunto, adjuntoNombre, alias, "application/octet-stream")
+                    : _emailService.EnviarMensajeCorreo(para, asunto, cuerpo, alias);
+
+                if (enviado)
+                {
+                    return Task.FromResult(new EmailSendResult
+                    {
+                        Success = true,
+                        MessageId = Guid.NewGuid().ToString()
+                    });
+                }
+
+                return Task.FromResult(new EmailSendResult
+                {
+                    Success = false,
+                    Error = string.IsNullOrWhiteSpace(_emailService.LastError)
+                        ? "No fue posible enviar el correo."
+                        : _emailService.LastError
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_ERROR" });
+
+                return Task.FromResult(new EmailSendResult
+                {
+                    Success = false,
+                    Error = ex.Message
+                });
+            }
+        }
+
+        public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            IEnumerable<EmailSendAttachment> adjuntos, string aliasRemitente = null)
+        {
+            try
+            {
+                var alias = AocrEmailService.NormalizarAlias(
+                    string.IsNullOrWhiteSpace(aliasRemitente) ? null : aliasRemitente);
+
+                var lista = (adjuntos ?? Enumerable.Empty<EmailSendAttachment>())
+                    .Where(a => a != null && a.Content != null && a.Content.Length > 0)
+                    .Select(a => Tuple.Create(
+                        a.Content,
+                        string.IsNullOrWhiteSpace(a.FileName) ? "documento.pdf" : a.FileName,
+                        string.IsNullOrWhiteSpace(a.ContentType) ? "application/octet-stream" : a.ContentType))
+                    .ToList();
+
+                var enviado = lista.Count > 0
+                    ? _emailService.EnviarMensajeCorreoConAdjuntos(para, asunto, cuerpo, lista, alias)
                     : _emailService.EnviarMensajeCorreo(para, asunto, cuerpo, alias);
 
                 if (enviado)
@@ -372,6 +433,12 @@ namespace CapaDatos.Services
                 Error = "EMAIL_SERVICE_DISABLED"
             });
         }
+
+        public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            IEnumerable<EmailSendAttachment> adjuntos, string aliasRemitente = null)
+        {
+            return EnviarAsync(para, paraNombre, asunto, cuerpo, null, null, aliasRemitente);
+        }
     }
 
     /// <summary>
@@ -405,6 +472,52 @@ namespace CapaDatos.Services
                     MaxIntentos = 3,
                     Remitente = AocrEmailService.CorreoNoReply,
                     AliasRemitente = AocrEmailService.NormalizarAlias(aliasRemitente)
+                };
+
+                var id = await _queueService.EncolarAsync(item);
+
+                return new EmailSendResult
+                {
+                    Success = true,
+                    MessageId = "QUEUED-" + id
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { ErrorCode = "QUEUE_ERROR" });
+                return new EmailSendResult
+                {
+                    Success = false,
+                    Error = "Error al encolar: " + ex.Message
+                };
+            }
+        }
+
+        public async Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            IEnumerable<EmailSendAttachment> adjuntos, string aliasRemitente = null)
+        {
+            try
+            {
+                var item = new EmailQueueItem
+                {
+                    Para = para,
+                    ParaNombre = paraNombre,
+                    Asunto = asunto,
+                    Cuerpo = cuerpo,
+                    EsHtml = true,
+                    MaxIntentos = 3,
+                    Remitente = AocrEmailService.CorreoNoReply,
+                    AliasRemitente = AocrEmailService.NormalizarAlias(aliasRemitente),
+                    Adjuntos = (adjuntos ?? Enumerable.Empty<EmailSendAttachment>())
+                        .Where(a => a != null && a.Content != null && a.Content.Length > 0)
+                        .Select(a => new EmailAttachmentItem
+                        {
+                            FileName = string.IsNullOrWhiteSpace(a.FileName) ? "documento.pdf" : a.FileName,
+                            ContentType = string.IsNullOrWhiteSpace(a.ContentType) ? "application/octet-stream" : a.ContentType,
+                            FilePath = string.Empty,
+                            FileSize = a.Content.Length
+                        })
+                        .ToList()
                 };
 
                 var id = await _queueService.EncolarAsync(item);

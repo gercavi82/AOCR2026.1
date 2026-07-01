@@ -137,6 +137,114 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public void MarcarLiberadoRt(
+            int codigoSolicitud,
+            string tipoDocumento,
+            string rutaPdfFirmado,
+            string hashPdfFirmado,
+            long tamanioPdf,
+            int? codigoUsuarioLiberacion,
+            string nombreArchivo = null)
+        {
+            if (codigoSolicitud <= 0 || string.IsNullOrWhiteSpace(tipoDocumento) || string.IsNullOrWhiteSpace(rutaPdfFirmado))
+            {
+                return;
+            }
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sqlUpdate = @"
+                    UPDATE public.aocr_tbdocumento_generado
+                    SET ruta_documento = @ruta_documento,
+                        nombre_archivo = COALESCE(NULLIF(@nombre_archivo, ''), nombre_archivo),
+                        tamanio_pdf = @tamanio_pdf,
+                        estado = 'LIBERADO_RT',
+                        hash_pdf_firmado = @hash_pdf_firmado,
+                        fecha_liberacion = COALESCE(fecha_liberacion, NOW()),
+                        disponible_rt = TRUE,
+                        fecha_disponible_rt = COALESCE(fecha_disponible_rt, NOW()),
+                        codigo_usuario_liberacion = @codigo_usuario_liberacion
+                    WHERE codigo_documento = (
+                        SELECT codigo_documento
+                        FROM public.aocr_tbdocumento_generado
+                        WHERE codigo_solicitud = @codigo_solicitud
+                          AND UPPER(COALESCE(tipo_documento, '')) = UPPER(@tipo_documento)
+                        ORDER BY fecha_generacion DESC, codigo_documento DESC
+                        LIMIT 1
+                    );";
+
+                int filas;
+                using (var cmd = new NpgsqlCommand(sqlUpdate, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@tipo_documento", tipoDocumento.Trim());
+                    cmd.Parameters.AddWithValue("@ruta_documento", rutaPdfFirmado.Trim());
+                    cmd.Parameters.AddWithValue("@nombre_archivo", (object)(nombreArchivo ?? string.Empty));
+                    cmd.Parameters.AddWithValue("@tamanio_pdf", tamanioPdf);
+                    cmd.Parameters.AddWithValue("@hash_pdf_firmado", (object)hashPdfFirmado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@codigo_usuario_liberacion", (object)codigoUsuarioLiberacion ?? DBNull.Value);
+                    filas = cmd.ExecuteNonQuery();
+                }
+
+                if (filas > 0)
+                {
+                    return;
+                }
+
+                const string sqlInsert = @"
+                    INSERT INTO public.aocr_tbdocumento_generado
+                    (
+                        codigo_solicitud,
+                        tipo_documento,
+                        nombre_archivo,
+                        ruta_documento,
+                        tamanio_pdf,
+                        estado,
+                        fecha_generacion,
+                        hash_pdf_firmado,
+                        fecha_liberacion,
+                        disponible_rt,
+                        fecha_disponible_rt,
+                        codigo_usuario,
+                        codigo_usuario_liberacion,
+                        created_at
+                    )
+                    VALUES
+                    (
+                        @codigo_solicitud,
+                        @tipo_documento,
+                        @nombre_archivo,
+                        @ruta_documento,
+                        @tamanio_pdf,
+                        'LIBERADO_RT',
+                        NOW(),
+                        @hash_pdf_firmado,
+                        NOW(),
+                        TRUE,
+                        NOW(),
+                        @codigo_usuario,
+                        @codigo_usuario_liberacion,
+                        NOW()
+                    );";
+
+                using (var cmd = new NpgsqlCommand(sqlInsert, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@tipo_documento", tipoDocumento.Trim());
+                    cmd.Parameters.AddWithValue("@nombre_archivo", (object)nombreArchivo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ruta_documento", rutaPdfFirmado.Trim());
+                    cmd.Parameters.AddWithValue("@tamanio_pdf", tamanioPdf);
+                    cmd.Parameters.AddWithValue("@hash_pdf_firmado", (object)hashPdfFirmado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@codigo_usuario", (object)codigoUsuarioLiberacion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@codigo_usuario_liberacion", (object)codigoUsuarioLiberacion ?? DBNull.Value);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         private static void EnsureSchema(NpgsqlConnection cn)
         {
             if (_schemaReady)
@@ -166,8 +274,19 @@ namespace CapaDatos.DAOs
                         fecha_generacion TIMESTAMP NOT NULL DEFAULT NOW(),
                         codigo_usuario INTEGER NULL,
                         usuario_nombre VARCHAR(160) NULL,
+                        hash_pdf_firmado VARCHAR(128) NULL,
+                        fecha_liberacion TIMESTAMP NULL,
+                        codigo_usuario_liberacion INTEGER NULL,
+                        disponible_rt BOOLEAN NOT NULL DEFAULT FALSE,
+                        fecha_disponible_rt TIMESTAMP NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT NOW()
                     );
+
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS hash_pdf_firmado VARCHAR(128) NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS fecha_liberacion TIMESTAMP NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS codigo_usuario_liberacion INTEGER NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS disponible_rt BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS fecha_disponible_rt TIMESTAMP NULL;
 
                     CREATE INDEX IF NOT EXISTS idx_aocr_documento_generado_solicitud_tipo
                         ON public.aocr_tbdocumento_generado(codigo_solicitud, tipo_documento, fecha_generacion DESC);";

@@ -42,6 +42,7 @@ namespace CapaPresentacion.Controllers
         private readonly AocrEstadoService _aocrEstadoService = new AocrEstadoService();
         private readonly InformeTecnicoEstadoService _informeTecnicoEstadoService = new InformeTecnicoEstadoService();
         private readonly AocrFinalizacionService _aocrFinalizacionService = new AocrFinalizacionService();
+        private readonly AocrProcesoNotificacionService _aocrProcesoNotificacionService = new AocrProcesoNotificacionService();
 
         [Authorize(Roles = "Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
@@ -1814,6 +1815,7 @@ namespace CapaPresentacion.Controllers
                     nombreFirmante,
                     usarPlantillaOficial);
 
+                NotificarDocumentoAocrFirmadoSeguro(solicitudId, tipoNormalizado);
                 GuardarPosicionFirmaAocr(item, request, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
 
                 var estadoNuevo = tipoNormalizado == "RECONOCIMIENTO" ? "AOCR_FIRMADO_DIRECCION" : "CONDICIONES_FIRMADAS";
@@ -1823,10 +1825,14 @@ namespace CapaPresentacion.Controllers
                     "; EstadoNuevo=" + estadoNuevo +
                     "; FilasAfectadas=1");
 
-                _aocrFinalizacionService.IntentarFinalizarEmision(
+                var finalizacionDocumentoValidacion = _aocrFinalizacionService.IntentarFinalizarEmision(
                     solicitudId,
                     ObtenerUsuarioActualIdSeguro(),
                     RutaDocumentoExiste);
+                if (finalizacionDocumentoValidacion != null && finalizacionDocumentoValidacion.Finalizado)
+                {
+                    _aocrProcesoNotificacionService.NotificarProcesoAocrFinalizado(solicitudId);
+                }
 
                 if (item.Solicitud.TipoSolicitud.GetValueOrDefault() == 3
                     && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
@@ -2069,6 +2075,7 @@ namespace CapaPresentacion.Controllers
                             nombreFirmante,
                             usarPlantillaOficial);
 
+                        NotificarDocumentoAocrFirmadoSeguro(model.SolicitudId, tipoNormalizado);
                         System.Diagnostics.Trace.TraceInformation(
                             (string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) ? "[FIRMA_CONDICIONES][OK]" : "[FIRMA_AOCR][OK]") +
                             " SolicitudId=" + model.SolicitudId +
@@ -2079,10 +2086,14 @@ namespace CapaPresentacion.Controllers
                             "; Bytes=" + (pdfBytes != null ? pdfBytes.LongLength : 0) +
                             "; Existe=" + RutaDocumentoExiste(rutaDocumentoFirmado));
 
-                        _aocrFinalizacionService.IntentarFinalizarEmision(
+                        var finalizacionDescargaFirma = _aocrFinalizacionService.IntentarFinalizarEmision(
                             model.SolicitudId,
                             ObtenerUsuarioActualIdSeguro(),
                             RutaDocumentoExiste);
+                        if (finalizacionDescargaFirma != null && finalizacionDescargaFirma.Finalizado)
+                        {
+                            _aocrProcesoNotificacionService.NotificarProcesoAocrFinalizado(model.SolicitudId);
+                        }
 
                         if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
                         {
@@ -2928,6 +2939,7 @@ namespace CapaPresentacion.Controllers
                     bytesFirmado,
                     "DIRECCION_DIRDAC");
 
+                _aocrProcesoNotificacionService.NotificarAocrFirmado(solicitudId);
                 GuardarPosicionFirmaAocr(item, edicion, "RECONOCIMIENTO", posicionFirma, "FIJA_INSTITUCIONAL");
                 System.Diagnostics.Trace.TraceInformation(
                     "[FIRMA_AOCR][DB_UPDATE] AocrId=" + ObtenerAocrIdLog(item) +
@@ -2938,6 +2950,10 @@ namespace CapaPresentacion.Controllers
                     solicitudId,
                     ObtenerUsuarioActualIdSeguro(),
                     RutaDocumentoExiste);
+                if (finalizacion != null && finalizacion.Finalizado)
+                {
+                    _aocrProcesoNotificacionService.NotificarProcesoAocrFinalizado(solicitudId);
+                }
                 var estadoSolicitudNuevo = finalizacion != null && !string.IsNullOrWhiteSpace(finalizacion.EstadoNuevo)
                     ? finalizacion.EstadoNuevo
                     : EstadoSolicitud.AOCR_Legalizado;
@@ -3403,6 +3419,26 @@ namespace CapaPresentacion.Controllers
 
             var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(contexto.SolicitudId.Value, "CONDICIONES_LIMITACIONES");
             return firma != null && !string.IsNullOrWhiteSpace(firma.RutaDocumento) ? "FIRMADO" : "PENDIENTE";
+        }
+
+        private void NotificarDocumentoAocrFirmadoSeguro(int solicitudId, string tipoDocumento)
+        {
+            try
+            {
+                var tipo = NormalizarTipoDocumento(tipoDocumento);
+                if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
+                {
+                    _aocrProcesoNotificacionService.NotificarAocrFirmado(solicitudId);
+                }
+                else if (string.Equals(tipo, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
+                {
+                    _aocrProcesoNotificacionService.NotificarCondicionesFirmadas(solicitudId);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("[NOTIF_AOCR][SEND_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=FIRMA_DOCUMENTO; Email=; Error=" + ex.Message + ";");
+            }
         }
 
         private string ObtenerLoginActual()

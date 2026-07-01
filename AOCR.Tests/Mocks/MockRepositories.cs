@@ -175,6 +175,12 @@ namespace AOCR.Tests.Mocks
             return Task.FromResult(result);
         }
 
+        public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            IEnumerable<EmailSendAttachment> adjuntos, string aliasRemitente = null)
+        {
+            return EnviarAsync(para, paraNombre, asunto, cuerpo, null, null, aliasRemitente);
+        }
+
         public void Reset()
         {
             EnviosRealizados.Clear();

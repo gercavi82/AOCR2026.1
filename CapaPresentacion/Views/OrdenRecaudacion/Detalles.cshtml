@@ -41,6 +41,12 @@
     var tieneFacturaDescargable = facturaPago != null && !string.IsNullOrWhiteSpace(facturaPago.FilePath);
     var abrirModalPago = Model != null && Model.AbrirModalPago;
     var abrirModalPagoJs = (abrirModalPago && puedeSubirComprobante) ? "true" : "false";
+    var numeroOrdenVinculadaGop = CapaNegocio.Services.OrdenRecaudacionService.ConstruirNumeroOrdenDesdeNumeroSolicitud(
+        orden.NumeroSolicitud,
+        orden.FechaCreacion != default(DateTime) ? orden.FechaCreacion.Year : DateTime.Now.Year);
+    var numeroOrdenReferencia = !string.IsNullOrWhiteSpace(numeroOrdenVinculadaGop)
+        ? numeroOrdenVinculadaGop
+        : orden.NumeroOrden;
 
     // Calcular total pagado
     // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)
@@ -76,7 +82,7 @@
             <div class="card-header bg-dark text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h3 class="card-title mb-0 text-white">
-                        <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Orden: @orden.NumeroOrden
+                        <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Orden: @numeroOrdenReferencia
                     </h3>
                     <div class="btn-group">
                         <a href="@Url.Action("Index")" class="btn btn-light btn-sm">
@@ -225,7 +231,7 @@
                                             @if (!string.IsNullOrWhiteSpace(orden.NumeroSolicitud))
                                             {
                                                 <span>@orden.NumeroSolicitud</span>
-                                                <div class="text-muted" style="font-size:0.8em;">Ref. OR: @orden.NumeroOrden</div>
+                                                <div class="text-muted" style="font-size:0.8em;">Ref. OR: @numeroOrdenReferencia</div>
                                             }
                                             else
                                             {

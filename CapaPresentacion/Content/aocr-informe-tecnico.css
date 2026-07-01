@@ -206,6 +206,23 @@
     color: #22313d;
 }
 
+
+.modal-informe-tecnico .aocr-date-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-informe-tecnico .aocr-date-range__separator {
+    color: #536b7f;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.modal-informe-tecnico .aocr-date-range input[type="date"] {
+    min-width: 0;
+}
 .aocr-textarea-sm {
     min-height: 96px;
     resize: vertical;

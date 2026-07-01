@@ -91,6 +91,8 @@
             return;
         }
 
+        syncInspectionDateRangeField(form);
+
         var fechas = form.querySelector('#fechasInspeccionManualFieldModal');
         var estaciones = form.querySelector('#estacionesInspeccionManualFieldModal');
         var trabajos = form.querySelector('#trabajosRealizadosFieldModal');
@@ -107,6 +109,144 @@
                 + (operador || '__________________')
                 + ' cuenta con instalaciones, facilidades y personal técnico - operativo que brinda asistencia en tierra a sus operaciones comerciales.';
         }
+    }
+
+    function padDatePart(value) {
+        value = parseInt(value, 10);
+        return value < 10 ? '0' + value : String(value);
+    }
+
+    function toIsoDateString(date) {
+        if (!date || isNaN(date.getTime())) {
+            return '';
+        }
+
+        return date.getFullYear() + '-' + padDatePart(date.getMonth() + 1) + '-' + padDatePart(date.getDate());
+    }
+
+    function toDisplayDateString(isoValue) {
+        if (!isoValue) {
+            return '';
+        }
+
+        var parts = isoValue.split('-');
+        if (parts.length !== 3) {
+            return isoValue;
+        }
+
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    function parseInformeDate(value) {
+        value = (value || '').trim();
+        if (!value) {
+            return '';
+        }
+
+        var iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (iso) {
+            return iso[1] + '-' + padDatePart(iso[2]) + '-' + padDatePart(iso[3]);
+        }
+
+        var local = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (local) {
+            return local[3] + '-' + padDatePart(local[2]) + '-' + padDatePart(local[1]);
+        }
+
+        var parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? '' : toIsoDateString(parsed);
+    }
+
+    function splitInformeDateRange(value) {
+        value = (value || '').trim();
+        if (!value) {
+            return { from: '', to: '' };
+        }
+
+        var normalized = value
+            .replace(/\s+hasta\s+/ig, ' - ')
+            .replace(/\s+al\s+/ig, ' - ')
+            .replace(/\s+a\s+/ig, ' - ');
+        var parts = normalized.indexOf(' - ') >= 0 ? normalized.split(/\s+-\s+/) : [normalized];
+
+        return {
+            from: parseInformeDate(parts[0]),
+            to: parseInformeDate(parts.length > 1 ? parts[1] : '')
+        };
+    }
+
+    function syncInspectionDateRangeField(form) {
+        if (!form) {
+            return;
+        }
+
+        var hidden = form.querySelector('#fechasInspeccionManualFieldModal');
+        var fromInput = form.querySelector('#fechaInspeccionDesdeModal');
+        var toInput = form.querySelector('#fechaInspeccionHastaModal');
+
+        if (!hidden || !fromInput || !toInput) {
+            return;
+        }
+
+        var fromValue = fromInput.value || '';
+        var toValue = toInput.value || '';
+
+        if (fromValue && toValue) {
+            hidden.value = toDisplayDateString(fromValue) + ' - ' + toDisplayDateString(toValue);
+        } else if (fromValue) {
+            hidden.value = toDisplayDateString(fromValue);
+        } else if (toValue) {
+            hidden.value = toDisplayDateString(toValue);
+        } else {
+            hidden.value = '';
+        }
+    }
+
+    function initInspectionDateRange(modal) {
+        var form = modal ? modal.querySelector('[data-aocr-informe-form="true"]') : null;
+        if (!form) {
+            return;
+        }
+
+        var hidden = form.querySelector('#fechasInspeccionManualFieldModal');
+        var fromInput = form.querySelector('#fechaInspeccionDesdeModal');
+        var toInput = form.querySelector('#fechaInspeccionHastaModal');
+
+        if (!hidden || !fromInput || !toInput) {
+            return;
+        }
+
+        var initial = splitInformeDateRange(hidden.value);
+        fromInput.value = initial.from || '';
+        toInput.value = initial.to || '';
+
+        fromInput.addEventListener('change', function () {
+            if (fromInput.value && toInput.value && toInput.value < fromInput.value) {
+                toInput.value = fromInput.value;
+            }
+
+            if (fromInput.value) {
+                toInput.setAttribute('min', fromInput.value);
+            } else {
+                toInput.removeAttribute('min');
+            }
+
+            syncInspectionDateRangeField(form);
+        });
+
+        toInput.addEventListener('change', function () {
+            if (fromInput.value && toInput.value && toInput.value < fromInput.value) {
+                fromInput.value = toInput.value;
+            }
+
+            syncInspectionDateRangeField(form);
+        });
+
+        if (fromInput.value) {
+            toInput.setAttribute('min', fromInput.value);
+        }
+
+        syncInspectionDateRangeField(form);
     }
 
     function normalizeResultado(value) {
@@ -765,6 +905,7 @@
 
         modal.setAttribute('data-aocr-modal-initialized', 'true');
         initTooltips(modal);
+        initInspectionDateRange(modal);
 
         Array.prototype.forEach.call(modal.querySelectorAll('input[type="file"]'), function (input) {
             input.addEventListener('change', function () {

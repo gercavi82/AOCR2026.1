@@ -17,5 +17,9 @@ namespace CapaModelo
         public int? CodigoUsuario { get; set; }
         public string UsuarioNombre { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string HashPdfFirmado { get; set; }
+        public DateTime? FechaLiberacion { get; set; }
+        public bool DisponibleRt { get; set; }
+        public DateTime? FechaDisponibleRt { get; set; }
     }
 }

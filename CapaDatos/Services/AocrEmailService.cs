@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using CapaModelo.Common;
@@ -48,6 +50,16 @@ namespace CapaDatos.Services
             string mimeType = "application/pdf")
         {
             return EnviarMensajeCorreoInterno(correoPara, asunto, mensajeDetalle, aliasCorreo, adjuntoBytes, adjuntoNombre, mimeType);
+        }
+
+        public bool EnviarMensajeCorreoConAdjuntos(
+            string correoPara,
+            string asunto,
+            string mensajeDetalle,
+            IEnumerable<Tuple<byte[], string, string>> adjuntos,
+            string aliasCorreo = null)
+        {
+            return EnviarMensajeCorreoInterno(correoPara, asunto, mensajeDetalle, aliasCorreo, null, null, null, adjuntos);
         }
 
         public static string NormalizarRemitenteInstitucional(string remitenteSolicitado)
@@ -127,7 +139,8 @@ namespace CapaDatos.Services
             string aliasCorreo,
             byte[] adjuntoBytes,
             string adjuntoNombre,
-            string mimeType)
+            string mimeType,
+            IEnumerable<Tuple<byte[], string, string>> adjuntosMultiples = null)
         {
             var correlationId = Guid.NewGuid().ToString("N").Substring(0, 12);
             LastError = null;
@@ -157,7 +170,11 @@ namespace CapaDatos.Services
                     null,
                     "Este es un mensaje automatico del workflow AOCR.");
 
-                LogSmtpStart(correlationId, correoPara.Trim(), asuntoFinal, aliasVisible, adjuntoBytes != null && adjuntoBytes.Length > 0);
+                var adjuntosValidos = (adjuntosMultiples ?? Enumerable.Empty<Tuple<byte[], string, string>>())
+                    .Where(a => a != null && a.Item1 != null && a.Item1.Length > 0)
+                    .ToList();
+
+                LogSmtpStart(correlationId, correoPara.Trim(), asuntoFinal, aliasVisible, (adjuntoBytes != null && adjuntoBytes.Length > 0) || adjuntosValidos.Count > 0);
 
                 using (var correo = new MailMessage())
                 {
@@ -174,6 +191,14 @@ namespace CapaDatos.Services
                         var stream = new System.IO.MemoryStream(adjuntoBytes);
                         var attachment = new Attachment(stream, nombre, mimeType ?? "application/octet-stream");
                         correo.Attachments.Add(attachment);
+                    }
+
+                    foreach (var adjunto in adjuntosValidos)
+                    {
+                        var nombre = string.IsNullOrWhiteSpace(adjunto.Item2) ? "documento.pdf" : adjunto.Item2.Trim();
+                        var tipoMime = string.IsNullOrWhiteSpace(adjunto.Item3) ? "application/octet-stream" : adjunto.Item3.Trim();
+                        var stream = new System.IO.MemoryStream(adjunto.Item1);
+                        correo.Attachments.Add(new Attachment(stream, nombre, tipoMime));
                     }
 
                     using (var smtp = CreateSmtpClient())

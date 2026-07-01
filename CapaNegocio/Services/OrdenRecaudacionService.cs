@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
@@ -132,6 +133,90 @@ namespace CapaNegocio.Services
         public string GenerarNumeroOrdenAocr(int anio)
         {
             return GenerarNumeroOrdenInstitucional(anio);
+        }
+
+        public string GenerarNumeroOrdenAocrVinculada(int anio, string numeroSolicitudGop, int? codigoSolicitud = null)
+        {
+            var vinculada = ConstruirNumeroOrdenDesdeNumeroSolicitud(numeroSolicitudGop, anio);
+            if (!string.IsNullOrWhiteSpace(vinculada))
+            {
+                if (!_ordenDao.ExisteNumeroOrden(vinculada) || OrdenPerteneceASolicitud(vinculada, codigoSolicitud))
+                {
+                    _logger.LogInfo(string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[ORDEN_NUM][GOP_LINKED] Anio={0}; CodigoSolicitud={1}; NumeroSolicitud={2}; NumeroOrden={3}",
+                        anio,
+                        codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
+                        numeroSolicitudGop ?? string.Empty,
+                        vinculada));
+                    return vinculada;
+                }
+
+                _logger.LogWarning(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "[ORDEN_NUM][GOP_LINK_CONFLICT] NumeroOrden={0}; CodigoSolicitud={1}. Se usara secuencia institucional para evitar duplicado.",
+                    vinculada,
+                    codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : string.Empty));
+            }
+
+            return GenerarNumeroOrdenInstitucional(anio);
+        }
+
+        public static string ConstruirNumeroOrdenDesdeNumeroSolicitud(string numeroSolicitudGop, int anioFallback)
+        {
+            if (string.IsNullOrWhiteSpace(numeroSolicitudGop))
+            {
+                return null;
+            }
+
+            var texto = numeroSolicitudGop.Trim().ToUpperInvariant();
+            var matchAnio = Regex.Match(texto, @"(?:^|-)(20\d{2})(?:-|$)");
+            var matchAocr = Regex.Match(texto, @"AOCR\s*0*(\d+)", RegexOptions.IgnoreCase);
+            if (!matchAocr.Success)
+            {
+                return null;
+            }
+
+            var anio = matchAnio.Success ? matchAnio.Groups[1].Value : (anioFallback > 0 ? anioFallback.ToString(CultureInfo.InvariantCulture) : DateTime.Now.Year.ToString(CultureInfo.InvariantCulture));
+            int correlativo;
+            if (!int.TryParse(matchAocr.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out correlativo) || correlativo <= 0)
+            {
+                return null;
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, "DGAC-OR-{0}-AOCR{1}", anio, correlativo.ToString("D3", CultureInfo.InvariantCulture));
+        }
+
+        private bool OrdenPerteneceASolicitud(string numeroOrden, int? codigoSolicitud)
+        {
+            if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0 || string.IsNullOrWhiteSpace(numeroOrden) || string.IsNullOrWhiteSpace(_connectionString))
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"
+                        SELECT COUNT(*)
+                        FROM public.aocr_or_orden
+                        WHERE numero_orden = @numero_orden
+                          AND codigo_solicitud::text = @codigo_solicitud;";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@numero_orden", numeroOrden.Trim());
+                        cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud.Value.ToString(CultureInfo.InvariantCulture));
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex);
+                return false;
+            }
         }
 
         private string ObtenerUltimoEstadoOrdenPorSolicitud(int codigoSolicitud)
