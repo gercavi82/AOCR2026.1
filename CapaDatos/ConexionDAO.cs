@@ -56,4 +56,52 @@ namespace CapaDatos.DAOs
             }
         }
     }
+
+    public static class DataReaderExtensions
+    {
+        public static bool HasColumn(this System.Data.IDataRecord dr, string columnName)
+        {
+            for (int i = 0; i < dr.FieldCount; i++)
+            {
+                if (string.Equals(dr.GetName(i), columnName, System.StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        public static string GetStringSafe(this System.Data.IDataRecord dr, string col)
+        {
+            if (!dr.HasColumn(col) || dr[col] == System.DBNull.Value)
+                return string.Empty;
+            return dr[col].ToString();
+        }
+
+        public static int GetIntSafe(this System.Data.IDataRecord dr, string col)
+        {
+            if (!dr.HasColumn(col) || dr[col] == System.DBNull.Value)
+                return 0;
+            try
+            {
+                return System.Convert.ToInt32(dr[col]);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public static System.DateTime? GetDateSafe(this System.Data.IDataRecord dr, string col)
+        {
+            if (!dr.HasColumn(col) || dr[col] == System.DBNull.Value)
+                return null;
+            try
+            {
+                return System.Convert.ToDateTime(dr[col]);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
 }

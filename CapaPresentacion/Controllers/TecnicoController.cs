@@ -257,6 +257,19 @@ namespace CapaPresentacion.Controllers
                             ? resultadoNotificacionInterna.Mensaje
                             : warningActual + " " + resultadoNotificacionInterna.Mensaje;
                     }
+
+                    try
+                    {
+                        new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                            solicitudId,
+                            "ASIGNAR_INSPECTOR",
+                            ObtenerUserIdActual(),
+                            "Coordinacion",
+                            "Inspector asignado al tramite.");
+                    }
+                    catch
+                    {
+                    }
                 }
                 else
                 {
@@ -364,6 +377,12 @@ namespace CapaPresentacion.Controllers
                 .ToList();
 
             return roles.Count == 0 ? "SIN_ROL_DETECTADO" : string.Join(",", roles);
+        }
+
+        private int ObtenerUserIdActual()
+        {
+            int userId;
+            return _userContext.TryGetUserId(Session, out userId) ? userId : 0;
         }
 
         private static string ConstruirEtiquetaInspectorRt(CapaDatos.Models.UsuarioInternoRTRegistro inspector)

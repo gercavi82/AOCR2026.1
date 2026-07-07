@@ -1,0 +1,11 @@
+@model IEnumerable<CapaPresentacion.Models.ViewModels.AocrRecorridoEstadoViewModel>
+@{
+    var actual = ViewBag.EstadoActual as CapaPresentacion.Models.ViewModels.AocrResumenEstadoActualViewModel;
+}
+
+@if (actual != null)
+{
+    @Html.Partial("_AocrEstadoActualCard", actual)
+}
+
+@Html.Partial("_AocrRecorridoTramite", Model)

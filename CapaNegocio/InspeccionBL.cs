@@ -4,6 +4,7 @@ using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
+using CapaNegocio.Services;
 
 namespace CapaNegocio
 {
@@ -106,6 +107,7 @@ namespace CapaNegocio
             if (ok)
             {
                 _historialDAO.Registrar(id, estadoActual, estadoDestino, updatedBy, usuarioNombre, observacion, origen);
+                TrySyncEstadoCentral(inspeccion, updatedBy, usuarioNombre, observacion, origen);
             }
 
             return ok;
@@ -160,6 +162,35 @@ namespace CapaNegocio
 
             var normalizado = estado.Trim().ToUpperInvariant();
             return normalizado != "CERRADO" && normalizado != "RESUELTO";
+        }
+
+        private static void TrySyncEstadoCentral(Inspeccion inspeccion, int usuarioId, string usuarioNombre, string observacion, string accion)
+        {
+            if (inspeccion == null || inspeccion.CodigoSolicitud <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    inspeccion.CodigoSolicitud,
+                    string.IsNullOrWhiteSpace(accion) ? "SINCRONIZAR_INSPECCION" : accion,
+                    usuarioId,
+                    string.IsNullOrWhiteSpace(usuarioNombre) ? "InspectorTecnico" : usuarioNombre,
+                    observacion,
+                    null,
+                    inspeccion.CodigoInspeccion,
+                    null);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "[AOCR_ESTADO][SYNC_INSPECCION_WARN] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; InspeccionId=" + inspeccion.CodigoInspeccion +
+                    "; Accion=" + (accion ?? string.Empty) +
+                    "; Error=" + ex.Message + ";");
+            }
         }
     }
 }

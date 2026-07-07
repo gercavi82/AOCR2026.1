@@ -821,6 +821,19 @@ namespace CapaNegocio.Services
             }
             catch { /* no romper si el historial falla */ }
 
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    codigoSolicitud,
+                    "GENERAR_PDF_AOCR",
+                    usuarioId,
+                    "DireccionJefaturaTecnica",
+                    "Documento AOCR generado.");
+            }
+            catch
+            {
+            }
+
             mensaje = "AOCR generada correctamente" + (string.IsNullOrEmpty(numeroAOCR) ? "." : " (" + numeroAOCR + ").");
             return documento;
         }

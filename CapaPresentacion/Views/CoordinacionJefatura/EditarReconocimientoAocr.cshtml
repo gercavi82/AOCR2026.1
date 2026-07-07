@@ -1076,6 +1076,16 @@
             </div>
         </div>
     }
+
+    <!-- Recorrido del trámite AOCR -->
+    @if (Model != null && Model.SolicitudId > 0)
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div data-aocr-recorrido-solicitud="@Model.SolicitudId" class="mb-4"></div>
+            </div>
+        </div>
+    }
 </div>
 </div>
 

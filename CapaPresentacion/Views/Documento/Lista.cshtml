@@ -22,14 +22,14 @@
         : null;
     var puedeRevisarDocumentos = ViewBag.PuedeRevisarDocumentos as bool? ?? false;
     var puedeReabrirDocumentos = ViewBag.PuedeReabrirDocumentos as bool? ?? false;
-    var modoDocumentos = (ViewBag.ModoDocumentos ?? string.Empty).ToString().Trim();
+    var modoDocumentos = (ViewBag.ModoDocumentos as string ?? string.Empty).Trim();
     var origenDocumentos = (Request.QueryString["origen"] ?? "revision-documental").Trim();
     var esModoVerDocumentacion = string.Equals(modoDocumentos, "ver", System.StringComparison.OrdinalIgnoreCase);
     var esModoRevisionDocumental = !esModoVerDocumentacion;
     var esFaseInspectorDocumental = ViewBag.EsFaseInspectorDocumental as bool? ?? false;
-    var operadoraContexto = (ViewBag.OperadoraEae ?? string.Empty).ToString().Trim();
+    var operadoraContexto = (ViewBag.OperadoraEae as string ?? string.Empty).Trim();
     var documentos = Model ?? new List<Documento>();
-    var solicitudNumero = (ViewBag.SolicitudNumero ?? solicitudIdTexto ?? string.Empty).ToString().Trim();
+    var solicitudNumero = (ViewBag.SolicitudNumero as string ?? solicitudIdTexto ?? string.Empty).Trim();
     var referenciaSolicitud = !string.IsNullOrWhiteSpace(solicitudNumero) ? solicitudNumero : solicitudIdTexto;
     var tituloPaginaModulo = string.IsNullOrWhiteSpace(referenciaSolicitud)
         ? (esModoVerDocumentacion ? "Documentación cargada" : "Revisión documental de la solicitud")

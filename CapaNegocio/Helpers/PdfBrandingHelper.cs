@@ -239,6 +239,13 @@ namespace CapaNegocio.Helpers
             LogInfo(
                 source,
                 string.Format(
+                    "[PDF_BRANDING][IN] Source={0}; Bytes={1};",
+                    source ?? "null",
+                    pdfBytes == null ? 0 : pdfBytes.Length));
+
+            LogInfo(
+                source,
+                string.Format(
                     "Inicio aplicacion hoja membretada. PdfBytes={0}. MotorPdf=itextsharp. Ensamblado={1}.",
                     pdfBytes == null ? 0 : pdfBytes.Length,
                     GetITextSharpAssemblyInfo()));
@@ -353,6 +360,13 @@ namespace CapaNegocio.Helpers
                     LogInfo(
                         source,
                         string.Format(
+                            "[PDF_BRANDING][OK] Source={0}; BytesSalida={1};",
+                            source ?? "null",
+                            stampedBytes.Length));
+
+                    LogInfo(
+                        source,
+                        string.Format(
                             "Hoja membretada aplicada correctamente con iTextSharp. PdfOriginalBytes={0}. PdfFinalBytes={1}.",
                             pdfBytes.Length,
                             stampedBytes.Length));
@@ -368,6 +382,18 @@ namespace CapaNegocio.Helpers
 
         private static byte[] ReturnOriginalPdf(string source, byte[] pdfBytes, string reason, Exception ex = null)
         {
+            var errorDetail = string.Format(
+                "{0} Exception={1}",
+                reason ?? "Error desconocido.",
+                ex != null ? ex.Message : "Ninguna");
+
+            LogError(
+                source,
+                string.Format(
+                    "[PDF_BRANDING][ERROR_RETURN_ORIGINAL] Source={0}; Error={1};",
+                    source ?? "null",
+                    errorDetail));
+
             LogError(
                 source,
                 string.Format(

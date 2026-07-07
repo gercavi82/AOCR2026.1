@@ -1906,12 +1906,112 @@ namespace CapaPresentacion.Controllers
             return true;
         }
 
+        private string ResolverDestinoPorRolYProceso(int usuarioId, string rolActivo, string companiaActiva)
+        {
+            if (string.IsNullOrWhiteSpace(rolActivo) || !RoleGroupingHelper.IsSolicitante(rolActivo))
+            {
+                if (RoleGroupingHelper.IsCoordinacion(rolActivo))
+                {
+                    return Url.Action("Index", "Tecnico");
+                }
+                return Url.Action("Index", "Dashboard");
+            }
+
+            if (string.IsNullOrWhiteSpace(companiaActiva))
+            {
+                return Url.Action("Index", "Dashboard");
+            }
+
+            try
+            {
+                var procesoService = new CapaNegocio.Services.AocrProcesoActivoService();
+                var info = procesoService.ObtenerProcesoActivoPorCompania(usuarioId, companiaActiva);
+
+                // 4. SolicitudAOCR/Detalle o Continuar si tiene proceso habilitado.
+                if (info.SolicitudActiva != null)
+                {
+                    return Url.Action("Detalle", "SolicitudAOCR", new { id = info.SolicitudActiva.CodigoSolicitud });
+                }
+
+                // If no active request, check active order
+                if (info.OrdenActiva != null)
+                {
+                    return Url.Action("Index", "OrdenRecaudacion");
+                }
+
+                // Check if they have a paid/habilitante order to start a new request
+                var ordenDao = new OrdenRecaudacionDAO();
+                var compContext = new CapaNegocio.Services.AocrCompaniaContextService();
+                var rawOrdenes = ordenDao.ListarPorUsuario(usuarioId, null);
+                var compNombre = ResolverNombreCompaniaPorCodigo(companiaActiva);
+                var ordenesCompania = compContext.FiltrarOrdenesPorCompania(rawOrdenes, companiaActiva, compNombre, usuarioId);
+
+                // Look for an order that is Facturada/Pagada/Completada
+                var ordenHabilitante = ordenesCompania
+                    .Where(o => o != null && o.Id > 0)
+                    .Where(o => {
+                        var est = (o.Estado ?? string.Empty).Trim().ToUpperInvariant();
+                        return est == "FACTURADA" || est == "PAGADA" || est == "COMPLETADA" || est == "FACTURADO";
+                    })
+                    .OrderByDescending(o => o.FechaCreacion)
+                    .FirstOrDefault();
+
+                if (ordenHabilitante != null)
+                {
+                    // Check if a request has already been created for this order
+                    var solDao = new SolicitudAOCRDAO();
+                    var solicitudesRaw = solDao.ObtenerPorUsuario(usuarioId);
+                    var tieneSolicitudParaOrden = solicitudesRaw.Any(s => {
+                        if (s == null) return false;
+                        var ordIdStr = ordenHabilitante.CodigoSolicitud.HasValue ? ordenHabilitante.CodigoSolicitud.Value.ToString() : string.Empty;
+                        var solIdStr = s.CodigoSolicitud.ToString();
+                        return !string.IsNullOrWhiteSpace(ordIdStr) && ordIdStr == solIdStr;
+                    });
+
+                    if (!tieneSolicitudParaOrden)
+                    {
+                        return Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = ordenHabilitante.Id });
+                    }
+                }
+
+                // If no active request, no active order, and no unused paid order:
+                // Check if they have ANY completed/finalized request for this company to show final docs
+                var solDaoCheck = new SolicitudAOCRDAO();
+                var solicitudesCompania = compContext.FiltrarSolicitudesPorCompania(solDaoCheck.ObtenerPorUsuario(usuarioId), companiaActiva, compNombre);
+                var tieneProcesoTerminado = solicitudesCompania.Any(s => s != null && !new CapaNegocio.Services.AocrEstadoService().EsEstadoActivoProceso(s.Estado));
+                
+                if (tieneProcesoTerminado)
+                {
+                    // 5. Documentos finales si el proceso ya terminó.
+                    return Url.Action("Index", "Dashboard");
+                }
+
+                // 3. OrdenRecaudacion/Nueva si debe generar orden.
+                return Url.Action("Nueva", "OrdenRecaudacion");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(string.Format("[AOCR_FIX][RESOLVER_DESTINO_ERROR] Error al resolver destino por rol y proceso. Ex={0}", ex.ToString()));
+                return Url.Action("Index", "Dashboard");
+            }
+        }
+
         private ActionResult RedireccionarDespuesLogin(int usuarioId, string returnUrl)
+        {
+            var companiaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            return RedireccionarDespuesLogin(usuarioId, returnUrl, companiaActiva);
+        }
+
+        private ActionResult RedireccionarDespuesLogin(int usuarioId, string returnUrl, string companiaCodigo)
         {
             var rolesSesion = ObtenerRolesSesion();
             string motivoReturnUrl;
             var returnUrlPermitido = ResolverReturnUrlPermitido(returnUrl, rolesSesion, out motivoReturnUrl);
-            if (!string.IsNullOrWhiteSpace(returnUrlPermitido))
+            
+            // Check if returnUrl points to unauthorized or error
+            if (!string.IsNullOrWhiteSpace(returnUrlPermitido) &&
+                !returnUrlPermitido.Contains("/Error/") &&
+                !returnUrlPermitido.Contains("NoAutorizado"))
             {
                 _logger.LogInfo(string.Format(
                     "[AUTH][LOGIN_REDIRECT] UsuarioId={0}; Login={1}; Roles={2}; ReturnUrl={3}; Destino={4}; Motivo={5}",
@@ -1927,7 +2027,7 @@ namespace CapaPresentacion.Controllers
             if (!string.IsNullOrWhiteSpace(returnUrl))
             {
                 _logger.LogWarning(string.Format(
-                    "[AUTH][LOGIN_REDIRECT] ReturnUrl descartado. UsuarioId={0}; Login={1}; Roles={2}; ReturnUrl={3}; Motivo={4}",
+                    "[AUTH][LOGIN_REDIRECT] ReturnUrl descartado o no seguro/autorizado. UsuarioId={0}; Login={1}; Roles={2}; ReturnUrl={3}; Motivo={4}",
                     usuarioId,
                     Session["CodigoUsuario"] as string ?? string.Empty,
                     string.Join(",", rolesSesion),
@@ -1936,53 +2036,31 @@ namespace CapaPresentacion.Controllers
             }
 
             var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
-            if (RoleGroupingHelper.IsCoordinacion(rolSesion))
-            {
-                _logger.LogInfo(string.Format(
-                    "[AUTH][LOGIN_REDIRECT] Destino por rol coordinacion. UsuarioId={0}; Rol={1}; Destino=Tecnico/Index",
-                    usuarioId,
-                    rolSesion));
-                return RedirectToAction("Index", "Tecnico");
-            }
+            
+            // Add Log: [AUTH][COMPANIA_SESSION]
+            var companiaActiva = companiaCodigo ?? CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            _logger.LogInfo(string.Format(
+                "[AUTH][COMPANIA_SESSION] UsuarioId={0}; CompaniaActiva={1}",
+                usuarioId,
+                companiaActiva ?? "null"));
 
-            if (!RoleGroupingHelper.IsSolicitante(rolSesion))
-            {
-                _logger.LogInfo(string.Format(
-                    "[AUTH][LOGIN_REDIRECT] Destino por rol interno. UsuarioId={0}; Rol={1}; Destino=Dashboard/Index",
-                    usuarioId,
-                    rolSesion));
-                return RedirectToAction("Index", "Dashboard");
-            }
+            var destino = ResolverDestinoPorRolYProceso(usuarioId, rolSesion, companiaActiva);
+            
+            _logger.LogInfo(string.Format(
+                "[AUTH][LOGIN_REDIRECT_RESUELTO] UsuarioId={0}; Rol={1}; ReturnUrl={2}; Destino={3}; Motivo=ResolverDestinoPorRolYProceso",
+                usuarioId,
+                rolSesion ?? "null",
+                returnUrl ?? "null",
+                destino ?? "null"));
 
-            // ============================
-            // VERIFICACIÓN DE ORDEN
-            // ============================
-            var ordenDAO = new OrdenRecaudacionDAO();
+            // Add Log: [AUTH][REDIRECT_FINAL]
+            _logger.LogInfo(string.Format(
+                "[AUTH][REDIRECT_FINAL] UsuarioId={0}; Rol={1}; Destino={2}",
+                usuarioId,
+                rolSesion ?? "null",
+                destino ?? "null"));
 
-            bool tieneOrdenGeneradaOPagada = ordenDAO.TieneOrdenHabilitanteAOCR(usuarioId);
-            bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuarioId);
-            bool tieneOrdenPendiente = ordenDAO.TieneOrdenActivaEnProceso(usuarioId);
-            bool tieneOrdenPendienteComprobante = ordenDAO.TieneOrdenPendienteComprobante(usuarioId);
-
-            Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
-            Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
-            Session["TieneOrdenPendienteProceso"] = tieneOrdenPendiente;
-            Session["TieneOrdenPendienteComprobante"] = tieneOrdenPendienteComprobante;
-
-            if (tieneOrdenGeneradaOPagada)
-            {
-                _logger.LogInfo(string.Format(
-                    "[AUTH][LOGIN_REDIRECT] Destino solicitante con orden habilitante. UsuarioId={0}; Destino=Dashboard/Index",
-                    usuarioId));
-                return RedirectToAction("Index", "Dashboard");
-            }
-
-            if (tieneOrdenPendiente || tieneOrdenBorrador)
-            {
-                return RedirectToAction("Index", "OrdenRecaudacion");
-            }
-
-            return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+            return Redirect(destino);
         }
 
         private ActionResult LogLoginResult(ActionResult result, Stopwatch stopwatch, string mensaje)

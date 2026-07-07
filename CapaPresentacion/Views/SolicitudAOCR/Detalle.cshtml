@@ -2461,6 +2461,16 @@
         <div class="alert alert-light mt-3">No hay historial registrado para esta solicitud.</div>
     }
 
+    <!-- Recorrido del trámite AOCR -->
+    @if (Model != null && Model.CodigoSolicitud > 0)
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div data-aocr-recorrido-solicitud="@Model.CodigoSolicitud" class="mb-4"></div>
+            </div>
+        </div>
+    }
+
     <div class="mt-4 d-flex justify-content-end">
         @Html.ActionLink("Volver al listado", "Index", null, new { @class = "btn btn-outline-secondary px-4" })
     </div>

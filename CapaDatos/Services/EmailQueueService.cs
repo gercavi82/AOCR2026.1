@@ -756,6 +756,7 @@ namespace CapaDatos.Services
             {
                 try
                 {
+                    _logger.LogInfo("[EMAIL_QUEUE][READ_IN] Consultando siguiente correo en cola.");
                     var item = await _queueService.ObtenerSiguienteAsync();
 
                     if (item != null)
@@ -776,11 +777,13 @@ namespace CapaDatos.Services
                 {
                     // Error transitorio de BD: esperar menos para recuperarse más rápido
                     _logger.LogError(dbEx, new LogContext { ErrorCode = "EMAIL_QUEUE_DB_TRANSIENT" });
+                    _logger.LogWarning(string.Format("[EMAIL_QUEUE][READ_ERROR_RETRY] Error transitorio de base de datos al leer cola. Reintentando. Detalle: {0}", dbEx.Message));
                     await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_QUEUE_ERROR" });
+                    _logger.LogWarning(string.Format("[EMAIL_QUEUE][READ_ERROR_RETRY] Error al leer o procesar cola de correos. Reintentando. Detalle: {0}", ex.Message));
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 }
             }
@@ -809,6 +812,8 @@ namespace CapaDatos.Services
                 "[PERF][EMAIL_QUEUE] Inicializacion de cola completada en {0} ms",
                 startupStopwatch.ElapsedMilliseconds));
 
+            _logger.LogInfo("[EMAIL_QUEUE][START_OK] Cola de correos inicializada correctamente.");
+
             await ProcessQueueAsync(cancellationToken);
         }
 
@@ -822,7 +827,7 @@ namespace CapaDatos.Services
 
             try
             {
-                _logger.LogInfo(string.Format("Procesando email {0} para {1}", item.Id, item.Para), context);
+                _logger.LogInfo(string.Format("[EMAIL_QUEUE][SEND_IN] Iniciando envío de email {0} para {1}", item.Id, item.Para), context);
 
                 byte[] adjuntoContenido = item.AdjuntoContenido;
                 string adjuntoNombre = item.AdjuntoNombre;
@@ -839,7 +844,7 @@ namespace CapaDatos.Services
                         {
                             await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", attachmentError);
                             _logger.LogError(
-                                string.Format("Email {0} marcado en ERROR por adjunto inválido: {1}", item.Id, attachmentError),
+                                string.Format("[EMAIL_QUEUE][SEND_ERROR_NO_RETRY] Email {0} falló por adjunto inválido. Error={1}", item.Id, attachmentError),
                                 context);
                             return;
                         }
@@ -878,7 +883,7 @@ namespace CapaDatos.Services
                 if (result.Success)
                 {
                     await _queueService.MarcarEnviadoAsync(item.Id, result.MessageId);
-                    _logger.LogInfo(string.Format("Email {0} enviado exitosamente", item.Id), context);
+                    _logger.LogInfo(string.Format("[EMAIL_QUEUE][SEND_OK] Email {0} enviado exitosamente. MessageId={1}", item.Id, result.MessageId), context);
                 }
                 else
                 {
@@ -902,14 +907,14 @@ namespace CapaDatos.Services
                     ? "Configuracion SMTP invalida o remitente no autorizado."
                     : error;
                 await _queueService.ActualizarEstadoAsync(item.Id, "ERROR_CONFIG_SMTP", detalle);
-                _logger.LogError(string.Format("[AOCR][EMAIL_PERMANENT_ERROR] Email {0} marcado como ERROR_CONFIG_SMTP. Error={1}", item.Id, detalle), context);
+                _logger.LogError(string.Format("[EMAIL_QUEUE][SEND_ERROR_NO_RETRY] Email {0} marcado como ERROR_CONFIG_SMTP. Error={1}", item.Id, detalle), context);
                 return;
             }
 
             if (EsErrorNoReintentable(error))
             {
                 await _queueService.ActualizarEstadoAsync(item.Id, "ERROR_NO_REINTENTABLE", error);
-                _logger.LogError(string.Format("Email {0} marcado como ERROR_NO_REINTENTABLE", item.Id), context);
+                _logger.LogError(string.Format("[EMAIL_QUEUE][SEND_ERROR_NO_RETRY] Email {0} marcado como ERROR_NO_REINTENTABLE. Error={1}", item.Id, error), context);
                 return;
             }
 
@@ -921,8 +926,8 @@ namespace CapaDatos.Services
             {
                 // Máximo de intentos alcanzado
                 await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", error);
-                _logger.LogError(string.Format("Email {0} marcado como ERROR después de ~{1} intentos",
-                    item.Id, intentosActuales), context);
+                _logger.LogError(string.Format("[EMAIL_QUEUE][SEND_ERROR_NO_RETRY] Email {0} marcado como ERROR definitivo después de {1} intentos. Error={2}",
+                    item.Id, intentosActuales, error), context);
             }
             else
             {
@@ -930,8 +935,8 @@ namespace CapaDatos.Services
                 var delayIndex = Math.Min(intentosActuales, RetryDelays.Length - 1);
                 var delay = RetryDelays[delayIndex];
                 await _queueService.ReprogramarReintentoAsync(item.Id, delay);
-                _logger.LogWarning(string.Format("[AOCR][EMAIL_RETRY] Email {0} reprogramado. IntentoActual={1}; MaxIntentos={2}; DelayMin={3}",
-                    item.Id, intentosActuales, maxIntentos, delay.TotalMinutes), context);
+                _logger.LogWarning(string.Format("[EMAIL_QUEUE][SEND_ERROR_TEMPORAL] Email {0} reprogramado para reintento. IntentoActual={1}; MaxIntentos={2}; DelayMin={3}; Error={4}",
+                    item.Id, intentosActuales, maxIntentos, delay.TotalMinutes, error), context);
             }
         }
 

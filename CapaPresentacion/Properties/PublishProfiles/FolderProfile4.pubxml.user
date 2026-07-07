@@ -385,9 +385,6 @@
     <File Include="bin/itext.bouncy-castle-adapter.dll">
       <publishTime>02/02/2024 10:18:26</publishTime>
     </File>
-    <File Include="bin/itext.commons.dll">
-      <publishTime>12/29/2025 08:45:10</publishTime>
-    </File>
     <File Include="bin/itextsharp.dll">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>

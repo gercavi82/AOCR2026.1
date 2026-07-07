@@ -184,6 +184,36 @@ namespace CapaPresentacion.Controllers
             return _userContext.TryGetUserId(Session, out id) ? id : 0;
         }
 
+        private void TrySyncEstadoCentralSolicitud(int solicitudId, int inspeccionId, string accion, string observacion = null, int? informeId = null)
+        {
+            if (solicitudId <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    solicitudId,
+                    accion,
+                    ObtenerCodigoUsuario(),
+                    FirstNonEmpty(ObtenerRolActual(), "SISTEMA"),
+                    observacion,
+                    null,
+                    inspeccionId > 0 ? (int?)inspeccionId : null,
+                    informeId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[AOCR_ESTADO][SYNC_WARN] SolicitudId=" + solicitudId
+                    + "; InspeccionId=" + inspeccionId
+                    + "; InformeId=" + (informeId.HasValue ? informeId.Value : 0)
+                    + "; Accion=" + (accion ?? string.Empty)
+                    + "; Error=" + ex.Message
+                    + ";");
+            }
+        }
+
         private string ObtenerCodigoUsuarioSesion()
         {
             var codigoUsuario = Session != null ? Session["CodigoUsuario"] as string : null;
@@ -2462,6 +2492,8 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
+                TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "GENERAR_INFORME_TECNICO", "Informe tecnico finalizado y PDF generado.", informe.CodigoInforme);
+
                 var redirectInformeFirmaUrl = ConstruirUrlDetalle(id, new Dictionary<string, string>
                 {
                     { "autoOpenInformeTecnico", "true" },
@@ -2841,6 +2873,7 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
+                TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "GENERAR_INFORME_TECNICO", "Informe tecnico finalizado y PDF generado.", informe.CodigoInforme);
                 TempData["Success"] = "Informe técnico finalizado y PDF generado. Ya puede firmar como inspector.";
             }
             catch (Exception ex)
@@ -3089,6 +3122,7 @@ namespace CapaPresentacion.Controllers
                     + ", Existe=" + pdfExiste
                     + ", Tamano=" + pdfTamano);
                 _listaVerificacionOperacionalEaeDAO.MarcarFinalizada(listaGuardada.CodigoListaVerificacion, rutaPdf, "LV_COMPLETADA", usuarioId);
+                TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "FINALIZAR_LV_EAE", "Lista de verificacion operacional EAE finalizada.");
 
                 TempData["Success"] = "Lista de verificación operacional EAE finalizada y PDF generado. Ya puede firmarla digitalmente.";
 
@@ -3208,6 +3242,7 @@ namespace CapaPresentacion.Controllers
                 var pdfBytes = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista);
                 var rutaPdf = GuardarListaVerificacionOperacionalEaePdf(id, lista.Version, pdfBytes);
                 _listaVerificacionOperacionalEaeDAO.MarcarFinalizada(lista.CodigoListaVerificacion, rutaPdf, "LV_COMPLETADA", usuarioId);
+                TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "FINALIZAR_LV_EAE", "Lista de verificacion operacional EAE finalizada.");
 
                 TempData["Success"] = "Lista de verificación operacional EAE finalizada y PDF generado.";
                 return Redirect(ConstruirUrlDetalle(id, new Dictionary<string, string>
@@ -3464,6 +3499,7 @@ namespace CapaPresentacion.Controllers
                 nombreFirmanteCertificado,
                 "LV_FIRMADA",
                 usuarioId);
+            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, codigoInspeccion, "FIRMAR_LV", "Lista de verificacion operacional EAE firmada digitalmente.");
 
             _logger.LogInfo("[FIRMA_LV][ESTADO_OK] InspeccionId=" + codigoInspeccion
                 + ", ListaId=" + lista.CodigoListaVerificacion
@@ -3760,6 +3796,7 @@ namespace CapaPresentacion.Controllers
             var usuarioActual = ObtenerUsuarioActual();
 
             _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme, observacionDevolucion.Trim(), usuarioActual, "DEVUELTO_COORDINADOR", usuarioId);
+            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "DEVOLVER_INFORME_COORDINACION", observacionDevolucion.Trim(), informe.CodigoInforme);
 
             RegistrarAuditoriaInformeDigital(id,
                 "ENVIADO_A_COORDINADOR", "DEVUELTO_COORDINADOR", null, null,
@@ -3899,6 +3936,7 @@ namespace CapaPresentacion.Controllers
                 usuarioActual,
                 "APROBADO_DIRECCION",
                 usuarioId);
+            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "APROBAR_INFORME_TECNICO", observacionAprobacion, informe.CodigoInforme);
 
             RegistrarAuditoriaInformeDigital(
                 id,
@@ -4035,6 +4073,7 @@ namespace CapaPresentacion.Controllers
                 usuarioActual,
                 "DEVUELTO_DIRECCION",
                 usuarioId);
+            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "DEVOLVER_INFORME_TECNICO", observacion, informe.CodigoInforme);
 
             RegistrarAuditoriaInformeDigital(
                 id,
@@ -7604,6 +7643,7 @@ namespace CapaPresentacion.Controllers
             {
                 _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
             }
+            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase) ? "FIRMAR_DIRECCION" : "FIRMAR_INFORME_TECNICO", "Firma digital del informe tecnico aplicada.", informe.CodigoInforme);
 
             _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
 
@@ -7719,6 +7759,7 @@ namespace CapaPresentacion.Controllers
             {
                 var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "GENERADO");
                 _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
+                TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, inspeccion.CodigoInspeccion, "ENVIAR_DIRECCION", "Informe tecnico enviado a direccion para revision.", informe.CodigoInforme);
                 RegistrarAuditoriaInformeDigital(
                     inspeccion.CodigoInspeccion,
                     estadoAnterior,

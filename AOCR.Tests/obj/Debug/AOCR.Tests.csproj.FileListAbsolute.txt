@@ -71,15 +71,3 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.csproj.Co
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.csproj.Up2Date
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\obj\Debug\AOCR.Tests.pdb
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\itext.commons.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Logging.Abstractions.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Logging.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.Abstractions.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Options.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\itext.commons.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Logging.Abstractions.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Logging.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.Abstractions.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Options.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.xml

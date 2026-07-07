@@ -319,9 +319,9 @@ namespace CapaNegocio.Services
                 var versionTexto = version != null ? version.ToString() : string.Empty;
                 var location = assembly.Location ?? string.Empty;
 
-                if (!versionTexto.StartsWith("5.5.13.5", StringComparison.OrdinalIgnoreCase))
+                if (!versionTexto.StartsWith("5.5.13.4", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new InvalidOperationException("Version iTextSharp no compatible para firma digital AOCR. Se esperaba 5.5.13.5 y se cargo " + versionTexto + " desde " + location + ".");
+                    throw new InvalidOperationException("Version iTextSharp no compatible para firma digital AOCR. Se esperaba 5.5.13.4 y se cargo " + versionTexto + " desde " + location + ".");
                 }
 
                 var versionType = typeof(iTextSharp.text.Version);
@@ -339,7 +339,7 @@ namespace CapaNegocio.Services
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException("No se pudo inicializar iTextSharp 5.5.13.5 para firma digital. Revise que no exista itextsharp.dll antiguo en bin/Temporary ASP.NET Files. Detalle: " + ObtenerDetalleExcepcion(ex), ex);
+                throw new InvalidOperationException("No se pudo inicializar iTextSharp 5.5.13.4 para firma digital. Revise que no exista itextsharp.dll antiguo en bin/Temporary ASP.NET Files. Detalle: " + ObtenerDetalleExcepcion(ex), ex);
             }
         }
 

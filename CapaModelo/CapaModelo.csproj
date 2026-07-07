@@ -49,6 +49,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AocrRecorridoEstadoViewModel.cs" />
+    <Compile Include="AocrResumenEstadoActualViewModel.cs" />
     <Compile Include="AocrFirmaDocumento.cs" />
     <Compile Include="AocrDocumentoGenerado.cs" />
     <Compile Include="AocrFirmaPosicionDocumento.cs" />

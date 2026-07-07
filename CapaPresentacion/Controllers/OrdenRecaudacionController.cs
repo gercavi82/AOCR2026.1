@@ -696,6 +696,7 @@ namespace CapaPresentacion.Controllers
                         }
                     }
 
+                    var codigoSolicitudEstadoCentral = codigoSolicitud;
                     if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
                     {
                         var solicitudAuto = ConstruirSolicitudAuto(
@@ -712,6 +713,25 @@ namespace CapaPresentacion.Controllers
                         {
                             TempData["Error"] = "La orden se creó, pero no se pudo generar y vincular la solicitud asociada.";
                             return RedirectToAction("Detalles", new { id = ordenId });
+                        }
+
+                        codigoSolicitudEstadoCentral = codigoSolicitudGenerado;
+                    }
+
+                    if (codigoSolicitudEstadoCentral.HasValue && codigoSolicitudEstadoCentral.Value > 0)
+                    {
+                        try
+                        {
+                            new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                                codigoSolicitudEstadoCentral.Value,
+                                "GENERAR_ORDEN",
+                                idUsuario,
+                                "Solicitante",
+                                "Orden de recaudacion creada o vinculada.",
+                                ordenId);
+                        }
+                        catch
+                        {
                         }
                     }
 

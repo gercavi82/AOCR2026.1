@@ -95,8 +95,8 @@
     <Reference Include="IBM.Data.DB2.iSeries, Version=12.0.0.0, Culture=neutral, PublicKeyToken=9cdb2ebfb1f93a26, processorArchitecture=MSIL">
       <HintPath>..\packages\IBM.Data.DB2.iSeries.7.1.0\lib\IBM.Data.DB2.iSeries.dll</HintPath>
     </Reference>
-    <Reference Include="itextsharp, Version=5.5.13.5, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
-      <HintPath>..\packages\iTextSharp.5.5.13.5\lib\net461\itextsharp.dll</HintPath>
+    <Reference Include="itextsharp, Version=5.5.13.4, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
+      <HintPath>..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.AspNet.TelemetryCorrelation, Version=1.0.8.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.TelemetryCorrelation.1.0.8\lib\net45\Microsoft.AspNet.TelemetryCorrelation.dll</HintPath>
@@ -151,9 +151,6 @@
       <HintPath>..\packages\Rotativa.1.7.3\lib\net461\Rotativa.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="itext.commons, Version=9.5.0.0, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
-      <HintPath>..\packages\itext.commons.9.5.0\lib\net461\itext.commons.dll</HintPath>
-    </Reference>
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
     </Reference>
@@ -294,6 +291,7 @@
     <Compile Include="Controllers\RTController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\RecorridoTramiteController.cs" />
     <Compile Include="Filters\AuditActionFilter.cs" />
     <Compile Include="Filters\GlobalExceptionFilter.cs" />
     <Compile Include="Filters\SessionExpireAttribute.cs" />
@@ -358,6 +356,8 @@
     <Compile Include="Models\ViewModels\SolicitudAocrFlujoViewModel.cs" />
     <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
     <Compile Include="Models\ViewModels\SidebarMenuContextViewModel.cs" />
+    <Compile Include="Models\ViewModels\AocrRecorridoEstadoViewModel.cs" />
+    <Compile Include="Models\ViewModels\AocrResumenEstadoActualViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />

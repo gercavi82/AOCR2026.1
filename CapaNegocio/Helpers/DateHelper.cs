@@ -1,14 +1,36 @@
-﻿using System;
+using System;
 using System.Globalization;
 
 namespace CapaNegocio.Helpers
 {
+    public static class CultureHelper
+    {
+        public static CultureInfo GetAocrCulture()
+        {
+            try
+            {
+                return new CultureInfo("es-EC");
+            }
+            catch
+            {
+                try
+                {
+                    return new CultureInfo("es-ES");
+                }
+                catch
+                {
+                    return CultureInfo.InvariantCulture;
+                }
+            }
+        }
+    }
+
     /// <summary>
     /// Helper para manejo de fechas
     /// </summary>
     public static class DateHelper
     {
-        private static readonly CultureInfo CulturaEspanol = new CultureInfo("es-CO");
+        private static readonly CultureInfo CulturaEspanol = CultureHelper.GetAocrCulture();
 
         /// <summary>
         /// Formatea una fecha en formato largo en español

@@ -10,7 +10,7 @@ namespace CapaPresentacion.Helpers
 {
     public static class DocumentoTarjetaPresentacionHelper
     {
-        private static readonly CultureInfo CulturaEsEc = new CultureInfo("es-EC");
+        private static readonly CultureInfo CulturaEsEc = CapaNegocio.Helpers.CultureHelper.GetAocrCulture();
 
         private static readonly Dictionary<string, string> ConceptosVisibles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

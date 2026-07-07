@@ -116,6 +116,7 @@ namespace CapaNegocio.Services
                             }
 
                             tx.Commit();
+                            SincronizarEstadoCentral(orden.CodigoSolicitud, ordenId, usuarioFinanciero, usuarioFinancieroId);
                             result.Exito = true;
                             result.Idempotente = true;
                             result.SolicitudId = orden.CodigoSolicitud;
@@ -205,6 +206,7 @@ namespace CapaNegocio.Services
                         }
 
                         tx.Commit();
+                        SincronizarEstadoCentral(codigoSolicitud, ordenId, usuarioFinanciero, usuarioFinancieroId);
                         result.Exito = true;
                         result.SolicitudId = codigoSolicitud;
                         result.NumeroSolicitud = ObtenerNumeroSolicitud(cn, codigoSolicitud);
@@ -524,6 +526,24 @@ namespace CapaNegocio.Services
             public string Correo { get; set; }
             public string Telefono { get; set; }
             public decimal Total { get; set; }
+        }
+
+        private void SincronizarEstadoCentral(int solicitudId, int ordenId, string usuarioFinanciero, int usuarioFinancieroId)
+        {
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    solicitudId,
+                    "APROBAR_PAGO",
+                    usuarioFinancieroId,
+                    "Financiero",
+                    "Sincronizacion posterior a aprobacion financiera.",
+                    ordenId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("No se pudo sincronizar aocr_proceso_estado tras aprobacion financiera: " + ex.Message);
+            }
         }
     }
 }

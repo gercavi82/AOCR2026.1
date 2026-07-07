@@ -702,6 +702,16 @@
     </div>
 }
 
+<!-- Recorrido del trámite AOCR -->
+@if (orden != null && orden.Id > 0)
+{
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div data-aocr-recorrido-orden="@orden.Id" class="mb-4"></div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <style>
         .solicitud-inspeccion-card {

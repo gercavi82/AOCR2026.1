@@ -48,12 +48,14 @@ namespace CapaNegocio.Services
 
         public void NotificarAocrFirmado(int solicitudId)
         {
+            TrySyncCentralState(solicitudId, "FIRMAR_AOCR", "DireccionJefaturaTecnica", "Documento AOCR firmado.");
             NotificarEventoSimple(solicitudId, "AOCR_FIRMADO", "Sistema AOCR - Documento AOCR firmado",
                 "El documento RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS fue firmado correctamente.");
         }
 
         public void NotificarCondicionesFirmadas(int solicitudId)
         {
+            TrySyncCentralState(solicitudId, "FIRMAR_CONDICIONES", "DireccionJefaturaTecnica", "Documento de condiciones firmado.");
             NotificarEventoSimple(solicitudId, "CONDICIONES_FIRMADAS", "Sistema AOCR - Documento Condiciones y Limitaciones firmado",
                 "El documento CONDICIONES Y LIMITACIONES fue firmado correctamente.");
         }
@@ -147,6 +149,7 @@ namespace CapaNegocio.Services
                 NotificarInternoSeguro(solicitud.CodigoUsuario, "Proceso AOCR finalizado",
                     "Los documentos finales firmados se encuentran disponibles para descarga.", solicitudId);
                 Trace.TraceInformation("[AOCR_FINAL][BANDEJA_RT_OK] SolicitudId=" + solicitudId + ";");
+                TrySyncCentralState(solicitudId, "LIBERAR_DOCUMENTOS_RT", "DireccionJefaturaTecnica", "Documentos finales liberados al RT.");
                 return true;
             }
             catch (Exception ex)
@@ -431,6 +434,22 @@ namespace CapaNegocio.Services
         private static void LogError(int solicitudId, string tipoEvento, string email, string error)
         {
             Trace.TraceError("[NOTIF_AOCR][SEND_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=" + tipoEvento + "; Email=" + (email ?? string.Empty) + "; Error=" + (error ?? string.Empty) + ";");
+        }
+
+        private static void TrySyncCentralState(int solicitudId, string accion, string rolUsuario, string observacion)
+        {
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    solicitudId,
+                    accion,
+                    0,
+                    rolUsuario,
+                    observacion);
+            }
+            catch
+            {
+            }
         }
 
         private sealed class DocumentoFinalInfo

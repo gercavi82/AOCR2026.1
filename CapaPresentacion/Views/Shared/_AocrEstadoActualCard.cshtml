@@ -1,0 +1,28 @@
+@model CapaPresentacion.Models.ViewModels.AocrResumenEstadoActualViewModel
+
+@if (Model != null)
+{
+    <div class="card border-info mb-3 aocr-estado-actual-card shadow-sm" style="border-left: 5px solid #0dcaf0;">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-info-circle text-info mr-2 fa-lg me-2"></i>
+                <h6 class="text-uppercase text-muted mb-0 font-weight-bold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Estado actual del trámite</h6>
+            </div>
+            <h4 class="text-info font-weight-bold mb-3" style="color: #0b6f86 !important;">@Model.EstadoActual</h4>
+            <div class="row text-secondary font-weight-bold" style="font-size: 0.9rem;">
+                <div class="col-md-6 col-12 mb-2">
+                    <strong>Etapa:</strong> <span class="text-dark font-weight-normal">@Model.EtapaActual</span>
+                </div>
+                <div class="col-md-6 col-12 mb-2">
+                    <strong>Siguiente acción:</strong> <span class="text-dark font-weight-normal">@Model.SiguienteAccion</span>
+                </div>
+                <div class="col-md-6 col-12 mb-2">
+                    <strong>Responsable:</strong> <span class="text-dark font-weight-normal">@Model.RolResponsable - @Model.Responsable</span>
+                </div>
+                <div class="col-md-6 col-12">
+                    <strong>Fecha actualización:</strong> <span class="text-dark font-weight-normal">@Model.FechaEstado</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}

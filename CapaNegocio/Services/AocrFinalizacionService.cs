@@ -89,6 +89,18 @@ namespace CapaNegocio.Services
                 resultado.Finalizado = true;
                 resultado.EstadoNuevo = estadoNuevo;
                 resultado.Motivo = "Documentos finales liberados.";
+                try
+                {
+                    new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                        solicitudId,
+                        "FINALIZAR_AOCR",
+                        usuarioId,
+                        "DireccionJefaturaTecnica",
+                        "Cierre de emision AOCR.");
+                }
+                catch
+                {
+                }
                 LogOk(solicitudId, estadoNuevo, aocrFirmada, condicionesFirmadas);
                 return resultado;
             }

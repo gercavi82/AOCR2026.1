@@ -127,6 +127,20 @@ namespace CapaNegocio
                 // Notificacion auxiliar: no bloquear flujo principal.
             }
 
+            try
+            {
+                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                    codigoSolicitud,
+                    "AOCR_CAMBIO_ESTADO",
+                    usuarioId,
+                    "SISTEMA",
+                    observacion ?? string.Empty);
+            }
+            catch
+            {
+                // Estado central auxiliar: no bloquear flujo principal.
+            }
+
             mensaje = "Estado actualizado correctamente.";
             return true;
         }
