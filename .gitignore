@@ -12,3 +12,7 @@ packages/
 docs/export/node_modules/
 
 .fake
+# Respaldos grandes generados localmente
+03_07_2026.txt
+codigo_completo.txt
+codigo_completo*.txt
