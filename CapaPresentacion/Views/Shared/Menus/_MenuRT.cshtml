@@ -98,7 +98,7 @@
                         <a class="@linkClass(isCurrent("SolicitudAOCR", "FormularioEmisionAOCR") && currentTipoSolicitud == 1 ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { tipoSolicitud = 1 })">
                             <i class="fas fa-plus text-success mr-2"></i>
                             <span class="aocr-sidebar-item__content">
-                                <span class="aocr-sidebar-item__title">Nueva emisión AOCR</span>
+                                <span class="aocr-sidebar-item__title">Emision / Renovacion / Modificacion AOCR</span>
                                 <span class="aocr-sidebar-item__meta">Apertura del expediente formal de emisión inicial.</span>
                             </span>
                         </a>
@@ -154,7 +154,7 @@
                         <span class="aocr-link aocr-sidebar-item disabled text-muted" data-bs-toggle="tooltip" title="@Model.MensajeBloqueoRtSidebar">
                             <i class="fas fa-lock text-warning mr-2"></i>
                             <span class="aocr-sidebar-item__content">
-                                <span class="aocr-sidebar-item__title">Nueva emisión / renovación AOCR</span>
+                                <span class="aocr-sidebar-item__title">Emision / Renovacion / Modificacion AOCR</span>
                                 <span class="aocr-sidebar-item__meta">Se habilita cuando exista orden aprobada o flujo RT validado.</span>
                             </span>
                         </span>
@@ -209,3 +209,4 @@
         </li>
     </ul>
 </div>
+

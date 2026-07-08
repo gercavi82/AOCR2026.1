@@ -278,6 +278,8 @@ namespace CapaNegocio.Services
                     return ResultadoOperacion.Error("No fue posible encolar la notificacion formal del resultado del informe tecnico al RT.");
                 }
 
+                EncolarNotificacionesResultadoInstitucionales(contexto, solicitud, informe, reenvioManual);
+
                 var datos = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     { "EmailQueueId", queueId.ToString(CultureInfo.InvariantCulture) },
@@ -320,6 +322,132 @@ namespace CapaNegocio.Services
                 _logger.LogWarning("InspeccionCorreoService.EnviarResultadoInformeTecnicoDesdeDireccion: " + ex.Message);
                 return ResultadoOperacion.Error("No fue posible encolar la notificacion final del informe tecnico al RT.");
             }
+        }
+
+        private void EncolarNotificacionesResultadoInstitucionales(
+            InformeTecnicoDireccionEmailContext contexto,
+            SolicitudAOCR solicitud,
+            InspeccionInformeTecnico informe,
+            bool reenvioManual)
+        {
+            if (contexto == null || solicitud == null || informe == null)
+            {
+                return;
+            }
+
+            var esSatisfactorio = string.Equals(contexto.ResultadoTecnicoFinal, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase);
+
+            EncolarResultadoInstitucional(
+                contexto,
+                solicitud,
+                informe,
+                "RESULTADO_INSPECCION_COORDINADOR",
+                "AOCR - Resultado de inspeccion para revision de Coordinacion",
+                esSatisfactorio
+                    ? "Resultado de Inspeccion a la compania " + contexto.Operadora + ": Satisfactorio. Revisar informe de inspeccion y AOCR adjuntos, y posterior a ello enviar a Director DCAV."
+                    : "Resultado de Inspeccion a la compania " + contexto.Operadora + ": Insatisfactorio. Revisar informe de inspeccion y firmar la comunicacion formal a la compania, en la cual se detallan las No Conformidades detectadas.",
+                new[] { NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion },
+                reenvioManual);
+
+            if (esSatisfactorio)
+            {
+                EncolarResultadoInstitucional(
+                    contexto,
+                    solicitud,
+                    informe,
+                    "RESULTADO_INSPECCION_DCAV",
+                    "AOCR - Resultado satisfactorio pendiente de revision DCAV",
+                    "Resultado de Inspeccion a la compania " + contexto.Operadora + ": Satisfactorio. Revisar informe de inspeccion y AOCR adjuntos, y posterior a ello enviar a la firma de Director General.",
+                    new[] { NotificacionDestinatarioPolicyService.GrupoDcav },
+                    reenvioManual);
+            }
+        }
+
+        private void EncolarResultadoInstitucional(
+            InformeTecnicoDireccionEmailContext contexto,
+            SolicitudAOCR solicitud,
+            InspeccionInformeTecnico informe,
+            string tipoNotificacion,
+            string asunto,
+            string mensaje,
+            string[] gruposDestinatarios,
+            bool reenvioManual)
+        {
+            try
+            {
+                var destinatarios = _policyService
+                    .ResolverDestinatarios(solicitud, null, gruposDestinatarios)
+                    .Where(d => d != null && !string.IsNullOrWhiteSpace(d.Email))
+                    .GroupBy(d => d.Email.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (destinatarios.Count == 0)
+                {
+                    return;
+                }
+
+                foreach (var destinatario in destinatarios)
+                {
+                    var eventKey = string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}_{1}_{2}{3}",
+                        tipoNotificacion,
+                        informe.CodigoInforme,
+                        destinatario.Email.Trim().ToLowerInvariant(),
+                        reenvioManual ? "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture) : string.Empty);
+
+                    if (!reenvioManual
+                        && _emailQueueService.ExisteNotificacionAsync(tipoNotificacion, eventKey, solicitud.CodigoSolicitud).GetAwaiter().GetResult())
+                    {
+                        continue;
+                    }
+
+                    _emailQueueService.EncolarAsync(new EmailQueueItem
+                    {
+                        Para = destinatario.Email,
+                        ParaNombre = destinatario.Nombre,
+                        Asunto = asunto,
+                        Cuerpo = ConstruirHtmlResultadoInstitucional(contexto, destinatario.Nombre, mensaje, asunto),
+                        Estado = "PENDIENTE",
+                        SolicitudId = solicitud.CodigoSolicitud,
+                        TipoNotificacion = tipoNotificacion,
+                        EsHtml = true,
+                        EventKey = eventKey
+                    }).GetAwaiter().GetResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("InspeccionCorreoService.EncolarResultadoInstitucional: " + ex.Message);
+            }
+        }
+
+        private static string ConstruirHtmlResultadoInstitucional(
+            InformeTecnicoDireccionEmailContext contexto,
+            string nombreDestino,
+            string mensaje,
+            string asunto)
+        {
+            var model = new EmailTemplateModel
+            {
+                Titulo = "Resultado de inspeccion",
+                NombreDestinatario = string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino,
+                MensajePrincipal = mensaje,
+                Resumen = new List<EmailFieldItem>
+                {
+                    new EmailFieldItem("Solicitud AOCR", contexto.NumeroSolicitud),
+                    new EmailFieldItem("Operadora / EAE", contexto.Operadora),
+                    new EmailFieldItem("Resultado", ObtenerEtiquetaResultado(contexto)),
+                    new EmailFieldItem("Estacion inspeccionada", contexto.EstacionInspeccionada),
+                    new EmailFieldItem("Fecha de inspeccion", contexto.FechaInspeccionTexto)
+                },
+                Observaciones = contexto.ObservacionesGenerales,
+                TextoCierre = "Revise el expediente, informe y documentos asociados desde la bandeja AOCR correspondiente.",
+                Footer = "Este es un mensaje automatico del workflow AOCR - DGAC. Asunto: " + asunto
+            };
+
+            return EmailTemplateRenderer.Render(model);
         }
 
         private InformeTecnicoDireccionEmailContext ConstruirContextoResultadoInformeDireccion(
@@ -530,14 +658,14 @@ namespace CapaNegocio.Services
             {
                 return string.Format(
                     CultureInfo.InvariantCulture,
-                    "En referencia a la inspeccion realizada a su representada en la estacion de {0} el {1}, con el fin de verificar el cumplimiento de los requisitos tecnicos y operacionales aplicables dentro del proceso AOCR, comunico a usted que, una vez revisado y aprobado el Informe Tecnico por parte de DIRDAC / Direccion - Jefatura, el resultado de la inspeccion es Satisfactorio.",
+                    "Una vez realizada la inspeccion en la estacion {0} el {1}, comunico a usted que el resultado es Satisfactorio, lo que implica que la Emision / Renovacion / Modificacion AOCR solicitada se encuentra en legalizacion. Oportunamente se remitiran el AOCR y las Condiciones y Limitaciones debidamente firmados.",
                     contexto.EstacionInspeccionada,
                     contexto.FechaInspeccionTexto);
             }
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "En referencia a la inspeccion realizada a su representada en la estacion de {0} el {1}, con el fin de verificar el cumplimiento de los requisitos tecnicos y operacionales aplicables dentro del proceso AOCR, comunico a usted que, una vez revisado y aprobado el Informe Tecnico por parte de DIRDAC / Direccion - Jefatura, se detectaron observaciones y/o No Conformidades que deben ser atendidas por su representada.",
+                "Una vez realizada la inspeccion en la estacion {0} el {1}, comunico a usted que el resultado es Insatisfactorio.",
                 contexto.EstacionInspeccionada,
                 contexto.FechaInspeccionTexto);
         }
@@ -547,18 +675,18 @@ namespace CapaNegocio.Services
             if (string.Equals(contexto.TipoResultadoInsatisfactorio, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase))
             {
                 return string.IsNullOrWhiteSpace(contexto.PlazoSubsanacionTexto)
-                    ? "Por todo lo indicado, el resultado de la inspeccion es Insatisfactorio con inspeccion, por lo que su representada debera solicitar una nueva inspeccion una vez que haya implementado las acciones correctivas correspondientes, con el fin de demostrar ante esta Autoridad que las No Conformidades reportadas han sido solventadas. Mientras no se evidencie el cumplimiento de las acciones requeridas, el tramite correspondiente se mantendra pendiente conforme a las disposiciones institucionales aplicables."
-                    : "Por todo lo indicado, el resultado de la inspeccion es Insatisfactorio con inspeccion, por lo que su representada debera solicitar una nueva inspeccion una vez que haya implementado las acciones correctivas correspondientes, con el fin de demostrar ante esta Autoridad que las No Conformidades reportadas han sido solventadas. Mientras no se evidencie el cumplimiento de las acciones requeridas, el tramite correspondiente se mantendra pendiente conforme a las disposiciones institucionales aplicables. Se concede a su representada plazo hasta el " + contexto.PlazoSubsanacionTexto + ", para solicitar una nueva inspeccion y presentar las evidencias de cumplimiento correspondientes.";
+                    ? "Para continuar con el tramite reglamentario, su representada debera solicitar una nueva inspeccion en la estacion o estaciones correspondientes y cumplir con el pago de los derechos de inspeccion y viaticos del Inspector designado cuando aplique."
+                    : "Para continuar con el tramite reglamentario, hasta el " + contexto.PlazoSubsanacionTexto + " su representada debera solicitar una nueva inspeccion en la estacion o estaciones correspondientes y cumplir con el pago de los derechos de inspeccion y viaticos del Inspector designado cuando aplique.";
             }
 
             if (string.Equals(contexto.TipoResultadoInsatisfactorio, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase))
             {
                 return string.IsNullOrWhiteSpace(contexto.PlazoSubsanacionTexto)
-                    ? "Por todo lo indicado, el resultado de la inspeccion es Insatisfactorio sin inspeccion, por lo que su representada debera atender las observaciones senaladas y remitir las evidencias documentales correspondientes dentro del plazo establecido por esta Autoridad. En este caso, no se requiere una nueva inspeccion presencial, salvo que del analisis posterior de las evidencias presentadas se determine lo contrario."
-                    : "Por todo lo indicado, el resultado de la inspeccion es Insatisfactorio sin inspeccion, por lo que su representada debera atender las observaciones senaladas y remitir las evidencias documentales correspondientes dentro del plazo establecido por esta Autoridad. En este caso, no se requiere una nueva inspeccion presencial, salvo que del analisis posterior de las evidencias presentadas se determine lo contrario. Se concede a su representada plazo hasta el " + contexto.PlazoSubsanacionTexto + ", para remitir la documentacion y evidencias que permitan verificar la subsanacion de las observaciones reportadas.";
+                    ? "Para continuar con el tramite reglamentario, su representada debera solventar las No Conformidades incluidas en el documento adjunto y remitir las evidencias correspondientes."
+                    : "Para continuar con el tramite reglamentario, hasta el " + contexto.PlazoSubsanacionTexto + " su representada debera solventar las No Conformidades incluidas en el documento adjunto y remitir las evidencias correspondientes.";
             }
 
-            return "El resultado de la inspeccion es Insatisfactorio y requiere la atencion de las observaciones registradas en el Informe Tecnico conforme al flujo institucional AOCR.";
+            return "Para continuar con el tramite reglamentario, su representada debera atender las No Conformidades y observaciones registradas en el Informe Tecnico conforme al flujo institucional AOCR.";
         }
 
         private string ConstruirDetalleHallazgos(Inspeccion inspeccion, InspeccionInformeTecnico informe, IList<string> camposFaltantes)

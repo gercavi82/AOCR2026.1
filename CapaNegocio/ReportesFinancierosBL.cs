@@ -12,7 +12,7 @@ namespace CapaNegocio
 
         private static readonly Dictionary<int, string> MapaTramites = new Dictionary<int, string>
         {
-            { 1, "Emision AOCR" },
+            { 1, "Emision / Renovacion / Modificacion AOCR" },
             { 2, "Renovacion AOCR" },
             { 3, "Modificacion AOCR" },
             { 4, "Inspeccion / Viaticos" }

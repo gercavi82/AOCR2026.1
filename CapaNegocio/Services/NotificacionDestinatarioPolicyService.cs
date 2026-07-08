@@ -14,6 +14,7 @@ namespace CapaNegocio.Services
         public const string GrupoInspectorAsignado = "INSPECTOR_ASIGNADO";
         public const string GrupoCoordinacionInspeccion = "COORDINACION_INSPECCION";
         public const string GrupoCoordinacionLegal = "COORDINACION_LEGAL";
+        public const string GrupoDcav = "DCAV";
         public const string GrupoDireccionFinal = "DIRECCION_FINAL";
         public const string GrupoDireccionJefaturaRevisionInforme = "DIRECCION_JEFATURA_REVISION_INFORME";
         public const string GrupoFinanciero = "FINANCIERO";
@@ -81,6 +82,16 @@ namespace CapaNegocio.Services
                             "Administrador");
                         break;
 
+                    case GrupoDcav:
+                        AgregarUsuariosPorRol(destinatarios,
+                            "DCAV",
+                            "DirectorDCAV",
+                            "DirectorCertificacion",
+                            "DireccionCertificacion",
+                            "JefaturaTecnica",
+                            "Administrador");
+                        break;
+
                     case GrupoDireccionFinal:
                         AgregarUsuariosPorRol(destinatarios,
                             "Direccion",
@@ -91,6 +102,7 @@ namespace CapaNegocio.Services
 
                     case GrupoDireccionJefaturaRevisionInforme:
                         AgregarUsuariosPorRol(destinatarios,
+                            "DCAV",
                             "DIRDAC",
                             "Direccion",
                             "DirectorGeneral",

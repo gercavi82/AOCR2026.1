@@ -231,7 +231,7 @@ namespace CapaPresentacion.Controllers
                 {
                     Clave = "TARIFA_EMI_AOCR",
                     Valor = "3300.00",
-                    Descripcion = "Tarifa para Emision AOCR"
+                    Descripcion = "Tarifa para Emision / Renovacion / Modificacion AOCR"
                 },
                 new Parametro
                 {
@@ -279,13 +279,13 @@ namespace CapaPresentacion.Controllers
                 new CapaDatos.Models.ConceptoModel
                 {
                     Codigo = "EMI_AOCR",
-                    Nombre = "Emision AOCR",
+                    Nombre = "Emision / Renovacion / Modificacion AOCR",
                     TipoCalculo = "FIJO",
                     ValorBase = ObtenerDecimalDesdeParametro("TARIFA_EMI_AOCR", 3300m),
                     PorcentajeAdmin = ObtenerDecimalDesdeParametro("PORCENTAJE_ADMIN_EMI_AOCR", 0m),
                     Activo = true,
                     Orden = 1,
-                    Descripcion = "Emision AOCR",
+                    Descripcion = "Emision / Renovacion / Modificacion AOCR",
                     PorEstacion = false,
                     PorDia = false,
                     EsViatico = false

@@ -28,6 +28,7 @@ namespace CapaDatos.DAOs
         private readonly ILoggerService _logger;
         private static bool _fr3ColumnsNoDisponibles;
         private static bool _facturaPagoTableNoDisponible;
+        private static bool _columnasInspeccionDetalleAseguradas;
         private static readonly object _schemaWarningLock = new object();
 
         public OrdenRecaudacionDAO()
@@ -385,6 +386,8 @@ namespace CapaDatos.DAOs
         /// </summary>
         private void InsertarDetalle(DetalleOrdenEnt detalle, NpgsqlConnection conn)
         {
+            AsegurarColumnasInspeccionDetalle(conn);
+
             // Si falta ConceptoCodigo o ConceptoNombre, obtenerlos desde la BD
             if (detalle.ConceptoId.HasValue && (string.IsNullOrEmpty(detalle.ConceptoCodigo) || string.IsNullOrEmpty(detalle.ConceptoNombre)))
             {
@@ -405,10 +408,14 @@ namespace CapaDatos.DAOs
 
             var sql = @"INSERT INTO aocr_or_orden_detalle 
                         (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
-                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea)
+                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea,
+                         lugar_inspeccion, provincia_inspeccion, inspeccion_ext_obligatoria,
+                         viaticos_inspector_obligatorios, usuario_regla_inspeccion, fecha_regla_inspeccion)
                         VALUES 
                         (@ordenId, @conceptoId, @conceptoCodigo, @conceptoNombre, @descripcion,
-                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea)";
+                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea,
+                         @lugarInspeccion, @provinciaInspeccion, @inspeccionExtObligatoria,
+                         @viaticosInspectorObligatorios, @usuarioReglaInspeccion, @fechaReglaInspeccion)";
 
             using (var cmd = new NpgsqlCommand(sql, conn))
             {
@@ -423,6 +430,12 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@subtotal", detalle.Subtotal);
                 cmd.Parameters.AddWithValue("@admin", detalle.Admin);
                 cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
+                cmd.Parameters.AddWithValue("@lugarInspeccion", (object)detalle.LugarInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@provinciaInspeccion", (object)detalle.ProvinciaInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@inspeccionExtObligatoria", detalle.InspeccionExtObligatoria);
+                cmd.Parameters.AddWithValue("@viaticosInspectorObligatorios", detalle.ViaticosInspectorObligatorios);
+                cmd.Parameters.AddWithValue("@usuarioReglaInspeccion", (object)detalle.UsuarioReglaInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fechaReglaInspeccion", (object)detalle.FechaReglaInspeccion ?? DBNull.Value);
 
                 cmd.ExecuteNonQuery();
             }
@@ -442,7 +455,6 @@ namespace CapaDatos.DAOs
                     var sql = @"UPDATE aocr_or_orden SET
                                 codigo_usuario = @codigoUsuario,
                                 codigo_solicitud = @codigoSolicitud,
-                                numero_orden = @numeroOrden,
                                 estado = @estado,
                                 observacion = @observacion,
                                 subtotal = @subtotal,
@@ -466,7 +478,6 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@id", orden.Id);
                         cmd.Parameters.AddWithValue("@codigoUsuario", (object)orden.CodigoUsuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", (object)orden.CodigoSolicitud ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@numeroOrden", (object)orden.NumeroOrden ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@estado", (object)orden.Estado ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@observacion", (object)orden.Observacion ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@subtotal", (object)orden.Subtotal ?? DBNull.Value);
@@ -811,7 +822,13 @@ namespace CapaDatos.DAOs
                 PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
                 Subtotal = reader.GetDecimal(reader.GetOrdinal("subtotal")),
                 Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
-                TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
+                TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea")),
+                LugarInspeccion = TryGetString(reader, "lugar_inspeccion"),
+                ProvinciaInspeccion = TryGetString(reader, "provincia_inspeccion"),
+                InspeccionExtObligatoria = TryGetBool(reader, "inspeccion_ext_obligatoria"),
+                ViaticosInspectorObligatorios = TryGetBool(reader, "viaticos_inspector_obligatorios"),
+                UsuarioReglaInspeccion = TryGetNullableInt(reader, "usuario_regla_inspeccion"),
+                FechaReglaInspeccion = TryGetNullableDateTime(reader, "fecha_regla_inspeccion")
             };
 
             return NormalizarMontosDetalle(detalle);
@@ -1159,7 +1176,13 @@ namespace CapaDatos.DAOs
                 PorcentajeAdmin = detalle.PorcentajeAdmin,
                 Subtotal = detalle.Subtotal,
                 Admin = detalle.Admin,
-                TotalLinea = detalle.TotalLinea
+                TotalLinea = detalle.TotalLinea,
+                LugarInspeccion = detalle.LugarInspeccion,
+                ProvinciaInspeccion = detalle.ProvinciaInspeccion,
+                InspeccionExtObligatoria = detalle.InspeccionExtObligatoria,
+                ViaticosInspectorObligatorios = detalle.ViaticosInspectorObligatorios,
+                UsuarioReglaInspeccion = detalle.UsuarioReglaInspeccion,
+                FechaReglaInspeccion = detalle.FechaReglaInspeccion
             };
         }
 
@@ -3612,6 +3635,74 @@ namespace CapaDatos.DAOs
                 var value = cmd.ExecuteScalar();
                 return value != null && value != DBNull.Value;
             }
+        }
+
+        private static void AsegurarColumnasInspeccionDetalle(NpgsqlConnection conn)
+        {
+            if (_columnasInspeccionDetalleAseguradas || conn == null)
+            {
+                return;
+            }
+
+            lock (_schemaWarningLock)
+            {
+                if (_columnasInspeccionDetalleAseguradas)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    ALTER TABLE public.aocr_or_orden_detalle
+                        ADD COLUMN IF NOT EXISTS lugar_inspeccion VARCHAR(30),
+                        ADD COLUMN IF NOT EXISTS provincia_inspeccion VARCHAR(150),
+                        ADD COLUMN IF NOT EXISTS inspeccion_ext_obligatoria BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS viaticos_inspector_obligatorios BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS usuario_regla_inspeccion INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS fecha_regla_inspeccion TIMESTAMP NULL";
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _columnasInspeccionDetalleAseguradas = true;
+            }
+        }
+
+        private static int TryGetOrdinal(IDataReader reader, string columnName)
+        {
+            try
+            {
+                return reader.GetOrdinal(columnName);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return -1;
+            }
+        }
+
+        private static string TryGetString(IDataReader reader, string columnName)
+        {
+            var ordinal = TryGetOrdinal(reader, columnName);
+            return ordinal >= 0 && !reader.IsDBNull(ordinal) ? reader.GetString(ordinal) : null;
+        }
+
+        private static bool TryGetBool(IDataReader reader, string columnName)
+        {
+            var ordinal = TryGetOrdinal(reader, columnName);
+            return ordinal >= 0 && !reader.IsDBNull(ordinal) && reader.GetBoolean(ordinal);
+        }
+
+        private static int? TryGetNullableInt(IDataReader reader, string columnName)
+        {
+            var ordinal = TryGetOrdinal(reader, columnName);
+            return ordinal >= 0 && !reader.IsDBNull(ordinal) ? (int?)reader.GetInt32(ordinal) : null;
+        }
+
+        private static DateTime? TryGetNullableDateTime(IDataReader reader, string columnName)
+        {
+            var ordinal = TryGetOrdinal(reader, columnName);
+            return ordinal >= 0 && !reader.IsDBNull(ordinal) ? (DateTime?)reader.GetDateTime(ordinal) : null;
         }
 
         private static string NormalizarNumeroFacturaPlaceholder(string numeroFactura, string numeroOrden, int ordenId)

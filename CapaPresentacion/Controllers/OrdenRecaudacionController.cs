@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Configuration;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
@@ -52,6 +53,23 @@ namespace CapaPresentacion.Controllers
         private static readonly bool EnableAs400RuntimeFallback = AppFlagEnabled("AS400:RuntimeFallbackEnabled", false);
         private static readonly bool EnableOnDemandMirrorRefresh = AppFlagEnabled("Sync:OnDemandFromRequestEnabled", false);
         private const string CodigoConceptoInspeccionExt = "INSPECCION_EXT";
+        private const string CodigoConceptoViaticosInspector = "VIATICOS_INSPECTOR";
+        private const string LugarInspeccionQuito = "QUITO";
+        private const string LugarInspeccionLatacunga = "LATACUNGA";
+        private const string LugarInspeccionOtraProvincia = "OTRA_PROVINCIA";
+        private static readonly HashSet<string> ConceptosQueRequierenInspeccionExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "EMI_AOCR",
+            "REN_AOCR",
+            "MOD_AOCR_INC"
+        };
+        private static readonly HashSet<string> ConceptosTipoTramiteAocr = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "EMI_AOCR",
+            "REN_AOCR",
+            "MOD_AOCR_INC",
+            "MOD_AOCR_SIN_INC"
+        };
         private const string TipoSolicitudInspeccionGenerada = "SOLICITUD_INSPECCION_EXT";
         private const string TipoSolicitudInspeccionFirmada = "SOLICITUD_INSPECCIONES_FIRMADA";
         private const string LogSolicitudInspeccionExt = "[SOLICITUD_INSPECCION_EXT]";
@@ -567,7 +585,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 string errorConceptosObligatorios;
-                if (!ValidarDetallesConceptosObligatoriosOrdenNueva(detalles, out errorConceptosObligatorios))
+                if (!ValidarDetallesConceptosObligatoriosOrdenNueva(detalles, model, out errorConceptosObligatorios))
                 {
                     ModelState.AddModelError("", errorConceptosObligatorios);
                     PrepararNuevaOrdenViewModel(model);
@@ -622,12 +640,27 @@ namespace CapaPresentacion.Controllers
                 model.Orden.NombreContribuyente = companiaActiva.Nombre;
 
                 var codigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null;
-                var numeroSolicitudGop = ObtenerNumeroSolicitudGop(codigoSolicitud);
+                var lugarEmisionDb = ResolverLugarEmisionDesdeDb(codigoSolicitud, idUsuario);
+                SolicitudAOCR solicitudAutoParaVincular = null;
+                if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                {
+                    solicitudAutoParaVincular = ConstruirSolicitudAuto(
+                        idUsuario,
+                        usuarioActual,
+                        companiaActiva.Nombre,
+                        model.Orden?.RucCedula,
+                        model.Orden?.Correo,
+                        model.Orden?.Telefono,
+                        lugarEmisionDb);
+                }
+
+                var numeroSolicitudGop = codigoSolicitud.HasValue && codigoSolicitud.Value > 0
+                    ? ObtenerNumeroSolicitudGop(codigoSolicitud)
+                    : solicitudAutoParaVincular?.NumeroSolicitud;
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
                 var numeroOrden = await GenerarNumeroOrdenAsync(numeroSolicitudGop, codigoSolicitud);
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: numeroOrden generado = {numeroOrden}; numeroSolicitudGop = {numeroSolicitudGop}");
-                var lugarEmisionDb = ResolverLugarEmisionDesdeDb(codigoSolicitud, idUsuario);
 
                 var orden = new OrdenRecaudacion
                 {
@@ -684,8 +717,21 @@ namespace CapaPresentacion.Controllers
                             PorcentajeAdmin = porcentajeAdmin,
                             Subtotal = det.Subtotal,
                             Admin = adminLinea,
-                            TotalLinea = totalLinea
+                            TotalLinea = totalLinea,
+                            InspeccionExtObligatoria = model.InspeccionExternaObligatoria && EsConceptoInspeccionExt(concepto?.Codigo),
+                            ViaticosInspectorObligatorios = model.ViaticosInspectorObligatorios && string.Equals(concepto?.Codigo, CodigoConceptoViaticosInspector, StringComparison.OrdinalIgnoreCase),
+                            UsuarioReglaInspeccion = idUsuario,
+                            FechaReglaInspeccion = DateTime.Now
                         };
+
+                        if (string.Equals(concepto?.Codigo, CodigoConceptoViaticosInspector, StringComparison.OrdinalIgnoreCase))
+                        {
+                            detalle.LugarInspeccion = model.LugarInspeccion;
+                            detalle.ProvinciaInspeccion = string.Equals(model.LugarInspeccion, LugarInspeccionOtraProvincia, StringComparison.OrdinalIgnoreCase)
+                                ? model.ProvinciaInspeccion
+                                : null;
+                        }
+
                         await _dao.CrearDetalleAsync(detalle);
 
                         if (EsConceptoInspeccionExt(detalle.ConceptoCodigo))
@@ -699,16 +745,7 @@ namespace CapaPresentacion.Controllers
                     var codigoSolicitudEstadoCentral = codigoSolicitud;
                     if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
                     {
-                        var solicitudAuto = ConstruirSolicitudAuto(
-                            idUsuario,
-                            usuarioActual,
-                            companiaActiva.Nombre,
-                            model.Orden?.RucCedula,
-                            model.Orden?.Correo,
-                            model.Orden?.Telefono,
-                            lugarEmisionDb);
-
-                        var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAuto);
+                        var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAutoParaVincular);
                         if (codigoSolicitudGenerado <= 0)
                         {
                             TempData["Error"] = "La orden se creó, pero no se pudo generar y vincular la solicitud asociada.";
@@ -740,10 +777,28 @@ namespace CapaPresentacion.Controllers
                         Session["SolicitudInspeccionAeropuertos_" + ordenId] = model.AeropuertosSolicitados.Trim();
                     }
 
+                    if (requiereSolicitudInspeccion && model.FechaInicioInspeccion.HasValue)
+                    {
+                        Session["SolicitudInspeccionFechaInicioInspeccion_" + ordenId] = model.FechaInicioInspeccion.Value.ToString("yyyy-MM-dd");
+                    }
+
+                    if (requiereSolicitudInspeccion && model.FechaFinInspeccion.HasValue)
+                    {
+                        Session["SolicitudInspeccionFechaFinInspeccion_" + ordenId] = model.FechaFinInspeccion.Value.ToString("yyyy-MM-dd");
+                    }
+
                     if (model.GenerarSolicitudInspeccionAlGuardar)
                     {
                         TempData["OK"] = "Orden " + numeroOrden + " creada en borrador.";
                         TempData["AeropuertosGenerarSolicitudInspeccion"] = model.AeropuertosSolicitados.Trim();
+                        if (model.FechaInicioInspeccion.HasValue)
+                        {
+                            TempData["FechaInicioInspeccionGenerarSolicitudInspeccion"] = model.FechaInicioInspeccion.Value.ToString("yyyy-MM-dd");
+                        }
+                        if (model.FechaFinInspeccion.HasValue)
+                        {
+                            TempData["FechaFinInspeccionGenerarSolicitudInspeccion"] = model.FechaFinInspeccion.Value.ToString("yyyy-MM-dd");
+                        }
                         return RedirectToAction("GenerarSolicitudInspeccion", new { id = ordenId });
                     }
 
@@ -977,59 +1032,279 @@ namespace CapaPresentacion.Controllers
             ViewBag.ConceptoObligatorioEncontrado = conceptoObligatorio != null;
         }
 
-        private bool ValidarDetallesConceptosObligatoriosOrdenNueva(List<DetalleOrdenRequest> detalles, out string mensajeError)
+        private bool ValidarDetallesConceptosObligatoriosOrdenNueva(List<DetalleOrdenRequest> detalles, OrdenRecaudacionNuevaVM model, out string mensajeError)
         {
             mensajeError = null;
 
-            var conceptoObligatorioCatalogo = _conceptoDao.ObtenerPorCodigo(CodigoConceptoInspeccionExt);
-            if (conceptoObligatorioCatalogo == null || !conceptoObligatorioCatalogo.Activo)
-            {
-                mensajeError = "No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.";
-                return false;
-            }
-
             if (detalles == null || detalles.Count == 0)
             {
-                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                mensajeError = "Debe agregar al menos un concepto para continuar.";
                 return false;
             }
 
-            var tieneInspeccionExt = false;
-            var tieneOtroConcepto = false;
+            var codigosConceptos = ObtenerCodigosConceptosSeleccionados(detalles);
+            var codigoTramite = ObtenerCodigoTramiteSeleccionado(codigosConceptos);
+            var solicitudId = model?.Orden?.CodigoSolicitud;
 
-            foreach (var det in detalles)
+            CapaNegocio.LogBL.RegistrarInfo(
+                $"[ORDEN][REGLA_TRAMITE_IN] OrdenId=0; SolicitudId={(solicitudId.HasValue ? solicitudId.Value.ToString() : "0")}; TipoTramite={codigoTramite};",
+                "OrdenRecaudacionController");
+
+            var resultado = ValidarConceptosPorTipoTramite(
+                codigoTramite,
+                codigosConceptos,
+                model?.LugarInspeccion,
+                model?.ProvinciaInspeccion);
+
+            CapaNegocio.LogBL.RegistrarInfo(
+                $"[ORDEN][INSPECCION_EXT_REQUERIDA] TipoTramite={codigoTramite}; Requerida={resultado.InspeccionExternaObligatoria.ToString().ToLowerInvariant()};",
+                "OrdenRecaudacionController");
+            CapaNegocio.LogBL.RegistrarInfo(
+                $"[ORDEN][VIATICOS_VALIDAR] TipoTramite={codigoTramite}; LugarInspeccion={NormalizarLugarInspeccion(model?.LugarInspeccion)}; Provincia={SanitizarProvinciaInspeccion(model?.ProvinciaInspeccion)}; ViaticosSeleccionados={resultado.ViaticosSeleccionados.ToString().ToLowerInvariant()}; ViaticosObligatorios={resultado.ViaticosInspectorObligatorios.ToString().ToLowerInvariant()};",
+                "OrdenRecaudacionController");
+
+            if (!resultado.Ok)
             {
-                var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
-                if (concepto == null || det.Cantidad <= 0)
-                {
-                    continue;
-                }
-
-                if (EsConceptoInspeccionExt(concepto.Codigo))
-                {
-                    tieneInspeccionExt = true;
-                }
-                else
-                {
-                    tieneOtroConcepto = true;
-                }
-            }
-
-            if (!tieneInspeccionExt)
-            {
-                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
+                mensajeError = resultado.Mensaje;
+                CapaNegocio.LogBL.RegistrarAdvertencia(
+                    $"[ORDEN][VALIDACION_CONCEPTOS_DENY] SolicitudId={(solicitudId.HasValue ? solicitudId.Value.ToString() : "0")}; TipoTramite={codigoTramite}; Motivo={mensajeError};",
+                    "OrdenRecaudacionController");
                 return false;
             }
 
-            if (!tieneOtroConcepto)
-            {
-                mensajeError = "Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.";
-                return false;
-            }
+            model.LugarInspeccion = NormalizarLugarInspeccion(model.LugarInspeccion);
+            model.ProvinciaInspeccion = model.LugarInspeccion == LugarInspeccionOtraProvincia
+                ? SanitizarProvinciaInspeccion(model.ProvinciaInspeccion)
+                : null;
+            model.RequiereProvinciaInspeccion = resultado.RequiereProvinciaInspeccion;
+            model.InspeccionExternaObligatoria = resultado.InspeccionExternaObligatoria;
+            model.ViaticosInspectorObligatorios = resultado.ViaticosInspectorObligatorios;
+
+            CapaNegocio.LogBL.RegistrarInfo(
+                $"[ORDEN][VALIDACION_CONCEPTOS_OK] SolicitudId={(solicitudId.HasValue ? solicitudId.Value.ToString() : "0")}; TipoTramite={codigoTramite};",
+                "OrdenRecaudacionController");
 
             return true;
         }
 
+        private List<string> ObtenerCodigosConceptosSeleccionados(IEnumerable<DetalleOrdenRequest> detalles)
+        {
+            var codigos = new List<string>();
+            if (detalles == null)
+            {
+                return codigos;
+            }
+
+            foreach (var det in detalles)
+            {
+                if (det == null || det.Cantidad <= 0)
+                {
+                    continue;
+                }
+
+                var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
+                if (!string.IsNullOrWhiteSpace(concepto?.Codigo))
+                {
+                    codigos.Add(concepto.Codigo.Trim().ToUpperInvariant());
+                }
+            }
+
+            return codigos;
+        }
+
+        private static string ObtenerCodigoTramiteSeleccionado(IEnumerable<string> conceptosSeleccionados)
+        {
+            return (conceptosSeleccionados ?? Enumerable.Empty<string>())
+                .FirstOrDefault(c => ConceptosTipoTramiteAocr.Contains((c ?? string.Empty).Trim()))
+                ?? string.Empty;
+        }
+
+        private ResultadoValidacionOrden ValidarConceptosPorTipoTramite(
+            string codigoTramite,
+            IEnumerable<string> conceptosSeleccionados,
+            string lugarInspeccion,
+            string provinciaInspeccion)
+        {
+            var conceptos = new HashSet<string>(
+                (conceptosSeleccionados ?? Enumerable.Empty<string>())
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Select(c => c.Trim().ToUpperInvariant()),
+                StringComparer.OrdinalIgnoreCase);
+
+            var tipoTramite = (codigoTramite ?? string.Empty).Trim().ToUpperInvariant();
+            var requiereInspeccionExt = ConceptosQueRequierenInspeccionExt.Contains(tipoTramite);
+            var tieneInspeccionExt = conceptos.Contains(CodigoConceptoInspeccionExt);
+            var viaticosSeleccionados = conceptos.Contains(CodigoConceptoViaticosInspector);
+            var lugar = NormalizarLugarInspeccion(lugarInspeccion);
+            var requiereProvincia = string.Equals(lugar, LugarInspeccionOtraProvincia, StringComparison.OrdinalIgnoreCase);
+            var viaticosObligatorios = requiereProvincia && (tieneInspeccionExt || viaticosSeleccionados);
+
+            if (requiereInspeccionExt)
+            {
+                var conceptoObligatorioCatalogo = _conceptoDao.ObtenerPorCodigo(CodigoConceptoInspeccionExt);
+                if (conceptoObligatorioCatalogo == null || !conceptoObligatorioCatalogo.Activo)
+                {
+                    return ResultadoValidacionOrden.Error(
+                        "No se encontro el concepto obligatorio INSPECCION_EXT. Verifique el catalogo de conceptos antes de continuar.",
+                        requiereInspeccionExt,
+                        viaticosSeleccionados,
+                        viaticosObligatorios,
+                        requiereProvincia);
+                }
+
+                if (!tieneInspeccionExt)
+                {
+                    return ResultadoValidacionOrden.Error(
+                        "El concepto Inspeccion Externa es obligatorio para el tramite seleccionado.",
+                        requiereInspeccionExt,
+                        viaticosSeleccionados,
+                        viaticosObligatorios,
+                        requiereProvincia);
+                }
+            }
+
+            if (viaticosSeleccionados)
+            {
+                if (string.IsNullOrWhiteSpace(lugar))
+                {
+                    return ResultadoValidacionOrden.Error(
+                        "Seleccione el lugar donde se realizara la inspeccion.",
+                        requiereInspeccionExt,
+                        viaticosSeleccionados,
+                        viaticosObligatorios,
+                        requiereProvincia);
+                }
+
+                if (!EsLugarInspeccionValido(lugar))
+                {
+                    return ResultadoValidacionOrden.Error(
+                        "Seleccione un lugar de inspeccion valido.",
+                        requiereInspeccionExt,
+                        viaticosSeleccionados,
+                        viaticosObligatorios,
+                        requiereProvincia);
+                }
+            }
+
+            if (viaticosObligatorios && !viaticosSeleccionados)
+            {
+                return ResultadoValidacionOrden.Error(
+                    "El concepto VIATICOS_INSPECTOR es obligatorio para inspecciones en otra provincia.",
+                    requiereInspeccionExt,
+                    viaticosSeleccionados,
+                    viaticosObligatorios,
+                    requiereProvincia);
+            }
+
+            if (requiereProvincia && string.IsNullOrWhiteSpace(SanitizarProvinciaInspeccion(provinciaInspeccion)))
+            {
+                return ResultadoValidacionOrden.Error(
+                    "Ingrese la provincia o localidad donde se realizara la inspeccion.",
+                    requiereInspeccionExt,
+                    viaticosSeleccionados,
+                    viaticosObligatorios,
+                    requiereProvincia);
+            }
+
+            return ResultadoValidacionOrden.Exito(requiereInspeccionExt, viaticosSeleccionados, viaticosObligatorios, requiereProvincia);
+        }
+
+        private static bool EsLugarInspeccionValido(string lugar)
+        {
+            return string.Equals(lugar, LugarInspeccionQuito, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(lugar, LugarInspeccionLatacunga, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(lugar, LugarInspeccionOtraProvincia, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizarLugarInspeccion(string lugar)
+        {
+            var normalizado = NormalizarTextoRegla(lugar);
+            if (string.IsNullOrWhiteSpace(normalizado))
+            {
+                return string.Empty;
+            }
+
+            if (normalizado == "QUITO" || normalizado == "UIO")
+            {
+                return LugarInspeccionQuito;
+            }
+
+            if (normalizado == "LATACUNGA" || normalizado == "LTX")
+            {
+                return LugarInspeccionLatacunga;
+            }
+
+            if (normalizado == "OTRA_PROVINCIA" || normalizado == "OTRA PROVINCIA")
+            {
+                return LugarInspeccionOtraProvincia;
+            }
+
+            return normalizado;
+        }
+
+        private static string NormalizarTextoRegla(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return string.Empty;
+            }
+
+            var texto = valor.Trim().Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder();
+            foreach (var ch in texto)
+            {
+                var categoria = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (categoria != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(ch);
+                }
+            }
+
+            return sb.ToString().Normalize(NormalizationForm.FormC).Trim().ToUpperInvariant();
+        }
+
+        private static string SanitizarProvinciaInspeccion(string provincia)
+        {
+            if (string.IsNullOrWhiteSpace(provincia))
+            {
+                return string.Empty;
+            }
+
+            var limpia = provincia.Trim();
+            limpia = limpia.Replace("<", string.Empty).Replace(">", string.Empty);
+            limpia = limpia.Replace("\"", string.Empty).Replace("'", string.Empty);
+            return limpia.Length > 150 ? limpia.Substring(0, 150) : limpia;
+        }
+
+        private class ResultadoValidacionOrden
+        {
+            public bool Ok { get; set; }
+            public string Mensaje { get; set; }
+            public bool InspeccionExternaObligatoria { get; set; }
+            public bool ViaticosSeleccionados { get; set; }
+            public bool ViaticosInspectorObligatorios { get; set; }
+            public bool RequiereProvinciaInspeccion { get; set; }
+
+            public static ResultadoValidacionOrden Exito(bool inspeccionObligatoria, bool viaticosSeleccionados, bool viaticosObligatorios, bool requiereProvincia)
+            {
+                return new ResultadoValidacionOrden
+                {
+                    Ok = true,
+                    InspeccionExternaObligatoria = inspeccionObligatoria,
+                    ViaticosSeleccionados = viaticosSeleccionados,
+                    ViaticosInspectorObligatorios = viaticosObligatorios,
+                    RequiereProvinciaInspeccion = requiereProvincia
+                };
+            }
+
+            public static ResultadoValidacionOrden Error(string mensaje, bool inspeccionObligatoria, bool viaticosSeleccionados, bool viaticosObligatorios, bool requiereProvincia)
+            {
+                var resultado = Exito(inspeccionObligatoria, viaticosSeleccionados, viaticosObligatorios, requiereProvincia);
+                resultado.Ok = false;
+                resultado.Mensaje = mensaje;
+                return resultado;
+            }
+        }
         private bool ValidarConceptosOrdenInspeccionExt(OrdenRecaudacionModel orden, out string mensajeError)
         {
             mensajeError = null;
@@ -1125,6 +1400,8 @@ namespace CapaPresentacion.Controllers
                 TieneInspeccionExt = requiereSolicitudInspeccion,
                 EstadoDocumentoSolicitudInspeccion = requiereSolicitudInspeccion ? "NO_GENERADO" : "NO_REQUERIDO",
                 AeropuertosSolicitados = (model != null ? model.AeropuertosSolicitados : null) ?? string.Empty,
+                FechaInicioInspeccion = model != null ? model.FechaInicioInspeccion : null,
+                FechaFinInspeccion = model != null ? model.FechaFinInspeccion : null,
                 TienePdfGenerado = false,
                 TienePdfFirmado = false,
                 PuedeEditarSolicitudInspeccionExt = requiereSolicitudInspeccion,
@@ -1895,18 +2172,18 @@ namespace CapaPresentacion.Controllers
         {
             var conceptos = new List<CapaDatos.Models.ConceptoModel>
             {
-                new CapaDatos.Models.ConceptoModel { 
-                    Codigo = "EMI_AOCR", 
-                    Nombre = "Emisión AOCR", 
-                    TipoCalculo = "FIJO", 
-                    ValorBase = ObtenerTarifaConfigurable("TARIFA_EMI_AOCR", 3300m), 
-                    PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_EMI_AOCR", 0m), 
-                    Activo = true, 
-                    Orden = 1, 
-                    Descripcion = "Emisión AOCR", 
-                    PorEstacion = false, 
-                    PorDia = false, 
-                    EsViatico = false 
+                new CapaDatos.Models.ConceptoModel {
+                    Codigo = "EMI_AOCR",
+                    Nombre = "Emision / Renovacion / Modificacion AOCR",
+                    TipoCalculo = "FIJO",
+                    ValorBase = ObtenerTarifaConfigurable("TARIFA_EMI_AOCR", 3300m),
+                    PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_EMI_AOCR", 0m),
+                    Activo = true,
+                    Orden = 1,
+                    Descripcion = "Emision / Renovacion / Modificacion AOCR",
+                    PorEstacion = false,
+                    PorDia = false,
+                    EsViatico = false
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "REN_AOCR", 
@@ -2327,7 +2604,19 @@ namespace CapaPresentacion.Controllers
                 aeropuertos = Session["SolicitudInspeccionAeropuertos_" + id] as string;
             }
 
-            return EjecutarGenerarSolicitudInspeccion(id, aeropuertos, GetUserId());
+            var fechaInicio = TempData["FechaInicioInspeccionGenerarSolicitudInspeccion"] as string;
+            if (string.IsNullOrWhiteSpace(fechaInicio))
+            {
+                fechaInicio = Session["SolicitudInspeccionFechaInicioInspeccion_" + id] as string;
+            }
+
+            var fechaFin = TempData["FechaFinInspeccionGenerarSolicitudInspeccion"] as string;
+            if (string.IsNullOrWhiteSpace(fechaFin))
+            {
+                fechaFin = Session["SolicitudInspeccionFechaFinInspeccion_" + id] as string;
+            }
+
+            return EjecutarGenerarSolicitudInspeccion(id, aeropuertos, ParseFechaInspeccion(fechaInicio), ParseFechaInspeccion(fechaFin), GetUserId());
         }
 
         /// <summary>
@@ -2336,12 +2625,12 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Solicitante,Administrador,Operador")]
-        public ActionResult GenerarSolicitudInspeccion(int id, string aeropuertosSolicitados)
+        public ActionResult GenerarSolicitudInspeccion(int id, string aeropuertosSolicitados, DateTime? fechaInicioInspeccion, DateTime? fechaFinInspeccion)
         {
-            return EjecutarGenerarSolicitudInspeccion(id, aeropuertosSolicitados, GetUserId());
+            return EjecutarGenerarSolicitudInspeccion(id, aeropuertosSolicitados, fechaInicioInspeccion, fechaFinInspeccion, GetUserId());
         }
 
-        private ActionResult EjecutarGenerarSolicitudInspeccion(int id, string aeropuertosSolicitados, int idUsuario)
+        private ActionResult EjecutarGenerarSolicitudInspeccion(int id, string aeropuertosSolicitados, DateTime? fechaInicioInspeccion, DateTime? fechaFinInspeccion, int idUsuario)
         {
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
@@ -2396,6 +2685,13 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalles", new { id });
             }
 
+            if (fechaInicioInspeccion.HasValue && fechaFinInspeccion.HasValue &&
+                fechaFinInspeccion.Value.Date < fechaInicioInspeccion.Value.Date)
+            {
+                TempData["Error"] = "La fecha fin de inspeccion no puede ser anterior a la fecha inicio.";
+                return RedirectToAction("Detalles", new { id });
+            }
+
             var solicitudIdOrden = ObtenerCodigoSolicitudOrden(orden);
             var solicitudYaGenerada = solicitudIdOrden > 0
                 ? ObtenerUltimoDocumentoSolicitudInspeccion(solicitudIdOrden, TipoSolicitudInspeccionGenerada, orden.Id)
@@ -2418,7 +2714,7 @@ namespace CapaPresentacion.Controllers
 
             int documentoId;
             string errorGeneracion;
-            if (GenerarSolicitudInspeccionDocumento(orden, aeropuertosSolicitados, idUsuario, out documentoId, out errorGeneracion))
+            if (GenerarSolicitudInspeccionDocumento(orden, aeropuertosSolicitados, fechaInicioInspeccion, fechaFinInspeccion, idUsuario, out documentoId, out errorGeneracion))
             {
                 TempData["OK"] = MensajeSolicitudInspeccionGeneradaExito;
             }
@@ -2486,6 +2782,8 @@ namespace CapaPresentacion.Controllers
             }
 
             Session.Remove("SolicitudInspeccionAeropuertos_" + orden.Id);
+            Session.Remove("SolicitudInspeccionFechaInicioInspeccion_" + orden.Id);
+            Session.Remove("SolicitudInspeccionFechaFinInspeccion_" + orden.Id);
 
             CapaNegocio.LogBL.RegistrarInfo(
                 $"{LogSolicitudInspeccionExt} OrdenId={id} SolicitudId={solicitudId} CodigoConcepto={CodigoConceptoInspeccionExt} DocumentoId={generado.CodigoDocumento} Usuario={idUsuario} Accion={AccionReaperturaPorAgregarAcciones} EstadoAnterior={estadoAnterior} EstadoNuevo=NO_GENERADO Motivo={FirstNonEmpty(motivo, "Rechazo por usuario para agregar acciones")} Resultado=Reabierto",
@@ -2498,6 +2796,8 @@ namespace CapaPresentacion.Controllers
         private bool GenerarSolicitudInspeccionDocumento(
             OrdenRecaudacionModel orden,
             string aeropuertosSolicitados,
+            DateTime? fechaInicioInspeccion,
+            DateTime? fechaFinInspeccion,
             int idUsuario,
             out int documentoId,
             out string mensajeError)
@@ -2551,12 +2851,14 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var aeropuertos = aeropuertosSolicitados.Trim();
-                var bytes = BuildSolicitudInspeccionPdfBytes(orden, aeropuertos, out var nombreArchivo, out var paginasGeneradas);
+                var fechaInicioTexto = fechaInicioInspeccion.HasValue ? fechaInicioInspeccion.Value.ToString("yyyy-MM-dd") : string.Empty;
+                var fechaFinTexto = fechaFinInspeccion.HasValue ? fechaFinInspeccion.Value.ToString("yyyy-MM-dd") : string.Empty;
+                var bytes = BuildSolicitudInspeccionPdfBytes(orden, aeropuertos, fechaInicioInspeccion, fechaFinInspeccion, out var nombreArchivo, out var paginasGeneradas);
                 var rutaGuardada = GuardarBytesAocr(bytes, "SolicitudesInspeccion", nombreArchivo);
                 var rutaFisica = ResolverRutaArchivoRegistrado(rutaGuardada);
                 var existeArchivo = !string.IsNullOrWhiteSpace(rutaFisica) && System.IO.File.Exists(rutaFisica);
                 var version = ObtenerSiguienteVersionDocumento(solicitudId, TipoSolicitudInspeccionGenerada, orden.Id);
-                var pdfModel = BuildSolicitudInspeccionPdfModel(orden, aeropuertos);
+                var pdfModel = BuildSolicitudInspeccionPdfModel(orden, aeropuertos, fechaInicioInspeccion, fechaFinInspeccion);
 
                 documentoId = _documentoDao.Crear(new Documento
                 {
@@ -2571,10 +2873,18 @@ namespace CapaPresentacion.Controllers
                     FechaCarga = DateTime.Now,
                     Version = version,
                     UsuarioRegistro = User != null && User.Identity != null ? User.Identity.Name : "sistema",
-                    Observaciones = $"OrdenId={orden.Id}; CodigoConcepto={CodigoConceptoInspeccionExt}; EstadoDocumento=GENERADO; Aeropuertos={aeropuertos}"
+                    Observaciones = $"OrdenId={orden.Id}; CodigoConcepto={CodigoConceptoInspeccionExt}; EstadoDocumento=GENERADO; Aeropuertos={aeropuertos}; FechaInicioInspeccion={fechaInicioTexto}; FechaFinInspeccion={fechaFinTexto}"
                 });
 
                 Session["SolicitudInspeccionAeropuertos_" + orden.Id] = aeropuertos;
+                if (fechaInicioInspeccion.HasValue)
+                {
+                    Session["SolicitudInspeccionFechaInicioInspeccion_" + orden.Id] = fechaInicioTexto;
+                }
+                if (fechaFinInspeccion.HasValue)
+                {
+                    Session["SolicitudInspeccionFechaFinInspeccion_" + orden.Id] = fechaFinTexto;
+                }
                 CapaNegocio.LogBL.RegistrarInfo(
                     $"{LogSolicitudInspeccionPdf} OrdenId={orden.Id} NumeroOrden={FirstNonEmpty(orden.NumeroOrden, orden.Id.ToString())} NombreRT={pdfModel.NombreRT} Compania={pdfModel.NombreCompania} AeropuertosLength={(aeropuertos ?? string.Empty).Length} PaginasGeneradas={paginasGeneradas} RutaPdf={rutaGuardada} ExisteArchivo={existeArchivo} Resultado={(paginasGeneradas == 1 && existeArchivo ? "OK" : "REVISION")}",
                     "OrdenRecaudacionController");
@@ -2652,7 +2962,9 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var aeropuertos = ObtenerAeropuertosSolicitudInspeccion(orden, documento);
-                var bytes = BuildSolicitudInspeccionPdfBytes(orden, aeropuertos, out var nombreArchivoActual, out var paginasGeneradas);
+                var fechaInicioInspeccion = ObtenerFechaInspeccionSolicitudInspeccion(orden, documento, "Inicio");
+                var fechaFinInspeccion = ObtenerFechaInspeccionSolicitudInspeccion(orden, documento, "Fin");
+                var bytes = BuildSolicitudInspeccionPdfBytes(orden, aeropuertos, fechaInicioInspeccion, fechaFinInspeccion, out var nombreArchivoActual, out var paginasGeneradas);
                 RefrescarArchivoSolicitudInspeccion(documento, bytes);
 
                 CapaNegocio.LogBL.RegistrarInfo(
@@ -3021,6 +3333,8 @@ namespace CapaPresentacion.Controllers
                 TieneInspeccionExt = requiere,
                 EstadoDocumentoSolicitudInspeccion = estadoSolicitudInspeccion,
                 AeropuertosSolicitados = requiere ? ObtenerAeropuertosSolicitudInspeccion(orden, generado ?? firmado) : string.Empty,
+                FechaInicioInspeccion = requiere ? ObtenerFechaInspeccionSolicitudInspeccion(orden, generado ?? firmado, "Inicio") : null,
+                FechaFinInspeccion = requiere ? ObtenerFechaInspeccionSolicitudInspeccion(orden, generado ?? firmado, "Fin") : null,
                 TienePdfGenerado = generado != null,
                 TienePdfFirmado = firmado != null,
                 PuedeEditarSolicitudInspeccionExt = puedeEditar,
@@ -3579,7 +3893,7 @@ namespace CapaPresentacion.Controllers
             return true;
         }
 
-        private CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel BuildSolicitudInspeccionPdfModel(OrdenRecaudacionModel orden, string aeropuertosSolicitados)
+        private CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel BuildSolicitudInspeccionPdfModel(OrdenRecaudacionModel orden, string aeropuertosSolicitados, DateTime? fechaInicioInspeccion = null, DateTime? fechaFinInspeccion = null)
         {
             CompletarDatosOrdenParaVista(orden);
             Usuario usuario = null;
@@ -3599,6 +3913,8 @@ namespace CapaPresentacion.Controllers
                 NombreRT = FirstNonEmpty(usuario?.NombreCompleto, orden.NombreUsuario, User?.Identity?.Name, "No aplica"),
                 NombreCompania = FirstNonEmpty(orden.Compania, orden.NombreContribuyente, "No aplica"),
                 AeropuertosSolicitados = FirstNonEmpty(aeropuertosSolicitados, "No aplica"),
+                FechaInicioInspeccion = fechaInicioInspeccion,
+                FechaFinInspeccion = fechaFinInspeccion,
                 FechaSolicitud = DateTime.Now,
                 LugarEmision = FirstNonEmpty(orden.LugarEmision, "Quito"),
                 CorreoRT = FirstNonEmpty(usuario?.Email, orden.Correo, "No aplica"),
@@ -3610,10 +3926,10 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        private byte[] BuildSolicitudInspeccionPdfBytes(OrdenRecaudacionModel orden, string aeropuertosSolicitados, out string nombreArchivo, out int paginasGeneradas)
+        private byte[] BuildSolicitudInspeccionPdfBytes(OrdenRecaudacionModel orden, string aeropuertosSolicitados, DateTime? fechaInicioInspeccion, DateTime? fechaFinInspeccion, out string nombreArchivo, out int paginasGeneradas)
         {
             var aeropuertos = string.IsNullOrWhiteSpace(aeropuertosSolicitados) ? "No aplica" : aeropuertosSolicitados.Trim();
-            var pdfModel = BuildSolicitudInspeccionPdfModel(orden, aeropuertos);
+            var pdfModel = BuildSolicitudInspeccionPdfModel(orden, aeropuertos, fechaInicioInspeccion, fechaFinInspeccion);
             nombreArchivo = ConstruirNombrePdfSolicitudInspeccion(orden);
 
             var pdf = new PartialViewAsPdf("SolicitudInspeccionesPdf", pdfModel)
@@ -3658,6 +3974,47 @@ namespace CapaPresentacion.Controllers
             }
 
             return "No aplica";
+        }
+
+        private DateTime? ObtenerFechaInspeccionSolicitudInspeccion(OrdenRecaudacionModel orden, Documento documento, string tipo)
+        {
+            var sufijo = string.Equals(tipo, "Fin", StringComparison.OrdinalIgnoreCase) ? "Fin" : "Inicio";
+            var sessionKey = orden != null ? "SolicitudInspeccionFecha" + sufijo + "Inspeccion_" + orden.Id : null;
+            var fechaSesion = !string.IsNullOrWhiteSpace(sessionKey) ? (Session[sessionKey] as string) : null;
+            var fecha = ParseFechaInspeccion(fechaSesion);
+            if (fecha.HasValue)
+            {
+                return fecha;
+            }
+
+            var observaciones = documento != null ? (documento.Observaciones ?? string.Empty) : string.Empty;
+            var marker = "Fecha" + sufijo + "Inspeccion=";
+            var start = observaciones.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (start >= 0)
+            {
+                start += marker.Length;
+                var end = observaciones.IndexOf(';', start);
+                var value = end >= 0 ? observaciones.Substring(start, end - start) : observaciones.Substring(start);
+                return ParseFechaInspeccion(value);
+            }
+
+            return null;
+        }
+
+        private static DateTime? ParseFechaInspeccion(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            DateTime fecha;
+            if (DateTime.TryParse(value.Trim(), out fecha))
+            {
+                return fecha.Date;
+            }
+
+            return null;
         }
 
         private void RefrescarArchivoSolicitudInspeccion(Documento documento, byte[] bytes)

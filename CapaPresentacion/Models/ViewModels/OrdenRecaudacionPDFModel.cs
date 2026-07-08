@@ -85,6 +85,8 @@ namespace CapaPresentacion.Models.ViewModels
         public string NombreRT { get; set; }
         public string NombreCompania { get; set; }
         public string AeropuertosSolicitados { get; set; }
+        public DateTime? FechaInicioInspeccion { get; set; }
+        public DateTime? FechaFinInspeccion { get; set; }
         public DateTime FechaSolicitud { get; set; }
         public string LugarEmision { get; set; }
         public string CorreoRT { get; set; }

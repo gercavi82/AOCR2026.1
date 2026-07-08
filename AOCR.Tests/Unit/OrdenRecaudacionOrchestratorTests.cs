@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using AOCR.Tests.Mocks;
 using CapaDatos.Entidades;
 using CapaDatos.Services;
+using CapaNegocio.Services;
 
 namespace AOCR.Tests.Unit
 {
@@ -102,6 +103,17 @@ namespace AOCR.Tests.Unit
 
             // Assert
             Assert.IsNull(resultado);
+        }
+
+        [TestMethod]
+        [Description("Test 6: Numero de orden conserva correlativo de solicitud GOP")]
+        public void ConstruirNumeroOrdenDesdeNumeroSolicitud_UsaCorrelativoGop()
+        {
+            var numeroOrden = OrdenRecaudacionService.ConstruirNumeroOrdenDesdeNumeroSolicitud(
+                "DGAC-GOP-2026-AOCR0015",
+                2026);
+
+            Assert.AreEqual("DGAC-OR-2026-AOCR015", numeroOrden);
         }
     }
 }

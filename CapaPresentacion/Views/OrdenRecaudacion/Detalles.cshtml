@@ -50,15 +50,22 @@
 
     // Calcular total pagado
     // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)
-    var totalPagado = pagos.Where(p => {
+    var pagosAprobados = pagos.Where(p => {
         var e = (p.Estado ?? "").Trim().ToUpperInvariant();
         return e == "APROBADO" || e == "VALIDADO";
-    }).Sum(p => p.Monto);
+    }).ToList();
+    var totalPagado = pagosAprobados.Sum(p => p.Monto);
     var saldoPendiente = orden.Total - totalPagado;
     var tieneSaldoPendiente = saldoPendiente > 0 && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
+    var existePagoAprobado = pagosAprobados.Any();
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
     var facturaGenerada = ordenCerradaPostAprobacion || estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
     var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
+    var mostrarAlertaComprobantePendiente = !tieneComprobanteValido &&
+        !existePagoAprobado &&
+        !ordenCerradaPostAprobacion &&
+        !facturaGenerada &&
+        !EstadoOrden.EsEstadoFinal(estado);
     var requiereSolicitudInspeccion = solicitudInspeccionPanel != null && solicitudInspeccionPanel.TieneInspeccionExt;
     var bloquearGeneracionPorSolicitudInspeccion = requiereSolicitudInspeccion && !solicitudInspeccionPanel.PuedeContinuarConOrden;
 
@@ -73,23 +80,17 @@
                     Se detectó información parcial de la orden. Se muestran datos mínimos para evitar errores de carga.
                 </div>
             }
-            @if (ordenCerradaPostAprobacion)
-            {
-                <div class="alert alert-success m-3 mb-0">
-                    <i class="fas fa-circle-check me-2"></i>@OrdenRecaudacionOperativaHelper.MensajeOrdenCerradaPostAprobacion
-                </div>
-            }
-            <div class="card-header bg-dark text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0 text-white">
-                        <i class="fas fa-file-invoice-dollar me-2 text-white"></i>Orden: @numeroOrdenReferencia
+            <div class="card-header aocr-order-header">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <h3 class="card-title mb-0 aocr-order-title">
+                        <i class="far fa-file-pdf me-2"></i>Orden: @numeroOrdenReferencia
                     </h3>
-                    <div class="btn-group">
-                        <a href="@Url.Action("Index")" class="btn btn-light btn-sm">
+                    <div class="btn-group aocr-order-actions">
+                        <a href="@Url.Action("Index")" class="btn btn-primary btn-sm">
                             <i class="fas fa-arrow-left me-1"></i> Volver
                         </a>
                         <a href="@Url.Action("DescargarPdf", new { id = orden.Id, vistaPrevia = true })"
-                           class="btn btn-outline-light btn-sm" target="_blank">
+                           class="btn btn-dark btn-sm" target="_blank">
                             <i class="fas fa-eye me-1"></i> Vista previa
                         </a>
                         <a href="@Url.Action("DescargarPdf", new { id = orden.Id })"
@@ -118,19 +119,50 @@
                 {
                     <div class="alert alert-danger">@TempData["Error"]</div>
                 }
-                @if (ordenCompleta)
+                @if (ordenCerradaPostAprobacion || ordenCompleta || facturaGenerada)
                 {
-                    <div class="alert alert-success mb-3">
-                        <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
+                    <div class="aocr-status-panel mb-4">
+                        <div class="aocr-status-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <h4>Estado de la Orden</h4>
+                        <ul class="aocr-status-list">
+                            @if (ordenCerradaPostAprobacion)
+                            {
+                                <li>@OrdenRecaudacionOperativaHelper.MensajeOrdenCerradaPostAprobacion</li>
+                            }
+                            @if (ordenCompleta)
+                            {
+                                <li>Estado: Completada. Solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.</li>
+                            }
+                            @if (facturaGenerada && tieneFacturaDescargable)
+                            {
+                                <li>La factura ya esta disponible para descarga.</li>
+                            }
+                        </ul>
+                        <div class="aocr-files-title">Archivos disponibles</div>
+                        <div class="aocr-files-grid">
+                            <a href="@Url.Action("DescargarPdf", new { id = orden.Id })" class="aocr-file-card" target="_blank">
+                                <i class="far fa-file-pdf"></i>
+                                <span>
+                                    <strong>PDF Orden</strong>
+                                    <small>Descargar</small>
+                                </span>
+                            </a>
+                            @if (facturaGenerada && tieneFacturaDescargable)
+                            {
+                                <a href="@Url.Action("DescargarFactura", new { id = orden.Id })" class="aocr-file-card" target="_blank">
+                                    <i class="fas fa-receipt"></i>
+                                    <span>
+                                        <strong>Factura</strong>
+                                        <small>Descargar</small>
+                                    </span>
+                                </a>
+                            }
+                        </div>
                     </div>
                 }
-                @if (facturaGenerada && tieneFacturaDescargable)
-                {
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-file-invoice me-2"></i> La factura ya esta disponible para descarga.
-                    </div>
-                }
-                @if (!tieneComprobanteValido)
+                @if (mostrarAlertaComprobantePendiente)
                 {
                     <div class="alert alert-warning mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i> @mensajeComprobante
@@ -714,6 +746,139 @@
 
 @section Scripts {
     <style>
+        .aocr-order-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef6fb 58%, #e5f7fb 100%);
+            border-bottom: 1px solid #dce7ef;
+            padding: 1.15rem 1.35rem;
+        }
+
+        .aocr-order-title {
+            color: #18263a;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .aocr-order-title i {
+            color: #4d5b6b;
+        }
+
+        .aocr-order-actions {
+            box-shadow: 0 8px 18px rgba(20, 31, 45, 0.14);
+            border-radius: 7px;
+            overflow: hidden;
+        }
+
+        .aocr-order-actions .btn {
+            border-radius: 0;
+            border: 0;
+            font-weight: 600;
+            padding: .48rem .78rem;
+        }
+
+        .aocr-status-panel {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,.82);
+            border-radius: 8px;
+            background:
+                radial-gradient(circle at 72% 22%, rgba(107, 204, 232, .34), transparent 36%),
+                linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,246,252,.94));
+            box-shadow: 0 16px 34px rgba(15, 35, 58, .12);
+            padding: 1.45rem 1.4rem 1.25rem;
+            text-align: center;
+        }
+
+        .aocr-status-icon {
+            width: 46px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #2faa55;
+            color: #fff;
+            font-size: 1.45rem;
+            margin-bottom: .65rem;
+            box-shadow: 0 8px 18px rgba(47, 170, 85, .28);
+        }
+
+        .aocr-status-panel h4 {
+            margin: 0 0 .8rem;
+            color: #101827;
+            font-weight: 800;
+        }
+
+        .aocr-status-list {
+            display: inline-block;
+            max-width: 860px;
+            margin: 0 auto 1.2rem;
+            padding-left: 1.2rem;
+            text-align: left;
+            color: #1f2937;
+            font-size: .98rem;
+            line-height: 1.45;
+        }
+
+        .aocr-files-title {
+            color: #101827;
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: .65rem;
+        }
+
+        .aocr-files-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: .75rem;
+        }
+
+        .aocr-file-card {
+            min-width: 170px;
+            display: inline-flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .85rem 1rem;
+            color: #18263a;
+            text-decoration: none;
+            background: rgba(255,255,255,.72);
+            border: 1px solid rgba(255,255,255,.95);
+            border-radius: 8px;
+            box-shadow: 0 8px 18px rgba(15, 35, 58, .12);
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+
+        .aocr-file-card:hover,
+        .aocr-file-card:focus {
+            color: #0f5132;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(15, 35, 58, .17);
+            text-decoration: none;
+        }
+
+        .aocr-file-card i {
+            color: #4d5b6b;
+            font-size: 2rem;
+        }
+
+        .aocr-file-card span {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.2;
+        }
+
+        .aocr-file-card strong {
+            font-size: 1rem;
+        }
+
+        .aocr-file-card small {
+            color: #52616f;
+            text-decoration: underline;
+            margin-top: .2rem;
+        }
+
         .solicitud-inspeccion-card {
             border: 1px solid #b8d7f0;
             box-shadow: 0 4px 14px rgba(0, 44, 84, 0.08);
@@ -734,6 +899,34 @@
         }
 
         @@media (max-width: 576px) {
+            .aocr-order-header {
+                padding: 1rem;
+            }
+
+            .aocr-order-title {
+                font-size: 1.12rem;
+            }
+
+            .aocr-order-actions,
+            .aocr-order-actions .btn,
+            .aocr-files-grid,
+            .aocr-file-card {
+                width: 100%;
+            }
+
+            .aocr-order-actions {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .aocr-status-panel {
+                padding: 1.15rem .95rem;
+            }
+
+            .aocr-status-list {
+                font-size: .92rem;
+            }
+
             .solicitud-inspeccion-actions .btn,
             .solicitud-inspeccion-file {
                 width: 100%;

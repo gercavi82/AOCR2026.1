@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CapaDatos.Models;
 
@@ -10,6 +11,8 @@ namespace CapaPresentacion.Models.ViewModels
         public bool TieneInspeccionExt { get; set; }
         public string EstadoDocumentoSolicitudInspeccion { get; set; }
         public string AeropuertosSolicitados { get; set; }
+        public DateTime? FechaInicioInspeccion { get; set; }
+        public DateTime? FechaFinInspeccion { get; set; }
         public bool TienePdfGenerado { get; set; }
         public bool TienePdfFirmado { get; set; }
         public bool PuedeEditarSolicitudInspeccionExt { get; set; }

@@ -4,15 +4,27 @@
 
 @if (Model != null)
 {
-    var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-4 d-none" : "row mb-4";
+    var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-3 d-none" : (Model.EsNuevaOrden ? "row mb-3" : "row mb-4");
     var placeholderAeropuertos = "Ej: Quito, Guayaquil, Manta";
     var puedeEditarAeropuertos = Model.EsNuevaOrden || (Model.PuedeEditarSolicitudInspeccionExt && Model.PuedeGenerarSolicitud);
+    var fechaInicioValor = Model.FechaInicioInspeccion.HasValue ? Model.FechaInicioInspeccion.Value.ToString("yyyy-MM-dd") : string.Empty;
+    var fechaFinValor = Model.FechaFinInspeccion.HasValue ? Model.FechaFinInspeccion.Value.ToString("yyyy-MM-dd") : string.Empty;
 
     <div class="@panelClass" id="panelSolicitudInspeccion">
         <div class="col-md-12">
-            <div class="card solicitud-inspeccion-card">
+            <div class="card solicitud-inspeccion-card @(Model.EsNuevaOrden ? "aocr-section-card aocr-solicitud-section" : string.Empty)">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <h5 class="mb-0"><i class="fas fa-file-signature me-2 text-primary"></i>Solicitud de Inspecciones requerida</h5>
+                    <h5 class="mb-0 @(Model.EsNuevaOrden ? "aocr-flow-group-title" : string.Empty)">
+                        @if (Model.EsNuevaOrden)
+                        {
+                            <span><span class="aocr-flow-number">3</span>Tramites y documentos requeridos</span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-file-signature me-2 text-primary"></i>
+                            @:Solicitud de Inspecciones requerida
+                        }
+                    </h5>
                     <span class="badge bg-@Model.ClaseEstadoCss" id="estadoSolicitudInspeccion">@Model.EstadoDocumentoSolicitudInspeccion</span>
                 </div>
                 <div class="card-body">
@@ -56,6 +68,49 @@
                         }
                     </div>
 
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="FechaInicioInspeccion">Fecha inicio de inspección</label>
+                            @if (puedeEditarAeropuertos)
+                            {
+                                <input type="date"
+                                       id="FechaInicioInspeccion"
+                                       name="FechaInicioInspeccion"
+                                       class="form-control"
+                                       value="@fechaInicioValor" />
+                            }
+                            else
+                            {
+                                <input type="date"
+                                       id="FechaInicioInspeccion"
+                                       class="form-control bg-light"
+                                       value="@fechaInicioValor"
+                                       readonly="readonly" />
+                            }
+                            <small class="text-muted">Seleccione la fecha estimada de inicio de la inspección.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="FechaFinInspeccion">Fecha fin de inspección</label>
+                            @if (puedeEditarAeropuertos)
+                            {
+                                <input type="date"
+                                       id="FechaFinInspeccion"
+                                       name="FechaFinInspeccion"
+                                       class="form-control"
+                                       value="@fechaFinValor" />
+                            }
+                            else
+                            {
+                                <input type="date"
+                                       id="FechaFinInspeccion"
+                                       class="form-control bg-light"
+                                       value="@fechaFinValor"
+                                       readonly="readonly" />
+                            }
+                            <small class="text-muted">Seleccione la fecha estimada de finalización de la inspección.</small>
+                        </div>
+                    </div>
+
                     @if (Model.EsNuevaOrden)
                     {
                         <div class="solicitud-inspeccion-actions">
@@ -84,6 +139,8 @@
                                     @Html.AntiForgeryToken()
                                     @Html.Hidden("id", Model.OrdenId)
                                     @Html.Hidden("aeropuertosSolicitados", Model.AeropuertosSolicitados, new { id = "aeropuertosSolicitadosProxy" })
+                                    @Html.Hidden("fechaInicioInspeccion", fechaInicioValor, new { id = "fechaInicioInspeccionProxy" })
+                                    @Html.Hidden("fechaFinInspeccion", fechaFinValor, new { id = "fechaFinInspeccionProxy" })
                                     <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionOrden">
                                         <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
                                     </button>
@@ -193,7 +250,11 @@
 
                 $('#btnGenerarSolicitudInspeccionOrden').off('click.aocrGenerar').on('click.aocrGenerar', function () {
                     var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                    var fechaInicio = ($('#FechaInicioInspeccion').val() || '').trim();
+                    var fechaFin = ($('#FechaFinInspeccion').val() || '').trim();
                     $('#AeropuertosSolicitados').val(aeropuertos);
+                    $('#fechaInicioInspeccionProxy').val(fechaInicio);
+                    $('#fechaFinInspeccionProxy').val(fechaFin);
                     if (!aeropuertos) {
                         if (window.AOCR && typeof window.AOCR.notify === 'function') {
                             window.AOCR.notify('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.', 'error');

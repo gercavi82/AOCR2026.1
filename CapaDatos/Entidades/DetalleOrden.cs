@@ -61,6 +61,26 @@ namespace CapaDatos.Entidades
         [Column("total_linea")]
         public decimal TotalLinea { get; set; }
 
+        [Column("lugar_inspeccion")]
+        [StringLength(30)]
+        public string LugarInspeccion { get; set; }
+
+        [Column("provincia_inspeccion")]
+        [StringLength(150)]
+        public string ProvinciaInspeccion { get; set; }
+
+        [Column("inspeccion_ext_obligatoria")]
+        public bool InspeccionExtObligatoria { get; set; }
+
+        [Column("viaticos_inspector_obligatorios")]
+        public bool ViaticosInspectorObligatorios { get; set; }
+
+        [Column("usuario_regla_inspeccion")]
+        public int? UsuarioReglaInspeccion { get; set; }
+
+        [Column("fecha_regla_inspeccion")]
+        public DateTime? FechaReglaInspeccion { get; set; }
+
         /// <summary>
         /// Alias para TotalLinea (compatibilidad)
         /// </summary>

@@ -1,10 +1,15 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel>
 @using System
 
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
 
     Func<string, string> valorPdf = value => string.IsNullOrWhiteSpace(value) ? "No aplica" : value.Trim();
+    var rangoInspeccion = Model.FechaInicioInspeccion.HasValue && Model.FechaFinInspeccion.HasValue
+        ? Model.FechaInicioInspeccion.Value.ToString("dd/MM/yyyy") + " al " + Model.FechaFinInspeccion.Value.ToString("dd/MM/yyyy")
+        : (Model.FechaInicioInspeccion.HasValue
+            ? "Desde " + Model.FechaInicioInspeccion.Value.ToString("dd/MM/yyyy")
+            : (Model.FechaFinInspeccion.HasValue ? "Hasta " + Model.FechaFinInspeccion.Value.ToString("dd/MM/yyyy") : "No especificada"));
 }
 
 @section PdfHead {
@@ -148,12 +153,15 @@
         <td class="pdf-label">Aeropuertos solicitados</td>
         <td>@valorPdf(Model.AeropuertosSolicitados)</td>
     </tr>
+    <tr>
+        <td class="pdf-label">Fechas estimadas de inspección</td>
+        <td>@rangoInspeccion</td>
+    </tr>
 </table>
-
 <p class="pdf-paragraph">
     Yo, <strong>@valorPdf(Model.NombreRT)</strong>, en calidad de Representante Técnico de la compañía <strong>@valorPdf(Model.NombreCompania)</strong>,
     en cumplimiento del Art. 110 del Código Aeronáutico, por medio del presente solicito formalmente la(s) inspección(es)
-    de instalaciones en los aeropuertos de <strong>@valorPdf(Model.AeropuertosSolicitados)</strong>.
+    de instalaciones en los aeropuertos de <strong>@valorPdf(Model.AeropuertosSolicitados)</strong>@(rangoInspeccion != "No especificada" ? " en el periodo estimado " + rangoInspeccion : string.Empty).
 </p>
 
 <p class="pdf-paragraph">
@@ -189,7 +197,6 @@
         <div class="signature-role">Representante Técnico</div>
     </div>
 </div>
-
 <div class="pdf-reference">
     <div class="pdf-reference-title">INFORMACIÓN DE REFERENCIA: RESOLUCIÓN 066-2010 (01 DE JULIO 2010), ART. 14</div>
     <p>

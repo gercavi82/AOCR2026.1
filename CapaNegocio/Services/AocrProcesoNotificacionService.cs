@@ -50,14 +50,14 @@ namespace CapaNegocio.Services
         {
             TrySyncCentralState(solicitudId, "FIRMAR_AOCR", "DireccionJefaturaTecnica", "Documento AOCR firmado.");
             NotificarEventoSimple(solicitudId, "AOCR_FIRMADO", "Sistema AOCR - Documento AOCR firmado",
-                "El documento RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS fue firmado correctamente.");
+                "El documento AOCR fue firmado correctamente y continua la legalizacion conjunta con Condiciones y Limitaciones.");
         }
 
         public void NotificarCondicionesFirmadas(int solicitudId)
         {
             TrySyncCentralState(solicitudId, "FIRMAR_CONDICIONES", "DireccionJefaturaTecnica", "Documento de condiciones firmado.");
             NotificarEventoSimple(solicitudId, "CONDICIONES_FIRMADAS", "Sistema AOCR - Documento Condiciones y Limitaciones firmado",
-                "El documento CONDICIONES Y LIMITACIONES fue firmado correctamente.");
+                "El documento Condiciones y Limitaciones fue firmado correctamente y queda vinculado a la legalizacion final del AOCR.");
         }
 
         public bool NotificarProcesoAocrFinalizado(int solicitudId)
@@ -284,6 +284,8 @@ namespace CapaNegocio.Services
         {
             var destinatarios = new List<NotificacionDestinatario>();
             AgregarUsuariosPorRol(destinatarios, "Coordinador");
+            AgregarUsuariosPorRol(destinatarios, "DCAV");
+            AgregarUsuariosPorRol(destinatarios, "DirectorDCAV");
             AgregarUsuariosPorRol(destinatarios, "Direccion");
             AgregarUsuariosPorRol(destinatarios, "DIRDAC");
             AgregarUsuariosPorRol(destinatarios, "Dirección / Jefatura técnica");
@@ -311,13 +313,13 @@ namespace CapaNegocio.Services
         private static string ConstruirCuerpoFinal(SolicitudAOCR solicitud, string nombre)
         {
             var sb = new StringBuilder();
-            sb.Append("<p>Se informa que el proceso AOCR correspondiente a la Solicitud <strong>")
+            sb.Append("<p>Se informa que el proceso de Emision / Renovacion / Modificacion AOCR correspondiente a la Solicitud <strong>")
               .Append(HttpUtility.HtmlEncode(NumeroSolicitud(solicitud)))
-              .Append("</strong> ha finalizado correctamente.</p>");
-            sb.Append("<p>Se adjuntan los documentos finales firmados:</p>");
+              .Append("</strong> ha concluido su legalizacion institucional.</p>");
+            sb.Append("<p>Se adjuntan los documentos finales debidamente firmados y legalizados:</p>");
             sb.Append("<ul>");
-            sb.Append("<li>RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS</li>");
-            sb.Append("<li>CONDICIONES Y LIMITACIONES</li>");
+            sb.Append("<li>AOCR - Reconocimiento de Certificado de Explotador de Servicios Aereos</li>");
+            sb.Append("<li>Condiciones y Limitaciones</li>");
             sb.Append("</ul>");
             sb.Append("<p>Los documentos tambien se encuentran disponibles para descarga en su bandeja del Sistema AOCR.</p>");
             return EmailTemplateRenderer.EnsureStandardLayout("Sistema AOCR - Proceso AOCR finalizado", sb.ToString(), nombre, "Este es un mensaje automatico del workflow AOCR.");

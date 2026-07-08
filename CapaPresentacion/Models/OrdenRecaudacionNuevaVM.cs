@@ -23,10 +23,26 @@ namespace CapaPresentacion.Models
         [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
         public string AeropuertosSolicitados { get; set; }
 
+        [DataType(DataType.Date)]
+        public DateTime? FechaInicioInspeccion { get; set; }
+
+        [DataType(DataType.Date)]
+        public DateTime? FechaFinInspeccion { get; set; }
+
         public bool GenerarSolicitudInspeccionAlGuardar { get; set; }
 
         public string CompaniaActivaCodigo { get; set; }
         public string CompaniaActivaContextToken { get; set; }
+
+        [StringLength(30, ErrorMessage = "Lugar de inspeccion invalido")]
+        public string LugarInspeccion { get; set; }
+
+        [StringLength(150, ErrorMessage = "Maximo 150 caracteres")]
+        public string ProvinciaInspeccion { get; set; }
+
+        public bool RequiereProvinciaInspeccion { get; set; }
+        public bool InspeccionExternaObligatoria { get; set; }
+        public bool ViaticosInspectorObligatorios { get; set; }
 
         public CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel SolicitudInspeccionPanel { get; set; } = new CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel();
 

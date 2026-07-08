@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using CapaDatos.Services;
@@ -211,56 +211,63 @@ namespace CapaNegocio.Services
                 case "AOCR_APROBADO_DIRECCION":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Solicitud aprobada por Dirección #" + solicitud.CodigoSolicitud,
-                        Titulo = "Solicitud aprobada por Dirección",
-                        Mensaje = "La solicitud AOCR fue aprobada por Dirección y pasa al tramo de legalización institucional.",
-                        GruposDestinatarios = new[]
-                        {
-                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
-                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
-                            NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal
-                        }
-                    };
-                case "AOCR_LEGALIZADO":
-                    return new PlantillaSolicitudCorreo
-                    {
-                        Asunto = "AOCR - Solicitud legalizada #" + solicitud.CodigoSolicitud,
-                        Titulo = "AOCR legalizado",
-                        Mensaje = "La solicitud AOCR fue legalizada y el certificado queda habilitado para su emisión institucional.",
+                        Asunto = "AOCR - Solicitud aprobada por DirecciÃ³n #" + solicitud.CodigoSolicitud,
+                        Titulo = "Solicitud aprobada por DirecciÃ³n",
+                        Mensaje = "La solicitud AOCR fue aprobada por DirecciÃ³n y pasa al tramo de legalizaciÃ³n institucional.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal,
+                            NotificacionDestinatarioPolicyService.GrupoDcav
+                        }
+                    };
+                case "AOCR_LEGALIZADO":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Legalizacion de AOCR y Condiciones y Limitaciones #" + solicitud.CodigoSolicitud,
+                        Titulo = "AOCR y Condiciones y Limitaciones legalizados",
+                        Mensaje = "El proceso de Emision / Renovacion / Modificacion AOCR concluyo su legalizacion institucional. " +
+                                  "El AOCR y las Condiciones y Limitaciones quedan habilitados para su comunicacion y entrega final al RT.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal,
+                            NotificacionDestinatarioPolicyService.GrupoDcav,
                             NotificacionDestinatarioPolicyService.GrupoDireccionFinal
                         }
                     };
                 case "AOCR_EMITIDO_RECIBIDO":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Certificado emitido y entregado #" + solicitud.CodigoSolicitud,
-                        Titulo = "AOCR emitido y entregado",
-                        Mensaje = "El certificado AOCR fue emitido y marcado como recibido. El tramite queda completado en su tramo institucional final.",
+                        Asunto = "AOCR - Documentos finales emitidos y entregados #" + solicitud.CodigoSolicitud,
+                        Titulo = "AOCR y Condiciones y Limitaciones emitidos",
+                        Mensaje = "El AOCR y las Condiciones y Limitaciones fueron emitidos, firmados y registrados como entregados. " +
+                                  "El tramite de Emision / Renovacion / Modificacion AOCR queda completado.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal,
+                            NotificacionDestinatarioPolicyService.GrupoDcav,
                             NotificacionDestinatarioPolicyService.GrupoDireccionFinal
                         }
                     };
                 case "INSPECTOR_ASIGNADO":
                     var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+                    var operadorInspector = ObtenerOperadorVisible(solicitud);
                     return new PlantillaSolicitudCorreo
                     {
                         Asunto = "AOCR - Inspector asignado a solicitud " + numeroSolicitud,
-                        Titulo = "Inspector asignado",
-                        Mensaje = "Por medio del presente, se informa que ha sido asignado/a como Inspector a la solicitud " + numeroSolicitud + ".",
+                        Titulo = "Documentacion disponible para revision del Inspector",
+                        Mensaje = "El RT de la compania " + operadorInspector
+                                  + " ha ingresado en el sistema la informacion y documentacion requerida en la RDAC 129, "
+                                  + "aplicable al tramite de Emision / Renovacion / Modificacion AOCR. "
+                                  + "Se encuentra en su bandeja la documentacion para revision y aceptacion.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
-                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
-                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
                         }
                     };
@@ -271,10 +278,10 @@ namespace CapaNegocio.Services
                 case "REVISION_DOCUMENTAL_OBSERVADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Observaciones en revisión documental #" + solicitud.CodigoSolicitud,
-                        Titulo = "Observaciones en revisión documental",
-                        Mensaje = "La solicitud AOCR presenta observaciones en la revisión documental. " +
-                                  "Debe corregir los documentos indicados y reenviarlos para continuar con el trámite.",
+                        Asunto = "AOCR - Observaciones en revisiÃ³n documental #" + solicitud.CodigoSolicitud,
+                        Titulo = "Observaciones en revisiÃ³n documental",
+                        Mensaje = "La solicitud AOCR presenta observaciones en la revisiÃ³n documental. " +
+                                  "Debe corregir los documentos indicados y reenviarlos para continuar con el trÃ¡mite.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
@@ -288,8 +295,8 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "AOCR - Correcciones documentales enviadas por RT #" + solicitud.CodigoSolicitud,
                         Titulo = "Correcciones documentales enviadas",
-                        Mensaje = "El Representante Técnico ha enviado las correcciones documentales solicitadas. " +
-                                  "Por favor, revise los documentos actualizados para continuar con el flujo de inspección.",
+                        Mensaje = "El Representante TÃ©cnico ha enviado las correcciones documentales solicitadas. " +
+                                  "Por favor, revise los documentos actualizados para continuar con el flujo de inspecciÃ³n.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
@@ -302,15 +309,19 @@ namespace CapaNegocio.Services
                 case "INSPECCION_HABILITADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Revisión documental aprobada #" + solicitud.CodigoSolicitud,
-                        Titulo = "Revisión documental aprobada",
-                        Mensaje = "La revisión documental de la solicitud AOCR fue completada satisfactoriamente. " +
-                                  "Todos los documentos han sido aprobados y se habilitó la ejecución de la inspección técnica.",
+                        Asunto = "AOCR - Documentacion aceptada #" + solicitud.CodigoSolicitud,
+                        Titulo = "Documentacion aceptada",
+                        Mensaje = "Una vez revisada la documentacion cargada, se determina que la compania "
+                                  + ObtenerOperadorVisible(solicitud)
+                                  + " cumple con los requerimientos establecidos en la RDAC 129 y, en consecuencia, se acepta la misma. "
+                                  + "La DGAC acoge favorablemente la solicitud de inspeccion(es) y continuara con la designacion y ejecucion conforme al flujo operativo.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
                             NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
-                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
+                            NotificacionDestinatarioPolicyService.GrupoDcav
                         }
                     };
 
@@ -318,10 +329,10 @@ namespace CapaNegocio.Services
                 case "REVISION_FINAL_COORDINACION_REGISTRADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Revisión final de Coordinación #" + solicitud.CodigoSolicitud,
-                        Titulo = "Revisión final de Coordinación registrada",
-                        Mensaje = "La Coordinación registró la revisión final de la solicitud AOCR. " +
-                                  "Continúa el flujo institucional para la validación y firma final que corresponda.",
+                        Asunto = "AOCR - RevisiÃ³n final de CoordinaciÃ³n #" + solicitud.CodigoSolicitud,
+                        Titulo = "RevisiÃ³n final de CoordinaciÃ³n registrada",
+                        Mensaje = "La CoordinaciÃ³n registrÃ³ la revisiÃ³n final de la solicitud AOCR. " +
+                                  "ContinÃºa el flujo institucional para la validaciÃ³n y firma final que corresponda.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
@@ -333,12 +344,16 @@ namespace CapaNegocio.Services
                 case "SOLICITUD_COMPLETADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Solicitud completada por RT, pendiente asignación de inspector #" + solicitud.CodigoSolicitud,
-                        Titulo = "Solicitud AOCR completada",
-                        Mensaje = "El Representante Técnico completó el llenado de la solicitud AOCR. " +
-                                  "La solicitud se encuentra pendiente de asignación de inspector para continuar con el proceso de inspección.",
+                        Asunto = "AOCR - Documentacion ingresada por RT #" + solicitud.CodigoSolicitud,
+                        Titulo = "Documentacion cargada por RT",
+                        Mensaje = "La informacion y documentacion cargada en el sistema ha sido ingresada y puesta en consideracion institucional. "
+                                  + "El RT de la compania " + ObtenerOperadorVisible(solicitud)
+                                  + " ingreso informacion y documentacion requerida en la RDAC 129, aplicable al tramite de Emision / Renovacion / Modificacion AOCR. "
+                                  + "Coordinacion debe asignar el tramite a un Inspector y enviar el registro para su revision y aceptacion.",
                         GruposDestinatarios = new[]
                         {
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
                         }
                     };
@@ -349,8 +364,8 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "AOCR - Pago aprobado, solicitud habilitada #" + solicitud.CodigoSolicitud,
                         Titulo = "Solicitud AOCR habilitada",
-                        Mensaje = "El pago de la orden de recaudación fue aprobado por Financiero. " +
-                                  "La solicitud AOCR ya se encuentra disponible para que complete el formulario y adjunte la documentación requerida.",
+                        Mensaje = "El pago de la orden de recaudaciÃ³n fue aprobado por Financiero. " +
+                                  "La solicitud AOCR ya se encuentra disponible para que complete el formulario y adjunte la documentaciÃ³n requerida.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
@@ -363,15 +378,16 @@ namespace CapaNegocio.Services
                 case "CERTIFICADO_AOCR_HABILITADO":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Informe técnico aprobado por DIRDAC, certificado habilitado #" + solicitud.CodigoSolicitud,
-                        Titulo = "Informe técnico aprobado por DIRDAC",
-                        Mensaje = "El Informe Técnico fue aprobado por DIRDAC sin observaciones. " +
-                                  "El Certificado AOCR se encuentra habilitado para su generación y firma por el Coordinador.",
+                        Asunto = "AOCR - Informe tÃ©cnico aprobado por DIRDAC, certificado habilitado #" + solicitud.CodigoSolicitud,
+                        Titulo = "Informe tÃ©cnico aprobado por DIRDAC",
+                        Mensaje = "El Informe TÃ©cnico fue aprobado por DIRDAC sin observaciones. " +
+                                  "El Certificado AOCR se encuentra habilitado para su generaciÃ³n y firma por el Coordinador.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
-                            NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionLegal,
+                            NotificacionDestinatarioPolicyService.GrupoDcav
                         }
                     };
 
@@ -379,9 +395,9 @@ namespace CapaNegocio.Services
                 case "DEVUELTO_DIRDAC":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Informe técnico devuelto por DIRDAC #" + solicitud.CodigoSolicitud,
-                        Titulo = "Informe técnico devuelto por DIRDAC",
-                        Mensaje = "DIRDAC / Dirección devolvió el Informe Técnico con observaciones. " +
+                        Asunto = "AOCR - Informe tÃ©cnico devuelto por DIRDAC #" + solicitud.CodigoSolicitud,
+                        Titulo = "Informe tÃ©cnico devuelto por DIRDAC",
+                        Mensaje = "DIRDAC / DirecciÃ³n devolviÃ³ el Informe TÃ©cnico con observaciones. " +
                                   "El Inspector y/o Coordinador deben revisar las observaciones indicadas y subsanar el informe antes de reenviarlo.",
                         GruposDestinatarios = new[]
                         {
@@ -431,6 +447,18 @@ namespace CapaNegocio.Services
                 : solicitud.NumeroSolicitud.Trim();
         }
 
+        private static string ObtenerOperadorVisible(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return "No registrada";
+            }
+
+            return string.IsNullOrWhiteSpace(solicitud.NombreOperador)
+                ? (string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? "No registrada" : solicitud.RazonSocial.Trim())
+                : solicitud.NombreOperador.Trim();
+        }
+
         private sealed class PlantillaSolicitudCorreo
         {
             public string Asunto { get; set; }
@@ -440,3 +468,4 @@ namespace CapaNegocio.Services
         }
     }
 }
+

@@ -18,5 +18,12 @@ namespace CapaDatos.Models
         public decimal Subtotal { get; set; }
         public decimal Admin { get; set; }
         public decimal TotalLinea { get; set; }
+
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
+        public bool InspeccionExtObligatoria { get; set; }
+        public bool ViaticosInspectorObligatorios { get; set; }
+        public int? UsuarioReglaInspeccion { get; set; }
+        public DateTime? FechaReglaInspeccion { get; set; }
     }
 }
