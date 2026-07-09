@@ -85,14 +85,31 @@ namespace CapaNegocio.Services
                 { AocrEstadosProceso.LvFinalizada, new[] { AocrEstadosProceso.LvFirmada } },
                 { AocrEstadosProceso.LvFirmada, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado } },
                 { AocrEstadosProceso.InformeTecnicoPendiente, new[] { AocrEstadosProceso.InformeTecnicoGenerado } },
-                { AocrEstadosProceso.InformeTecnicoGenerado, new[] { AocrEstadosProceso.InformeTecnicoFirmado } },
-                { AocrEstadosProceso.InformeTecnicoFirmado, new[] { AocrEstadosProceso.InformeEnviadoDireccion, AocrEstadosProceso.InformeAprobadoDireccion } },
+                { AocrEstadosProceso.InformeTecnicoGenerado, new[] { AocrEstadosProceso.InformeTecnicoFirmado, AocrEstadosProceso.InformeTecnicoFirmadoInspector } },
+                { AocrEstadosProceso.InformeTecnicoFirmado, new[] { AocrEstadosProceso.InformeTecnicoFirmadoInspector, AocrEstadosProceso.PendienteRevisionInformeDcav, AocrEstadosProceso.InformeEnviadoDireccion, AocrEstadosProceso.InformeAprobadoDireccion } },
+                { AocrEstadosProceso.InformeTecnicoFirmadoInspector, new[] { AocrEstadosProceso.PendienteRevisionInformeDcav } },
+                { AocrEstadosProceso.PendienteRevisionInformeDcav, new[] { AocrEstadosProceso.InformeTecnicoAprobadoDcav, AocrEstadosProceso.InformeTecnicoObservadoDcav } },
+                { AocrEstadosProceso.InformeTecnicoObservadoDcav, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado, AocrEstadosProceso.PendienteRevisionInformeDcav } },
+                { AocrEstadosProceso.InformeTecnicoAprobadoDcav, new[] { AocrEstadosProceso.DocumentosHabilitadosInspector } },
+                { AocrEstadosProceso.DocumentosHabilitadosInspector, new[] { AocrEstadosProceso.DocumentosEnRevisionInspector, AocrEstadosProceso.PendienteRevisionDocumentosDcav } },
+                { AocrEstadosProceso.DocumentosEnRevisionInspector, new[] { AocrEstadosProceso.PendienteRevisionDocumentosDcav } },
+                { AocrEstadosProceso.PendienteRevisionDocumentosDcav, new[] { AocrEstadosProceso.DocumentosObservadosDcav, AocrEstadosProceso.AprobadoDocumentosDcav } },
+                { AocrEstadosProceso.DocumentosObservadosDcav, new[] { AocrEstadosProceso.DocumentosEnRevisionInspector, AocrEstadosProceso.PendienteRevisionDocumentosDcav } },
+                { AocrEstadosProceso.AprobadoDocumentosDcav, new[] { AocrEstadosProceso.PendienteFirmaDirectorGeneral } },
                 { AocrEstadosProceso.InformeEnviadoDireccion, new[] { AocrEstadosProceso.InformeAprobadoDireccion, AocrEstadosProceso.InformeDevueltoDireccion } },
                 { AocrEstadosProceso.InformeDevueltoDireccion, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado } },
-                { AocrEstadosProceso.InformeAprobadoDireccion, new[] { AocrEstadosProceso.AocrDatosPendientes, AocrEstadosProceso.AocrDatosCompletos } },
+                { AocrEstadosProceso.InformeAprobadoDireccion, new[] { AocrEstadosProceso.AocrDatosPendientes, AocrEstadosProceso.AocrDatosCompletos, AocrEstadosProceso.PendienteRevisionDcav, AocrEstadosProceso.DocumentosHabilitadosInspector } },
                 { AocrEstadosProceso.AocrDatosPendientes, new[] { AocrEstadosProceso.AocrDatosCompletos, AocrEstadosProceso.AocrPdfGenerado } },
                 { AocrEstadosProceso.AocrDatosCompletos, new[] { AocrEstadosProceso.AocrPdfGenerado } },
-                { AocrEstadosProceso.AocrPdfGenerado, new[] { AocrEstadosProceso.AocrFirmado } },
+                { AocrEstadosProceso.AocrPdfGenerado, new[] { AocrEstadosProceso.AocrFirmado, AocrEstadosProceso.PendienteRevisionDcav } },
+                { AocrEstadosProceso.PendienteRevisionDcav, new[] { AocrEstadosProceso.AprobadoPorDcav, AocrEstadosProceso.ObservadoPorDcav, AocrEstadosProceso.PendienteRevisionDocumentosDcav } },
+                { AocrEstadosProceso.ObservadoPorDcav, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado, AocrEstadosProceso.AocrDatosPendientes, AocrEstadosProceso.PendienteRevisionDcav } },
+                { AocrEstadosProceso.AprobadoPorDcav, new[] { AocrEstadosProceso.PendienteFirmaDirectorGeneral } },
+                { AocrEstadosProceso.PendienteFirmaDirectorGeneral, new[] { AocrEstadosProceso.AocrFirmado, AocrEstadosProceso.AocrFirmadoDirdac, AocrEstadosProceso.CondicionesFirmadasDirdac, AocrEstadosProceso.FirmadoDirectorGeneral, AocrEstadosProceso.ObservadoPorDcav } },
+                { AocrEstadosProceso.AocrFirmadoDirdac, new[] { AocrEstadosProceso.CondicionesFirmadasDirdac, AocrEstadosProceso.DocumentosFirmadosDirdac } },
+                { AocrEstadosProceso.CondicionesFirmadasDirdac, new[] { AocrEstadosProceso.AocrFirmadoDirdac, AocrEstadosProceso.DocumentosFirmadosDirdac } },
+                { AocrEstadosProceso.DocumentosFirmadosDirdac, new[] { AocrEstadosProceso.DocumentosFinalesLiberadosRt, AocrEstadosProceso.AocrFinalizado } },
+                { AocrEstadosProceso.FirmadoDirectorGeneral, new[] { AocrEstadosProceso.AocrFirmado, AocrEstadosProceso.CondicionesFirmadas, AocrEstadosProceso.DocumentosFinalesLiberadosRt, AocrEstadosProceso.AocrFinalizado } },
                 { AocrEstadosProceso.AocrFirmado, new[] { AocrEstadosProceso.CondicionesPdfGenerado, AocrEstadosProceso.CondicionesFirmadas } },
                 { AocrEstadosProceso.CondicionesPdfGenerado, new[] { AocrEstadosProceso.CondicionesFirmadas } },
                 { AocrEstadosProceso.CondicionesFirmadas, new[] { AocrEstadosProceso.DocumentosFinalesLiberadosRt, AocrEstadosProceso.AocrFinalizado } },
@@ -128,10 +145,27 @@ namespace CapaNegocio.Services
                 { AocrEstadosProceso.LvFirmada, Meta("INFORME_TECNICO", "InspectorTecnico", "Generar informe tecnico", "GENERAR_INFORME_TECNICO") },
                 { AocrEstadosProceso.InformeTecnicoPendiente, Meta("INFORME_TECNICO", "InspectorTecnico", "Generar informe tecnico", "GENERAR_INFORME_TECNICO") },
                 { AocrEstadosProceso.InformeTecnicoGenerado, Meta("INFORME_TECNICO", "InspectorTecnico", "Firmar informe tecnico", "FIRMAR_INFORME_TECNICO") },
-                { AocrEstadosProceso.InformeTecnicoFirmado, Meta("INFORME_TECNICO", "DireccionJefaturaTecnica", "Revisar informe tecnico", "REVISAR_INFORME_TECNICO") },
+                { AocrEstadosProceso.InformeTecnicoFirmado, Meta("INFORME_TECNICO", "DirectorCertificacionesDcav", "Revisar informe tecnico", "DCAV_REVISAR_INFORME") },
+                { AocrEstadosProceso.InformeTecnicoFirmadoInspector, Meta("INFORME_TECNICO", "DirectorCertificacionesDcav", "Revisar informe tecnico", "DCAV_REVISAR_INFORME") },
+                { AocrEstadosProceso.PendienteRevisionInformeDcav, Meta("REVISION_INFORME_DCAV", "DirectorCertificacionesDcav", "Aprobar o devolver informe tecnico", "DCAV_REVISAR_INFORME") },
+                { AocrEstadosProceso.InformeTecnicoObservadoDcav, Meta("INFORME_TECNICO", "InspectorTecnico", "Corregir informe tecnico", "AJUSTAR_INFORME_TECNICO") },
+                { AocrEstadosProceso.InformeTecnicoAprobadoDcav, Meta("DOCUMENTOS_AOCR", "InspectorTecnico", "Revisar AOCR y Condiciones", "REVISAR_AOCR_CONDICIONES") },
+                { AocrEstadosProceso.DocumentosHabilitadosInspector, Meta("DOCUMENTOS_AOCR", "InspectorTecnico", "Revisar AOCR y Condiciones", "REVISAR_AOCR_CONDICIONES") },
+                { AocrEstadosProceso.DocumentosEnRevisionInspector, Meta("DOCUMENTOS_AOCR", "InspectorTecnico", "Finalizar revision y enviar a DCAV", "ENVIAR_DOCUMENTOS_DCAV") },
+                { AocrEstadosProceso.PendienteRevisionDocumentosDcav, Meta("REVISION_DOCUMENTOS_DCAV", "DirectorCertificacionesDcav", "Aprobar o devolver AOCR y Condiciones", "DCAV_REVISAR_DOCUMENTOS") },
+                { AocrEstadosProceso.DocumentosObservadosDcav, Meta("DOCUMENTOS_AOCR", "InspectorTecnico", "Corregir documentos observados", "AJUSTAR_AOCR_CONDICIONES") },
+                { AocrEstadosProceso.AprobadoDocumentosDcav, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR y Condiciones", "FIRMAR_AOCR_CONDICIONES") },
                 { AocrEstadosProceso.InformeEnviadoDireccion, Meta("DIRECCION", "DireccionJefaturaTecnica", "Aprobar o devolver informe tecnico", "APROBAR_INFORME_TECNICO") },
                 { AocrEstadosProceso.InformeAprobadoDireccion, Meta("DIRECCION", "DireccionJefaturaTecnica", "Completar datos AOCR", "COMPLETAR_AOCR") },
                 { AocrEstadosProceso.InformeDevueltoDireccion, Meta("DIRECCION", "InspectorTecnico", "Ajustar informe tecnico", "AJUSTAR_INFORME_TECNICO") },
+                { AocrEstadosProceso.PendienteRevisionDcav, Meta("REVISION_DCAV", "DirectorCertificacionesDcav", "Revisar expediente AOCR", "DCAV_REVISAR") },
+                { AocrEstadosProceso.ObservadoPorDcav, Meta("REVISION_DCAV", "Coordinacion", "Atender observaciones DCAV", "ATENDER_OBSERVACIONES_DCAV") },
+                { AocrEstadosProceso.AprobadoPorDcav, Meta("REVISION_DCAV", "DirectorGeneral", "Enviar a firma institucional", "ENVIAR_FIRMA_DIRECTOR_GENERAL") },
+                { AocrEstadosProceso.PendienteFirmaDirectorGeneral, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR y Condiciones", "FIRMAR_AOCR_CONDICIONES") },
+                { AocrEstadosProceso.AocrFirmadoDirdac, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar Condiciones", "FIRMAR_CONDICIONES") },
+                { AocrEstadosProceso.CondicionesFirmadasDirdac, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR", "FIRMAR_AOCR") },
+                { AocrEstadosProceso.DocumentosFirmadosDirdac, Meta("BANDEJA_FINAL", "Solicitante", "Descargar documentos finales", "DESCARGAR_DOCUMENTOS_FINALES") },
+                { AocrEstadosProceso.FirmadoDirectorGeneral, Meta("FIRMA_DIRECTOR_GENERAL", "Solicitante", "Descargar documentos finales", "DESCARGAR_DOCUMENTOS_FINALES") },
                 { AocrEstadosProceso.AocrDatosPendientes, Meta("FIRMA_AOCR", "DireccionJefaturaTecnica", "Completar datos AOCR", "COMPLETAR_AOCR") },
                 { AocrEstadosProceso.AocrDatosCompletos, Meta("FIRMA_AOCR", "DireccionJefaturaTecnica", "Generar PDF AOCR", "GENERAR_PDF_AOCR") },
                 { AocrEstadosProceso.AocrPdfGenerado, Meta("FIRMA_AOCR", "DireccionJefaturaTecnica", "Firmar AOCR", "FIRMAR_AOCR") },
@@ -166,9 +200,21 @@ namespace CapaNegocio.Services
                 { Key(AocrEstadosProceso.LvFinalizada, "InspectorTecnico"), new[] { "FIRMAR_LV" } },
                 { Key(AocrEstadosProceso.LvFirmada, "InspectorTecnico"), new[] { "GENERAR_INFORME_TECNICO" } },
                 { Key(AocrEstadosProceso.InformeTecnicoGenerado, "InspectorTecnico"), new[] { "FIRMAR_INFORME_TECNICO" } },
-                { Key(AocrEstadosProceso.InformeTecnicoFirmado, "DireccionJefaturaTecnica"), new[] { "REVISAR_INFORME_TECNICO", "ENVIAR_DIRECCION" } },
+                { Key(AocrEstadosProceso.InformeTecnicoFirmado, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR_INFORME", "DCAV_DEVOLVER_INFORME" } },
+                { Key(AocrEstadosProceso.InformeTecnicoFirmadoInspector, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR_INFORME", "DCAV_DEVOLVER_INFORME" } },
+                { Key(AocrEstadosProceso.PendienteRevisionInformeDcav, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR_INFORME", "DCAV_DEVOLVER_INFORME" } },
+                { Key(AocrEstadosProceso.InformeTecnicoObservadoDcav, "InspectorTecnico"), new[] { "AJUSTAR_INFORME_TECNICO", "FIRMAR_INFORME_TECNICO" } },
+                { Key(AocrEstadosProceso.InformeTecnicoAprobadoDcav, "InspectorTecnico"), new[] { "REVISAR_AOCR", "REVISAR_CONDICIONES", "ENVIAR_DOCUMENTOS_DCAV" } },
+                { Key(AocrEstadosProceso.DocumentosHabilitadosInspector, "InspectorTecnico"), new[] { "REVISAR_AOCR", "REVISAR_CONDICIONES", "ENVIAR_DOCUMENTOS_DCAV" } },
+                { Key(AocrEstadosProceso.DocumentosEnRevisionInspector, "InspectorTecnico"), new[] { "REVISAR_AOCR", "REVISAR_CONDICIONES", "ENVIAR_DOCUMENTOS_DCAV" } },
+                { Key(AocrEstadosProceso.PendienteRevisionDocumentosDcav, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR_DOCUMENTOS", "DCAV_DEVOLVER_DOCUMENTOS" } },
+                { Key(AocrEstadosProceso.DocumentosObservadosDcav, "InspectorTecnico"), new[] { "AJUSTAR_AOCR", "AJUSTAR_CONDICIONES", "ENVIAR_DOCUMENTOS_DCAV" } },
                 { Key(AocrEstadosProceso.InformeEnviadoDireccion, "DireccionJefaturaTecnica"), new[] { "APROBAR_INFORME_TECNICO", "DEVOLVER_INFORME_TECNICO" } },
                 { Key(AocrEstadosProceso.InformeAprobadoDireccion, "DireccionJefaturaTecnica"), new[] { "COMPLETAR_AOCR" } },
+                { Key(AocrEstadosProceso.PendienteRevisionDcav, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR", "DCAV_DEVOLVER" } },
+                { Key(AocrEstadosProceso.PendienteFirmaDirectorGeneral, "DirectorGeneral"), new[] { "FIRMAR_AOCR", "FIRMAR_CONDICIONES", "DEVOLVER_A_DCAV" } },
+                { Key(AocrEstadosProceso.AocrFirmadoDirdac, "DirectorGeneral"), new[] { "FIRMAR_CONDICIONES" } },
+                { Key(AocrEstadosProceso.CondicionesFirmadasDirdac, "DirectorGeneral"), new[] { "FIRMAR_AOCR" } },
                 { Key(AocrEstadosProceso.AocrDatosPendientes, "DireccionJefaturaTecnica"), new[] { "GUARDAR_AOCR", "VALIDAR_AOCR" } },
                 { Key(AocrEstadosProceso.AocrDatosCompletos, "DireccionJefaturaTecnica"), new[] { "GENERAR_PDF_AOCR" } },
                 { Key(AocrEstadosProceso.AocrPdfGenerado, "DireccionJefaturaTecnica"), new[] { "FIRMAR_AOCR" } },
@@ -638,6 +684,8 @@ namespace CapaNegocio.Services
                     return AocrEstadosProceso.LvFirmada;
                 case "INFORME_TECNICO_FIRMADO":
                     return AocrEstadosProceso.InformeTecnicoFirmado;
+                case "INFORME_TECNICO_FIRMADO_INSPECTOR":
+                    return AocrEstadosProceso.InformeTecnicoFirmadoInspector;
                 case "AOCR_EN_ELABORACION":
                     return AocrEstadosProceso.AocrDatosPendientes;
                 case "AOCR_EN_REVISION_COORDINADOR":
@@ -822,6 +870,8 @@ namespace CapaNegocio.Services
                     case "RECHAZADO_DIRDAC":
                         return AocrEstadosProceso.InformeDevueltoDireccion;
                     case "FIRMADO_INSPECTOR":
+                    case "INFORME_TECNICO_FIRMADO_INSPECTOR":
+                        return AocrEstadosProceso.InformeTecnicoFirmadoInspector;
                     case "FIRMADO":
                         return AocrEstadosProceso.InformeTecnicoFirmado;
                     default:
@@ -860,7 +910,9 @@ namespace CapaNegocio.Services
             if (Matches(normalized, "INSPECTOR", "TECNICO", "EVALUADORTECNICO", "INSPECTORTECNICO")) return "InspectorTecnico";
             if (Matches(normalized, "FINANCIERO", "COORDINADORFINANCIERO", "DIRECTORFINANCIERO")) return "Financiero";
             if (Matches(normalized, "COORDINACION", "COORDINADOR", "COORDINADORINSPECCIONES", "COORDINACIONLEGAL", "COORDINADORLEGAL")) return "Coordinacion";
-            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DCAV", "DIRECTORGENERAL", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
+            if (Matches(normalized, "DIRECTORGENERAL", "DIRECTOR_GENERAL")) return "DirectorGeneral";
+            if (Matches(normalized, "DIRECTORCERTIFICACIONESDCAV", "DIRECTORDECERTIFICACIONESDCAV", "DIRECTOR_CERTIFICACIONES_DCAV", "DIRECCIONCERTIFICACION", "DIRECCIONCERTIFICACIONES", "DCAV")) return "DirectorCertificacionesDcav";
+            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
             return (role ?? string.Empty).Trim();
         }
 

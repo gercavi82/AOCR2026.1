@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using CapaDatos.Constants;
+using CapaDatos.DAOs;
 
 namespace CapaNegocio.Services
 {
@@ -25,17 +27,19 @@ namespace CapaNegocio.Services
         private readonly AocrContextResolverService _resolver;
         private readonly AocrEstadoService _estadoService;
         private readonly InformeTecnicoEstadoService _informeEstadoService;
+        private readonly AocrProcesoEstadoDAO _procesoEstadoDao;
 
         public DireccionWorkflowRouter()
-            : this(new AocrContextResolverService(), new AocrEstadoService(), new InformeTecnicoEstadoService())
+            : this(new AocrContextResolverService(), new AocrEstadoService(), new InformeTecnicoEstadoService(), new AocrProcesoEstadoDAO())
         {
         }
 
-        public DireccionWorkflowRouter(AocrContextResolverService resolver, AocrEstadoService estadoService, InformeTecnicoEstadoService informeEstadoService)
+        public DireccionWorkflowRouter(AocrContextResolverService resolver, AocrEstadoService estadoService, InformeTecnicoEstadoService informeEstadoService, AocrProcesoEstadoDAO procesoEstadoDao)
         {
             _resolver = resolver ?? new AocrContextResolverService();
             _estadoService = estadoService ?? new AocrEstadoService();
             _informeEstadoService = informeEstadoService ?? new InformeTecnicoEstadoService();
+            _procesoEstadoDao = procesoEstadoDao ?? new AocrProcesoEstadoDAO();
         }
 
         public DireccionWorkflowSiguiente ObtenerAccionSiguiente(int solicitudId)
@@ -50,6 +54,12 @@ namespace CapaNegocio.Services
             var estadoSolicitud = contexto.EstadoSolicitud;
             var estadoSolicitudToken = Normalizar(estadoSolicitud);
             var estadoAocr = Normalizar(contexto.EstadoAocr);
+            var estadoCentral = _procesoEstadoDao.ObtenerActivoPorSolicitud(solicitudId);
+
+            if (estadoCentral != null && string.Equals(estadoCentral.EstadoActual, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase))
+            {
+                return CrearResultado(DireccionWorkflowAccion.FirmarAocr, contexto, "AOCR y Condiciones pendientes de firma institucional del Director General.");
+            }
 
             if (InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(estadoInforme))
             {

@@ -62,6 +62,7 @@
     <Compile Include="Unit\ValidacionesTests.cs" />
     <Compile Include="Unit\EmailQueueTests.cs" />
     <Compile Include="Unit\AocrFinalWorkflowAuthorizationTests.cs" />
+    <Compile Include="Unit\AocrDcavRevisionServiceTests.cs" />
     <Compile Include="Unit\EstadoSolicitudTransitionMatrixTests.cs" />
     <Compile Include="Unit\AocrEstadoServiceTests.cs" />
     <Compile Include="Unit\AocrFlujoServiceTests.cs" />

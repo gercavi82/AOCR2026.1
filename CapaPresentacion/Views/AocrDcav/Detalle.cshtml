@@ -1,0 +1,104 @@
+@inherits System.Web.Mvc.WebViewPage<CapaNegocio.Services.AocrDcavRevisionItem>
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Revision DCAV";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <span class="badge bg-primary-subtle text-primary mb-2">Revision DCAV - @Model.TipoRevision</span>
+                <h2 class="mb-1">@Model.NumeroSolicitud</h2>
+                <p class="text-muted mb-0">@Model.NombreExplotador</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="@Url.Action("Revision", "AocrDcav")">Volver</a>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light"><strong>Documentos a revisar</strong></div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Lista de Verificacion firmada</span>
+                            <span class="badge @(Model.ListaFirmada ? "bg-success" : "bg-danger")">@(Model.ListaFirmada ? "Completo" : "Pendiente")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Informe Tecnico firmado</span>
+                            <span class="badge @(Model.InformeFirmado ? "bg-success" : "bg-danger")">@(Model.InformeFirmado ? "Completo" : "Pendiente")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Resultado satisfactorio</span>
+                            <span class="badge @(Model.InformeSatisfactorio ? "bg-success" : "bg-danger")">@(Model.InformeSatisfactorio ? "Si" : "No")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>AOCR generado</span>
+                            <span class="badge @(Model.AocrGenerado ? "bg-success" : "bg-danger")">@(Model.AocrGenerado ? "Completo" : "Pendiente")</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Condiciones y Limitaciones generadas</span>
+                            <span class="badge @(Model.CondicionesGeneradas ? "bg-success" : "bg-danger")">@(Model.CondicionesGeneradas ? "Completo" : "Pendiente")</span>
+                        </li>
+                    </ul>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.MotivoBloqueo))
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">@Model.MotivoBloqueo</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light"><strong>Acciones</strong></div>
+                <div class="card-body">
+                    <div class="d-grid gap-2 mb-3">
+                        <a class="btn btn-outline-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme = Model.InformeId })">Ver Informe Tecnico</a>
+                        <a class="btn btn-outline-primary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId, tipo = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
+                        <a class="btn btn-outline-primary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId, tipo = "CONDICIONES_LIMITACIONES" })" target="_blank">Ver Condiciones y Limitaciones</a>
+                    </div>
+
+                    @using (Html.BeginForm("Aprobar", "AocrDcav", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("solicitudId", Model.SolicitudId)
+                        <button type="submit" class="btn btn-success w-100 mb-3" @(Model.PuedeAprobar ? null : "disabled")>
+                            @(Model.TipoRevision == "INFORME_TECNICO" ? "Aprobar informe y habilitar documentos" : "Aprobar documentos y enviar al Director General")
+                        </button>
+                    }
+
+                    @using (Html.BeginForm("Devolver", "AocrDcav", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("solicitudId", Model.SolicitudId)
+                        <div class="mb-2">
+                            <label class="form-label">Destino de devolucion</label>
+                            <select name="destino" class="form-select" required>
+                                <option value="Inspector">Inspector</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Observacion</label>
+                            <textarea name="observacion" class="form-control" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger w-100">Devolver con observaciones</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

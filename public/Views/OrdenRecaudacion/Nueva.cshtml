@@ -1,0 +1,1286 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.OrdenRecaudacionNuevaVM>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Nueva Orden de recaudación";
+}
+
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
+    { "Title", "Nueva Orden de Recaudación" },
+    { "Subtitle", "Creación de orden para el flujo financiero AOCR" }
+})
+
+<style>
+    .aocr-process-shell {
+        width: 100%;
+        max-width: 1780px;
+        margin: 0 auto;
+    }
+
+    .aocr-process-title {
+        color: #111827;
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: .01em;
+        margin: .35rem 0 1rem;
+        text-transform: uppercase;
+    }
+
+    .aocr-process-progress {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin: 0 0 1.15rem;
+        padding: .75rem 1rem 1rem;
+        background: #fff;
+        border: 1px solid #e0e8f2;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(15, 35, 58, .045);
+    }
+
+    .aocr-process-progress:before {
+        content: "";
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        top: 28px;
+        height: 2px;
+        background: #cfd8e3;
+    }
+
+    .aocr-process-progress-item {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: #111827;
+        font-size: .78rem;
+        font-weight: 700;
+        line-height: 1.18;
+    }
+
+    .aocr-process-progress-item span {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: .35rem;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #a9b8c8;
+        color: #64748b;
+        font-weight: 800;
+    }
+
+    .aocr-process-progress-item.active span,
+    .aocr-process-progress-item.done span {
+        background: #0b75d1;
+        border-color: #0b75d1;
+        color: #fff;
+    }
+
+    .aocr-process-progress-item.locked span {
+        background: #f8fafc;
+        color: #8a98a8;
+    }
+
+    .aocr-process-progress-item small {
+        display: block;
+        margin-top: .1rem;
+        font-size: .68rem;
+        font-weight: 600;
+    }
+
+    .aocr-create-card {
+        border: 1px solid #d9e4ef;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(15, 35, 58, .06);
+        overflow: hidden;
+    }
+
+    .aocr-create-header {
+        background: #fff;
+        border-bottom: 1px solid #e4edf6;
+        color: #17324d;
+        padding: 1.05rem 1.25rem;
+    }
+
+    .aocr-create-header .card-title {
+        color: #17324d;
+        font-size: 1.08rem;
+        font-weight: 800;
+    }
+
+    .aocr-create-header .card-title i {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #edf7ff;
+        color: #0b66d8;
+    }
+
+    .aocr-create-body {
+        background: #f4f8fc;
+        padding: 1rem;
+    }
+
+    .aocr-flow-group-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 .85rem;
+        padding-bottom: .65rem;
+        border-bottom: 1px solid #e6edf5;
+        color: #111827;
+        font-size: .98rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .aocr-flow-group-title:after {
+        content: "\f077";
+        font-family: "Font Awesome 5 Free";
+        font-size: .75rem;
+        font-weight: 900;
+        color: #536274;
+    }
+
+    .aocr-section-card {
+        background: #fff;
+        border: 1px solid #dfe8f2;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 3px 12px rgba(15, 35, 58, .035);
+    }
+
+    .aocr-sub-card {
+        background: #fff;
+        border: 1px solid #dfe8f2;
+        border-radius: 8px;
+        padding: .85rem;
+        box-shadow: 0 2px 10px rgba(15, 35, 58, .03);
+    }
+
+    .aocr-section-title {
+        display: flex;
+        align-items: center;
+        margin: 0 0 .75rem;
+        color: #111827;
+        font-size: .9rem;
+        font-weight: 800;
+    }
+
+    .aocr-step-badge {
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 22px;
+        border-radius: 50%;
+        background: #0b66d8;
+        color: #fff;
+        font-size: .78rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .aocr-flow-number {
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: .55rem;
+        border-radius: 50%;
+        background: #0b75d1;
+        color: #fff;
+        font-size: .78rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .aocr-form-card .form-label {
+        color: #172033;
+        font-size: .84rem;
+        font-weight: 700;
+        margin-bottom: .35rem;
+    }
+
+    .aocr-form-card .form-control,
+    .aocr-form-card .form-select,
+    .aocr-form-card input.form-control,
+    .aocr-form-card textarea.form-control,
+    .aocr-form-card .form-control[readonly],
+    .aocr-form-card .form-control:disabled,
+    .aocr-form-card .form-control.bg-light {
+        color: #172033 !important;
+        -webkit-text-fill-color: #172033;
+        border-color: #d8e2ee;
+        border-radius: 7px;
+        min-height: 38px;
+    }
+
+    .aocr-form-card .form-control::placeholder,
+    .aocr-form-card textarea.form-control::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+    }
+
+    .aocr-form-card .form-control[readonly],
+    .aocr-form-card .form-control.bg-light {
+        background-color: #f8fafc !important;
+    }
+
+    .aocr-form-card small,
+    .aocr-form-card .text-muted {
+        color: #637083 !important;
+        font-size: .78rem;
+    }
+
+    .aocr-form-card .alert {
+        border-radius: 7px;
+        padding: .62rem .75rem;
+        font-size: .86rem;
+    }
+
+    .aocr-form-card .alert-info {
+        background: #e9f8fb;
+        border-color: #bfeaf2;
+        color: #14576a;
+    }
+
+    .aocr-inline-card {
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .aocr-inline-card .card-body {
+        padding: 0;
+    }
+
+    #tablaDetalles {
+        margin-bottom: 0;
+        border: 1px solid #e1e9f2;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    #tablaDetalles thead th,
+    #tablaDetalles tfoot td {
+        background: #0d4462;
+        color: #fff;
+        font-size: .78rem;
+        text-transform: uppercase;
+        border-color: #0d4462;
+    }
+
+    #tablaDetalles tfoot td {
+        background: #f6f9fd;
+        color: #111827;
+    }
+
+    #tablaDetalles tbody td {
+        vertical-align: middle;
+        border-color: #edf2f7;
+        font-size: .86rem;
+    }
+
+    .solicitud-inspeccion-card.aocr-section-card {
+        padding: 0;
+    }
+
+    .aocr-solicitud-section .card-header {
+        background: #fff;
+        border-bottom: 0;
+        padding: 1rem 1rem .45rem;
+    }
+
+    .aocr-solicitud-section .card-body {
+        padding: .35rem 1rem 1rem;
+    }
+
+    .aocr-create-footer {
+        background: #fff;
+        border-top: 1px solid #e4edf6;
+        padding: 1rem;
+    }
+
+    .aocr-create-footer .btn {
+        min-width: 130px;
+        border-radius: 7px;
+        font-weight: 700;
+    }
+
+    @@media (max-width: 576px) {
+        .aocr-process-title {
+            font-size: 1.05rem;
+        }
+
+        .aocr-process-progress {
+            grid-template-columns: 1fr;
+        }
+
+        .aocr-process-progress:before {
+            display: none;
+        }
+
+        .aocr-create-body {
+            padding: .75rem;
+        }
+
+        .aocr-section-card {
+            padding: .85rem;
+        }
+
+        .aocr-create-footer .text-end {
+            display: grid;
+            gap: .5rem;
+        }
+
+        .aocr-create-footer .btn {
+            width: 100%;
+            margin-right: 0 !important;
+        }
+    }
+</style>
+
+<div class="aocr-process-shell">
+<h2 class="aocr-process-title">Creacion de Orden Recaudacion - Flujo de Proceso</h2>
+<div class="aocr-process-progress" aria-label="Flujo de creacion de orden">
+    <div class="aocr-process-progress-item active">
+        <span>1</span>
+        Datos de Entidad y Contribuyente
+    </div>
+    <div class="aocr-process-progress-item done">
+        <span>2</span>
+        Seleccion de Conceptos
+    </div>
+    <div class="aocr-process-progress-item locked">
+        <span><i class="fas fa-lock"></i></span>
+        Documentacion y Requisitos
+        <small>Bloqueado hasta completar conceptos</small>
+    </div>
+    <div class="aocr-process-progress-item locked">
+        <span><i class="fas fa-lock"></i></span>
+        Revision y Finalizacion
+    </div>
+</div>
+
+<div class="card aocr-form-card aocr-create-card">
+    <div class="card-header aocr-create-header">
+        <h3 class="card-title mb-0">
+            <i class="fas fa-plus-circle me-2"></i>@ViewBag.Title
+        </h3>
+    </div>
+
+            @{
+                var companiaActivaNombre = ViewBag.CompaniaActivaNombre as string ?? (Model != null ? Model.Orden?.Compania : string.Empty);
+                var companiaActivaCodigo = ViewBag.CompaniaActivaCodigo as string ?? (Model != null ? Model.CompaniaActivaCodigo : string.Empty);
+                var companiaActivaAlerta = ViewBag.CompaniaActivaAlerta as string;
+            }
+
+            @using (Html.BeginForm("Nueva", "OrdenRecaudacion", FormMethod.Post, new {
+                id = "formOrden",
+                @class = "form-horizontal",
+                autocomplete = "off",
+                data_compania_codigo = companiaActivaCodigo,
+                data_compania_nombre = companiaActivaNombre
+            }))
+            {
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" id="Subtotal" value="0" />
+                <input type="hidden" id="Admin" value="0" />
+                <input type="hidden" id="Total" value="0" />
+                @Html.HiddenFor(m => m.DetallesJson, new { id = "DetallesJson" })
+                @Html.HiddenFor(m => m.RucCedula, new { id = "RucCedulaGeneral" })
+                @Html.HiddenFor(m => m.GenerarSolicitudInspeccionAlGuardar, new { id = "GenerarSolicitudInspeccionAlGuardar" })
+
+                <div class="card-body aocr-create-body">
+
+                    @if (TempData["OK"] != null)
+                    {
+                        <div class="alert alert-success">@TempData["OK"]</div>
+                    }
+
+                    @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+                    @if (!string.IsNullOrWhiteSpace(companiaActivaAlerta))
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-building me-2"></i>@companiaActivaAlerta
+                        </div>
+                    }
+
+                    @Html.HiddenFor(m => m.CompaniaActivaCodigo)
+
+                    <!-- Información básica -->
+                    <div class="aocr-section-card mb-3">
+                    <h5 class="aocr-flow-group-title"><span><span class="aocr-flow-number">1</span>Datos de entidad y contribuyente</span></h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="aocr-sub-card h-100">
+                            <h5 class="aocr-section-title">Datos del Solicitante</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">Solicitud</label>
+                                @{
+                                    var solicitudes = Model.Solicitudes ?? new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>();
+                                    var solicitudUnica = solicitudes.Count == 1 ? solicitudes[0] : null;
+                                }
+                                @if (solicitudUnica != null)
+                                {
+                                    <input type="text" class="form-control" value="@solicitudUnica.Label" readonly />
+                                    @Html.Hidden("Orden.CodigoSolicitud", solicitudUnica.Id)
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="Se generará al guardar la orden" readonly />
+                                }
+                                @Html.ValidationMessageFor(m => m.Orden.CodigoSolicitud, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Lugar de Emisión</label>
+                                @Html.HiddenFor(m => m.Orden.LugarEmision)
+                                <div class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene directamente de la base de datos.">
+                                    @(Model != null && Model.Orden != null ? (Model.Orden.LugarEmision ?? string.Empty) : string.Empty)
+                                </div>
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Compañía activa</label>
+                                @Html.HiddenFor(m => m.Orden.Compania)
+                                @Html.HiddenFor(m => m.Orden.NombreContribuyente, new { id = "Orden_NombreContribuyente" })
+                                <div id="Orden_Compania_Texto" class="form-control bg-light" aria-readonly="true" title="Compañía activa seleccionada en el sistema.">
+                                    @if (!string.IsNullOrWhiteSpace(companiaActivaCodigo))
+                                    {
+                                        @:[@companiaActivaCodigo] @companiaActivaNombre
+                                    }
+                                    else
+                                    {
+                                        @(Model != null && Model.Orden != null ? (Model.Orden.Compania ?? string.Empty) : string.Empty)
+                                    }
+                                </div>
+                                <small class="text-muted">Valor tomado exclusivamente de la compañía activa del RT. Si necesita cambiarla, use el selector del menú lateral.</small>
+                            </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="aocr-sub-card h-100">
+                            <h5 class="aocr-section-title">Datos del Contribuyente</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">RUC/Cédula</label>
+                                @Html.TextBoxFor(m => m.Orden.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula", autocomplete = "off", maxlength = "13", inputmode = "numeric", pattern = "[0-9]*", oninput = "this.value=this.value.replace(/\\D/g,'').slice(0,13);" })
+                                <small class="text-muted">Valor obtenido automáticamente. Puede corregirlo si es necesario (RUC: 13 dígitos / Cédula: 10 dígitos).</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Correo Electrónico</label>
+                                @Html.TextBoxFor(m => m.Orden.Correo, new { @class = "form-control", type = "email", placeholder = "correo@empresa.com" })
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Teléfono</label>
+                                @Html.TextBoxFor(m => m.Orden.Telefono, new { @class = "form-control", placeholder = "Teléfono de contacto", inputmode = "numeric", pattern = "[0-9]*", maxlength = "15", autocomplete = "off", oninput = "this.value=this.value.replace(/\\D/g,'').slice(0,15);" })
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <!-- Agregar conceptos -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="aocr-section-card">
+                            <h5 class="aocr-flow-group-title"><span><span class="aocr-flow-number">2</span>Seleccion de conceptos de pago y detalle</span></h5>
+
+                            @if (ViewBag.ConceptoObligatorioEncontrado == false)
+                            {
+                                <div class="alert alert-danger" id="alertConceptoObligatorioCatalogo">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info" id="alertConceptoObligatorioInfo">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Para continuar con el proceso debe mantener el concepto obligatorio <strong>INSPECCION_EXT</strong> y agregar al menos otra acción o concepto adicional.
+                                </div>
+                            }
+
+                            <div class="card aocr-inline-card">
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Concepto</label>
+                                            <select id="ConceptoId" class="form-select">
+                                                <option value="">Seleccione un concepto</option>
+                                                @foreach (var c in (Model.Conceptos ?? new List<CapaPresentacion.Models.ConceptoOptionVM>()))
+                                                {
+                                                    <option value="@c.Id"
+                                                            data-codigo="@c.Codigo"
+                                                            data-nombre="@c.Nombre"
+                                                            data-valor="@c.Valor"
+                                                            data-porcentaje="@c.PorcentajeAdmin">
+                                                        @c.Label
+                                                    </option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="form-label">Cantidad</label>
+                                            <input type="number" id="Cantidad" class="form-control" value="1" min="1" step="1" />
+                                        </div>
+
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <button type="button" id="btnAgregarConcepto" class="btn btn-primary w-100">
+                                                <i class="fas fa-plus me-1"></i> Agregar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                    <!-- Tabla de detalles -->
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <h5 class="aocr-section-title">Detalles de la Orden</h5>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="tablaDetalles">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Concepto</th>
+                                            <th style="width: 110px;">Cantidad</th>
+                                            <th class="text-end">Valor Unit.</th>
+                                            <th class="text-end">% Admin</th>
+                                            <th class="text-end">Administración</th>
+                                            <th class="text-end">Total Línea</th>
+                                            <th style="width: 60px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="5" class="text-end fw-bold">TOTALES:</td>
+                                            <td class="text-end fw-bold" id="admin">$0.00</td>
+                                            <td class="text-end fw-bold" id="total">$0.00</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="6" class="text-end fw-bold">SUBTOTAL:</td>
+                                            <td class="text-end fw-bold" id="subtotal">$0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelLugarInspeccion" class="aocr-section-card mb-3 d-none">
+                        <h5 class="aocr-flow-group-title"><span><span class="aocr-flow-number">3</span>Lugar de la inspeccion</span></h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="LugarInspeccion" class="form-label">Lugar de la inspeccion</label>
+                                @Html.DropDownListFor(m => m.LugarInspeccion,
+                                    new List<SelectListItem>
+                                    {
+                                        new SelectListItem { Text = "Seleccione...", Value = "" },
+                                        new SelectListItem { Text = "Quito", Value = "QUITO" },
+                                        new SelectListItem { Text = "Latacunga", Value = "LATACUNGA" },
+                                        new SelectListItem { Text = "Otra provincia", Value = "OTRA_PROVINCIA" }
+                                    },
+                                    new { @class = "form-select", id = "LugarInspeccion" })
+                            </div>
+                            <div class="col-md-5 d-none" id="contenedorProvinciaInspeccion">
+                                <label for="ProvinciaInspeccion" class="form-label">Provincia o localidad de la inspeccion</label>
+                                @Html.TextBoxFor(m => m.ProvinciaInspeccion, new { @class = "form-control", id = "ProvinciaInspeccion", maxlength = "150", autocomplete = "off" })
+                                <small class="form-text text-muted">Ingrese la provincia o localidad donde se realizara la inspeccion.</small>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <div id="mensajeLugarInspeccion" class="alert alert-info mb-0 w-100 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @Html.Partial("_PanelSolicitudInspeccionesExt", Model.SolicitudInspeccionPanel)
+
+                    <!-- Observaciones -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="aocr-section-card">
+                            <h5 class="aocr-flow-group-title"><span><span class="aocr-flow-number">4</span>Observaciones y finalizacion</span></h5>
+                            @Html.TextAreaFor(m => m.Orden.Observacion, 3, 60, new { @class = "form-control", placeholder = "Observaciones adicionales..." })
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="card-footer aocr-create-footer">
+                    <div class="text-end">
+                        <a href="@Url.Action("Index","OrdenRecaudacion")" class="btn btn-secondary me-2">
+                            <i class="fas fa-times me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="btnGuardar">
+                            <i class="fas fa-save me-1"></i> Guardar Orden
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+</div>
+
+
+
+@section Scripts {
+    <style>
+        .solicitud-inspeccion-card {
+            border: 1px solid #b8d7f0;
+            box-shadow: 0 4px 14px rgba(0, 44, 84, 0.08);
+        }
+
+        .solicitud-inspeccion-card .card-header {
+            background: #f5fbff;
+        }
+
+        .aocr-solicitud-section .card-header {
+            background: #fff;
+        }
+
+        .solicitud-inspeccion-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+
+        .detalle-obligatorio td {
+            background-color: #f8fbff;
+        }
+
+        .badge-concepto-obligatorio {
+            font-size: 0.7rem;
+            vertical-align: middle;
+        }
+
+        @@media (max-width: 576px) {
+            .solicitud-inspeccion-actions .btn,
+            .solicitud-inspeccion-actions label.btn {
+                width: 100%;
+            }
+        }
+    </style>
+    <script>
+                        $(function () {
+
+                            var detalles = [];
+                            var CODIGO_CONCEPTO_OBLIGATORIO = '@(ViewBag.ConceptoObligatorioCodigo ?? "INSPECCION_EXT")';
+                            var CODIGO_CONCEPTO_VIATICOS = 'VIATICOS_INSPECTOR';
+                            var TRAMITES_INSPECCION_OBLIGATORIA = {
+                                EMI_AOCR: true,
+                                REN_AOCR: true,
+                                MOD_AOCR_INC: true
+                            };
+                            var CONCEPTO_OBLIGATORIO_ENCONTRADO = @((ViewBag.ConceptoObligatorioEncontrado == true) ? "true" : "false");
+                            var agregandoConceptoObligatorio = false;
+
+                            function normalizarCodigoConcepto(codigo) {
+                                return (codigo || '').toString().trim().toUpperCase();
+                            }
+
+                            function esConceptoInspeccionExt(codigo) {
+                                return ((codigo || '').toString().trim().toUpperCase() === CODIGO_CONCEPTO_OBLIGATORIO);
+                            }
+
+                            function conceptoRequiereInspeccionExt(codigo) {
+                                return TRAMITES_INSPECCION_OBLIGATORIA[normalizarCodigoConcepto(codigo)] === true;
+                            }
+
+                            function hayTramiteConInspeccionObligatoria() {
+                                return detalles.some(function (d) {
+                                    return d.Cantidad > 0 && conceptoRequiereInspeccionExt(d.ConceptoCodigo);
+                                });
+                            }
+
+                            function esConceptoObligatorio(codigo) {
+                                return esConceptoInspeccionExt(codigo) && hayTramiteConInspeccionObligatoria();
+                            }
+
+                            function estaSeleccionado(codigo) {
+                                var buscado = normalizarCodigoConcepto(codigo);
+                                return detalles.some(function (d) {
+                                    return normalizarCodigoConcepto(d.ConceptoCodigo) === buscado && d.Cantidad > 0;
+                                });
+                            }
+
+                            function obtenerOpcionConceptoObligatorio() {
+                                var $encontrada = null;
+                                $('#ConceptoId option').each(function () {
+                                    var codigo = ($(this).data('codigo') || '').toString().trim().toUpperCase();
+                                    if (codigo === CODIGO_CONCEPTO_OBLIGATORIO) {
+                                        $encontrada = $(this);
+                                        return false;
+                                    }
+                                });
+                                return $encontrada;
+                            }
+
+                            function yaExisteConceptoObligatorio() {
+                                return detalles.some(function (d) {
+                                    return esConceptoInspeccionExt(d.ConceptoCodigo);
+                                });
+                            }
+
+                            function mostrarAlertaInstitucional(mensaje) {
+                                alert(mensaje);
+                            }
+
+                            function crearDetalleDesdeOpcion($opt, cantidad) {
+                                var conceptoId = $opt.val();
+                                var codigo = $opt.data('codigo') || '';
+                                var nombre = $opt.data('nombre') || $opt.text();
+                                var valor = toNumber($opt.data('valor'));
+                                var porcentaje = toNumber($opt.data('porcentaje'));
+
+                                var detalle = {
+                                    ConceptoId: parseInt(conceptoId, 10),
+                                    ConceptoCodigo: codigo,
+                                    ConceptoNombre: nombre,
+                                    Cantidad: cantidad,
+                                    ValorUnitario: valor,
+                                    PorcentajeAdmin: porcentaje,
+                                    EsObligatorio: esConceptoObligatorio(codigo)
+                                };
+
+                                detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
+                                detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
+                                detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
+                                return detalle;
+                            }
+
+                            function agregarDetalleDesdeOpcion($opt, cantidad) {
+                                if (!$opt || !$opt.length || cantidad <= 0) {
+                                    return false;
+                                }
+
+                                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                if (esConceptoInspeccionExt(codigo) && yaExisteConceptoObligatorio()) {
+                                    return false;
+                                }
+
+                                detalles.push(crearDetalleDesdeOpcion($opt, cantidad));
+                                return true;
+                            }
+
+                            function seleccionarConceptoObligatorioEnCombo() {
+                                var $opt = obtenerOpcionConceptoObligatorio();
+                                if ($opt && $opt.length) {
+                                    $('#ConceptoId').val($opt.val());
+                                }
+                            }
+
+                            function agregarConceptoObligatorioAutomatico() {
+                                if (!hayTramiteConInspeccionObligatoria()) {
+                                    $('#btnGuardar').prop('disabled', false);
+                                    return;
+                                }
+
+                                var requiereInspeccion = hayTramiteConInspeccionObligatoria();
+                                if (requiereInspeccion && !CONCEPTO_OBLIGATORIO_ENCONTRADO) {
+                                    $('#btnGuardar').prop('disabled', true);
+                                    return;
+                                }
+
+                                if (yaExisteConceptoObligatorio()) {
+                                    seleccionarConceptoObligatorioEnCombo();
+                                    return;
+                                }
+
+                                var $opt = obtenerOpcionConceptoObligatorio();
+                                if (!$opt || !$opt.length) {
+                                    CONCEPTO_OBLIGATORIO_ENCONTRADO = false;
+                                    $('#alertConceptoObligatorioInfo').addClass('d-none');
+                                    if ($('#alertConceptoObligatorioCatalogo').length === 0) {
+                                        var $alertCatalogo = $('<div class="alert alert-danger" id="alertConceptoObligatorioCatalogo">' +
+                                            '<i class="fas fa-exclamation-triangle me-1"></i> ' +
+                                            'No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.' +
+                                            '</div>');
+                                        if ($('#alertConceptoObligatorioInfo').length) {
+                                            $('#alertConceptoObligatorioInfo').replaceWith($alertCatalogo);
+                                        } else {
+                                            $('h5:contains("Agregar Conceptos")').first().after($alertCatalogo);
+                                        }
+                                    }
+                                    $('#btnGuardar').prop('disabled', true);
+                                    return;
+                                }
+
+                                agregandoConceptoObligatorio = true;
+                                seleccionarConceptoObligatorioEnCombo();
+                                if (agregarDetalleDesdeOpcion($opt, 1)) {
+                                    renderTabla();
+                                    actualizarTotales();
+                                }
+                                agregandoConceptoObligatorio = false;
+                                $('#Cantidad').val('1');
+                            }
+
+                            function validarDetallesAntesGuardar() {
+                                var requiereInspeccion = hayTramiteConInspeccionObligatoria();
+                                if (requiereInspeccion && !CONCEPTO_OBLIGATORIO_ENCONTRADO) {
+                                    mostrarAlertaInstitucional('No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.');
+                                    return false;
+                                }
+
+                                var tieneInspeccionExt = detalles.some(function (d) {
+                                    return esConceptoInspeccionExt(d.ConceptoCodigo) && d.Cantidad > 0;
+                                });
+                                if (requiereInspeccion && !tieneInspeccionExt) {
+                                    mostrarAlertaInstitucional('El concepto Inspeccion Externa es obligatorio para el tramite seleccionado.');
+                                    return false;
+                                }
+
+                                var tieneOtroConcepto = detalles.some(function (d) {
+                                    return !esConceptoObligatorio(d.ConceptoCodigo) && d.Cantidad > 0;
+                                });
+                                if (!tieneOtroConcepto) {
+                                    mostrarAlertaInstitucional('Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.');
+                                    return false;
+                                }
+
+                                if (estaSeleccionado(CODIGO_CONCEPTO_VIATICOS) && !($('#LugarInspeccion').val() || '').trim()) {
+                                    mostrarAlertaInstitucional('Seleccione el lugar donde se realizara la inspeccion.');
+                                    return false;
+                                }
+
+                                var lugar = ($('#LugarInspeccion').val() || '').trim().toUpperCase();
+                                var provincia = ($('#ProvinciaInspeccion').val() || '').trim();
+                                provincia = provincia.replace(/[<>\"']/g, '').slice(0, 150);
+                                $('#ProvinciaInspeccion').val(provincia);
+
+                                if (lugar === 'OTRA_PROVINCIA' && !provincia) {
+                                    mostrarAlertaInstitucional('Ingrese la provincia o localidad donde se realizara la inspeccion.');
+                                    return false;
+                                }
+
+                                return true;
+                            }
+
+                            function limpiarSoloDigitos(valor, maximo) {
+                                var limpio = (valor || '').toString().replace(/\D/g, '');
+                                if (typeof maximo === 'number' && maximo > 0) {
+                                    return limpio.slice(0, maximo);
+                                }
+                                return limpio;
+                            }
+
+                            var $rucCedula = $('#Orden_RucCedula');
+                            $rucCedula.on('input paste blur', function () {
+                                $(this).val(limpiarSoloDigitos($(this).val(), 13));
+                            });
+                            $rucCedula.val(limpiarSoloDigitos($rucCedula.val(), 13));
+
+                            function aplicarSolicitudSeleccionada() {
+                                var $sel = $('#Orden_CodigoSolicitud');
+                                if ($sel.length === 0) return;
+
+                                var $opt = $sel.find('option:selected');
+                                var solicitudId = $opt.val();
+                                if (!solicitudId) {
+                                    return;
+                                }
+
+                                var ruc = limpiarSoloDigitos($opt.data('ruc') || '', 13);
+                                var correo = $opt.data('correo') || '';
+                                var telefono = $opt.data('telefono') || '';
+
+                                if (ruc) $('#Orden_RucCedula').val(ruc);
+                                if (correo) $('#Orden_Correo').val(correo);
+                                if (telefono) $('#Orden_Telefono').val(telefono);
+                            }
+
+            function toNumber(v) {
+                if (v === null || v === undefined) return 0;
+                // dataset viene como string con punto decimal
+                var n = parseFloat(v.toString().replace(',', '.'));
+                return isNaN(n) ? 0 : n;
+            }
+
+            function actualizarTotales() {
+                var subtotal = 0, admin = 0, total = 0;
+
+                detalles.forEach(function (d) {
+                    subtotal += d.Subtotal;
+                    admin += d.Admin;
+                    total += d.TotalLinea;
+                });
+
+                $('#subtotal').text('$' + subtotal.toFixed(2));
+                $('#admin').text('$' + admin.toFixed(2));
+                $('#total').text('$' + total.toFixed(2));
+
+                $('#Subtotal').val(subtotal.toFixed(2));
+                $('#Admin').val(admin.toFixed(2));
+                $('#Total').val(total.toFixed(2));
+            }
+
+            function actualizarLugarInspeccion() {
+                var viaticosSeleccionado = estaSeleccionado(CODIGO_CONCEPTO_VIATICOS);
+                var lugar = ($('#LugarInspeccion').val() || '').trim().toUpperCase();
+
+                $('#panelLugarInspeccion').toggleClass('d-none', !viaticosSeleccionado);
+                if (!viaticosSeleccionado) {
+                    $('#LugarInspeccion').val('');
+                    $('#ProvinciaInspeccion').val('').prop('required', false);
+                    $('#contenedorProvinciaInspeccion').addClass('d-none');
+                    $('#mensajeLugarInspeccion').addClass('d-none').text('');
+                    return;
+                }
+
+                if (lugar === 'OTRA_PROVINCIA') {
+                    $('#contenedorProvinciaInspeccion').removeClass('d-none');
+                    $('#ProvinciaInspeccion').prop('required', true);
+                    $('#mensajeLugarInspeccion')
+                        .removeClass('d-none alert-info alert-success')
+                        .addClass('alert-warning')
+                        .text('Ingrese la provincia o localidad donde se realizara la inspeccion.');
+                    return;
+                }
+
+                $('#contenedorProvinciaInspeccion').addClass('d-none');
+                $('#ProvinciaInspeccion').val('').prop('required', false);
+
+                if (lugar === 'QUITO') {
+                    $('#mensajeLugarInspeccion')
+                        .removeClass('d-none alert-warning alert-success')
+                        .addClass('alert-info')
+                        .text('Para inspecciones realizadas en Quito no aplica el pago obligatorio de viaticos.');
+                } else if (lugar === 'LATACUNGA') {
+                    $('#mensajeLugarInspeccion')
+                        .removeClass('d-none alert-warning alert-success')
+                        .addClass('alert-info')
+                        .text('Para inspecciones realizadas en Latacunga no aplica el pago obligatorio de viaticos.');
+                } else {
+                    $('#mensajeLugarInspeccion').addClass('d-none').text('');
+                }
+            }
+
+            function actualizarReglasInspeccion() {
+                agregarConceptoObligatorioAutomatico();
+                actualizarLugarInspeccion();
+            }
+
+            function renderTabla() {
+                var $tb = $('#tablaDetalles tbody');
+                $tb.empty();
+
+                detalles.forEach(function (d, i) {
+                    var esObligatorio = esConceptoObligatorio(d.ConceptoCodigo);
+                    var nombreHtml = AOCR.escapeHtml(String(d.ConceptoNombre));
+                    if (esObligatorio) {
+                        nombreHtml += ' <span class="badge bg-primary badge-concepto-obligatorio ms-1">Obligatorio</span>';
+                    }
+
+                    var accionesHtml = esObligatorio
+                        ? '<span class="text-muted" title="Concepto obligatorio del proceso AOCR"><i class="fas fa-lock"></i></span>'
+                        : '<button type="button" class="btn btn-danger btn-sm btnEliminarDetalle" data-index="' + AOCR.escapeHtml(String(i)) + '"><i class="fas fa-trash"></i></button>';
+
+                    var tr = ''
+                        + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '"' + (esObligatorio ? ' class="detalle-obligatorio"' : '') + '>'
+                        + '<td>' + AOCR.escapeHtml(String(d.ConceptoCodigo)) + '</td>'
+                        + '<td>' + nombreHtml + '</td>'
+                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + '></td>'
+                        + '<td class="text-end">$' + AOCR.escapeHtml(d.ValorUnitario.toFixed(2)) + '</td>'
+                        + '<td class="text-end">' + AOCR.escapeHtml(d.PorcentajeAdmin.toFixed(2)) + '%</td>'
+                        + '<td class="text-end">$' + AOCR.escapeHtml(d.Admin.toFixed(2)) + '</td>'
+                        + '<td class="text-end">$' + AOCR.escapeHtml(d.TotalLinea.toFixed(2)) + '</td>'
+                        + '<td class="text-center">' + accionesHtml + '</td>'
+                        + '</tr>';
+                    $tb.append(tr);
+                });
+
+                actualizarPanelSolicitudInspeccion();
+            }
+
+            function actualizarPanelSolicitudInspeccion() {
+                var existeInspeccion = $('#tablaDetalles tbody tr').filter(function () {
+                    var codigo = ($(this).find('td:first').text() || '').trim().toUpperCase();
+                    return codigo === 'INSPECCION_EXT';
+                }).length > 0;
+
+                $('#panelSolicitudInspeccion').toggleClass('d-none', !existeInspeccion);
+                if (!existeInspeccion) {
+                    $('#AeropuertosSolicitados').val('');
+                    $('#FechaInicioInspeccion').val('');
+                    $('#FechaFinInspeccion').val('');
+                    $('#mensajeSolicitudInspeccion').addClass('d-none').text('');
+                    $('#estadoSolicitudInspeccion').text('NO_REQUERIDO').removeClass('bg-success bg-primary bg-warning bg-danger').addClass('bg-secondary');
+                    $('#btnGenerarSolicitudInspeccionNueva').prop('disabled', true);
+                    $('#btnDescargarSolicitudInspeccionNueva').prop('disabled', true);
+                    $('#btnSubirSolicitudInspeccionNueva').addClass('disabled').find('input[type=file]').prop('disabled', true);
+                    return;
+                }
+
+                $('#estadoSolicitudInspeccion').text('NO_GENERADO').removeClass('bg-success bg-primary bg-danger bg-secondary').addClass('bg-warning text-dark');
+                $('#mensajeSolicitudInspeccion')
+                    .removeClass('d-none')
+                    .text('Debe generar la Solicitud de Inspecciones.');
+                $('#btnGenerarSolicitudInspeccionNueva').prop('disabled', false);
+                $('#btnDescargarSolicitudInspeccionNueva').prop('disabled', true);
+                $('#btnSubirSolicitudInspeccionNueva').addClass('disabled').find('input[type=file]').prop('disabled', true);
+            }
+
+            function actualizarCamposOcultos() {
+                // SOLO enviar lo mínimo; el servidor recalcula compañía desde sesión (seguridad).
+                var payload = detalles.map(function (d) {
+                    return { ConceptoId: d.ConceptoId, Cantidad: d.Cantidad };
+                });
+                $('#DetallesJson').val(JSON.stringify(payload));
+
+                var $form = $('#formOrden');
+                var codigoCompania = ($form.data('compania-codigo') || $('#CompaniaActivaCodigo').val() || '').toString().trim();
+                var nombreCompania = ($form.data('compania-nombre') || $('#Orden_Compania').val() || '').toString().trim();
+                var ruc = limpiarSoloDigitos($('#Orden_RucCedula').val(), 13);
+
+                if (codigoCompania) {
+                    $('#CompaniaActivaCodigo').val(codigoCompania);
+                }
+                if (nombreCompania) {
+                    $('#Orden_Compania').val(nombreCompania);
+                    $('#Orden_NombreContribuyente').val(nombreCompania);
+                }
+
+                $('#RucCedulaGeneral').val(ruc);
+            }
+
+            function restaurarBotonGenerarSolicitudInspeccion() {
+                $('#btnGenerarSolicitudInspeccionNueva')
+                    .prop('disabled', false)
+                    .html('<i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones');
+            }
+
+                            $('#btnAgregarConcepto').on('click', function () {
+                var $opt = $('#ConceptoId option:selected');
+                var conceptoId = $opt.val();
+                var cantidad = toNumber($('#Cantidad').val() || 1);
+
+                if (!conceptoId) { alert('Seleccione un concepto'); return; }
+                if (cantidad <= 0) { alert('Cantidad inválida'); return; }
+
+                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                if (esConceptoInspeccionExt(codigo) && yaExisteConceptoObligatorio()) {
+                    alert('El concepto INSPECCION_EXT ya está incluido como concepto obligatorio.');
+                    seleccionarConceptoObligatorioEnCombo();
+                    return;
+                }
+
+                if (!agregarDetalleDesdeOpcion($opt, cantidad)) {
+                    return;
+                }
+
+                renderTabla();
+                actualizarTotales();
+                actualizarReglasInspeccion();
+
+                if (!esConceptoObligatorio(codigo)) {
+                    $('#ConceptoId').val('');
+                } else {
+                    seleccionarConceptoObligatorioEnCombo();
+                }
+                $('#Cantidad').val('1');
+            });
+
+            $(document).on('click', '.btnEliminarDetalle', function () {
+                var idx = parseInt($(this).data('index'), 10);
+                if (!detalles[idx]) {
+                    return;
+                }
+
+                if (esConceptoObligatorio(detalles[idx].ConceptoCodigo)) {
+                    alert('El concepto INSPECCION_EXT es obligatorio y no puede eliminarse.');
+                    return;
+                }
+
+                detalles.splice(idx, 1);
+                renderTabla();
+                actualizarTotales();
+                actualizarReglasInspeccion();
+            });
+
+            $(document).on('change', '.cantidad-detalle', function () {
+                var idx = parseInt($(this).data('index'), 10);
+                var cant = toNumber($(this).val());
+                var esObligatorio = $(this).data('obligatorio') === 1 || $(this).data('obligatorio') === '1';
+
+                if (!detalles[idx]) return;
+
+                if (cant <= 0) {
+                    if (esObligatorio) {
+                        cant = 1;
+                        $(this).val('1');
+                    } else {
+                        return;
+                    }
+                }
+
+                detalles[idx].Cantidad = cant;
+                detalles[idx].Subtotal = detalles[idx].Cantidad * detalles[idx].ValorUnitario;
+                detalles[idx].Admin = detalles[idx].Subtotal * (detalles[idx].PorcentajeAdmin / 100.0);
+                detalles[idx].TotalLinea = detalles[idx].Subtotal + detalles[idx].Admin;
+
+                renderTabla();
+                actualizarTotales();
+                actualizarReglasInspeccion();
+            });
+
+                            function cargarDetallesIniciales() {
+                                var raw = $('#DetallesJson').val();
+                                if (!raw) {
+                                    agregarConceptoObligatorioAutomatico();
+                                    return;
+                                }
+
+                                try {
+                                    var iniciales = JSON.parse(raw) || [];
+                                    iniciales.forEach(function (item) {
+                                        var conceptoId = item.ConceptoId || item.conceptoId || 0;
+                                        var cantidad = toNumber(item.Cantidad || item.cantidad || 1);
+                                        var $opt = $('#ConceptoId option[value="' + conceptoId + '"]');
+                                        if (!$opt.length || cantidad <= 0) return;
+
+                                        var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                        if (esConceptoInspeccionExt(codigo) && yaExisteConceptoObligatorio()) {
+                                            return;
+                                        }
+
+                                        agregarDetalleDesdeOpcion($opt, cantidad);
+                                    });
+
+                                    renderTabla();
+                                    actualizarTotales();
+                                    agregarConceptoObligatorioAutomatico();
+                                } catch (e) {
+                                    agregarConceptoObligatorioAutomatico();
+                                }
+                            }
+
+                            $('#formOrden').on('submit', function (e) {
+                                if (!validarDetallesAntesGuardar()) {
+                                    if ($('#GenerarSolicitudInspeccionAlGuardar').val() === 'true') {
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                    }
+                                    e.preventDefault();
+                                    return false;
+                                }
+
+                                var solicitaGenerarInspeccion = $('#GenerarSolicitudInspeccionAlGuardar').val() === 'true' || $('#GenerarSolicitudInspeccionAlGuardar').val() === 'True';
+                                if (solicitaGenerarInspeccion) {
+                                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                                    var fechaInicio = ($('#FechaInicioInspeccion').val() || '').trim();
+                                    var fechaFin = ($('#FechaFinInspeccion').val() || '').trim();
+                                    $('#AeropuertosSolicitados').val(aeropuertos);
+                                    if (!aeropuertos) {
+                                        $('#mensajeSolicitudInspeccion')
+                                            .removeClass('d-none')
+                                            .text('Debe ingresar los aeropuertos solicitados antes de generar la Solicitud de Inspecciones.');
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                        e.preventDefault();
+                                        return false;
+                                    }
+
+                                    if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+                                        $('#mensajeSolicitudInspeccion')
+                                            .removeClass('d-none')
+                                            .text('La fecha fin de inspeccion no puede ser anterior a la fecha inicio.');
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                        e.preventDefault();
+                                        return false;
+                                    }
+                                }
+
+                                $('#Orden_RucCedula').val(limpiarSoloDigitos($('#Orden_RucCedula').val(), 13));
+                                actualizarCamposOcultos();
+                                return true;
+                            });
+
+                            $('#btnGenerarSolicitudInspeccionNueva').on('click', function () {
+                                var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                                var fechaInicio = ($('#FechaInicioInspeccion').val() || '').trim();
+                                var fechaFin = ($('#FechaFinInspeccion').val() || '').trim();
+                                $('#AeropuertosSolicitados').val(aeropuertos);
+                                $('#mensajeSolicitudInspeccion').addClass('d-none').text('');
+
+                                if (!aeropuertos) {
+                                    $('#mensajeSolicitudInspeccion')
+                                        .removeClass('d-none')
+                                        .text('Debe ingresar los aeropuertos solicitados.');
+                                    return;
+                                }
+
+                                if (fechaInicio && fechaFin && fechaFin < fechaInicio) {
+                                    $('#mensajeSolicitudInspeccion')
+                                        .removeClass('d-none')
+                                        .text('La fecha fin de inspeccion no puede ser anterior a la fecha inicio.');
+                                    return;
+                                }
+
+                                function solicitarConfirmacionGeneracion(onConfirm) {
+                                    if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {
+                                        window.AOCR.confirmarGeneracionSolicitudInspeccion(onConfirm);
+                                        return;
+                                    }
+
+                                    var mensajePlano = 'Está por generar el PDF definitivo de la Solicitud de Inspecciones.\n\n' +
+                                        'Si continúa, la solicitud quedará cerrada y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.\n\n' +
+                                        '¿Desea generar el PDF definitivo con la información actual?';
+
+                                    if (window.confirm(mensajePlano)) {
+                                        onConfirm();
+                                    }
+                                }
+
+                                solicitarConfirmacionGeneracion(function () {
+                                    $('#GenerarSolicitudInspeccionAlGuardar').val('true');
+                                    $('#btnGenerarSolicitudInspeccionNueva')
+                                        .prop('disabled', true)
+                                        .html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
+                                    $('#formOrden').trigger('submit');
+                                });
+                            });
+
+                            $('#LugarInspeccion').off('change.aocrInspeccion').on('change.aocrInspeccion', actualizarLugarInspeccion);
+                            $('#ProvinciaInspeccion').off('input.aocrInspeccion blur.aocrInspeccion').on('input.aocrInspeccion blur.aocrInspeccion', function () {
+                                var valor = ($(this).val() || '').replace(/[<>\"']/g, '').slice(0, 150);
+                                $(this).val(valor);
+                            });
+                            $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);
+                            aplicarSolicitudSeleccionada();
+                            cargarDetallesIniciales();
+                            actualizarReglasInspeccion();
+
+                        });
+    </script>
+}

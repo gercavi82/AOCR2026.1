@@ -50,6 +50,48 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public System.Collections.Generic.List<AocrProcesoEstadoRecord> ListarActivosPorEstado(params string[] estados)
+        {
+            var list = new System.Collections.Generic.List<AocrProcesoEstadoRecord>();
+            if (estados == null || estados.Length == 0)
+            {
+                return list;
+            }
+
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT id, solicitud_id, orden_recaudacion_id, inspeccion_id, informe_id,
+                           estado_actual, etapa_actual, rol_responsable, usuario_responsable_id,
+                           siguiente_accion, observacion, fecha_estado, activo
+                    FROM public.aocr_proceso_estado
+                    WHERE activo = TRUE
+                      AND UPPER(COALESCE(estado_actual, '')) = ANY(@estados)
+                    ORDER BY fecha_estado DESC, id DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    var normalizados = System.Linq.Enumerable.ToArray(
+                        System.Linq.Enumerable.Select(
+                            System.Linq.Enumerable.Where(estados, e => !string.IsNullOrWhiteSpace(e)),
+                            e => e.Trim().ToUpperInvariant()));
+                    cmd.Parameters.AddWithValue("@estados", normalizados);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            list.Add(MapEstado(rd));
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+
         public int UpsertEstadoActual(AocrProcesoEstadoRecord record)
         {
             if (record == null)

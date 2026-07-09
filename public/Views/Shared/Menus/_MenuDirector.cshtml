@@ -1,0 +1,92 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
+@using System
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+        ? "aocr-link aocr-sidebar-item"
+        : "aocr-link aocr-sidebar-item " + variant;
+}
+
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title text-danger">
+        <i class="fas fa-user-tie mr-1"></i> Dirección / Jefatura / DCAV
+    </div>
+    <ul class="aocr-nav">
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-file-signature text-white-50 mr-1"></i> Solicitud Formal AOCR
+                <span class="aocr-sidebar-item__badge">M3</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "RevisarPorJefatura") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("RevisarPorJefatura", "SolicitudAOCR")">
+                        <i class="fas fa-file-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Revisión por Jefatura</span>
+                            <span class="aocr-sidebar-item__meta">Aprobación u observación institucional del expediente AOCR.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-clipboard-check text-white-50 mr-1"></i> Inspeccion e Informe Tecnico
+                <span class="aocr-sidebar-item__badge">M6-M7</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("Inspeccion", "PendientesDireccion") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("PendientesDireccion", "Inspeccion")">
+                        <i class="fas fa-file-signature text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Pendientes Dirección / DIRDAC</span>
+                            <span class="aocr-sidebar-item__meta">Revisión final de informes técnicos, firma institucional y decisión final.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-check-double text-white-50 mr-1"></i> AOCR y Condiciones y Limitaciones
+                <span class="aocr-sidebar-item__badge">M8</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("Inspeccion", "PendientesDireccion") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("PendientesDireccion", "Inspeccion")">
+                        <i class="fas fa-check-double text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Firma institucional AOCR</span>
+                            <span class="aocr-sidebar-item__meta">Aprobación final AOCR y seguimiento de condiciones listas para emisión.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "GeneradasFirmadas") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR")">
+                        <i class="fas fa-file-circle-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">AOCR generadas y firmadas</span>
+                            <span class="aocr-sidebar-item__meta">Consulta ejecutiva de AOCR finales, pendientes de firma y condiciones.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "DashboardGerencial") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")">
+                        <i class="fas fa-chart-area text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Dashboard gerencial</span>
+                            <span class="aocr-sidebar-item__meta">Vista ejecutiva consolidada para dirección, jefatura y firma institucional.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>

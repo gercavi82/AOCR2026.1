@@ -1,0 +1,134 @@
+@model IEnumerable<CapaPresentacion.Models.ViewModels.AocrRecorridoEstadoViewModel>
+
+@functions {
+    public static string GetBadgeClass(string state)
+    {
+        if (string.IsNullOrWhiteSpace(state)) return "badge-secondary bg-secondary text-white";
+        
+        string st = state.ToUpperInvariant();
+        if (st.Contains("PENDIENTE") || st.Contains("REQUERIDA") || st.Contains("GENERADA") || st.Contains("BORRADOR"))
+            return "badge badge-warning bg-warning text-dark";
+        if (st.Contains("APROBADO") || st.Contains("ACEPTADO") || st.Contains("FIRMADO") || st.Contains("VINCULADO") || st.Contains("LIBERADO") || st.Contains("EXITO") || st.Contains("FINALIZADA") || st.Contains("HABILITADA"))
+            return "badge badge-success bg-success text-white";
+        if (st.Contains("RECHAZADO") || st.Contains("OBSERVADA") || st.Contains("DEVUELTO") || st.Contains("ANULADO") || st.Contains("ERROR"))
+            return "badge badge-danger bg-danger text-white";
+        if (st.Contains("PROCESO") || st.Contains("REVISION") || st.Contains("ENVIADA"))
+            return "badge badge-info bg-info text-white";
+        if (st.Contains("FINALIZADO") || st.Contains("COMPLETADO"))
+            return "badge badge-primary bg-primary text-white";
+            
+        return "badge badge-secondary bg-secondary text-white";
+    }
+
+    public static string GetStatusType(string state)
+    {
+        if (string.IsNullOrWhiteSpace(state)) return "todos";
+        string st = state.ToUpperInvariant();
+        if (st.Contains("PENDIENTE") || st.Contains("REQUERIDA") || st.Contains("GENERADA") || st.Contains("BORRADOR"))
+            return "pendiente";
+        if (st.Contains("APROBADO") || st.Contains("ACEPTADO") || st.Contains("FIRMADO") || st.Contains("VINCULADO") || st.Contains("LIBERADO") || st.Contains("EXITO") || st.Contains("FINALIZADA") || st.Contains("HABILITADA"))
+            return "firmado";
+        if (st.Contains("RECHAZADO") || st.Contains("OBSERVADA") || st.Contains("DEVUELTO") || st.Contains("ANULADO") || st.Contains("ERROR"))
+            return "observado";
+        if (st.Contains("PROCESO") || st.Contains("REVISION") || st.Contains("ENVIADA"))
+            return "proceso";
+        if (st.Contains("FINALIZADO") || st.Contains("COMPLETADO"))
+            return "finalizado";
+            
+        return "todos";
+    }
+}
+
+<div class="card mt-3 shadow-sm border-light">
+    <div class="card-header bg-light text-dark d-flex align-items-center justify-content-between py-3 flex-wrap">
+        <h5 class="mb-0 font-weight-bold" style="font-size: 1.1rem; color: #102033; margin-right: 15px;">
+            <i class="fas fa-route mr-2 fa-lg me-2" style="color: #0b6f86;"></i>Recorrido del trámite AOCR
+        </h5>
+        <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mt-sm-0">
+            <div class="btn-group btn-group-sm me-2 mr-2" role="group" id="filterGroupAocr">
+                <button type="button" class="btn btn-outline-secondary active" data-filter="todos">Todos</button>
+                <button type="button" class="btn btn-outline-warning" data-filter="pendiente">Pendientes</button>
+                <button type="button" class="btn btn-outline-info" data-filter="proceso">En proceso</button>
+                <button type="button" class="btn btn-outline-danger" data-filter="observado">Observados</button>
+                <button type="button" class="btn btn-outline-success" data-filter="firmado">Firmados</button>
+                <button type="button" class="btn btn-outline-primary" data-filter="finalizado">Finalizados</button>
+            </div>
+            <span class="badge badge-secondary bg-secondary text-white">Solo lectura</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (Model == null || !Model.Any())
+        {
+            <div class="p-4 text-center">
+                <i class="fas fa-info-circle text-muted fa-2x mb-2"></i>
+                <p class="mb-0 text-secondary">No existen registros de recorrido para este trámite.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-hover mb-0 aocr-tabla-recorrido align-middle" style="font-size: 0.85rem;">
+                    <thead class="bg-light text-dark">
+                        <tr>
+                            <th class="py-2 text-center" style="width: 50px;">Nro.</th>
+                            <th class="py-2">Fecha</th>
+                            <th class="py-2">Etapa</th>
+                            <th class="py-2">Estado anterior</th>
+                            <th class="py-2">Estado nuevo</th>
+                            <th class="py-2">Acción</th>
+                            <th class="py-2">Usuario / Rol</th>
+                            <th class="py-2">Responsable</th>
+                            <th class="py-2">Observación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var i = 1;
+                        }
+                        @foreach (var item in Model)
+                        {
+                            <tr class="@(item.EsEstadoActual ? "table-success bg-opacity-10 bg-success" : "")" data-status-type="@GetStatusType(item.EstadoNuevo)">
+                                <td class="text-center font-weight-bold py-2">@i</td>
+                                <td class="py-2 text-nowrap">
+                                    <i class="far fa-clock text-muted mr-1 me-1"></i>@item.Fecha
+                                </td>
+                                <td class="py-2"><span class="text-secondary uppercase">@item.Etapa</span></td>
+                                <td class="py-2 text-muted">@item.EstadoAnterior</td>
+                                <td class="py-2">
+                                    <span class="@GetBadgeClass(item.EstadoNuevo)" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 4px;">
+                                        @item.EstadoNuevo
+                                    </span>
+                                </td>
+                                <td class="py-2 font-weight-bold text-dark">@item.Accion</td>
+                                <td class="py-2 text-nowrap">
+                                    @if (!string.IsNullOrWhiteSpace(item.Usuario))
+                                    {
+                                        <i class="far fa-user text-muted mr-1 me-1"></i>@item.Usuario
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.RolUsuario))
+                                    {
+                                        <br /><small class="text-muted font-italic">@item.RolUsuario</small>
+                                    }
+                                </td>
+                                <td class="py-2 text-nowrap">
+                                    @if (!string.IsNullOrWhiteSpace(item.Responsable) && item.Responsable != "Pendiente")
+                                    {
+                                        <i class="fas fa-user-tag text-muted mr-1 me-1"></i>@item.Responsable
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.RolResponsable))
+                                    {
+                                        <br /><small class="text-muted font-italic">@item.RolResponsable</small>
+                                    }
+                                </td>
+                                <td class="py-2 text-muted" style="max-width: 250px; word-wrap: break-word; white-space: normal;">
+                                    @item.Observacion
+                                </td>
+                            </tr>
+                            i++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

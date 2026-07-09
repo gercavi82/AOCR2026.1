@@ -1,0 +1,628 @@
+@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
+@using CapaDatos.Constants
+@using CapaDatos.Models
+@using CapaPresentacion.Helpers
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@functions {
+    public static string NormalizarEstadoVisual(string estado)
+    {
+        var actual = EstadoOrden.NormalizarEstado(estado);
+        if (actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada)
+        {
+            return EstadoOrden.Generada;
+        }
+
+        return actual;
+    }
+
+    public static string GetTextoEstado(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        var est = NormalizarEstadoVisual(estado);
+        switch (est)
+        {
+            case EstadoOrden.Generada: return "GENERADA";
+            case EstadoOrden.Enviada: return "ENVIADA";
+            case EstadoOrden.EnRevisionFinanciera: return "EN REVISION FINANCIERA";
+            case EstadoOrden.Devuelta: return "DEVUELTA";
+            case EstadoOrden.Facturada: return "FACTURADA";
+            case EstadoOrden.Completada: return "COMPLETADA";
+            case EstadoOrden.Pagada: return "PAGADA";
+            case EstadoOrden.Anulada: return "ANULADA";
+            default: return est;
+        }
+    }
+
+    public static string GetTextoTramite(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        var est = NormalizarEstadoVisual(estado);
+        switch (est)
+        {
+            case EstadoOrden.Borrador: return "Borrador";
+            case EstadoOrden.Generada: return "Generada / pendiente de pago";
+            case EstadoOrden.Enviada: return "Enviada a financiero";
+            case EstadoOrden.EnRevisionFinanciera: return "En revision financiera";
+            case EstadoOrden.Devuelta: return "Devuelta para correccion";
+            case EstadoOrden.Facturada: return "Factura generada";
+            case EstadoOrden.Completada: return "Completada";
+            case EstadoOrden.Pagada: return "Pagada";
+            case EstadoOrden.Anulada: return "Anulada";
+            default: return est;
+        }
+    }
+
+    public static string GetBadgeEstado(string estado)
+    {
+        switch (NormalizarEstadoVisual(estado))
+        {
+            case EstadoOrden.Facturada:
+            case EstadoOrden.Completada:
+            case EstadoOrden.Pagada:
+                return "fo-badge fo-badge-success";
+            case EstadoOrden.Anulada:
+            case EstadoOrden.Devuelta:
+                return "fo-badge fo-badge-danger";
+            case EstadoOrden.EnRevisionFinanciera:
+                return "fo-badge fo-badge-primary";
+            case EstadoOrden.Enviada:
+                return "fo-badge fo-badge-info";
+            case EstadoOrden.Generada:
+                return "fo-badge fo-badge-warning";
+            default:
+                return "fo-badge fo-badge-muted";
+        }
+    }
+}
+
+@{
+    ViewBag.Title = "Todas las Órdenes de recaudación";
+    var ordenes = Model ?? new List<OrdenRecaudacionModel>();
+    var estadoFiltro = (ViewBag.EstadoFiltro as string) ?? "TODAS";
+    var totalSinFiltro = ordenes.Count;
+    if (ViewBag.TotalSinFiltro != null)
+    {
+        totalSinFiltro = Convert.ToInt32(ViewBag.TotalSinFiltro);
+    }
+    var totalOrdenes = ordenes.Count;
+    var totalMonto = ordenes.Sum(o => o != null ? o.Total : 0m);
+    var facturadas = ordenes.Count(o => o != null && NormalizarEstadoVisual(o.Estado) == EstadoOrden.Facturada);
+    var revision = ordenes.Count(o => o != null && NormalizarEstadoVisual(o.Estado) == EstadoOrden.EnRevisionFinanciera);
+    var observadas = ordenes.Count(o => o != null && NormalizarEstadoVisual(o.Estado) == EstadoOrden.Devuelta);
+    var anuladas = ordenes.Count(o => o != null && NormalizarEstadoVisual(o.Estado) == EstadoOrden.Anulada);
+}
+
+<style>
+    .fin-orders-page,
+    .fin-orders-page h1,
+    .fin-orders-page h2,
+    .fin-orders-page h3,
+    .fin-orders-page h4,
+    .fin-orders-page h5,
+    .fin-orders-page h6,
+    .fin-orders-page p,
+    .fin-orders-page label,
+    .fin-orders-page span,
+    .fin-orders-page td {
+        color: #102033;
+    }
+
+    .fin-orders-page {
+        padding: 18px 8px 28px;
+    }
+
+    .fo-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        background: #ffffff;
+        border: 1px solid #d9e3ea;
+        border-left: 5px solid #0b6f86;
+        border-radius: 8px;
+        padding: 18px 20px;
+        box-shadow: 0 10px 24px rgba(16, 32, 51, .08);
+        margin-bottom: 14px;
+    }
+
+    .fo-title {
+        margin: 0;
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #102033 !important;
+        letter-spacing: 0;
+    }
+
+    .fo-subtitle {
+        margin: 4px 0 0;
+        color: #5b6b7c !important;
+        font-size: .9rem;
+    }
+
+    .fo-header-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .fo-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        border: 1px solid #cfe0e9;
+        border-radius: 6px;
+        background: #f7fbfd;
+        font-size: .82rem;
+        font-weight: 700;
+        color: #24435a !important;
+        white-space: nowrap;
+    }
+
+    .fo-kpis {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(145px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .fo-kpi {
+        background: #ffffff;
+        border: 1px solid #d9e3ea;
+        border-radius: 8px;
+        padding: 12px 14px;
+        min-height: 78px;
+        box-shadow: 0 8px 18px rgba(16, 32, 51, .06);
+    }
+
+    .fo-kpi-label {
+        display: block;
+        color: #66788a !important;
+        font-size: .75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .fo-kpi-value {
+        display: block;
+        margin-top: 5px;
+        color: #102033 !important;
+        font-size: 1.28rem;
+        font-weight: 850;
+    }
+
+    .fo-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: #ffffff;
+        border: 1px solid #d9e3ea;
+        border-radius: 8px 8px 0 0;
+        padding: 12px 14px;
+    }
+
+    .fo-filter-form {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+
+    .fo-filter-form label {
+        font-size: .82rem;
+        font-weight: 800;
+        color: #40576d !important;
+        margin: 0;
+    }
+
+    .fo-filter-form select {
+        min-width: 220px;
+        border-color: #b8cbd8;
+        color: #102033;
+        font-weight: 700;
+    }
+
+    .fo-table-shell {
+        background: #ffffff;
+        border: 1px solid #d9e3ea;
+        border-top: 0;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 12px 26px rgba(16, 32, 51, .08);
+        padding: 12px 14px 16px;
+    }
+
+    .fo-table-wrap {
+        overflow-x: auto;
+    }
+
+    #dataTable {
+        width: 100% !important;
+        margin: 0 !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #dataTable thead th {
+        background: #155676;
+        color: #ffffff !important;
+        border-color: #155676;
+        font-size: .76rem;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 11px 10px;
+    }
+
+    #dataTable tbody td {
+        border-color: #e1e8ee;
+        vertical-align: middle;
+        font-size: .86rem;
+        padding: 10px;
+    }
+
+    #dataTable tbody tr:hover td {
+        background: #f5fbff;
+    }
+
+    .fo-code {
+        font-weight: 800;
+        color: #102033 !important;
+        white-space: nowrap;
+    }
+
+    .fo-money {
+        font-weight: 800;
+        color: #0f5132 !important;
+        white-space: nowrap;
+    }
+
+    .fo-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 96px;
+        padding: 5px 8px;
+        border-radius: 999px;
+        font-size: .72rem;
+        font-weight: 850;
+        white-space: nowrap;
+    }
+
+    .fo-badge-success { color: #07522e !important; background: #dff4e8; border: 1px solid #95d8b2; }
+    .fo-badge-danger { color: #781f1f !important; background: #fde4e4; border: 1px solid #f2a6a6; }
+    .fo-badge-primary { color: #0b3f6f !important; background: #e1efff; border: 1px solid #9fc6ef; }
+    .fo-badge-info { color: #15485a !important; background: #dcf4fb; border: 1px solid #91d5e5; }
+    .fo-badge-warning { color: #624500 !important; background: #fff2c4; border: 1px solid #e6c250; }
+    .fo-badge-muted { color: #3f4f5f !important; background: #edf1f4; border: 1px solid #c9d3dc; }
+
+    .fo-actions {
+        display: inline-flex;
+        justify-content: center;
+        gap: 6px;
+        min-width: 82px;
+    }
+
+    .fo-icon-btn {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        padding: 0;
+    }
+
+    .fo-empty {
+        padding: 42px 16px;
+        text-align: center;
+        background: #ffffff;
+        border: 1px dashed #b8cbd8;
+        border-radius: 8px;
+    }
+
+    .fo-empty i {
+        color: #7a8c9e;
+        font-size: 2.3rem;
+        margin-bottom: 10px;
+    }
+
+    .fo-empty h5 {
+        color: #34495e !important;
+        font-weight: 800;
+    }
+
+    .fo-empty p {
+        color: #6b7c8f !important;
+        margin-bottom: 0;
+    }
+
+    #dataTable_wrapper .dataTables_length label,
+    #dataTable_wrapper .dataTables_filter label,
+    #dataTable_wrapper .dataTables_info {
+        color: #40576d !important;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    #dataTable_wrapper .dataTables_filter input,
+    #dataTable_wrapper .dataTables_length select {
+        border: 1px solid #b8cbd8;
+        border-radius: 6px;
+        color: #102033;
+        min-height: 32px;
+    }
+
+    #dataTable_wrapper .pagination .page-link {
+        color: #0b6f86;
+        border-color: #d5e2ea;
+    }
+
+    #dataTable_wrapper .pagination .page-item.active .page-link {
+        color: #ffffff;
+        background: #0b74d1;
+        border-color: #0b74d1;
+    }
+
+    @@media (max-width: 1100px) {
+        .fo-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .fo-header { flex-direction: column; }
+        .fo-header-actions { justify-content: flex-start; }
+    }
+
+    @@media (max-width: 640px) {
+        .fin-orders-page { padding: 10px 0 20px; }
+        .fo-kpis { grid-template-columns: 1fr; }
+        .fo-toolbar { align-items: flex-start; flex-direction: column; }
+        .fo-filter-form select { min-width: 100%; }
+    }
+</style>
+
+<div class="container-fluid fin-orders-page">
+    <div class="fo-header">
+        <div>
+            <h1 class="fo-title"><i class="fas fa-list-alt mr-2"></i>Todas las Órdenes de Recaudación</h1>
+            <p class="fo-subtitle">Consulta administrativa de órdenes, pagos, facturación y trazabilidad financiera.</p>
+        </div>
+        <div class="fo-header-actions">
+            <span class="fo-chip"><i class="fas fa-filter"></i>Filtro: @Html.Encode(estadoFiltro)</span>
+            <span class="fo-chip"><i class="fas fa-layer-group"></i>@totalOrdenes de @totalSinFiltro visibles</span>
+        </div>
+    </div>
+
+    <div class="fo-kpis">
+        <div class="fo-kpi">
+            <span class="fo-kpi-label">Órdenes visibles</span>
+            <span class="fo-kpi-value">@totalOrdenes</span>
+        </div>
+        <div class="fo-kpi">
+            <span class="fo-kpi-label">Monto visible</span>
+            <span class="fo-kpi-value">@totalMonto.ToString("C")</span>
+        </div>
+        <div class="fo-kpi">
+            <span class="fo-kpi-label">Facturadas</span>
+            <span class="fo-kpi-value">@facturadas</span>
+        </div>
+        <div class="fo-kpi">
+            <span class="fo-kpi-label">En revisión</span>
+            <span class="fo-kpi-value">@revision</span>
+        </div>
+        <div class="fo-kpi">
+            <span class="fo-kpi-label">Observadas / anuladas</span>
+            <span class="fo-kpi-value">@(observadas + anuladas)</span>
+        </div>
+    </div>
+
+    <div class="fo-toolbar">
+        <div>
+            <strong>Órdenes de recaudación</strong>
+            <span class="text-muted small ml-2">Use el filtro de estado o la búsqueda de la tabla.</span>
+        </div>
+        <form method="get" class="fo-filter-form aocr-filtros-busqueda">
+            <label for="estado">Estado</label>
+            <select id="estado" name="estado" class="form-control form-control-sm" onchange="this.form.submit()">
+                <option value="TODAS" @(estadoFiltro == "TODAS" ? "selected" : "")>Todas</option>
+                <option value="PENDIENTES_FINANCIERO" @(estadoFiltro == "PENDIENTES_FINANCIERO" ? "selected" : "")>Pagos pendientes</option>
+                <option value="EN_REVISION_FINANCIERA" @(estadoFiltro == EstadoOrden.EnRevisionFinanciera ? "selected" : "")>Pagos cargados</option>
+                <option value="DEVUELTA" @(estadoFiltro == EstadoOrden.Devuelta ? "selected" : "")>Pagos observados</option>
+                <option value="FACTURADA" @(estadoFiltro == EstadoOrden.Facturada ? "selected" : "")>Facturadas / aprobadas</option>
+                <option value="ANULADA" @(estadoFiltro == EstadoOrden.Anulada ? "selected" : "")>Anuladas</option>
+            </select>
+            <a href="@Url.Action("TodasOrdenes", "Financiero", new { estado = "TODAS" })" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        </form>
+    </div>
+
+    <div class="fo-table-shell">
+        @if (ordenes.Any())
+        {
+            <div class="fo-table-wrap">
+                <table class="table table-bordered table-hover" id="dataTable" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Número orden</th>
+                            <th>Usuario</th>
+                            <th>N° FR3</th>
+                            <th>Fecha creación</th>
+                            <th>Estado</th>
+                            <th>Trámite</th>
+                            <th>Monto</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var orden in ordenes)
+                        {
+                            var estadoNorm = NormalizarEstadoVisual(orden.Estado);
+                            <tr>
+                                <td>@orden.Id</td>
+                                <td><span class="fo-code">@Html.Encode(orden.NumeroOrden)</span></td>
+                                <td>@orden.UsuarioNombre</td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(orden.NumeroFr3))
+                                    {
+                                        @orden.NumeroFr3
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No generado</span>
+                                    }
+                                </td>
+                                <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                                <td><span class="@GetBadgeEstado(orden.Estado)">@GetTextoEstado(orden.Estado)</span></td>
+                                <td>@GetTextoTramite(orden.Estado)</td>
+                                <td><span class="fo-money">@orden.Total.ToString("C")</span></td>
+                                <td class="text-center">
+                                    <div class="fo-actions">
+                                        <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
+                                           class="btn btn-sm btn-outline-primary fo-icon-btn"
+                                           title="Ver detalles"
+                                           aria-label="Ver detalles de la orden @orden.NumeroOrden">
+                                            <i class="fas fa-eye"></i>
+                                            <span class="sr-only visually-hidden">Ver Detalles</span>
+                                        </a>
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-info fo-icon-btn btn-ver-recorrido"
+                                                title="Ver recorrido del trámite"
+                                                data-orden-id="@orden.Id"
+                                                data-toggle="modal" data-target="#modalRecorridoGeneral"
+                                                data-bs-toggle="modal" data-bs-target="#modalRecorridoGeneral"
+                                                aria-label="Ver recorrido del trámite para la orden @orden.NumeroOrden">
+                                            <i class="fas fa-route"></i>
+                                            <span class="sr-only visually-hidden">Ver recorrido</span>
+                                        </button>
+
+                                        @if (estadoNorm == EstadoOrden.EnRevisionFinanciera)
+                                        {
+                                            using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post, new { @class = "d-inline" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", orden.Id)
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-success fo-icon-btn"
+                                                        title="Aprobar orden"
+                                                        aria-label="Aprobar orden @orden.NumeroOrden">
+                                                    <i class="fas fa-check"></i>
+                                                    <span class="sr-only visually-hidden">Aprobar</span>
+                                                </button>
+                                            }
+
+                                            <button class="btn btn-sm btn-danger fo-icon-btn" type="button"
+                                                    title="Devolver orden"
+                                                    aria-label="Devolver orden @orden.NumeroOrden"
+                                                    data-toggle="modal" data-target="#modalRechazo-@orden.Id"
+                                                    data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">
+                                                <i class="fas fa-times"></i>
+                                                <span class="sr-only visually-hidden">Devolver</span>
+                                            </button>
+
+                                            <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Devolver Orden</h5>
+                                                            <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        @using (Html.BeginForm("RechazarOrden", "Financiero", FormMethod.Post))
+                                                        {
+                                                            @Html.AntiForgeryToken()
+                                                            @Html.Hidden("id", orden.Id)
+                                                            <div class="modal-body">
+                                                                <label class="form-label">Motivo de devolución</label>
+                                                                <textarea name="motivo" class="form-control" rows="3" required></textarea>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancelar</button>
+                                                                <button type="submit" class="btn btn-danger">Devolver</button>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="fo-empty">
+                <i class="fas fa-inbox"></i>
+                <h5>No hay órdenes para el filtro seleccionado</h5>
+                <p>Seleccione otro estado o limpie el filtro para revisar la bandeja completa.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal Recorrido General -->
+<div class="modal fade" id="modalRecorridoGeneral" tabindex="-1" aria-labelledby="modalRecorridoGeneralLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalRecorridoGeneralLabel"><i class="fas fa-route me-2 mr-2"></i>Recorrido del Trámite AOCR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div id="modalRecorridoGeneralBody">
+                    <p class="text-muted text-center py-4">Cargando recorrido del trámite...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="@AssetVersionHelper.VersionedContent(Url, "~/Content/plugins/datatables/jquery.dataTables.min.js")"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            var $tabla = $('#dataTable');
+            if (!$tabla.length || !$.fn.DataTable) {
+                return;
+            }
+
+            var dt = $tabla.DataTable({
+                responsive: true,
+                language: {
+                    url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")',
+                    search: 'Buscar:',
+                    lengthMenu: 'Mostrar _MENU_'
+                },
+                order: [[0, 'desc']],
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Todos']],
+                autoWidth: false
+            });
+
+            $('#dataTable_filter input')
+                .attr('placeholder', 'Número, estado, compañía...')
+                .addClass('form-control-sm');
+        });
+    </script>
+}

@@ -296,7 +296,7 @@ namespace CapaNegocio.Services
                         Asunto = "AOCR - Correcciones documentales enviadas por RT #" + solicitud.CodigoSolicitud,
                         Titulo = "Correcciones documentales enviadas",
                         Mensaje = "El Representante TÃ©cnico ha enviado las correcciones documentales solicitadas. " +
-                                  "Por favor, revise los documentos actualizados para continuar con el flujo de inspecciÃ³n.",
+                                  "Por favor, revise los documentos actualizados para continuar con el flujo de inspección.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,

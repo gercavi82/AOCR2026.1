@@ -175,7 +175,7 @@ namespace CapaNegocio.Services
             // Reconocimiento / Condiciones — tercera columna
             if (rol == "AOCR_FIRMANTE")
             {
-                return new Rectangle(385f, 50f, 545f, 146f);
+                return new Rectangle(320f, 72f, 550f, 124f);
             }
 
             if (rol == "DIRDAC" || rol == "DIRECTOR_GENERAL")
@@ -222,6 +222,17 @@ namespace CapaNegocio.Services
             var total = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
             var totalH = Math.Max(1f, total.Top - total.Bottom);
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
+            if (rol == "AOCR_FIRMANTE")
+            {
+                var paddingX = Math.Max(6f, (total.Right - total.Left) * 0.04f);
+                var paddingY = Math.Max(4f, totalH * 0.08f);
+                return new Rectangle(
+                    total.Left + paddingX,
+                    total.Bottom + paddingY,
+                    total.Right - paddingX,
+                    total.Top - paddingY);
+            }
+
             var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC";
             var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
 
@@ -442,13 +453,16 @@ namespace CapaNegocio.Services
                     }
                     else
                     {
-                        var qr = new BarcodeQRCode(contenidoQr, 120, 120, null);
-                        var qrImage = qr.GetImage();
-                        var rectQr = ObtenerRectanguloQr(rolFirmante, rectTotal);
                         var rectTexto = ObtenerRectanguloTextoFirma(rolFirmante, rectTotal);
-                        qrImage.ScaleAbsolute(rectQr.Right - rectQr.Left, rectQr.Top - rectQr.Bottom);
-                        qrImage.SetAbsolutePosition(rectQr.Left, rectQr.Bottom);
-                        canvas.AddImage(qrImage);
+                        if (!esAocr)
+                        {
+                            var qr = new BarcodeQRCode(contenidoQr, 120, 120, null);
+                            var qrImage = qr.GetImage();
+                            var rectQr = ObtenerRectanguloQr(rolFirmante, rectTotal);
+                            qrImage.ScaleAbsolute(rectQr.Right - rectQr.Left, rectQr.Top - rectQr.Bottom);
+                            qrImage.SetAbsolutePosition(rectQr.Left, rectQr.Bottom);
+                            canvas.AddImage(qrImage);
+                        }
 
                         var baseNormal = BaseFont.CreateFont(BaseFont.COURIER, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                         var baseBold = BaseFont.CreateFont(BaseFont.COURIER_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
@@ -463,12 +477,18 @@ namespace CapaNegocio.Services
                             baseBold = BaseFont.CreateFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                         }
 
-                        var tituloFont = new Font(baseNormal, esAocr ? 5.4f : (esCertificado ? 5.6f : 9f), Font.NORMAL, BaseColor.BLACK);
-                        var nombreFont = new Font(baseBold, esAocr ? 7.0f : (esCertificado ? 8.2f : 16f), Font.BOLD, BaseColor.BLACK);
-                        var detalleFont = new Font(baseNormal, esAocr ? 5.2f : (esCertificado ? 5.9f : 8.5f), Font.NORMAL, BaseColor.BLACK);
+                        var tituloFont = new Font(baseNormal, esAocr ? 5.8f : (esCertificado ? 5.6f : 9f), Font.NORMAL, BaseColor.BLACK);
+                        var nombreFont = new Font(baseBold, esAocr ? 7.4f : (esCertificado ? 8.2f : 16f), Font.BOLD, BaseColor.BLACK);
+                        var detalleFont = new Font(baseNormal, esAocr ? 5.6f : (esCertificado ? 5.9f : 8.5f), Font.NORMAL, BaseColor.BLACK);
 
                         var ct = new ColumnText(canvas);
-                        ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.8f : (esCertificado ? 7.2f : 12f), Element.ALIGN_LEFT);
+                        ct.SetSimpleColumn(
+                            rectTexto.Left,
+                            rectTexto.Bottom,
+                            rectTexto.Right,
+                            rectTexto.Top,
+                            esAocr ? 7.0f : (esCertificado ? 7.2f : 12f),
+                            esAocr ? Element.ALIGN_CENTER : Element.ALIGN_LEFT);
                         var tituloBloque = ObtenerTituloBloqueFirma(rolFirmante);
                         if (!string.IsNullOrWhiteSpace(tituloBloque))
                         {

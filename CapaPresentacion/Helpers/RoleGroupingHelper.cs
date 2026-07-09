@@ -11,6 +11,7 @@ namespace CapaPresentacion.Helpers
         public const string Solicitante = "Solicitante";
         public const string InspectorTecnico = "InspectorTecnico";
         public const string DireccionJefaturaTecnica = "DireccionJefaturaTecnica";
+        public const string DirectorCertificacionesDcav = "DirectorCertificacionesDcav";
         public const string Financiero = "Financiero";
         public const string Coordinacion = "Coordinacion";
 
@@ -19,6 +20,7 @@ namespace CapaPresentacion.Helpers
             Administrador,
             Coordinacion,
             DireccionJefaturaTecnica,
+            DirectorCertificacionesDcav,
             Financiero,
             InspectorTecnico,
             Solicitante
@@ -196,10 +198,22 @@ namespace CapaPresentacion.Helpers
             }
 
             if (Matches(normalized,
+                "DIRECTORCERTIFICACIONESDCAV",
+                "DIRECTORDECERTIFICACIONESDCAV",
+                "DIRECTORCERTIFICACIONDCAV",
+                "DIRECTORCERTIFICACIONES",
+                "DIRECTORDECERTIFICACIONES",
+                "DIRECCIONCERTIFICACIONES",
+                "DIRECCIONCERTIFICACION",
+                "DCAV"))
+            {
+                return DirectorCertificacionesDcav;
+            }
+
+            if (Matches(normalized,
                 "DIRECCION",
                 "JEFATURATECNICA",
                 "DIRDAC",
-                "DCAV",
                 "DIRECTORGENERAL",
                 "DIRECCIONJEFATURA",
                 "DIRECCIONJEFATURATECNICA"))
@@ -240,6 +254,8 @@ namespace CapaPresentacion.Helpers
                     return "Inspector / Técnico";
                 case DireccionJefaturaTecnica:
                     return "Dirección / Jefatura técnica";
+                case DirectorCertificacionesDcav:
+                    return "Director de Certificaciones DCAV";
                 case Financiero:
                     return "Financiero";
                 case Coordinacion:
@@ -269,6 +285,11 @@ namespace CapaPresentacion.Helpers
             return NormalizeSelectedRole(role).Equals(DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool IsDirectorCertificacionesDcav(string role)
+        {
+            return NormalizeSelectedRole(role).Equals(DirectorCertificacionesDcav, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool IsFinanciero(string role)
         {
             return NormalizeSelectedRole(role).Equals(Financiero, StringComparison.OrdinalIgnoreCase);
@@ -290,6 +311,7 @@ namespace CapaPresentacion.Helpers
             return normalized.Equals(Administrador, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(Coordinacion, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(DirectorCertificacionesDcav, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(Financiero, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(InspectorTecnico, StringComparison.OrdinalIgnoreCase);
         }

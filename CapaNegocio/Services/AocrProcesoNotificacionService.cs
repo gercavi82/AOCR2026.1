@@ -60,6 +60,36 @@ namespace CapaNegocio.Services
                 "El documento Condiciones y Limitaciones fue firmado correctamente y queda vinculado a la legalizacion final del AOCR.");
         }
 
+        public void NotificarRevisionDcavPendiente(int solicitudId)
+        {
+            NotificarEventoSimple(solicitudId, "AOCR_PENDIENTE_REVISION_DCAV", "Sistema AOCR - Expediente pendiente de revision DCAV",
+                "El expediente AOCR fue enviado al Director de Certificaciones DCAV para revision previa a la firma del Director General.");
+        }
+
+        public void NotificarInformeTecnicoPendienteRevisionDcav(int solicitudId)
+        {
+            NotificarEventoSimple(solicitudId, "INFORME_TECNICO_PENDIENTE_REVISION_DCAV", "Informe Tecnico pendiente de revision DCAV",
+                "El Informe Tecnico firmado por el Inspector fue enviado al Director de Certificaciones DCAV para revision. Revise la solicitud, explotador, inspector responsable, lista de verificacion, resultado tecnico y documentos de respaldo.");
+        }
+
+        public void NotificarInformeTecnicoAprobadoDocumentosHabilitados(int solicitudId)
+        {
+            NotificarEventoSimple(solicitudId, "INFORME_TECNICO_APROBADO_DOCUMENTOS_HABILITADOS", "Informe Tecnico aprobado - AOCR y Condiciones habilitados",
+                "El Informe Tecnico fue aprobado por el Director de Certificaciones DCAV. AOCR y Condiciones y Limitaciones quedan habilitados para revision, actualizacion y envio por parte del Inspector.");
+        }
+
+        public void NotificarDocumentosPendientesRevisionDcav(int solicitudId)
+        {
+            NotificarEventoSimple(solicitudId, "AOCR_CONDICIONES_PENDIENTES_REVISION_DCAV", "AOCR y Condiciones pendientes de revision DCAV",
+                "El Inspector finalizo la revision de AOCR y Condiciones y Limitaciones. El expediente queda pendiente de segunda revision por el Director de Certificaciones DCAV.");
+        }
+
+        public void NotificarFirmaDirectorGeneralPendiente(int solicitudId)
+        {
+            NotificarEventoSimple(solicitudId, "AOCR_PENDIENTE_FIRMA_DIRECTOR_GENERAL", "Sistema AOCR - Expediente pendiente de firma del Director General",
+                "El expediente AOCR fue aprobado por DCAV y queda pendiente de firma institucional del Director General.");
+        }
+
         public bool NotificarProcesoAocrFinalizado(int solicitudId)
         {
             Trace.TraceInformation("[NOTIF_AOCR][EVENT_IN] SolicitudId=" + solicitudId + "; TipoEvento=" + EventoFinalRt + ";");

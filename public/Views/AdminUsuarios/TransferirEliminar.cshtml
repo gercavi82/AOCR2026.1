@@ -1,0 +1,175 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioTransferenciaViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Transferir / Eliminar usuario";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Eliminar / Transferir usuario</h2>
+    <a class="btn btn-outline-secondary" href="@Url.Action("Index", "AdminUsuarios")">
+        <i class="fas fa-arrow-left mr-1"></i> Volver
+    </a>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        @Html.ValidationSummary(false, "Revise los datos antes de continuar.")
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <strong>Usuario origen</strong>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">Codigo</label>
+                <input type="text" class="form-control" value="@Model.UsuarioOrigenCodigo" readonly />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Nombre</label>
+                <input type="text" class="form-control" value="@Model.UsuarioOrigenNombreCompleto" readonly />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Correo</label>
+                <input type="text" class="form-control" value="@Model.UsuarioOrigenCorreo" readonly />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <input type="text" class="form-control" value="@(Model.UsuarioOrigenActivo ? "Activo" : "Inactivo")" readonly />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <strong>Impacto detectado</strong>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="border rounded p-2">
+                    <div class="text-muted small">Registros detectados</div>
+                    <div class="h5 mb-0">@Model.Impacto.TotalRegistrosDetectados</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2">
+                    <div class="text-muted small">Transferibles (A)</div>
+                    <div class="h5 mb-0 text-success">@Model.Impacto.TotalRegistrosTransferibles</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2">
+                    <div class="text-muted small">Historicos/Mixtos (B/C)</div>
+                    <div class="h5 mb-0 text-secondary">@Model.Impacto.TotalRegistrosHistoricos</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Grupo</th>
+                        <th>Tabla</th>
+                        <th>Campo</th>
+                        <th>Descripcion</th>
+                        <th>Estrategia</th>
+                        <th class="text-end">Registros</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Impacto != null && Model.Impacto.Referencias != null && Model.Impacto.Referencias.Any())
+                    {
+                        foreach (var item in Model.Impacto.Referencias)
+                        {
+                            <tr>
+                                <td>@item.Grupo</td>
+                                <td><code>@item.Tabla</code></td>
+                                <td><code>@item.Campo</code></td>
+                                <td>@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(item.Descripcion)</td>
+                                <td>@item.Estrategia</td>
+                                <td class="text-end">@item.RegistrosDetectados</td>
+                                <td>
+                                    @if (item.Transferible)
+                                    {
+                                        <span class="badge bg-success">Transferible</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Historico</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-3">
+                                No se detectaron referencias registradas para el usuario seleccionado.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@using (Html.BeginForm("TransferirEliminar", "AdminUsuarios", FormMethod.Post, new { @class = "card", data_confirm = "Esta accion transferira registros y desactivara el usuario origen. Desea continuar?" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.UsuarioOrigenId)
+
+    <div class="card-header bg-light">
+        <strong>Ejecucion</strong>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                @Html.LabelFor(m => m.UsuarioDestinoId, new { @class = "form-label" })
+                @Html.DropDownListFor(
+                    m => m.UsuarioDestinoId,
+                    Model.UsuariosDestino ?? new List<System.Web.Mvc.SelectListItem>(),
+                    "-- Seleccione usuario destino --",
+                    new { @class = "form-control" })
+                @Html.ValidationMessageFor(m => m.UsuarioDestinoId, "", new { @class = "text-danger" })
+            </div>
+            <div class="col-md-6 mb-3">
+                @Html.LabelFor(m => m.Motivo, new { @class = "form-label" })
+                @Html.TextAreaFor(m => m.Motivo, new { @class = "form-control", rows = 3, maxlength = 500 })
+                <small class="text-muted">Indique el motivo de la transferencia y desactivacion.</small>
+                @Html.ValidationMessageFor(m => m.Motivo, "", new { @class = "text-danger d-block" })
+            </div>
+        </div>
+
+        <div class="form-check mb-3">
+            @Html.CheckBoxFor(m => m.ConfirmarTransferencia, new { @class = "form-check-input" })
+            @Html.LabelFor(m => m.ConfirmarTransferencia, new { @class = "form-check-label" })
+            @Html.ValidationMessageFor(m => m.ConfirmarTransferencia, "", new { @class = "text-danger d-block" })
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end">
+        <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Cancelar</a>
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-exchange-alt mr-1"></i> Transferir y desactivar usuario
+        </button>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/Scripts/admin-usuarios.js"></script>
+}

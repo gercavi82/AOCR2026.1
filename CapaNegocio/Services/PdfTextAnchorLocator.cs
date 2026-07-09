@@ -49,8 +49,8 @@ namespace CapaNegocio.Services
         // de Nombre/Cargo/Fecha debajo del bloque.
         private const float AnchoLvEae = 268f;
         private const float AltoLvEae = 68f;
-        private const float AnchoAocr = 166f;      // recuadro Firma de Autorizacion AOCR
-        private const float AltoAocr = 72f;
+        private const float AnchoAocr = 230f;      // bloque visual AOCR centrado en el slot de firma
+        private const float AltoAocr = 52f;
         private const float AnchoCertificado = 188f; // ancho util reducido para dejar aire dentro del slot del certificado
         private const float AltoCertificado = 46f;
 
@@ -163,7 +163,12 @@ namespace CapaNegocio.Services
             if (esV2)
             {
                 // Ancla v2: el texto está dentro del slot, marca su esquina superior-izquierda
-                if (esCertificado)
+                if (esAocr)
+                {
+                    left = ancla.X - (ancho / 2f);
+                    top = ancla.Y + ancla.FontSize + 6f;
+                }
+                else if (esCertificado)
                 {
                     left = ancla.X - 10f;
                     top = ancla.Y + ancla.FontSize + 4f;

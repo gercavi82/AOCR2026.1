@@ -1,0 +1,219 @@
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaPresentacion.Models.ViewModels.PendienteRevisionDireccionItemViewModel>>
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Pendientes institucionales AOCR";
+    var items = Model != null ? Model.ToList() : new List<CapaPresentacion.Models.ViewModels.PendienteRevisionDireccionItemViewModel>();
+}
+
+<style>
+    .aocr-pendientes-direccion .aocr-actions-cell {
+        min-width: 190px;
+    }
+
+    .aocr-pendientes-direccion .aocr-actions {
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review,
+    .aocr-pendientes-direccion .aocr-action-pdf {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        min-width: 118px;
+        border-radius: 6px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review {
+        background-color: #0f766e !important;
+        border-color: #0f766e !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(15, 118, 110, .22);
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review:hover,
+    .aocr-pendientes-direccion .aocr-action-review:focus {
+        background-color: #115e59 !important;
+        border-color: #115e59 !important;
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-review i {
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-sign {
+        background-color: #0f5578 !important;
+        border-color: #0f5578 !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 18px rgba(15, 85, 120, .22);
+    }
+
+    .aocr-pendientes-direccion .aocr-action-sign:hover,
+    .aocr-pendientes-direccion .aocr-action-sign:focus {
+        background-color: #0a405c !important;
+        border-color: #0a405c !important;
+        color: #ffffff !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-signed {
+        background-color: #e7f7ed !important;
+        border-color: #b7ebc8 !important;
+        color: #166534 !important;
+        box-shadow: none;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-signed:hover,
+    .aocr-pendientes-direccion .aocr-action-signed:focus {
+        background-color: #d8f1e0 !important;
+        border-color: #9fe0b7 !important;
+        color: #14532d !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf {
+        background-color: #ffffff !important;
+        border-color: #0f4c81 !important;
+        color: #0f4c81 !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf:hover,
+    .aocr-pendientes-direccion .aocr-action-pdf:focus {
+        background-color: #e8f3fb !important;
+        border-color: #0b3b66 !important;
+        color: #0b3b66 !important;
+    }
+
+    .aocr-pendientes-direccion .aocr-action-pdf i {
+        color: inherit !important;
+    }
+</style>
+
+<div class="container-fluid mt-4 aocr-pendientes-direccion">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">Dashboard Inspección</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Pendientes institucionales AOCR</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <span class="badge bg-primary-subtle text-primary mb-2">DIRDAC / Dirección - Jefatura</span>
+                <h2 class="mb-1">Pendientes institucionales AOCR</h2>
+                <p class="text-muted mb-0">Bandeja para revisar informes técnicos pendientes y continuar con la Firma institucional AOCR cuando el informe ya fue aprobado.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">
+                <i class="fas fa-arrow-left"></i> Volver al dashboard
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @if (!items.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="alert alert-info mb-0">No existen pendientes institucionales para revisión o Firma AOCR.</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Código informe</th>
+                                <th>Solicitud AOCR</th>
+                                <th>Operadora / EAE</th>
+                                <th>Inspector</th>
+                                <th>Fecha firma inspector</th>
+                                <th>Resultado técnico</th>
+                                <th>Estado</th>
+                                <th>Siguiente paso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in items)
+                            {
+                                var accion = item.AccionSiguienteDireccion ?? string.Empty;
+                                var esFirmaInstitucional = accion == "ValidarAocr" || accion == "FirmarAocr" || accion == "FirmarCondiciones";
+                                var claseAccion = esFirmaInstitucional
+                                    ? "aocr-action-sign"
+                                    : (accion == "DocumentosFirmados" ? "aocr-action-signed" : string.Empty);
+                                var claseEstado = accion == "RevisionDireccion"
+                                    ? "bg-warning text-dark"
+                                    : (esFirmaInstitucional ? "bg-success" : "bg-secondary");
+                                var clasePaso = esFirmaInstitucional
+                                    ? "bg-info text-dark"
+                                    : (accion == "RevisionDireccion" ? "bg-warning text-dark" : "bg-secondary");
+                                <tr>
+                                    <td>
+                                        @if (item.CodigoInforme > 0)
+                                        {
+                                            <strong>#@item.CodigoInforme</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong>Sin informe pendiente</strong>
+                                        }
+                                        @if (item.CodigoInspeccion > 0)
+                                        {
+                                            <div class="small text-muted">Inspección @item.CodigoInspeccion</div>
+                                        }
+                                        <div class="small text-muted">SolicitudId @item.CodigoSolicitud</div>
+                                    </td>
+                                    <td>@item.NumeroSolicitud</td>
+                                    <td>@item.NombreOperadora</td>
+                                    <td>@item.NombreInspector</td>
+                                    <td>@(item.FechaFirmaInspector.HasValue ? item.FechaFirmaInspector.Value.ToString("dd/MM/yyyy HH:mm") : "Pendiente")</td>
+                                    <td>@item.ResultadoTecnicoFinal</td>
+                                    <td>
+                                        <span class="badge @claseEstado">@item.EstadoInforme</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @clasePaso">@item.EtiquetaAccionPrincipal</span>
+                                        @if (!string.IsNullOrWhiteSpace(item.MotivoAccionSiguiente))
+                                        {
+                                            <div class="small text-muted">@item.MotivoAccionSiguiente</div>
+                                        }
+                                    </td>
+                                    <td class="aocr-actions-cell">
+                                        <div class="d-flex flex-wrap aocr-actions">
+                                            <a class="btn btn-sm aocr-action-review @claseAccion" href="@item.UrlRevision" title="@item.MotivoAccionSiguiente">
+                                                <i class="@item.IconoAccionPrincipal"></i> @item.EtiquetaAccionPrincipal
+                                            </a>
+                                            @if (!string.IsNullOrWhiteSpace(item.UrlPdfInformeFirmadoInspector))
+                                            {
+                                                <a class="btn btn-sm aocr-action-pdf" href="@item.UrlPdfInformeFirmadoInspector" target="_blank" rel="noopener">
+                                                    <i class="fas fa-file-pdf"></i> Ver PDF
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

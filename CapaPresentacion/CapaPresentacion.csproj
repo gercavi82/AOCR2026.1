@@ -251,6 +251,7 @@
     <Compile Include="App_Start\UnityConfig.cs" />
     <Compile Include="Filters\ValidateAntiForgeryTokenFromHeaderAttribute.cs" />
     <Compile Include="Controllers\ConfigApiController.cs" />
+    <Compile Include="Controllers\AocrDcavController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\EmpresaController.cs" />
     <Compile Include="Controllers\ErrorController.cs" />
@@ -2968,6 +2969,8 @@
     <Content Include="Views\CoordinacionJefatura\AocrReconocimientoPdf.cshtml" />
     <Content Include="Views\CoordinacionJefatura\AocrCondicionesLimitacionesPdf.cshtml" />
     <Content Include="Views\CoordinacionJefatura\RevisionVerificacion.cshtml" />
+    <Content Include="Views\AocrDcav\Revision.cshtml" />
+    <Content Include="Views\AocrDcav\Detalle.cshtml" />
     <Content Include="Views\CoordinacionJefatura\_BandejaInspecciones.cshtml" />
     <Content Include="Views\CoordinacionJefatura\_BandejaControlDocumental.cshtml" />
     <Content Include="Views\CoordinacionJefatura\_BandejaAocrRevision.cshtml" />

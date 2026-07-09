@@ -39,6 +39,9 @@ namespace CapaPresentacion.Controllers
             "CoordinadorInspecciones",
             "DirectorFinanciero",
             "DirectorGeneral",
+            "DIRECTOR_CERTIFICACIONES_DCAV",
+            "DirectorCertificacionesDcav",
+            "DCAV",
             "Recepcion"
         };
 

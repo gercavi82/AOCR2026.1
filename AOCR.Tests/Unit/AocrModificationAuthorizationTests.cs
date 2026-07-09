@@ -235,10 +235,10 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void RoleGroupingHelper_ShouldTreatDcavAsInstitutionalDirection()
+        public void RoleGroupingHelper_ShouldTreatDcavAsSpecificCertificationDirector()
         {
             var helper = LeerArchivoRepositorio("CapaPresentacion\\Helpers\\RoleGroupingHelper.cs");
-            StringAssert.Contains(helper, "\"DCAV\"", "La normalización de roles debe contemplar DCAV dentro del bucket institucional de dirección/jefatura.");
+            StringAssert.Contains(helper, "DirectorCertificacionesDcav", "La normalizacion de roles debe contemplar DCAV como rol institucional propio.");
         }
 
         [TestMethod]

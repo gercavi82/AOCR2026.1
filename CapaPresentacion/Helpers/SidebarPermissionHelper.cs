@@ -23,6 +23,7 @@ namespace CapaPresentacion.Helpers
         public bool EsCoordinadorRol { get; set; }
         public bool EsFinancieroRol { get; set; }
         public bool EsLegalRol { get; set; }
+        public bool EsDirectorCertificacionesDcavRol { get; set; }
         public bool EsDirectorGeneralRol { get; set; }
         public bool EsDirdacRol { get; set; }
         public bool PuedeAdministracion { get; set; }
@@ -62,6 +63,8 @@ namespace CapaPresentacion.Helpers
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
             snapshot.EsLegalRol = RoleGroupingHelper.IsCoordinacion(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
+            snapshot.EsDirectorCertificacionesDcavRol = RoleGroupingHelper.IsDirectorCertificacionesDcav(snapshot.RolActual)
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRECTOR_CERTIFICACIONES_DCAV", "DirectorCertificacionesDcav", "Director de Certificaciones DCAV", "DCAV"));
             snapshot.EsDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorGeneral"));
             snapshot.EsDirdacRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
@@ -74,6 +77,7 @@ namespace CapaPresentacion.Helpers
                 || snapshot.EsCoordinadorRol
                 || snapshot.EsFinancieroRol
                 || snapshot.EsDirdacRol
+                || snapshot.EsDirectorCertificacionesDcavRol
                 || snapshot.EsLegalRol
                 || snapshot.EsAdministrador
                 || snapshot.PuedeAprobarUsuarios;

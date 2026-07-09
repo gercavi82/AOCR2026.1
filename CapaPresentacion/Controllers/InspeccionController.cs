@@ -7589,6 +7589,11 @@ namespace CapaPresentacion.Controllers
                 + ", NombreCertificado=" + nombreFirmanteCertificado
                 + ", Usuario=" + ObtenerUsuarioActual());
 
+            var rolFirmaDigital = string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                ? "INFORME_TECNICO_DIRDAC"
+                : "INFORME_TECNICO_INSPECTOR";
+            var posicionFirmaVisual = ObtenerPosicionFirmaInformeDesdeRequest(id, rolFirmaDigital);
+
             var resultadoFirma = _firmaDigitalService.FirmarPdf(
                 pdfFuente,
                 certificadoBytes,
@@ -7598,11 +7603,9 @@ namespace CapaPresentacion.Controllers
                     ? "Firma institucional DIRDAC del informe técnico AOCR"
                     : "Firma del inspector sobre el informe técnico AOCR",
                 "Sistema AOCR DGAC",
-                string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
-                    ? "INFORME_TECNICO_DIRDAC"
-                    : "INFORME_TECNICO_INSPECTOR",
+                rolFirmaDigital,
                 null,
-                null);
+                posicionFirmaVisual);
 
             if (!resultadoFirma.Exitoso)
             {
@@ -7666,11 +7669,14 @@ namespace CapaPresentacion.Controllers
 
             if (autoEnviarADirdac)
             {
-                var informeActualizado = _informeDAO.ObtenerPorId(informe.CodigoInforme);
-                var resultadoEnvio = EnviarInformeADirdacInterno(inspeccion, solicitudInforme, informeActualizado, usuarioId);
-                TempData[resultadoEnvio.Exitoso ? "Success" : "Warning"] = resultadoEnvio.Exitoso
-                    ? "El Informe Técnico fue firmado correctamente y enviado a DIRDAC / Dirección - Jefatura para revisión institucional."
-                    : "El Informe Técnico fue firmado correctamente, pero " + resultadoEnvio.Mensaje;
+                var resultadoEnvio = new AocrDcavRevisionService().EnviarInformeFirmadoADcav(
+                    solicitudInforme.CodigoSolicitud,
+                    usuarioId,
+                    ObtenerRolActual(),
+                    "Informe tecnico firmado por Inspector y enviado automaticamente a revision DCAV.");
+                TempData[resultadoEnvio.Ok ? "Success" : "Warning"] = resultadoEnvio.Ok
+                    ? "El Informe Tecnico fue firmado correctamente y enviado a DCAV para revision."
+                    : "El Informe Tecnico fue firmado correctamente, pero " + resultadoEnvio.Mensaje;
                 return RedirectToAction("Detalle", new { id });
             }
 

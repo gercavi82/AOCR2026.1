@@ -5,6 +5,7 @@ using System.IO;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
+using CapaDatos.Constants;
 using CapaModelo;
 using CapaNegocio.Services;
 using CapaPresentacion.Models;
@@ -12,7 +13,7 @@ using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica")]
+    [Authorize(Roles = "Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica,DirectorGeneral,Administrador")]
     public class FirmaAocrController : Controller
     {
         private readonly FirmaAocrAuthorizationService _authorizationService = new FirmaAocrAuthorizationService();
@@ -22,6 +23,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaAocrFinalizacionService _finalizacionService = new FirmaAocrFinalizacionService();
         private readonly FirmaAocrNotificationService _notificationService = new FirmaAocrNotificationService();
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
+        private readonly AocrProcesoEstadoDAO _procesoEstadoDao = new AocrProcesoEstadoDAO();
         private readonly AocrProcesoNotificacionService _procesoNotificacionService = new AocrProcesoNotificacionService();
 
         private FirmaAocrStorageService StorageService
@@ -280,11 +282,26 @@ namespace CapaPresentacion.Controllers
                     return JsonError(403, "Solo Direccion / DIRDAC puede firmar el AOCR final.", id);
                 }
 
+                if (!_authorizationService.UsuarioPuedeFirmarDirectorGeneral(User))
+                {
+                    return JsonError(403, "Solo el Director General puede firmar AOCR y Condiciones y Limitaciones.", id);
+                }
+
                 var workflow = WorkflowService;
                 var contexto = workflow.CargarContexto(id);
                 if (contexto == null || contexto.Solicitud == null)
                 {
                     return JsonError(404, "No existe contexto documental AOCR para firmar.", id);
+                }
+
+                var estadoCentral = _procesoEstadoDao.ObtenerActivoPorSolicitud(id);
+                var estadoFirma = estadoCentral != null ? estadoCentral.EstadoActual : null;
+                var estadoPermiteFirma = string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoFirma, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoFirma, AocrEstadosProceso.CondicionesFirmadasDirdac, StringComparison.OrdinalIgnoreCase);
+                if (!estadoPermiteFirma)
+                {
+                    return JsonError(409, "El expediente debe estar aprobado por DCAV y pendiente de firma del Director General.", id);
                 }
 
                 var firmaActual = ObtenerFirmaPorTipo(contexto, tipoDocumento);
@@ -373,6 +390,7 @@ namespace CapaPresentacion.Controllers
 
                 RegistrarFirma(contexto, tipoDocumento, rutaFirmada, resultadoFirma, contenidoQr, nombreFirmante, bytesFirmado);
                 NotificarDocumentoFirmadoSeguro(id, tipoDocumento);
+                RegistrarEstadoDirectorGeneralSiCompleto(id);
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][DB_UPDATE] SolicitudId=" + id + "; EstadoAocrNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][DB_UPDATE] SolicitudId=" + id + "; EstadoAnterior=" + (contexto.Solicitud.Estado ?? string.Empty) + "; EstadoNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
 
@@ -430,11 +448,25 @@ namespace CapaPresentacion.Controllers
                 var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
                 if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
                 {
+                    new AocrEstadoProcesoService().CambiarEstado(
+                        solicitudId,
+                        AocrEstadosProceso.AocrFirmadoDirdac,
+                        "FIRMAR_AOCR_DIRDAC",
+                        ObtenerUsuarioActualId(),
+                        "DirectorGeneral",
+                        "AOCR firmado por Director General.");
                     _procesoNotificacionService.NotificarAocrFirmado(solicitudId);
                 }
                 else if (string.Equals(tipo, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(tipo, "CONDICIONES", StringComparison.OrdinalIgnoreCase))
                 {
+                    new AocrEstadoProcesoService().CambiarEstado(
+                        solicitudId,
+                        AocrEstadosProceso.CondicionesFirmadasDirdac,
+                        "FIRMAR_CONDICIONES_DIRDAC",
+                        ObtenerUsuarioActualId(),
+                        "DirectorGeneral",
+                        "Condiciones y Limitaciones firmadas por Director General.");
                     _procesoNotificacionService.NotificarCondicionesFirmadas(solicitudId);
                 }
             }
@@ -442,6 +474,27 @@ namespace CapaPresentacion.Controllers
             {
                 Trace.TraceError("[NOTIF_AOCR][SEND_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=FIRMA_DOCUMENTO; Email=; Error=" + ex.Message + ";");
             }
+        }
+
+        private void RegistrarEstadoDirectorGeneralSiCompleto(int solicitudId)
+        {
+            var firmaAocr = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO");
+            var firmaCondiciones = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES_LIMITACIONES")
+                ?? _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
+            if (firmaAocr == null || firmaCondiciones == null
+                || !StorageService.Existe(firmaAocr.RutaDocumento)
+                || !StorageService.Existe(firmaCondiciones.RutaDocumento))
+            {
+                return;
+            }
+
+            new AocrEstadoProcesoService().CambiarEstado(
+                solicitudId,
+                AocrEstadosProceso.DocumentosFirmadosDirdac,
+                "DOCUMENTOS_FIRMADOS_DIRDAC",
+                ObtenerUsuarioActualId(),
+                "DirectorGeneral",
+                "AOCR y Condiciones y Limitaciones firmadas por Director General.");
         }
 
         private ActionResult ServirPdf(int solicitudId, bool firmado, bool descargar, string tipoDocumento)

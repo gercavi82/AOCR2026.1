@@ -178,6 +178,7 @@
     <Compile Include="Services\CorreoInstitucionalService.cs" />
     <Compile Include="Services\AocrBandejaRoleContext.cs" />
     <Compile Include="Services\AocrContextResolverService.cs" />
+    <Compile Include="Services\AocrDcavRevisionService.cs" />
     <Compile Include="Services\CoordinacionBandejaService.cs" />
     <Compile Include="Services\DireccionBandejaService.cs" />
     <Compile Include="Services\DireccionWorkflowRouter.cs" />
