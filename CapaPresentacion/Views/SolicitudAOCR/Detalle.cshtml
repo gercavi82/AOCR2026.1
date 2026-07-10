@@ -1520,6 +1520,15 @@
                 var motivoAocr = ViewBag.MotivoGenerarAOCR as string;
                 var aocrYaGenerado = (ViewBag.AocrYaGenerado != null) && (bool)ViewBag.AocrYaGenerado;
                 var documentoAocr = ViewBag.DocumentoAOCRGenerado as CapaModelo.Documento;
+                var puedeGestionarFirmaAocr = User.IsInRole("Inspector")
+                    || User.IsInRole("InspectorTecnico")
+                    || User.IsInRole("Tecnico")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("DireccionJefaturaTecnica")
+                    || User.IsInRole("DIRDAC")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("DirectorGeneral")
+                    || User.IsInRole("Administrador");
             }
 
             <div class="aocr-action-grid">
@@ -1546,21 +1555,24 @@
                         <i class="fas fa-download"></i>
                         Descargar AOCR
                     </a>
+                    if (puedeGestionarFirmaAocr)
+                    {
+                        <a class="btn btn-primary aocr-action-btn-full"
+                           href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })">
+                            <i class="fas fa-file-contract"></i>
+                            Gestionar AOCR y Condiciones
+                        </a>
+                    }
                 }
                 else if (puedeGenerarAocr)
                 {
-                    var esFirmaInstitucionalAocr = User.IsInRole("Direccion")
-                        || User.IsInRole("DireccionJefaturaTecnica")
-                        || User.IsInRole("DIRDAC")
-                        || User.IsInRole("JefaturaTecnica")
-                        || User.IsInRole("DirectorGeneral");
-                    if (esFirmaInstitucionalAocr)
+                    if (puedeGestionarFirmaAocr)
                     {
                         <a class="btn btn-primary aocr-action-btn-full"
                            href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })"
-                           title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Abrir Firma institucional AOCR" : normalizeVisibleText(motivoAocr))">
+                           title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Gestionar AOCR y Condiciones" : normalizeVisibleText(motivoAocr))">
                             <i class="fas fa-file-signature"></i>
-                            Firma institucional AOCR
+                            Gestionar AOCR y Condiciones
                         </a>
                     }
                     else

@@ -412,7 +412,9 @@ namespace CapaPresentacion.Controllers
 
         private static bool InformePuedeEditarsePorInspector(InspeccionInformeTecnico informe)
         {
-            return informe == null || !informe.FirmadoInspector || InformeEstaDevueltoParaCorreccion(informe);
+            return informe == null
+                || InformeEstaDevueltoParaCorreccion(informe)
+                || (!informe.Finalizado && !informe.FirmadoInspector);
         }
 
         private string ObtenerMensajeBloqueoEdicionInformeTecnico(InspeccionInformeTecnico informe)
@@ -430,6 +432,11 @@ namespace CapaPresentacion.Controllers
             if (InformeTieneDecisionInstitucionalFinal(informe))
             {
                 return "El Informe Técnico ya cuenta con decisión institucional final. No es posible editarlo desde el panel del inspector.";
+            }
+
+            if (informe.Finalizado && !informe.FirmadoInspector)
+            {
+                return "El PDF definitivo del Informe Técnico ya fue generado. Para continuar, aplique la firma digital del inspector en el panel superior.";
             }
 
             return "El Informe Técnico ya fue firmado digitalmente. Solo podrá editarlo nuevamente si es devuelto para corrección.";
@@ -1081,7 +1088,6 @@ namespace CapaPresentacion.Controllers
                 ViewBag.UsaFlujoListaVerificacionOperacionalEae = true;
                 ViewBag.RutaListaVerificacionOperacionalEaeDisponible = null;
             }
-
             ViewBag.DireccionJefaturaPanelVm = ConstruirDireccionJefaturaPanelViewModel(
                 inspeccion,
                 ViewBag.InformeTecnico as InspeccionInformeTecnico);
@@ -1105,31 +1111,20 @@ namespace CapaPresentacion.Controllers
                 return DevolverResultadoModalInformeTecnico(404, "La inspección solicitada no existe.");
             }
 
-            if (!PuedeGestionarInformeTecnicoModal(inspeccion))
+            var estadoTecnico = new CapaNegocio.Services.EstadoTecnicoInspeccionService().ObtenerEstadoTecnico(codigoInspeccion);
+            if (!estadoTecnico.PuedeCrearInforme && !estadoTecnico.PuedeEditarInforme && !estadoTecnico.PuedeVerInforme)
             {
-                return DevolverResultadoModalInformeTecnico(403, "No autorizado para abrir el Informe Técnico de esta inspección.");
-            }
-
-            if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
-            {
-                return DevolverResultadoModalInformeTecnico(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
-            }
-
-            string mensajeBloqueoDocumentalRt;
-            if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(codigoInspeccion, out mensajeBloqueoDocumentalRt))
-            {
-                return DevolverResultadoModalInformeTecnico(409, mensajeBloqueoDocumentalRt);
+                _logger.LogWarning("[INFORME][ACCESO_BLOQUEADO] InspeccionId=" + codigoInspeccion + " Motivo=" + estadoTecnico.MotivoBloqueo);
+                return DevolverResultadoModalInformeTecnico(403, estadoTecnico.MotivoBloqueo);
             }
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
 
-            ListaVerificacionOperacionalEae listaVerificacion;
-            string mensajeLista;
-            if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, true, out listaVerificacion, out mensajeLista))
+            var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
+            if (listaVerificacion != null)
             {
-                _logger.LogWarning("[GestionInspeccion] Apertura modal informe bloqueada. InspeccionId=" + codigoInspeccion + ", Mensaje=" + (mensajeLista ?? string.Empty));
-                return DevolverResultadoModalInformeTecnico(409, mensajeLista);
+                HidratarListaVerificacionOperacionalEae(listaVerificacion, solicitud, inspeccion);
             }
 
             IList<DocumentoInspeccion> documentosSolicitante;
@@ -1144,7 +1139,7 @@ namespace CapaPresentacion.Controllers
             }
             var informe = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
 
-            if (informe == null && PuedeEditarInformeTecnicoModal(inspeccion))
+            if (informe == null && estadoTecnico.PuedeCrearInforme)
             {
                 var usuarioId = ObtenerCodigoUsuario();
                 informe = _informeDAO.GuardarBorrador(new InspeccionInformeTecnico
@@ -1163,7 +1158,10 @@ namespace CapaPresentacion.Controllers
             EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
 
             var vm = ConstruirInformeTecnicoModalViewModel(inspeccion, solicitud, informe, listaVerificacion, documentosSolicitante);
-            _logger.LogInfo("[GestionInspeccion] ModalInformeTecnico cargado. InspeccionId=" + codigoInspeccion
+            vm.SoloLectura = !estadoTecnico.PuedeEditarInforme && estadoTecnico.PuedeVerInforme;
+            vm.MensajeEstado = estadoTecnico.MotivoBloqueo;
+            
+            _logger.LogInfo("[INFORME][" + (vm.SoloLectura ? "ACCESO_SOLO_LECTURA" : "ACCESO_EDITABLE") + "] InspeccionId=" + codigoInspeccion
                 + ", InformeId=" + (vm.CodigoInformeTecnico.HasValue ? vm.CodigoInformeTecnico.Value.ToString() : "0")
                 + ", EstadoInforme=" + (vm.EstadoInformeTecnico ?? string.Empty)
                 + ", EstadoLv=" + (vm.EstadoListaVerificacion ?? string.Empty));
@@ -7224,7 +7222,7 @@ namespace CapaPresentacion.Controllers
                 : (informe.Finalizado ? "GENERADO" : "BORRADOR_INFORME");
             var listaVerificacionFirmada = !usaFlujoLv
                 || (listaVerificacion != null && listaVerificacion.Finalizado && listaVerificacion.FirmadoTecnico);
-            var puedeEditarInformeTecnico = PuedeEditarInformeTecnicoModal(inspeccion) && InformePuedeEditarsePorInspector(informe);
+            var puedeGestionarFirmaInspector = PuedeEditarInformeTecnicoModal(inspeccion);
             var informeEnviadoADirdac = InformeEstaEnviadoADirdac(informe);
             var informeEnviadoACoordinador = string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase);
             var informeDevueltoCoordinador = string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", StringComparison.OrdinalIgnoreCase);
@@ -7236,11 +7234,11 @@ namespace CapaPresentacion.Controllers
                 || informe.NotificadoRt
                 || informe.FirmadoDirdac;
             var notificacionFormalDirdac = informeEnviadoADirdac && informe.CorreoEnviado;
-            var puedeFirmarInspector = puedeEditarInformeTecnico
+            var puedeFirmarInspector = puedeGestionarFirmaInspector
                 && informe.Finalizado
                 && !informe.FirmadoInspector
                 && listaVerificacionFirmada;
-            var puedeEnviarADirdac = puedeEditarInformeTecnico
+            var puedeEnviarADirdac = puedeGestionarFirmaInspector
                 && informe.Finalizado
                 && informe.FirmadoInspector
                 && !informeEnviadoADirdac
@@ -7638,45 +7636,104 @@ namespace CapaPresentacion.Controllers
                 + ", EstadoFinal=" + estadoFinal
                 + ", UsuarioId=" + usuarioId);
 
-            if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+            AocrDcavResultado resultadoEnvioDcav = null;
+            try
             {
-                _informeDAO.RegistrarFirmaDirdac(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
-            }
-            else
-            {
-                _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
-            }
-            TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase) ? "FIRMAR_DIRECCION" : "FIRMAR_INFORME_TECNICO", "Firma digital del informe tecnico aplicada.", informe.CodigoInforme);
+                using (var scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions
+                {
+                    IsolationLevel = IsolationLevel.ReadCommitted,
+                    Timeout = TimeSpan.FromMinutes(2)
+                }))
+                {
+                    if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _informeDAO.RegistrarFirmaDirdac(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
+                        TrySyncEstadoCentralSolicitud(inspeccion.CodigoSolicitud, id, "FIRMAR_DIRECCION", "Firma digital del informe tecnico aplicada.", informe.CodigoInforme);
+                    }
+                    else
+                    {
+                        _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
+                        var sincronizacionFirma = new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
+                            inspeccion.CodigoSolicitud,
+                            "FIRMAR_INFORME_TECNICO",
+                            usuarioId,
+                            FirstNonEmpty(ObtenerRolActual(), "InspectorTecnico"),
+                            "Firma digital del informe tecnico aplicada.",
+                            inspeccionId: id,
+                            informeId: informe.CodigoInforme);
+                        if (sincronizacionFirma == null || !sincronizacionFirma.Ok
+                            || sincronizacionFirma.EstadoActual == null
+                            || !string.Equals(sincronizacionFirma.EstadoActual.EstadoActual, AocrEstadosProceso.InformeTecnicoFirmadoInspector, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidOperationException(sincronizacionFirma != null
+                                ? sincronizacionFirma.Motivo
+                                : "No se pudo registrar el estado central de la firma del Inspector.");
+                        }
+                    }
 
-            _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+                    _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+                    RegistrarAuditoriaInformeDigital(
+                        id,
+                        estadoAnterior,
+                        estadoFinal,
+                        rutaFirmada,
+                        hashDocumento,
+                        string.Format("Firma digital aplicada por {0} ({1}). Rol={2}. IP={3}", nombreFirmanteCertificado, usuarioActual, rolFirma, ObtenerIpCliente()),
+                        usuarioId,
+                        usuarioActual,
+                        string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase)
+                            ? "INFORME_TECNICO_FIRMADO_INSPECTOR"
+                            : "INFORME_TECNICO_FIRMADO_DIRECCION");
+
+                    if (autoEnviarADirdac)
+                    {
+                        resultadoEnvioDcav = new AocrDcavRevisionService().EnviarInformeFirmadoADcav(
+                            solicitudInforme.CodigoSolicitud,
+                            usuarioId,
+                            ObtenerRolActual(),
+                            "Informe tecnico firmado por Inspector y enviado automaticamente a revision DCAV.");
+                        if (resultadoEnvioDcav == null || !resultadoEnvioDcav.Ok)
+                        {
+                            throw new InvalidOperationException(resultadoEnvioDcav != null
+                                ? resultadoEnvioDcav.Mensaje
+                                : "No se pudo enviar el informe firmado a DCAV.");
+                        }
+                    }
+
+                    scope.Complete();
+                }
+            }
+            catch (Exception ex)
+            {
+                var rutaFisicaFallida = ResolverRutaAbsolutaInforme(rutaFirmada);
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(rutaFisicaFallida) && System.IO.File.Exists(rutaFisicaFallida))
+                    {
+                        System.IO.File.Delete(rutaFisicaFallida);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogWarning("[INFORME_TECNICO][FIRMA_ROLLBACK_FILE_WARN] Ruta=" + rutaFirmada + "; Error=" + cleanupEx.Message + ";");
+                }
+
+                _logger.LogError("[INFORME_TECNICO][FIRMA_TRANSACCION_ERROR] SolicitudId=" + inspeccion.CodigoSolicitud
+                    + "; InspeccionId=" + id
+                    + "; InformeId=" + informe.CodigoInforme
+                    + "; Error=" + ex + ";");
+                TempData["Error"] = "No se completó la firma y el envío a DCAV. La operación fue revertida: " + ex.Message;
+                return RedirectToAction("Detalle", new { id });
+            }
 
             _logger.LogInfo("[GestionInspeccion] Firma digital persistida. InspeccionId=" + id
                 + ", RolFirma=" + rolFirma
                 + ", InformeId=" + informe.CodigoInforme
                 + ", RutaFirmada=" + rutaFirmada);
-            RegistrarAuditoriaInformeDigital(
-                id,
-                estadoAnterior,
-                estadoFinal,
-                rutaFirmada,
-                hashDocumento,
-                string.Format("Firma digital aplicada por {0} ({1}). Rol={2}. IP={3}", nombreFirmanteCertificado, usuarioActual, rolFirma, ObtenerIpCliente()),
-                usuarioId,
-                usuarioActual,
-                string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase)
-                    ? "INFORME_TECNICO_FIRMADO_INSPECTOR"
-                    : "INFORME_TECNICO_FIRMADO_DIRECCION");
 
             if (autoEnviarADirdac)
             {
-                var resultadoEnvio = new AocrDcavRevisionService().EnviarInformeFirmadoADcav(
-                    solicitudInforme.CodigoSolicitud,
-                    usuarioId,
-                    ObtenerRolActual(),
-                    "Informe tecnico firmado por Inspector y enviado automaticamente a revision DCAV.");
-                TempData[resultadoEnvio.Ok ? "Success" : "Warning"] = resultadoEnvio.Ok
-                    ? "El Informe Tecnico fue firmado correctamente y enviado a DCAV para revision."
-                    : "El Informe Tecnico fue firmado correctamente, pero " + resultadoEnvio.Mensaje;
+                TempData["Success"] = "El Informe Tecnico fue firmado correctamente y enviado a DCAV para revision.";
                 return RedirectToAction("Detalle", new { id });
             }
 

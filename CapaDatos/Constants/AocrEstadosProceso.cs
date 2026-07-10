@@ -47,7 +47,9 @@ namespace CapaDatos.Constants
         public const string PendienteRevisionDcav = "PENDIENTE_REVISION_DCAV";
         public const string ObservadoPorDcav = "OBSERVADO_POR_DCAV";
         public const string AprobadoPorDcav = "APROBADO_POR_DCAV";
-        public const string PendienteFirmaDirectorGeneral = "PENDIENTE_FIRMA_DIRECTOR_GENERAL";
+        public const string PendienteFirmaDirectorGeneralLegacy = "PENDIENTE_FIRMA_DIRECTOR_GENERAL";
+        public const string PendienteFirmaDirectorGeneral = "PENDIENTE_FIRMA_DIRDAC";
+        public const string PendienteFirmaDirdac = PendienteFirmaDirectorGeneral;
         public const string FirmadoDirectorGeneral = "FIRMADO_DIRECTOR_GENERAL";
         public const string AocrFirmadoDirdac = "AOCR_FIRMADO_DIRDAC";
         public const string CondicionesFirmadasDirdac = "CONDICIONES_FIRMADAS_DIRDAC";

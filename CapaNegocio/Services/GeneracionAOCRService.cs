@@ -23,6 +23,7 @@ namespace CapaNegocio.Services
         public const string TIPO_DOCUMENTO_AOCR_GENERADO = "AOCR_GENERADO";
 
         private readonly SolicitudAOCRDAO _solicitudDao;
+
         private readonly DocumentoDAO _documentoDao;
         private readonly InspeccionDAO _inspeccionDao;
         private readonly InspeccionInformeDAO _informeDao;
@@ -31,6 +32,7 @@ namespace CapaNegocio.Services
         private readonly ListaVerificacionOperacionalEaeDAO _listaVerificacionDao;
         private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBl;
+        private readonly AocrDocumentoGeneradoDAO _documentoGeneradoDao;
 
         public GeneracionAOCRService()
         {
@@ -43,6 +45,7 @@ namespace CapaNegocio.Services
             _listaVerificacionDao = new ListaVerificacionOperacionalEaeDAO();
             _revisionDocumentalService = new RevisionDocumentalService();
             _solicitudEstadoTransitionBl = new SolicitudEstadoTransitionBL();
+            _documentoGeneradoDao = new AocrDocumentoGeneradoDAO();
         }
 
         /// <summary>Resultado de la evaluación de disponibilidad para generar AOCR.</summary>
@@ -573,6 +576,7 @@ namespace CapaNegocio.Services
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
             return estadoInforme == "APROBADO_DIRECCION"
                 || estadoInforme == "APROBADO_DIRDAC"
+                || estadoInforme == "INFORME_TECNICO_APROBADO_DCAV"
                 || estadoInforme == "FIRMADO_FINAL";
         }
 
@@ -580,6 +584,7 @@ namespace CapaNegocio.Services
         {
             var estadoInforme = (informe != null ? informe.EstadoInforme : null ?? string.Empty).Trim();
             return string.Equals(estadoInforme, "OBSERVADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInforme, "INFORME_TECNICO_OBSERVADO_DCAV", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInforme, "RECHAZADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInforme, "DEVUELTO_DIRECCION", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInforme, "DEVUELTO_RT", StringComparison.OrdinalIgnoreCase)
@@ -646,6 +651,7 @@ namespace CapaNegocio.Services
             resultado.AprobadoDireccion = InformeCompletaFaseTecnicaAocr(informe);
             resultado.AprobadoDirdac = informe.FirmadoDirdac
                 || string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "APROBADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "INFORME_TECNICO_APROBADO_DCAV", StringComparison.OrdinalIgnoreCase)
                 || string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase);
             resultado.TieneObservacionesPendientes = InformeTieneObservacionesPendientes(informe);
         }
@@ -745,6 +751,9 @@ namespace CapaNegocio.Services
             }
 
             return roles.Contains("Administrador")
+                || roles.Contains("Inspector")
+                || roles.Contains("InspectorTecnico")
+                || roles.Contains("Tecnico")
                 || roles.Contains("DIRDAC")
                 || roles.Contains("Direccion")
                 || roles.Contains("Director")
@@ -836,6 +845,39 @@ namespace CapaNegocio.Services
 
             mensaje = "AOCR generada correctamente" + (string.IsNullOrEmpty(numeroAOCR) ? "." : " (" + numeroAOCR + ").");
             return documento;
+        }
+
+        public ResultadoDocumento ObtenerOCrearBorradorAocr(int solicitudId, int inspectorId, int usuarioDcavId)
+        {
+            try
+            {
+                var doc = _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "AOCR_BORRADOR");
+                if (doc != null)
+                {
+                    return new ResultadoDocumento { Ok = true, Mensaje = "Borrador recuperado", Documento = doc };
+                }
+
+                doc = new AocrDocumentoGenerado
+                {
+                    CodigoSolicitud = solicitudId,
+                    TipoDocumento = "AOCR_BORRADOR",
+                    NumeroAocr = "BORRADOR",
+                    NombreArchivo = "",
+                    RutaDocumento = "",
+                    Estado = "BORRADOR_INSPECTOR",
+                    FechaGeneracion = DateTime.Now,
+                    CodigoUsuario = inspectorId,
+                    UsuarioNombre = "Inspector"
+                };
+
+                _documentoGeneradoDao.Registrar(doc);
+                doc = _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "AOCR_BORRADOR");
+                return new ResultadoDocumento { Ok = true, Mensaje = "Borrador creado", Documento = doc };
+            }
+            catch (Exception ex)
+            {
+                return new ResultadoDocumento { Ok = false, Mensaje = "Error al crear borrador AOCR: " + ex.Message };
+            }
         }
     }
 }

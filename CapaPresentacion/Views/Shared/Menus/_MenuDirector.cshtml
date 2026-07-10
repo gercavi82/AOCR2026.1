@@ -60,7 +60,16 @@
             </span>
             <ul class="aocr-nav aocr-nav--nested">
                 <li>
-                    <a class="@linkClass(isCurrent("Inspeccion", "PendientesDireccion") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("PendientesDireccion", "Inspeccion")">
+                    <a class="@linkClass(isCurrent("AocrDcav", "Revision") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Revision", "AocrDcav")">
+                        <i class="fas fa-clipboard-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Revision DCAV</span>
+                            <span class="aocr-sidebar-item__meta">Aprobar el informe tecnico y luego los documentos AOCR antes de firma final.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("FirmaAocr", "Pendientes") || isCurrent("FirmaAocr", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Pendientes", "FirmaAocr")">
                         <i class="fas fa-check-double text-white-50 mr-2"></i>
                         <span class="aocr-sidebar-item__content">
                             <span class="aocr-sidebar-item__title">Firma institucional AOCR</span>

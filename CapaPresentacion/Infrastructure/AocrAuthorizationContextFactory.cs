@@ -160,6 +160,10 @@ namespace CapaPresentacion.Infrastructure
                 "JefaturaTecnica",
                 "DirectorGeneral",
                 "DireccionJefaturaTecnica",
+                "DIRECTOR_CERTIFICACIONES_DCAV",
+                "DirectorCertificacionesDcav",
+                "DirectorCertificacionesDCAV",
+                "DCAV",
                 "Financiero",
                 "CoordinadorFinanciero",
                 "DirectorFinanciero"

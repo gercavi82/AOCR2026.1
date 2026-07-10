@@ -101,6 +101,8 @@ namespace CapaPresentacion.Models.ViewModels
         public bool LvEaeFinalizada { get; set; }
         public bool PuedeGestionarInformeTecnico { get; set; }
         public bool PuedeEditarInformeTecnico { get; set; }
+        public bool SoloLectura { get; set; }
+        public string MensajeEstado { get; set; }
         public bool ExisteInformeTecnico { get; set; }
         public bool ExistePdfInformeTecnico { get; set; }
         public string EstadoInformeTecnico { get; set; }

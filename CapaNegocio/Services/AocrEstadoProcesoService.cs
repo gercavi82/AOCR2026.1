@@ -106,6 +106,7 @@ namespace CapaNegocio.Services
                 { AocrEstadosProceso.ObservadoPorDcav, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado, AocrEstadosProceso.AocrDatosPendientes, AocrEstadosProceso.PendienteRevisionDcav } },
                 { AocrEstadosProceso.AprobadoPorDcav, new[] { AocrEstadosProceso.PendienteFirmaDirectorGeneral } },
                 { AocrEstadosProceso.PendienteFirmaDirectorGeneral, new[] { AocrEstadosProceso.AocrFirmado, AocrEstadosProceso.AocrFirmadoDirdac, AocrEstadosProceso.CondicionesFirmadasDirdac, AocrEstadosProceso.FirmadoDirectorGeneral, AocrEstadosProceso.ObservadoPorDcav } },
+                { AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, new[] { AocrEstadosProceso.AocrFirmado, AocrEstadosProceso.AocrFirmadoDirdac, AocrEstadosProceso.CondicionesFirmadasDirdac, AocrEstadosProceso.FirmadoDirectorGeneral, AocrEstadosProceso.ObservadoPorDcav } },
                 { AocrEstadosProceso.AocrFirmadoDirdac, new[] { AocrEstadosProceso.CondicionesFirmadasDirdac, AocrEstadosProceso.DocumentosFirmadosDirdac } },
                 { AocrEstadosProceso.CondicionesFirmadasDirdac, new[] { AocrEstadosProceso.AocrFirmadoDirdac, AocrEstadosProceso.DocumentosFirmadosDirdac } },
                 { AocrEstadosProceso.DocumentosFirmadosDirdac, new[] { AocrEstadosProceso.DocumentosFinalesLiberadosRt, AocrEstadosProceso.AocrFinalizado } },
@@ -162,6 +163,7 @@ namespace CapaNegocio.Services
                 { AocrEstadosProceso.ObservadoPorDcav, Meta("REVISION_DCAV", "Coordinacion", "Atender observaciones DCAV", "ATENDER_OBSERVACIONES_DCAV") },
                 { AocrEstadosProceso.AprobadoPorDcav, Meta("REVISION_DCAV", "DirectorGeneral", "Enviar a firma institucional", "ENVIAR_FIRMA_DIRECTOR_GENERAL") },
                 { AocrEstadosProceso.PendienteFirmaDirectorGeneral, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR y Condiciones", "FIRMAR_AOCR_CONDICIONES") },
+                { AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR y Condiciones", "FIRMAR_AOCR_CONDICIONES") },
                 { AocrEstadosProceso.AocrFirmadoDirdac, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar Condiciones", "FIRMAR_CONDICIONES") },
                 { AocrEstadosProceso.CondicionesFirmadasDirdac, Meta("FIRMA_DIRECTOR_GENERAL", "DirectorGeneral", "Firmar AOCR", "FIRMAR_AOCR") },
                 { AocrEstadosProceso.DocumentosFirmadosDirdac, Meta("BANDEJA_FINAL", "Solicitante", "Descargar documentos finales", "DESCARGAR_DOCUMENTOS_FINALES") },
@@ -213,6 +215,7 @@ namespace CapaNegocio.Services
                 { Key(AocrEstadosProceso.InformeAprobadoDireccion, "DireccionJefaturaTecnica"), new[] { "COMPLETAR_AOCR" } },
                 { Key(AocrEstadosProceso.PendienteRevisionDcav, "DirectorCertificacionesDcav"), new[] { "DCAV_VER_EXPEDIENTE", "DCAV_APROBAR", "DCAV_DEVOLVER" } },
                 { Key(AocrEstadosProceso.PendienteFirmaDirectorGeneral, "DirectorGeneral"), new[] { "FIRMAR_AOCR", "FIRMAR_CONDICIONES", "DEVOLVER_A_DCAV" } },
+                { Key(AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, "DirectorGeneral"), new[] { "FIRMAR_AOCR", "FIRMAR_CONDICIONES", "DEVOLVER_A_DCAV" } },
                 { Key(AocrEstadosProceso.AocrFirmadoDirdac, "DirectorGeneral"), new[] { "FIRMAR_CONDICIONES" } },
                 { Key(AocrEstadosProceso.CondicionesFirmadasDirdac, "DirectorGeneral"), new[] { "FIRMAR_AOCR" } },
                 { Key(AocrEstadosProceso.AocrDatosPendientes, "DireccionJefaturaTecnica"), new[] { "GUARDAR_AOCR", "VALIDAR_AOCR" } },
@@ -861,6 +864,12 @@ namespace CapaNegocio.Services
                 var raw = (estadoInforme ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
                 switch (raw)
                 {
+                    case "INFORME_TECNICO_APROBADO_DCAV":
+                        return AocrEstadosProceso.InformeTecnicoAprobadoDcav;
+                    case "INFORME_TECNICO_OBSERVADO_DCAV":
+                        return AocrEstadosProceso.InformeTecnicoObservadoDcav;
+                    case "PENDIENTE_REVISION_INFORME_DCAV":
+                        return AocrEstadosProceso.PendienteRevisionInformeDcav;
                     case "APROBADO_DIRECCION":
                     case "APROBADO_DIRDAC":
                     case "FIRMADO_FINAL":
@@ -910,9 +919,9 @@ namespace CapaNegocio.Services
             if (Matches(normalized, "INSPECTOR", "TECNICO", "EVALUADORTECNICO", "INSPECTORTECNICO")) return "InspectorTecnico";
             if (Matches(normalized, "FINANCIERO", "COORDINADORFINANCIERO", "DIRECTORFINANCIERO")) return "Financiero";
             if (Matches(normalized, "COORDINACION", "COORDINADOR", "COORDINADORINSPECCIONES", "COORDINACIONLEGAL", "COORDINADORLEGAL")) return "Coordinacion";
-            if (Matches(normalized, "DIRECTORGENERAL", "DIRECTOR_GENERAL")) return "DirectorGeneral";
+            if (Matches(normalized, "DIRECTORGENERAL", "DIRECTOR_GENERAL", "DIRDAC")) return "DirectorGeneral";
             if (Matches(normalized, "DIRECTORCERTIFICACIONESDCAV", "DIRECTORDECERTIFICACIONESDCAV", "DIRECTOR_CERTIFICACIONES_DCAV", "DIRECCIONCERTIFICACION", "DIRECCIONCERTIFICACIONES", "DCAV")) return "DirectorCertificacionesDcav";
-            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
+            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
             return (role ?? string.Empty).Trim();
         }
 

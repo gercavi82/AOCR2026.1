@@ -32,15 +32,19 @@ namespace CapaPresentacion.Controllers
             "Financiero",
             "CoordinadorFinanciero",
             "CoordinacionLegal",
+            "Coordinacion",
             "CoordinadorLegal",
             "Inspector",
+            "InspectorTecnico",
             "Tecnico",
             "EvaluadorTecnico",
             "CoordinadorInspecciones",
             "DirectorFinanciero",
             "DirectorGeneral",
+            "DIRDAC",
             "DIRECTOR_CERTIFICACIONES_DCAV",
             "DirectorCertificacionesDcav",
+            "DirectorCertificacionesDCAV",
             "DCAV",
             "Recepcion"
         };
@@ -214,7 +218,12 @@ namespace CapaPresentacion.Controllers
             var bypassRtRestriction = !string.IsNullOrWhiteSpace(usuario.Email) &&
                 (usuario.Email.Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase)
                  || usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase));
+            var rolesUnificadosParaBloqueoRt = RoleGroupingHelper.BuildUnifiedRoles(roles ?? new List<string>());
+            var aplicaBloqueoDesignacionRt = rolesUnificadosParaBloqueoRt.Any(RoleGroupingHelper.IsSolicitante)
+                && !rolesUnificadosParaBloqueoRt.Any(RoleGroupingHelper.EsRolInstitucional)
+                && !rolesUnificadosParaBloqueoRt.Any(RoleGroupingHelper.IsAdministrador);
             if (!bypassRtRestriction &&
+                aplicaBloqueoDesignacionRt &&
                 !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                 !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
             {
@@ -681,7 +690,9 @@ namespace CapaPresentacion.Controllers
                 return Redirect(returnUrl);
             }
 
-            return RedirectToAction("Index", "Dashboard");
+            var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var companiaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            return Redirect(ResolverDestinoPorRolYProceso(usuarioId, rolSesion, companiaActiva));
         }
 
         private void ExpirarCookieAntiForgery()
@@ -724,14 +735,18 @@ namespace CapaPresentacion.Controllers
             if (!string.IsNullOrWhiteSpace(returnUrl))
             {
                 _logger.LogWarning(string.Format(
-                    "[AUTH][RETURN_URL] ReturnUrl descartado en RedirectToLocal. Usuario={0}; Roles={1}; ReturnUrl={2}; Motivo={3}; Destino=Dashboard/Index",
+                    "[AUTH][RETURN_URL] ReturnUrl descartado en RedirectToLocal. Usuario={0}; Roles={1}; ReturnUrl={2}; Motivo={3}; Destino=ResolverDestinoPorRolYProceso",
                     Session["CodigoUsuario"] as string ?? string.Empty,
                     string.Join(",", ObtenerRolesSesion()),
                     returnUrl,
                     motivo ?? string.Empty));
             }
 
-            return RedirectToAction("Index", "Dashboard");
+            var usuarioId = 0;
+            int.TryParse(Convert.ToString(Session["IdUsuario"] ?? Session["UserId"] ?? "0"), out usuarioId);
+            var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var companiaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            return Redirect(ResolverDestinoPorRolYProceso(usuarioId, rolSesion, companiaActiva));
         }
 
         [Authorize]
@@ -1883,6 +1898,18 @@ namespace CapaPresentacion.Controllers
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            var esAdministrador = rolesUsuario.Any(RoleGroupingHelper.IsAdministrador);
+            var esDcav = rolesUsuario.Any(RoleGroupingHelper.IsDirectorCertificacionesDcav);
+            if (esDcav && !esAdministrador)
+            {
+                var permitidoDcav = path.StartsWith("/AocrDcav", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWith("/Notificacion", StringComparison.OrdinalIgnoreCase);
+                motivo = permitidoDcav
+                    ? "ReturnUrl permitido para DirectorCertificacionesDcav"
+                    : "ReturnUrl no permitido para DirectorCertificacionesDcav";
+                return permitidoDcav;
+            }
+
             if (path.StartsWith("/Tecnico", StringComparison.OrdinalIgnoreCase))
             {
                 var permitido = rolesUsuario.Any(r =>
@@ -1913,6 +1940,11 @@ namespace CapaPresentacion.Controllers
         {
             if (string.IsNullOrWhiteSpace(rolActivo) || !RoleGroupingHelper.IsSolicitante(rolActivo))
             {
+                if (RoleGroupingHelper.IsDirectorCertificacionesDcav(rolActivo))
+                {
+                    return Url.Action("Revision", "AocrDcav");
+                }
+
                 if (RoleGroupingHelper.IsCoordinacion(rolActivo))
                 {
                     return Url.Action("Index", "Tecnico");

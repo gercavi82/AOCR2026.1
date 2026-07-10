@@ -18,8 +18,11 @@ namespace CapaPresentacion
             // Rehidrata sesion cuando existe cookie valida y fuerza seleccion de compania RT.
             filters.Add(new RestoreAuthenticatedSessionAttribute(), 3);
 
+            // Restringe al Director de Certificaciones DCAV a su flujo operativo y lecturas relacionadas.
+            filters.Add(new DirectorCertificacionesDcavRouteGuardAttribute(), 4);
+
             // Filtro de auditoría
-            filters.Add(new AuditActionFilter(), 4);
+            filters.Add(new AuditActionFilter(), 5);
 
             // HandleError removido: pasaba HandleErrorInfo a Error.cshtml que espera
             // ErrorViewModel, causando doble-falla (InvalidOperationException).

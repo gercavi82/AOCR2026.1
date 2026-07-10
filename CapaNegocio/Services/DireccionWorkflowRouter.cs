@@ -56,7 +56,9 @@ namespace CapaNegocio.Services
             var estadoAocr = Normalizar(contexto.EstadoAocr);
             var estadoCentral = _procesoEstadoDao.ObtenerActivoPorSolicitud(solicitudId);
 
-            if (estadoCentral != null && string.Equals(estadoCentral.EstadoActual, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase))
+            if (estadoCentral != null
+                && (string.Equals(estadoCentral.EstadoActual, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoCentral.EstadoActual, AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, StringComparison.OrdinalIgnoreCase)))
             {
                 return CrearResultado(DireccionWorkflowAccion.FirmarAocr, contexto, "AOCR y Condiciones pendientes de firma institucional del Director General.");
             }

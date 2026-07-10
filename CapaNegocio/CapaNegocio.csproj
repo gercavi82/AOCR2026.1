@@ -78,6 +78,7 @@
       <HintPath>..\packages\Npgsql.4.1.13\lib\net461\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
@@ -137,6 +138,8 @@
     <Compile Include="AeronaveSolicitudBL.cs" />
     <Compile Include="DTOs\NotificacionDTOs.cs" />
     <Compile Include="DTOs\OrdenRecaudacionDTOs.cs" />
+    <Compile Include="DTOs\EstadoTecnicoInspeccion.cs" />
+    <Compile Include="Services\EstadoTecnicoInspeccionService.cs" />
     <Compile Include="Integraciones\As400Sync\Contracts.cs" />
     <Compile Include="Integraciones\As400Sync\As400MirrorSyncOptionsFactory.cs" />
     <Compile Include="Integraciones\As400Sync\As400MirrorSyncDefinitions.cs" />
@@ -254,6 +257,7 @@
     <Compile Include="SolicitudBL.cs" />
     <Compile Include="Services\Fr3RetryService.cs" />
     <Compile Include="Services\GeneracionAOCRService.cs" />
+    <Compile Include="Services\GeneracionCondicionesService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

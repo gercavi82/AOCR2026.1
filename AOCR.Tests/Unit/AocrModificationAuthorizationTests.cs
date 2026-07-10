@@ -9,6 +9,51 @@ namespace AOCR.Tests.Unit
     public class AocrModificationAuthorizationTests
     {
         [TestMethod]
+        public void InspectorAocrSidebar_ShouldUseDedicatedFirmaAocrQueue()
+        {
+            var content = LeerArchivoRepositorio("CapaPresentacion\\Helpers\\SidebarMenuBuilder.cs");
+
+            StringAssert.Contains(content, "\"aocr-ins-genera\", \"Revisar AOCR\"");
+            StringAssert.Contains(content, "\"FirmaAocr\", \"PendientesInspector\", new { tipoDocumento = \"RECONOCIMIENTO\" }");
+            StringAssert.Contains(content, "\"FirmaAocr\", \"PendientesInspector\", new { tipoDocumento = \"CONDICIONES_LIMITACIONES\" }");
+            Assert.IsFalse(content.Contains("\"aocr-ins-genera\", \"Generar AOCR\", \"Gestión de AOCR desde la fase técnica e inspección satisfactoria.\", \"fas fa-file-signature\", \"Inspeccion\", \"Index\""));
+        }
+
+        [TestMethod]
+        public void InspectorAocrQueue_ShouldUseCentralDocumentStatesAndAssignedInspector()
+        {
+            var content = LeerArchivoRepositorio("CapaPresentacion\\Services\\FirmaAocrInspectorQueueService.cs");
+
+            StringAssert.Contains(content, "AocrEstadosProceso.DocumentosHabilitadosInspector");
+            StringAssert.Contains(content, "AocrEstadosProceso.DocumentosEnRevisionInspector");
+            StringAssert.Contains(content, "AocrEstadosProceso.DocumentosObservadosDcav");
+            StringAssert.Contains(content, "AocrEstadosProceso.PendienteRevisionDocumentosDcav");
+            StringAssert.Contains(content, "PuedeInspectorAbrirInspeccion(inspeccion.CodigoInspeccion, usuarioId)");
+        }
+
+        [TestMethod]
+        public void InspectorAocrEditor_ShouldExposeSingleFinalSendAction()
+        {
+            var view = LeerArchivoRepositorio("CapaPresentacion\\Views\\FirmaAocr\\Index.cshtml");
+
+            StringAssert.Contains(view, "Model.PuedeEditarDocumentos && !todosFirmados");
+            StringAssert.Contains(view, "Finalizar revisión y enviar a DCAV");
+            StringAssert.Contains(view, "!puedeEnviarRevisionDcav || !todosPdfGenerados");
+        }
+
+        [TestMethod]
+        public void DcavSidebarAndDocuments_ShouldUseSeparatedPhasesAndOwnEndpoints()
+        {
+            var sidebar = LeerArchivoRepositorio("CapaPresentacion\\Helpers\\SidebarMenuBuilder.cs");
+            var view = LeerArchivoRepositorio("CapaPresentacion\\Views\\AocrDcav\\Revision.cshtml");
+
+            StringAssert.Contains(sidebar, "new { fase = \"informe\" }");
+            StringAssert.Contains(sidebar, "new { fase = \"documentos\" }");
+            StringAssert.Contains(view, "VerDocumentoEnviado");
+            Assert.IsFalse(view.Contains("DocumentoValidacionAocr\", \"CoordinacionJefatura"));
+        }
+
+        [TestMethod]
         public void SolicitudAocr_ModificationInspectorActions_ShouldRequireInspectorRole()
         {
             AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "MarcarRequiereInspeccionModificacion", "Inspector,Administrador");

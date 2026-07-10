@@ -12,6 +12,7 @@ namespace CapaNegocio.Services
     {
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly RevisionDocumentalBandejaService _revisionDocumentalBandejaService = new RevisionDocumentalBandejaService();
+        private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
 
         public int ContarRevisionDocumentalPendiente(AocrBandejaRoleContext context)
         {
@@ -33,6 +34,28 @@ namespace CapaNegocio.Services
                 .ToList();
         }
 
+        public IList<SolicitudAOCR> ObtenerDocumentosPendientesRevision(AocrBandejaRoleContext context)
+        {
+            var inspecciones = ObtenerInspeccionesAsignadas(context);
+            var solicitudesIds = inspecciones.Select(i => i.CodigoSolicitud).Distinct().ToList();
+            var result = new List<SolicitudAOCR>();
+            
+            foreach (var id in solicitudesIds)
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(id);
+                if (solicitud != null)
+                {
+                    var estadoCentral = CapaDatos.Constants.EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+                    if (string.Equals(estadoCentral, AocrEstadosProceso.DocumentosHabilitadosInspector, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(estadoCentral, AocrEstadosProceso.DocumentosObservadosDcav, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.Add(solicitud);
+                    }
+                }
+            }
+            return result;
+        }
+
         public InspectorBandejaContadores ObtenerContadores(AocrBandejaRoleContext context)
         {
             var inspecciones = ObtenerInspeccionesAsignadas(context);
@@ -43,7 +66,8 @@ namespace CapaNegocio.Services
                 EnFase = inspecciones.Count(ins => EsEstadoEnFase(ins.Estado)),
                 Observadas = inspecciones.Count(ins => EsEstadoObservada(ins.Estado)),
                 Finalizadas = inspecciones.Count(ins => EsEstadoFinalizada(ins.Estado)),
-                RevisionDocumental = ContarRevisionDocumentalPendiente(context)
+                RevisionDocumental = ContarRevisionDocumentalPendiente(context),
+                DocumentosAocr = ObtenerDocumentosPendientesRevision(context).Count
             };
         }
 
@@ -191,5 +215,6 @@ namespace CapaNegocio.Services
         public int Observadas { get; set; }
         public int Finalizadas { get; set; }
         public int RevisionDocumental { get; set; }
+        public int DocumentosAocr { get; set; }
     }
 }

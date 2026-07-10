@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -33,6 +34,10 @@ namespace CapaPresentacion.Helpers
             public int InspectorInProgressInspections { get; set; }
             public int InspectorObservedInspections { get; set; }
             public int InspectorFinishedInspections { get; set; }
+            public int InspectorAocrEditable { get; set; }
+            public int InspectorCondicionesEditable { get; set; }
+            public int InspectorDocumentosObservados { get; set; }
+            public int InspectorDocumentosEnviados { get; set; }
             public int CoordinatorPendingAssignment { get; set; }
             public int CoordinatorDocumentalQueue { get; set; }
             public int CoordinatorAocrFormalReview { get; set; }
@@ -44,6 +49,9 @@ namespace CapaPresentacion.Helpers
             public int FinancialApprovedOrders { get; set; }
             public int FinancialFacturedOrders { get; set; }
             public int FinancialHistoryOrders { get; set; }
+            public int DcavPendingReview { get; set; }
+            public int DcavPendingReports { get; set; }
+            public int DcavPendingDocuments { get; set; }
             public int DirdacPendingSignatures { get; set; }
             public int ExecutiveApprovalQueue { get; set; }
             public int AdminApprovalUsers { get; set; }
@@ -649,7 +657,14 @@ namespace CapaPresentacion.Helpers
             var cached = session[cacheKey] as SidebarBadgeSnapshot;
             var cachedTime = session[cacheTimeKey] as long?;
             var now = DateTime.UtcNow.Ticks;
-            var cacheSeconds = context.EsFinancieroRol || context.EsAdministrador ? 5 : 45;
+            var cacheSeconds = context.EsFinancieroRol
+                || context.EsAdministrador
+                || context.EsDirectorCertificacionesDcavRol
+                || context.EsDirdacRol
+                || context.EsDirectorGeneralRol
+                || context.EsInspectorRol
+                ? 5
+                : 45;
             if (cached != null && cachedTime.HasValue && (now - cachedTime.Value) < TimeSpan.FromSeconds(cacheSeconds).Ticks)
             {
                 return cached;
@@ -709,6 +724,15 @@ namespace CapaPresentacion.Helpers
                     snapshot.InspectorInProgressInspections = contadoresInspector.EnFase;
                     snapshot.InspectorObservedInspections = contadoresInspector.Observadas;
                     snapshot.InspectorFinishedInspections = contadoresInspector.Finalizadas;
+                    var documentosInspector = new FirmaAocrInspectorQueueService().Obtener(context.UserId, context.EsAdministrador);
+                    snapshot.InspectorAocrEditable = documentosInspector.AocrEditables + documentosInspector.Observados.Count;
+                    snapshot.InspectorCondicionesEditable = documentosInspector.CondicionesEditables + documentosInspector.Observados.Count;
+                    snapshot.InspectorDocumentosObservados = documentosInspector.Observados.Count;
+                    snapshot.InspectorDocumentosEnviados = documentosInspector.Enviados.Count;
+                    Trace.TraceInformation("[SIDEBAR][AOCR_COUNT] UsuarioId=" + context.UserId + "; Cantidad=" + snapshot.InspectorAocrEditable + ";");
+                    Trace.TraceInformation("[SIDEBAR][CONDICIONES_COUNT] UsuarioId=" + context.UserId + "; Cantidad=" + snapshot.InspectorCondicionesEditable + ";");
+                    Trace.TraceInformation("[SIDEBAR][DOCUMENTOS_OBSERVADOS_COUNT] UsuarioId=" + context.UserId + "; Cantidad=" + snapshot.InspectorDocumentosObservados + ";");
+                    Trace.TraceInformation("[SIDEBAR][DOCUMENTOS_ENVIADOS_COUNT] UsuarioId=" + context.UserId + "; Cantidad=" + snapshot.InspectorDocumentosEnviados + ";");
                 }
             }
             catch (Exception ex)
@@ -719,6 +743,10 @@ namespace CapaPresentacion.Helpers
                 snapshot.InspectorInProgressInspections = 0;
                 snapshot.InspectorObservedInspections = 0;
                 snapshot.InspectorFinishedInspections = 0;
+                snapshot.InspectorAocrEditable = 0;
+                snapshot.InspectorCondicionesEditable = 0;
+                snapshot.InspectorDocumentosObservados = 0;
+                snapshot.InspectorDocumentosEnviados = 0;
                 LogSidebarCounterError(context, "INSPECTOR_REVISION_DOCUMENTAL", ex);
             }
 
@@ -746,21 +774,40 @@ namespace CapaPresentacion.Helpers
 
             try
             {
-                if (DebeCargarContadorRol(context, "direccion") || context.EsDirectorCertificacionesDcavRol)
+                if (context.EsDirectorCertificacionesDcavRol)
+                {
+                    var dcavDao = new AocrDcavDAO();
+                    var informes = dcavDao.ObtenerPendientesRevisionInforme();
+                    var documentos = dcavDao.ObtenerPendientesRevisionDocumentos();
+                    var observados = dcavDao.ObtenerObservados();
+                    var legacy = dcavDao.ObtenerLegacyPendientesRevisionDcav();
+                    var recuperados = new AocrDcavRevisionService().ListarPendientes().Count;
+                    snapshot.DcavPendingReview = Math.Max(informes.Count + documentos.Count + observados.Count + legacy.Count, recuperados);
+                    snapshot.DcavPendingReports = informes.Count;
+                    snapshot.DcavPendingDocuments = documentos.Count;
+                    snapshot.ExecutiveApprovalQueue = snapshot.DcavPendingReview;
+                    snapshot.DirdacPendingSignatures = 0;
+                    Trace.TraceInformation("[SIDEBAR_COUNTERS][DCAV] UsuarioId=" + context.UserId
+                        + "; Rol=" + (context.RolActual ?? string.Empty)
+                        + "; Informes=" + informes.Count
+                        + "; Documentos=" + documentos.Count
+                        + "; Observados=" + observados.Count
+                        + "; Legacy=" + legacy.Count
+                        + "; Recuperados=" + recuperados
+                        + "; Cantidad=" + snapshot.DcavPendingReview + ";");
+                }
+                else if (DebeCargarContadorRol(context, "direccion"))
                 {
                     var contadoresDireccion = new AocrSidebarCounterService().ObtenerContadoresDireccion();
                     snapshot.ExecutiveApprovalQueue = contadoresDireccion.BandejaEjecutivaAprobacion;
                     snapshot.DirdacPendingSignatures = contadoresDireccion.FirmasPendientesDirdac;
-                    if (context.EsDirectorCertificacionesDcavRol)
-                    {
-                        snapshot.ExecutiveApprovalQueue = new AocrProcesoEstadoDAO()
-                            .ListarActivosPorEstado(AocrEstadosProceso.PendienteRevisionDcav)
-                            .Count;
-                    }
                 }
             }
             catch (Exception ex)
             {
+                snapshot.DcavPendingReview = 0;
+                snapshot.DcavPendingReports = 0;
+                snapshot.DcavPendingDocuments = 0;
                 snapshot.ExecutiveApprovalQueue = 0;
                 snapshot.DirdacPendingSignatures = 0;
                 LogSidebarCounterError(context, "DIRECCION_EJECUTIVA", ex);
@@ -1345,8 +1392,8 @@ namespace CapaPresentacion.Helpers
             }
             else if (context.EsDirdacRol || context.EsDirectorGeneralRol)
             {
-                pendientesController = "Inspeccion";
-                pendientesAction = "PendientesDireccion";
+                pendientesController = "FirmaAocr";
+                pendientesAction = "Pendientes";
                 pendientesBadge = context.Badges.DirdacPendingSignatures;
                 pendientesVisible = true;
                 pendientesTitle = "Pendientes de firma";
@@ -1380,7 +1427,7 @@ namespace CapaPresentacion.Helpers
                 : (context.EsDirdacRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsAdministrador
                     ? context.Badges.ExecutiveApprovalQueue + context.Badges.CoordinatorFinalDocuments
                     : 0);
-            group.Items.Add(CreateItem(context, "aocr-condiciones", "AOCR y condiciones", "Revisión, validación, legalización y emisión final de documentos AOCR.", "fas fa-certificate", context.EsDirdacRol ? "Inspeccion" : (context.EsLegalRol ? "SolicitudAOCR" : "SolicitudAOCR"), context.EsDirdacRol ? "PendientesDireccion" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas"), null, aocrCondicionesBadge, "info", context.EsSolicitanteORT || context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "PendientesDireccion" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas") }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-condiciones", "AOCR y condiciones", "Revisión, validación, legalización y emisión final de documentos AOCR.", "fas fa-certificate", context.EsDirdacRol ? "FirmaAocr" : (context.EsLegalRol ? "SolicitudAOCR" : "SolicitudAOCR"), context.EsDirdacRol ? "Pendientes" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas"), null, aocrCondicionesBadge, "info", context.EsSolicitanteORT || context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "Pendientes" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas") }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "documentos-finales", "Documentos finales", "AOCR generadas, firmadas, condiciones emitidas y PDFs institucionales.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
@@ -1393,7 +1440,7 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateItem(context, "revision-pendiente", "Pendientes de revisión", "Documentación que espera decisión técnica, coordinadora o legal.", "fas fa-hourglass-half", context.EsInspectorRol ? "RevisionDocumental" : "CoordinacionJefatura", context.EsInspectorRol ? "Index" : "RevisionVerificacion", null, context.EsInspectorRol ? context.Badges.InspectorPendingRevision : context.Badges.CoordinatorDocumentalQueue, "warning", context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsAdministrador, true, string.Empty, new[] { context.EsInspectorRol ? "Index" : "RevisionVerificacion" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "observados", "Observados y devueltos", "Trámites con observaciones activas o pendientes de corrección.", "fas fa-triangle-exclamation", context.EsSolicitanteORT ? "SolicitudAOCR" : "CoordinacionJefatura", context.EsSolicitanteORT ? "MisSolicitudes" : "DashboardInspeccion", null, context.Badges.RtObservedRequests, "danger", context.EsSolicitanteORT || context.EsCoordinadorRol || context.EsAdministrador, true, string.Empty, new[] { context.EsSolicitanteORT ? "MisSolicitudes" : "DashboardInspeccion" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "subsanaciones", "Subsanaciones", "Documentación observada que requiere nueva carga o verificación posterior.", "fas fa-screwdriver-wrench", context.EsSolicitanteORT ? "SolicitudAOCR" : "RevisionDocumental", context.EsSolicitanteORT ? "MisSolicitudes" : "Index", null, context.EsSolicitanteORT ? context.Badges.RtPendingSubsanations : context.Badges.InspectorPendingRevision, "warning", context.EsSolicitanteORT || context.EsInspectorRol || context.EsAdministrador, true, string.Empty, new[] { context.EsSolicitanteORT ? "MisSolicitudes" : "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "listos-firma", "Listos para firma", "Documentos que llegaron a fase de validación o firma institucional.", "fas fa-signature", context.EsDirdacRol ? "Inspeccion" : (context.EsLegalRol ? "SolicitudAOCR" : "CoordinacionJefatura"), context.EsDirdacRol ? "PendientesDireccion" : (context.EsLegalRol ? "RevisarLegalizacion" : "DashboardInspeccion"), null, context.EsDirdacRol ? context.Badges.DirdacPendingSignatures : context.Badges.ExecutiveApprovalQueue, "danger", context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "PendientesDireccion" : (context.EsLegalRol ? "RevisarLegalizacion" : "DashboardInspeccion") }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "listos-firma", "Listos para firma", "Documentos que llegaron a fase de validación o firma institucional.", "fas fa-signature", context.EsDirdacRol ? "FirmaAocr" : (context.EsLegalRol ? "SolicitudAOCR" : "CoordinacionJefatura"), context.EsDirdacRol ? "Pendientes" : (context.EsLegalRol ? "RevisarLegalizacion" : "DashboardInspeccion"), null, context.EsDirdacRol ? context.Badges.DirdacPendingSignatures : context.Badges.ExecutiveApprovalQueue, "danger", context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "Pendientes" : (context.EsLegalRol ? "RevisarLegalizacion" : "DashboardInspeccion") }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "finalizados", "Finalizados", "Consulta consolidada de documentos emitidos, firmados y concluidos.", "fas fa-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "historial", "Historial del trámite", "Histórico funcional del expediente y sus hitos documentales y técnicos.", "fas fa-clock-rotate-left", context.EsFinancieroRol ? "Financiero" : "SolicitudAOCR", context.EsFinancieroRol ? "TodasOrdenes" : "MisSolicitudes", null, 0, "neutral", context.EsSolicitanteORT || context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { context.EsFinancieroRol ? "TodasOrdenes" : "MisSolicitudes", "Detalle" }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
@@ -1404,9 +1451,9 @@ namespace CapaPresentacion.Helpers
         {
             var group = NewGroup("firmas", "Firmas y aprobación", "fas fa-file-signature", "Aquí revise, apruebe y firme documentos finales del flujo AOCR.", "danger");
             group.Items.Add(CreateItem(context, "informes-firma", "Informes pendientes de aprobación", "Revisión final de informes técnicos e hitos previos a la firma institucional.", "fas fa-file-signature", "Inspeccion", "PendientesDireccion", null, context.Badges.DirdacPendingSignatures, "danger", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "PendientesDireccion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-firma", "Firma institucional AOCR", "Documentos AOCR listos para validacion y firma institucional.", "fas fa-stamp", "Inspeccion", "PendientesDireccion", null, context.Badges.ExecutiveApprovalQueue, "warning", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "PendientesDireccion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "condiciones-firma", "Condiciones dentro de firma AOCR", "Condiciones y limitaciones gestionadas desde la firma institucional AOCR.", "fas fa-file-contract", "Inspeccion", "PendientesDireccion", null, context.Badges.ExecutiveApprovalQueue, "warning", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "PendientesDireccion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "legalizacion", "Legalización y firma DIRDAC", "Revisión jurídica, emisión y cierre formal del documento final.", "fas fa-gavel", context.EsLegalRol ? "SolicitudAOCR" : "Inspeccion", context.EsLegalRol ? "RevisarLegalizacion" : "PendientesDireccion", null, context.Badges.ExecutiveApprovalQueue, "info", context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsLegalRol ? "RevisarLegalizacion" : "PendientesDireccion" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-firma", "Firma institucional AOCR", "Documentos AOCR listos para validacion y firma institucional.", "fas fa-stamp", "FirmaAocr", "Pendientes", null, context.Badges.DirdacPendingSignatures, "warning", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "Pendientes", "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "condiciones-firma", "Condiciones dentro de firma AOCR", "Condiciones y limitaciones gestionadas desde la firma institucional AOCR.", "fas fa-file-contract", "FirmaAocr", "Pendientes", null, context.Badges.DirdacPendingSignatures, "warning", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "Pendientes", "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "legalizacion", "Legalización y firma DIRDAC", "Revisión jurídica, emisión y cierre formal del documento final.", "fas fa-gavel", context.EsLegalRol ? "SolicitudAOCR" : "FirmaAocr", context.EsLegalRol ? "RevisarLegalizacion" : "Pendientes", null, context.Badges.DirdacPendingSignatures, "info", context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsLegalRol ? "RevisarLegalizacion" : "Pendientes" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "firmados", "Documentos firmados", "Consulta de AOCR, condiciones e informes ya firmados y emitidos.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "success", context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
@@ -1514,13 +1561,13 @@ namespace CapaPresentacion.Helpers
                 panelAction = "DashboardGerencial";
                 panelDescription = "Vista ejecutiva con documentos listos para aprobación y firma.";
                 panelBadge = context.Badges.DirdacPendingSignatures;
-                workController = "Inspeccion";
-                workAction = "PendientesDireccion";
-                workDescription = "Bandeja de informes y documentos pendientes de decisión institucional.";
+                workController = "FirmaAocr";
+                workAction = "Pendientes";
+                workDescription = "Bandeja de AOCR y Condiciones pendientes de firma institucional.";
                 workBadge = context.Badges.DirdacPendingSignatures;
-                pendingController = "Inspeccion";
-                pendingAction = "PendientesDireccion";
-                pendingDescription = "Informes y documentos pendientes de firma o devolución.";
+                pendingController = "FirmaAocr";
+                pendingAction = "Pendientes";
+                pendingDescription = "AOCR y Condiciones pendientes de firma o devolución.";
                 pendingBadge = context.Badges.DirdacPendingSignatures;
             }
             else if (context.EsAdministrador)
@@ -1687,10 +1734,10 @@ namespace CapaPresentacion.Helpers
         {
             var group = NewGroup("aocr-condiciones-main", "AOCR y Condiciones", "fas fa-certificate", "Generación, revisión, descarga y seguimiento de AOCR y condiciones o limitaciones.", "primary");
 
-            group.Items.Add(CreateItem(context, "aocr-ins-genera", "Generar AOCR", "Gestión de AOCR desde la fase técnica e inspección satisfactoria.", "fas fa-file-signature", "Inspeccion", "Index", null, 0, "info", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-ins-condiciones", "Generar Condiciones y Limitaciones", "Generación de condiciones desde el flujo técnico correspondiente.", "fas fa-file-contract", "Inspeccion", "Index", null, 0, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-ins-devueltas", "AOCR devueltas para corrección", "Casos AOCR observados o devueltos para ajuste técnico.", "fas fa-rotate-left", "Inspeccion", "Index", null, 0, "danger", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-ins-enviadas", "AOCR enviadas", "AOCR remitidas a revisión coordinadora o firma institucional.", "fas fa-paper-plane", "Inspeccion", "Index", null, 0, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-ins-genera", "Revisar AOCR", "AOCR habilitados para revisión y generación por el Inspector asignado.", "fas fa-file-signature", "FirmaAocr", "PendientesInspector", new { tipoDocumento = "RECONOCIMIENTO" }, context.Badges.InspectorAocrEditable, "info", context.EsInspectorRol, true, string.Empty, new[] { "PendientesInspector", "Index" }, "tipoDocumento", "RECONOCIMIENTO", string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-ins-condiciones", "Revisar Condiciones y Limitaciones", "Condiciones y Limitaciones habilitadas para revisión por el Inspector asignado.", "fas fa-file-contract", "FirmaAocr", "PendientesInspector", new { tipoDocumento = "CONDICIONES_LIMITACIONES" }, context.Badges.InspectorCondicionesEditable, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "PendientesInspector", "Index" }, "tipoDocumento", "CONDICIONES_LIMITACIONES", string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-ins-devueltas", "Documentos devueltos por DCAV", "AOCR o Condiciones y Limitaciones observados para corrección.", "fas fa-rotate-left", "FirmaAocr", "PendientesInspector", new { filtro = "observados" }, context.Badges.InspectorDocumentosObservados, "danger", context.EsInspectorRol, true, string.Empty, new[] { "PendientesInspector" }, "filtro", "observados", string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-ins-enviadas", "Documentos enviados al DCAV", "Expedientes remitidos y bloqueados mientras DCAV realiza su revisión.", "fas fa-paper-plane", "FirmaAocr", "PendientesInspector", new { filtro = "enviados" }, context.Badges.InspectorDocumentosEnviados, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "PendientesInspector" }, "filtro", "enviados", string.Empty));
 
             group.Items.Add(CreateItem(context, "aocr-coord-revisar", "Revisar AOCR", "Revisión coordinadora de AOCR y condiciones antes de firma.", "fas fa-search", "CoordinacionJefatura", "DashboardInspeccion", null, context.Badges.CoordinatorAocrFormalReview, "warning", context.EsCoordinadorRol || context.EsLegalRol, true, string.Empty, new[] { "DashboardInspeccion" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-coord-modificar", "Solicitar modificación", "AOCR o condiciones que requieren ajuste previo a continuar el flujo.", "fas fa-pen-to-square", "CoordinacionJefatura", "DashboardInspeccion", null, context.Badges.CoordinatorAocrFormalReview, "danger", context.EsCoordinadorRol || context.EsLegalRol, true, string.Empty, new[] { "DashboardInspeccion" }, null, null, string.Empty));
@@ -1701,7 +1748,7 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateItem(context, "aocr-rt-condiciones", "Condiciones firmadas", "Condiciones y limitaciones emitidas para descarga o consulta.", "fas fa-file-contract", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtCondicionesFirmadas, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-rt-descargar", "Descargar documentos finales", "Descarga de AOCR, condiciones y documentos finales emitidos.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtDescargasFinales, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
 
-            group.Items.Add(CreateItem(context, "aocr-dcav-revision", "Revisión DCAV", "Expedientes AOCR listos para revisión del Director de Certificaciones DCAV.", "fas fa-clipboard-check", "AocrDcav", "Revision", null, context.Badges.ExecutiveApprovalQueue, "warning", context.EsDirectorCertificacionesDcavRol || context.EsAdministrador, true, string.Empty, new[] { "Revision", "Detalle" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-dcav-revision", "Informes técnicos", "Informes técnicos firmados pendientes de decisión DCAV.", "fas fa-clipboard-check", "AocrDcav", "Revision", new { fase = "informe" }, context.Badges.DcavPendingReports, "warning", context.EsDirectorCertificacionesDcavRol || context.EsAdministrador, true, string.Empty, new[] { "Revision", "Detalle" }, "fase", "informe", string.Empty));
             group.Items.Add(CreateItem(context, "aocr-admin-firmadas", "AOCR generadas y firmadas", "Consulta integral de AOCR y condiciones finalizadas.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "success", context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-admin-todas", "Todas las AOCR", "Seguimiento administrativo global del universo de AOCR emitidas o en proceso.", "fas fa-layer-group", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "neutral", context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-admin-condiciones", "Condiciones y Limitaciones", "Consulta de condiciones emitidas y control administrativo asociado.", "fas fa-file-contract", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "neutral", context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
@@ -1718,8 +1765,8 @@ namespace CapaPresentacion.Helpers
             var visibleDcav = context.EsDirectorCertificacionesDcavRol || context.EsAdministrador;
 
             group.Items.Add(CreateItem(context, "firm-dir-informes", "Informes tecnicos por aprobar", "Informes tecnicos listos para revision institucional.", "fas fa-file-lines", "Inspeccion", "PendientesDireccion", null, context.Badges.DirdacPendingSignatures, "warning", visibleDireccion, true, string.Empty, new[] { "PendientesDireccion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "firm-dcav-revision", "Revisión DCAV AOCR", "Revisión del expediente AOCR antes de firma del Director General.", "fas fa-clipboard-check", "AocrDcav", "Revision", null, context.Badges.ExecutiveApprovalQueue, "warning", visibleDcav, true, string.Empty, new[] { "Revision", "Detalle" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "firm-dir-aocr", "Firma institucional AOCR", "Entrada unica para completar datos, generar PDF oficial y firmar AOCR.", "fas fa-signature", "Inspeccion", "PendientesDireccion", null, context.Badges.ExecutiveApprovalQueue, "info", visibleDireccion, true, string.Empty, new[] { "PendientesDireccion" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "firm-dcav-revision", "AOCR y Condiciones", "AOCR y Condiciones enviados por el Inspector antes de firma del Director General.", "fas fa-clipboard-check", "AocrDcav", "Revision", new { fase = "documentos" }, context.Badges.DcavPendingDocuments, "warning", visibleDcav, true, string.Empty, new[] { "Revision", "Detalle" }, "fase", "documentos", string.Empty));
+            group.Items.Add(CreateItem(context, "firm-dir-aocr", "Firma institucional AOCR", "Entrada unica para completar datos, generar PDF oficial y firmar AOCR.", "fas fa-signature", "FirmaAocr", "Pendientes", null, context.Badges.DirdacPendingSignatures, "info", visibleDireccion, true, string.Empty, new[] { "Pendientes", "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "firm-dir-firmados", "Documentos firmados", "Consulta de AOCR y documentos finales firmados.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "success", visibleDireccion, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "firm-dir-historial", "Historial institucional", "Seguimiento institucional de tramites y documentos finales.", "fas fa-clock-rotate-left", "Direccion", "DashboardGerencial", null, 0, "neutral", visibleDireccion, true, string.Empty, new[] { "DashboardGerencial" }, null, null, string.Empty));
 
@@ -1764,6 +1811,13 @@ namespace CapaPresentacion.Helpers
                 historyDescription = "Documentos finales y resoluciones emitidas por dirección.";
                 historyBadge = context.Badges.CoordinatorFinalDocuments;
             }
+            else if (context.EsDirectorCertificacionesDcavRol)
+            {
+                historyController = "AocrDcav";
+                historyAction = "Revision";
+                historyDescription = "Historial operativo de expedientes revisados u observados por DCAV.";
+                historyBadge = context.Badges.ExecutiveApprovalQueue;
+            }
             else if (context.EsAdministrador)
             {
                 historyController = "SolicitudAOCR";
@@ -1774,9 +1828,9 @@ namespace CapaPresentacion.Helpers
 
             group.Items.Add(CreateItem(context, "hist-tramites", "Historial de trámites", historyDescription, "fas fa-folder-tree", historyController, historyAction, null, historyBadge, "neutral", true, true, string.Empty, new[] { historyAction, "MisSolicitudes", "GeneradasFirmadas", "TodasOrdenes", "DashboardInspeccion", "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "hist-observaciones", "Observaciones", "Consulta de devoluciones, ajustes y observaciones registradas en el proceso.", "fas fa-triangle-exclamation", historyController, historyAction, null, 0, "danger", true, true, string.Empty, new[] { historyAction, "MisSolicitudes", "DashboardInspeccion", "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "hist-finales", "Documentos finales", "AOCR, condiciones y documentos finales listos para consulta o descarga.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "hist-finales", "Documentos finales", "AOCR, condiciones y documentos finales listos para consulta o descarga.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", !context.EsDirectorCertificacionesDcavRol, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateDisabledItem(context, "hist-auditoria", "Auditoría del trámite", "Seguimiento detallado del caso específico y su bitácora funcional.", "fas fa-shield-alt", "Disponible desde el detalle del trámite o desde pantallas administrativas de auditoría.", true));
-            group.Items.Add(CreateItem(context, "hist-descargas", "Descargas", "Acceso directo a descargas y documentos emitidos del flujo AOCR.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "hist-descargas", "Descargas", "Acceso directo a descargas y documentos emitidos del flujo AOCR.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", !context.EsDirectorCertificacionesDcavRol, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
 
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
@@ -1842,7 +1896,7 @@ namespace CapaPresentacion.Helpers
                 actions.Add(CreateQuickAction(context, "qa-revision", "Revisar documentos", "fas fa-file-check", "RevisionDocumental", "Index", null, context.Badges.InspectorPendingRevision, "warning", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-inspecciones", "Mis tramites", "fas fa-plane-departure", "Inspeccion", "Index", null, context.Badges.InspectorTotalInspections, "neutral", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-informe", "Inspeccion e Informe Tecnico", "fas fa-file-lines", "Informe", "Index", null, 0, "neutral", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-aocr-corregir", "AOCR por corregir", "fas fa-certificate", "Inspeccion", "Index", new { estado = "OBSERVADA" }, context.Badges.InspectorObservedInspections, "warning", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-aocr-corregir", "Revisar AOCR y Condiciones", "fas fa-certificate", "FirmaAocr", "PendientesInspector", null, context.Badges.InspectorAocrEditable + context.Badges.InspectorDocumentosObservados, "warning", true, true, string.Empty));
             }
 
             if (context.EsCoordinadorRol || context.EsLegalRol)
@@ -1854,12 +1908,12 @@ namespace CapaPresentacion.Helpers
 
             if (context.EsDirectorCertificacionesDcavRol)
             {
-                actions.Add(CreateQuickAction(context, "qa-dcav-revision", "Revisión DCAV", "fas fa-clipboard-check", "AocrDcav", "Revision", null, context.Badges.ExecutiveApprovalQueue, "warning", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-dcav-revision", "Revisión DCAV", "fas fa-clipboard-check", "AocrDcav", "Revision", null, context.Badges.DcavPendingReview, "warning", true, true, string.Empty));
             }
 
             if (context.EsDirdacRol || context.EsDirectorGeneralRol)
             {
-                actions.Add(CreateQuickAction(context, "qa-firma", "Firmar pendientes", "fas fa-signature", "Inspeccion", "PendientesDireccion", null, context.Badges.DirdacPendingSignatures, "danger", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-firma", "Firmar pendientes", "fas fa-signature", "FirmaAocr", "Pendientes", null, context.Badges.DirdacPendingSignatures, "danger", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-firmados", "Documentos firmados", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty));
             }
 

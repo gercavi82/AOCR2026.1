@@ -8,7 +8,7 @@
     var documentos = Model != null && Model.Documentos != null ? Model.Documentos : new System.Collections.Generic.List<CapaPresentacion.Models.FirmaAocrDocumentoItemViewModel>();
     var todosFirmados = Model != null && Model.AmbosDocumentosFirmados;
     var todosPdfGenerados = documentos.Count > 0 && documentos.All(d => d.PdfExiste);
-    var puedeEnviarRevisionDcav = User != null && (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion") || User.IsInRole("Administrador"));
+    var puedeEnviarRevisionDcav = Model != null && Model.PuedeEnviarRevisionDcav;
 }
 
 <link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
@@ -66,7 +66,7 @@
 
     <section class="firma-aocr__layout">
         <main class="firma-aocr__main">
-            @if (Model != null && !firmado)
+            @if (Model != null && Model.PuedeGuardarDatos && !firmado)
             {
                 <article class="firma-aocr__box firma-aocr__data">
                     <div class="firma-aocr__box-head">
@@ -197,7 +197,7 @@
                 </article>
             }
 
-            @if (Model != null && puedeEnviarRevisionDcav && todosPdfGenerados && !todosFirmados && !puedeFirmar)
+            @if (Model != null && Model.PuedeEditarDocumentos && !todosFirmados && !puedeFirmar)
             {
                 <article class="firma-aocr__box">
                     <div class="firma-aocr__box-head">
@@ -207,11 +207,18 @@
                             <p>Remite AOCR, Condiciones y Limitaciones e informe técnico al Director de Certificaciones DCAV.</p>
                         </div>
                     </div>
+                    @if (!todosPdfGenerados)
+                    {
+                        <div class="firma-aocr__notice">
+                            <strong>No se puede finalizar todavía.</strong>
+                            <span>@(!documentos.Any(d => d.TipoDocumento == "RECONOCIMIENTO" && d.PdfExiste) ? "Genere el PDF del AOCR. " : "")@(!documentos.Any(d => d.TipoDocumento == "CONDICIONES_LIMITACIONES" && d.PdfExiste) ? "Genere el PDF de Condiciones y Limitaciones." : "")</span>
+                        </div>
+                    }
                     <form method="post" action="@Url.Action("EnviarRevisionDcav", "AocrDcav")">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
-                        <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary">
-                            Enviar a revisión DCAV
+                        <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary" @(!puedeEnviarRevisionDcav || !todosPdfGenerados ? "disabled" : null)>
+                            Finalizar revisión y enviar a DCAV
                         </button>
                     </form>
                 </article>

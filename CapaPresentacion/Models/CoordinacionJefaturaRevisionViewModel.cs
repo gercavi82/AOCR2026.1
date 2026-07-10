@@ -271,6 +271,9 @@ namespace CapaPresentacion.Models
         public string PermisoOperacionCnac { get; set; }
         public string CondicionBaseOperacion { get; set; }
         public bool PuedeGuardarDatos { get; set; }
+        public bool PuedeEditarDocumentos { get; set; }
+        public bool PuedeEnviarRevisionDcav { get; set; }
+        public string EstadoProcesoCentral { get; set; }
         public string UrlGuardarDatos { get; set; }
         public string UrlGenerar { get; set; }
         public string UrlVerPdf { get; set; }
@@ -308,6 +311,38 @@ namespace CapaPresentacion.Models
         public string UrlVerPdfFirmado { get; set; }
         public string UrlDescargarFirmado { get; set; }
         public string UrlFirmar { get; set; }
+    }
+
+    public class FirmaAocrPendienteRowViewModel
+    {
+        public int SolicitudId { get; set; }
+        public int InspeccionId { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string Operadora { get; set; }
+        public string InspectorResponsable { get; set; }
+        public string EstadoProceso { get; set; }
+        public string Etapa { get; set; }
+        public string SiguienteAccion { get; set; }
+        public DateTime FechaEstado { get; set; }
+        public bool PdfReconocimientoGenerado { get; set; }
+        public bool PdfCondicionesGenerado { get; set; }
+        public bool ReconocimientoFirmado { get; set; }
+        public bool CondicionesFirmadas { get; set; }
+        public string UrlGestionar { get; set; }
+    }
+
+    public class FirmaAocrPendientesViewModel
+    {
+        public IList<FirmaAocrPendienteRowViewModel> Items { get; set; } = new List<FirmaAocrPendienteRowViewModel>();
+        public int Total { get; set; }
+        public int PendientesFirma { get; set; }
+        public int Parciales { get; set; }
+        public int Completos { get; set; }
+        public int Observados { get; set; }
+        public int Enviados { get; set; }
+        public bool EsBandejaInspector { get; set; }
+        public string Titulo { get; set; }
+        public string Descripcion { get; set; }
     }
 
     public class FirmarAocrInstitucionalRequest

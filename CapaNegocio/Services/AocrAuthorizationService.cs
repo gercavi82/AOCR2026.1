@@ -401,6 +401,25 @@ namespace CapaNegocio.Services
                 || !informe.FirmadoInspector;
         }
 
+        public bool PuedeInspectorAbrirModalInforme(int codigoInspeccion, int codigoUsuario, out string motivo)
+        {
+            motivo = string.Empty;
+            if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
+            {
+                motivo = "No tiene permisos para acceder a la inspección.";
+                return false;
+            }
+
+            var estadoTecnico = new EstadoTecnicoInspeccionService().ObtenerEstadoTecnico(codigoInspeccion);
+            if (!estadoTecnico.PuedeCrearInforme && !estadoTecnico.PuedeEditarInforme && !estadoTecnico.PuedeVerInforme)
+            {
+                motivo = string.IsNullOrWhiteSpace(estadoTecnico.MotivoBloqueo) ? "No está autorizado para ver ni gestionar este Informe Técnico." : estadoTecnico.MotivoBloqueo;
+                return false;
+            }
+
+            return true;
+        }
+
         public bool PuedeDirectorRevisarInforme(int codigoInforme, int codigoUsuario)
         {
             if (codigoInforme <= 0 || codigoUsuario <= 0)
@@ -618,12 +637,19 @@ namespace CapaNegocio.Services
 
                 if (!esAdministrador
                     && (Comparer.Equals(accion, "GuardarInformeTecnico")
-                    || Comparer.Equals(accion, "FinalizarInformeTecnico")
-                    || Comparer.Equals(accion, "ModalInformeTecnico")))
+                    || Comparer.Equals(accion, "FinalizarInformeTecnico")))
                 {
                     if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
                     {
                         motivo = "Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.";
+                        return false;
+                    }
+                }
+
+                if (!esAdministrador && Comparer.Equals(accion, "ModalInformeTecnico"))
+                {
+                    if (!PuedeInspectorAbrirModalInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, out motivo))
+                    {
                         return false;
                     }
                 }

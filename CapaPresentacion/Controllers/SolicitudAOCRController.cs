@@ -4581,6 +4581,11 @@ namespace CapaPresentacion.Controllers
                 || User.IsInRole("CoordinadorInspecciones");
         }
 
+        private static bool FlujoDireccionJefaturaTecnicaSuspendido()
+        {
+            return true;
+        }
+
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult RevisarPorJefatura()
         {
@@ -4594,6 +4599,12 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "AprobarJefatura", CodigoSolicitudParameter = "id")]
         public ActionResult AprobarPorJefatura(int id)
         {
+            if (FlujoDireccionJefaturaTecnicaSuspendido())
+            {
+                TempData["Error"] = "El flujo DireccionJefaturaTecnica esta suspendido para procesos nuevos. La revision historica permanece en solo lectura.";
+                return RedirectToAction("RevisarPorJefatura");
+            }
+
             RegistrarTrazaAocrCoordinacion(id, aocrGenerada: _generacionAocrService.ObtenerAocrGeneradoVigente(id));
 
             var decision = _aocrFinalWorkflowService.CrearDecisionAprobacionJefatura();
@@ -4613,6 +4624,12 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
+            if (FlujoDireccionJefaturaTecnicaSuspendido())
+            {
+                TempData["Error"] = "El flujo DireccionJefaturaTecnica esta suspendido para procesos nuevos. La revision historica permanece en solo lectura.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
             var decision = _aocrFinalWorkflowService.CrearDecisionObservacionJefatura(observaciones);
             if (!decision.EsValida)
             {

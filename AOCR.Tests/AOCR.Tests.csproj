@@ -88,6 +88,7 @@
     <Compile Include="Unit\SecurityTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
+    <Compile Include="Unit\EstadoTecnicoInspeccionServiceTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaModelo\CapaModelo.csproj" />

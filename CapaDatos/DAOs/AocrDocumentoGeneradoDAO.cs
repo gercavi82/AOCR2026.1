@@ -282,6 +282,7 @@ namespace CapaDatos.DAOs
                         created_at TIMESTAMP NOT NULL DEFAULT NOW()
                     );
 
+                    ALTER TABLE public.aocr_tbdocumento_generado ALTER COLUMN ruta_documento DROP NOT NULL;
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS hash_pdf_firmado VARCHAR(128) NULL;
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS fecha_liberacion TIMESTAMP NULL;
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS codigo_usuario_liberacion INTEGER NULL;

@@ -723,6 +723,139 @@ namespace CapaPresentacion.Filters
         }
     }
 
+    public class DirectorCertificacionesDcavRouteGuardAttribute : ActionFilterAttribute
+    {
+        private static readonly ILoggingService Logger = LoggingServiceFactory.Create();
+
+        public override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            if (!DebeRedirigirDirectorCertificacionesDcav(filterContext))
+            {
+                base.OnActionExecuting(filterContext);
+                return;
+            }
+
+            var controller = Convert.ToString(filterContext.RouteData.Values["controller"]);
+            var action = Convert.ToString(filterContext.RouteData.Values["action"]);
+            Logger.LogWarning(string.Format(
+                "[AUTH][DCAV_ROUTE_GUARD] Usuario={0}; Rol={1}; Controller={2}; Action={3}; Resultado=REDIRECT_AOCR_DCAV_REVISION",
+                filterContext.HttpContext.User != null && filterContext.HttpContext.User.Identity != null
+                    ? filterContext.HttpContext.User.Identity.Name
+                    : string.Empty,
+                ResolverRolActivo(filterContext),
+                controller ?? string.Empty,
+                action ?? string.Empty));
+
+            filterContext.Result = new RedirectToRouteResult(
+                new RouteValueDictionary(new
+                {
+                    controller = "AocrDcav",
+                    action = "Revision"
+                }));
+        }
+
+        private static bool DebeRedirigirDirectorCertificacionesDcav(ActionExecutingContext filterContext)
+        {
+            if (filterContext == null || filterContext.HttpContext == null || filterContext.IsChildAction)
+            {
+                return false;
+            }
+
+            var request = filterContext.HttpContext.Request;
+            if (request == null || !request.IsAuthenticated)
+            {
+                return false;
+            }
+
+            if (!EsDirectorCertificacionesDcav(filterContext))
+            {
+                return false;
+            }
+
+            return !RutaPermitidaDirectorCertificacionesDcav(filterContext);
+        }
+
+        private static bool EsDirectorCertificacionesDcav(ActionExecutingContext filterContext)
+        {
+            var rolActivo = ResolverRolActivo(filterContext);
+            if (RoleGroupingHelper.IsDirectorCertificacionesDcav(rolActivo))
+            {
+                return true;
+            }
+
+            var user = filterContext.HttpContext.User;
+            return user != null
+                && (user.IsInRole("DIRECTOR_CERTIFICACIONES_DCAV")
+                    || user.IsInRole("DirectorCertificacionesDcav")
+                    || user.IsInRole("DirectorCertificacionesDCAV")
+                    || user.IsInRole("Director de Certificaciones DCAV")
+                    || user.IsInRole("DirectorDCAV")
+                    || user.IsInRole("DCAV"));
+        }
+
+        private static string ResolverRolActivo(ActionExecutingContext filterContext)
+        {
+            var session = filterContext != null && filterContext.HttpContext != null
+                ? filterContext.HttpContext.Session
+                : null;
+            var rol = session != null
+                ? Convert.ToString(session["Rol"] ?? session["RolActivo"] ?? session["SelectedRole"])
+                : string.Empty;
+
+            return RoleGroupingHelper.NormalizeSelectedRole(rol);
+        }
+
+        private static bool RutaPermitidaDirectorCertificacionesDcav(ActionExecutingContext filterContext)
+        {
+            var controller = Convert.ToString(filterContext.RouteData.Values["controller"]) ?? string.Empty;
+            var action = Convert.ToString(filterContext.RouteData.Values["action"]) ?? string.Empty;
+
+            if (string.Equals(controller, "AocrDcav", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "Account", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "Error", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "Notificacion", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "RecorridoTramite", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(controller, "Inspeccion", StringComparison.OrdinalIgnoreCase))
+            {
+                return EsAccion(action,
+                    "VerListaVerificacionOperacionalEae",
+                    "VerLvEaeOficial",
+                    "RevisionDireccion",
+                    "VerInformeFirmadoInspectorDireccion",
+                    "DescargarInformeFirmadoInspectorDireccion",
+                    "VerInformeTecnicoPdf",
+                    "DescargarInformeTecnicoPdf");
+            }
+
+            if (string.Equals(controller, "CoordinacionJefatura", StringComparison.OrdinalIgnoreCase))
+            {
+                return EsAccion(action, "DocumentoValidacionAocr");
+            }
+
+            if (string.Equals(controller, "Documento", StringComparison.OrdinalIgnoreCase))
+            {
+                return EsAccion(action, "Descargar", "Ver", "Preview");
+            }
+
+            if (string.Equals(controller, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase))
+            {
+                return action.StartsWith("Descargar", StringComparison.OrdinalIgnoreCase)
+                    || EsAccion(action, "VerPdf", "VistaPreviaPdf");
+            }
+
+            return false;
+        }
+
+        private static bool EsAccion(string action, params string[] permitidas)
+        {
+            return permitidas != null && permitidas.Any(a => string.Equals(action, a, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
     public class RestoreAuthenticatedSessionAttribute : ActionFilterAttribute
     {
         public override void OnActionExecuting(ActionExecutingContext filterContext)

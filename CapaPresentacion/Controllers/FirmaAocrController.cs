@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
@@ -13,7 +15,7 @@ using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica,DirectorGeneral,Administrador")]
+    [Authorize(Roles = "Inspector,InspectorTecnico,Tecnico,Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica,DirectorGeneral,Administrador")]
     public class FirmaAocrController : Controller
     {
         private readonly FirmaAocrAuthorizationService _authorizationService = new FirmaAocrAuthorizationService();
@@ -24,6 +26,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaAocrNotificationService _notificationService = new FirmaAocrNotificationService();
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly AocrProcesoEstadoDAO _procesoEstadoDao = new AocrProcesoEstadoDAO();
+        private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly AocrProcesoNotificacionService _procesoNotificacionService = new AocrProcesoNotificacionService();
 
         private FirmaAocrStorageService StorageService
@@ -37,6 +40,129 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        public ActionResult Pendientes()
+        {
+            if (!_authorizationService.UsuarioPuedeEntrar(User))
+            {
+                return new HttpUnauthorizedResult("Rol no autorizado para revisar firma institucional AOCR.");
+            }
+
+            var estados = _procesoEstadoDao.ListarActivosPorEstado(
+                AocrEstadosProceso.PendienteFirmaDirectorGeneral,
+                AocrEstadosProceso.AocrFirmadoDirdac,
+                AocrEstadosProceso.CondicionesFirmadasDirdac,
+                AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy,
+                "PENDIENTE_FIRMA_DIRECCION");
+
+            var rows = new List<FirmaAocrPendienteRowViewModel>();
+            foreach (var estado in estados ?? new List<CapaDatos.Models.AocrProcesoEstadoRecord>())
+            {
+                if (estado == null || estado.SolicitudId <= 0)
+                {
+                    continue;
+                }
+
+                var solicitud = _solicitudDao.ObtenerPorId(estado.SolicitudId);
+                if (solicitud == null)
+                {
+                    continue;
+                }
+
+                var contexto = WorkflowService.CargarContexto(estado.SolicitudId);
+                var docReconocimiento = contexto != null ? contexto.DocumentoReconocimiento : null;
+                var docCondiciones = contexto != null ? contexto.DocumentoCondiciones : null;
+                var firmaReconocimiento = contexto != null ? contexto.FirmaReconocimiento : null;
+                var firmaCondiciones = contexto != null ? contexto.FirmaCondiciones : null;
+
+                var rutaReconocimiento = docReconocimiento != null ? docReconocimiento.RutaDocumento : (contexto != null && contexto.Certificado != null ? contexto.Certificado.RutaDocumento : null);
+                rows.Add(new FirmaAocrPendienteRowViewModel
+                {
+                    SolicitudId = estado.SolicitudId,
+                    NumeroSolicitud = solicitud.NumeroSolicitud ?? estado.SolicitudId.ToString(CultureInfo.InvariantCulture),
+                    Operadora = FirmaAocrWorkflowService.PrimerValorNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial),
+                    InspectorResponsable = ResolverInspectorResponsable(solicitud, contexto),
+                    EstadoProceso = estado.EstadoActual,
+                    Etapa = estado.EtapaActual,
+                    SiguienteAccion = estado.SiguienteAccion,
+                    FechaEstado = estado.FechaEstado,
+                    PdfReconocimientoGenerado = StorageService.Existe(rutaReconocimiento),
+                    PdfCondicionesGenerado = StorageService.Existe(docCondiciones != null ? docCondiciones.RutaDocumento : null),
+                    ReconocimientoFirmado = firmaReconocimiento != null && StorageService.Existe(firmaReconocimiento.RutaDocumento),
+                    CondicionesFirmadas = firmaCondiciones != null && StorageService.Existe(firmaCondiciones.RutaDocumento),
+                    UrlGestionar = Url.Action("Index", "FirmaAocr", new { solicitudId = estado.SolicitudId })
+                });
+            }
+
+            var model = new FirmaAocrPendientesViewModel
+            {
+                Items = rows
+                    .OrderBy(r => r.ReconocimientoFirmado && r.CondicionesFirmadas)
+                    .ThenByDescending(r => r.FechaEstado)
+                    .ToList()
+            };
+            model.Total = model.Items.Count;
+            model.PendientesFirma = model.Items.Count(r => !r.ReconocimientoFirmado || !r.CondicionesFirmadas);
+            model.Parciales = model.Items.Count(r => (r.ReconocimientoFirmado || r.CondicionesFirmadas) && !(r.ReconocimientoFirmado && r.CondicionesFirmadas));
+            model.Completos = model.Items.Count(r => r.ReconocimientoFirmado && r.CondicionesFirmadas);
+
+            Trace.TraceInformation("[DIRDAC][BANDEJA_FIRMA] Usuario=" + ObtenerUsuarioActualNombre()
+                + "; Rol=" + ObtenerRolActual()
+                + "; Total=" + model.Total
+                + "; Pendientes=" + model.PendientesFirma
+                + "; Parciales=" + model.Parciales
+                + "; Completos=" + model.Completos + ";");
+
+            return View("~/Views/FirmaAocr/Pendientes.cshtml", model);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Inspector,InspectorTecnico,Tecnico,Administrador")]
+        public ActionResult PendientesInspector(string filtro, string tipoDocumento)
+        {
+            var usuarioId = ObtenerUsuarioActualId();
+            var esAdministrador = User != null && User.IsInRole("Administrador");
+            var queue = new FirmaAocrInspectorQueueService().Obtener(usuarioId, esAdministrador);
+            var token = (filtro ?? "pendientes").Trim().ToUpperInvariant();
+            IEnumerable<FirmaAocrInspectorQueueItem> source;
+            if (token == "OBSERVADOS")
+            {
+                source = queue.Observados;
+            }
+            else if (token == "ENVIADOS")
+            {
+                source = queue.Enviados;
+            }
+            else
+            {
+                source = queue.Editables.Concat(queue.Observados);
+            }
+
+            var rows = source.Select(item => ConstruirFilaInspector(item)).Where(r => r != null).ToList();
+            var esCondiciones = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase);
+            var model = new FirmaAocrPendientesViewModel
+            {
+                Items = rows.OrderByDescending(r => r.FechaEstado).ToList(),
+                Total = rows.Count,
+                PendientesFirma = queue.TotalPendientes,
+                Observados = queue.Observados.Count,
+                Enviados = queue.Enviados.Count,
+                EsBandejaInspector = true,
+                Titulo = token == "OBSERVADOS" ? "Documentos devueltos por DCAV"
+                    : token == "ENVIADOS" ? "Documentos enviados al DCAV"
+                    : esCondiciones ? "Condiciones y Limitaciones pendientes de revisión"
+                    : "AOCR y Condiciones pendientes de revisión",
+                Descripcion = token == "ENVIADOS"
+                    ? "Expedientes enviados a DCAV y bloqueados para edición mientras se revisan."
+                    : "Revise, modifique y genere los documentos finales sin mezclar la documentación inicial del expediente."
+            };
+
+            Trace.TraceInformation("[INSPECTOR][BANDEJA_DOCUMENTOS] Usuario=" + usuarioId
+                + "; Filtro=" + token + "; TipoDocumento=" + (tipoDocumento ?? string.Empty)
+                + "; Total=" + model.Total + ";");
+            return View("~/Views/FirmaAocr/Pendientes.cshtml", model);
+        }
+
+        [HttpGet]
         public ActionResult Index(int solicitudId)
         {
             Trace.TraceInformation("[FIRMA_AOCR][OPEN] SolicitudId=" + solicitudId + "; Usuario=" + ObtenerUsuarioActualNombre() + "; Rol=" + ObtenerRolActual() + ";");
@@ -44,7 +170,16 @@ namespace CapaPresentacion.Controllers
             Trace.TraceInformation("[FIRMA_AOCR_V2][PAGE_IN] SolicitudId=" + solicitudId + "; Usuario=" + ObtenerUsuarioActualNombre() + "; Rol=" + ObtenerRolActual());
             try
             {
-                var model = WorkflowService.ConstruirViewModel(solicitudId, User, Url);
+                var workflow = WorkflowService;
+                var contexto = workflow.CargarContexto(solicitudId);
+                var esInspector = User != null && (User.IsInRole("Inspector") || User.IsInRole("InspectorTecnico") || User.IsInRole("Tecnico"));
+                if (esInspector && (contexto == null || contexto.Inspeccion == null
+                    || !new AocrAuthorizationService().PuedeInspectorAbrirInspeccion(contexto.Inspeccion.CodigoInspeccion, ObtenerUsuarioActualId())))
+                {
+                    return new HttpStatusCodeResult(403, "Solo el Inspector asignado puede revisar AOCR y Condiciones y Limitaciones.");
+                }
+
+                var model = workflow.ConstruirViewModel(solicitudId, User, Url);
                 Trace.TraceInformation(
                     "[FIRMA_AOCR_NUEVA][MODEL] SolicitudId=" + solicitudId +
                     "; PdfExiste=" + model.PdfExiste +
@@ -59,6 +194,35 @@ namespace CapaPresentacion.Controllers
                 Trace.TraceError("[FIRMA_AOCR_V2][ERROR] SolicitudId=" + solicitudId + "; Motivo=" + ex.Message + "; Exception=" + ex);
                 throw;
             }
+        }
+
+        private FirmaAocrPendienteRowViewModel ConstruirFilaInspector(FirmaAocrInspectorQueueItem item)
+        {
+            if (item == null || item.Estado == null || item.Solicitud == null || item.Inspeccion == null)
+            {
+                return null;
+            }
+
+            var contexto = WorkflowService.CargarContexto(item.Estado.SolicitudId);
+            var docReconocimiento = contexto != null ? contexto.DocumentoReconocimiento : null;
+            var docCondiciones = contexto != null ? contexto.DocumentoCondiciones : null;
+            return new FirmaAocrPendienteRowViewModel
+            {
+                SolicitudId = item.Estado.SolicitudId,
+                InspeccionId = item.Inspeccion.CodigoInspeccion,
+                NumeroSolicitud = item.Solicitud.NumeroSolicitud ?? item.Estado.SolicitudId.ToString(CultureInfo.InvariantCulture),
+                Operadora = FirmaAocrWorkflowService.PrimerValorNoVacio(item.Solicitud.RazonSocial, item.Solicitud.NombreOperador, item.Solicitud.NombreComercial),
+                InspectorResponsable = ResolverInspectorResponsable(item.Solicitud, contexto),
+                EstadoProceso = item.Estado.EstadoActual,
+                Etapa = item.Estado.EtapaActual,
+                SiguienteAccion = item.Estado.SiguienteAccion,
+                FechaEstado = item.Estado.FechaEstado,
+                PdfReconocimientoGenerado = StorageService.Existe(docReconocimiento != null ? docReconocimiento.RutaDocumento : null),
+                PdfCondicionesGenerado = StorageService.Existe(docCondiciones != null ? docCondiciones.RutaDocumento : null),
+                ReconocimientoFirmado = contexto != null && contexto.FirmaReconocimiento != null && StorageService.Existe(contexto.FirmaReconocimiento.RutaDocumento),
+                CondicionesFirmadas = contexto != null && contexto.FirmaCondiciones != null && StorageService.Existe(contexto.FirmaCondiciones.RutaDocumento),
+                UrlGestionar = Url.Action("Index", "FirmaAocr", new { solicitudId = item.Estado.SolicitudId })
+            };
         }
 
         [HttpPost]
@@ -76,6 +240,16 @@ namespace CapaPresentacion.Controllers
                 if (!_authorizationService.UsuarioPuedeEntrar(User))
                 {
                     return JsonError(403, "Rol no autorizado para guardar datos AOCR.", solicitudId);
+                }
+
+                if (!EsInspectorAsignadoSolicitud(solicitudId))
+                {
+                    return JsonError(403, "Solo el Inspector asignado puede guardar cambios en estos documentos.", solicitudId);
+                }
+
+                if (!WorkflowService.PuedeEditarDocumentosInspector(solicitudId, User))
+                {
+                    return JsonError(409, "Los documentos solo pueden ser editados por el Inspector responsable durante la etapa habilitada u observada.", solicitudId);
                 }
 
                 var estadoExplotador = PrimerValorFormulario(
@@ -177,6 +351,16 @@ namespace CapaPresentacion.Controllers
                     return JsonError(403, "Rol no autorizado para generar el PDF oficial AOCR.", solicitudId);
                 }
 
+                if (!EsInspectorAsignadoSolicitud(solicitudId))
+                {
+                    return JsonError(403, "Solo el Inspector asignado puede generar estos documentos.", solicitudId);
+                }
+
+                if (!workflow.PuedeEditarDocumentosInspector(solicitudId, User))
+                {
+                    return JsonError(409, "Los PDF solo pueden ser generados por el Inspector durante la revision de AOCR y Condiciones.", solicitudId);
+                }
+
                 if (contexto.CamposFaltantes != null && contexto.CamposFaltantes.Count > 0)
                 {
                     return JsonCamposFaltantes(solicitudId, contexto.CamposFaltantes);
@@ -216,6 +400,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 workflow.RegistrarDocumentoGenerado(contexto, tipoDocumento, ruta, bytes, ObtenerUsuarioActualId(), ObtenerUsuarioActualNombre());
+                SincronizarRevisionInspectorSiCorresponde(solicitudId, contexto);
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][GENERAR_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; Ruta=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][GENERAR_PDF_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; RutaPdf=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
 
@@ -297,6 +482,7 @@ namespace CapaPresentacion.Controllers
                 var estadoCentral = _procesoEstadoDao.ObtenerActivoPorSolicitud(id);
                 var estadoFirma = estadoCentral != null ? estadoCentral.EstadoActual : null;
                 var estadoPermiteFirma = string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoFirma, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoFirma, AocrEstadosProceso.CondicionesFirmadasDirdac, StringComparison.OrdinalIgnoreCase);
                 if (!estadoPermiteFirma)
@@ -601,6 +787,40 @@ namespace CapaPresentacion.Controllers
             return contexto != null ? contexto.DocumentoReconocimiento : null;
         }
 
+        private void SincronizarRevisionInspectorSiCorresponde(int solicitudId, FirmaAocrContexto contexto)
+        {
+            try
+            {
+                var estado = _procesoEstadoDao.ObtenerActivoPorSolicitud(solicitudId);
+                var estadoActual = estado != null ? estado.EstadoActual : string.Empty;
+                if (!string.Equals(estadoActual, AocrEstadosProceso.DocumentosHabilitadosInspector, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(estadoActual, AocrEstadosProceso.DocumentosObservadosDcav, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                var result = new AocrEstadoProcesoService().CambiarEstado(
+                    solicitudId,
+                    AocrEstadosProceso.DocumentosEnRevisionInspector,
+                    "REVISAR_AOCR_CONDICIONES",
+                    ObtenerUsuarioActualId(),
+                    ObtenerRolActual(),
+                    "Inspector genera o actualiza documentos AOCR y Condiciones para revision DCAV.",
+                    inspeccionId: contexto != null && contexto.Inspeccion != null ? (int?)contexto.Inspeccion.CodigoInspeccion : null,
+                    informeId: contexto != null && contexto.Informe != null ? (int?)contexto.Informe.CodigoInforme : null);
+
+                Trace.TraceInformation("[FIRMA_AOCR][SYNC_REVISION_INSPECTOR] SolicitudId=" + solicitudId
+                    + "; EstadoAnterior=" + estadoActual
+                    + "; EstadoNuevo=" + AocrEstadosProceso.DocumentosEnRevisionInspector
+                    + "; Ok=" + (result != null && result.Ok)
+                    + "; Motivo=" + (result != null ? result.Motivo : string.Empty) + ";");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceWarning("[FIRMA_AOCR][SYNC_REVISION_INSPECTOR_ERROR] SolicitudId=" + solicitudId + "; Error=" + ex.Message + ";");
+            }
+        }
+
         private ActionResult JsonOk(string message, object data)
         {
             return Json(new
@@ -697,6 +917,50 @@ namespace CapaPresentacion.Controllers
             }
 
             return null;
+        }
+
+        private static string ResolverInspectorResponsable(SolicitudAOCR solicitudBase, FirmaAocrContexto contexto)
+        {
+            var solicitud = contexto != null && contexto.Solicitud != null ? contexto.Solicitud : solicitudBase;
+            var inspeccion = contexto != null ? contexto.Inspeccion : null;
+            var informe = contexto != null ? contexto.Informe : null;
+
+            var nombre = FirmaAocrWorkflowService.PrimerValorNoVacio(
+                informe != null ? informe.UsuarioFirma1 : null,
+                inspeccion != null ? inspeccion.InspectorPrincipalNombre : null,
+                solicitud != null ? solicitud.TecnicoResponsableNombre : null);
+
+            var identificador = FirmaAocrWorkflowService.PrimerValorNoVacio(
+                inspeccion != null ? inspeccion.InspectorPrincipalCedula : null,
+                solicitud != null ? solicitud.TecnicoResponsableCedula : null,
+                inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0
+                    ? inspeccion.CodigoInspector.Value.ToString(CultureInfo.InvariantCulture)
+                    : null,
+                solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0
+                    ? solicitud.CodigoTecnico.Value.ToString(CultureInfo.InvariantCulture)
+                    : null);
+
+            if (!string.IsNullOrWhiteSpace(nombre) && !string.IsNullOrWhiteSpace(identificador) && nombre.IndexOf(identificador, StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return nombre.Trim() + " - " + identificador.Trim();
+            }
+
+            return FirmaAocrWorkflowService.PrimerValorNoVacio(nombre, identificador, "No registrado");
+        }
+
+        private bool EsInspectorAsignadoSolicitud(int solicitudId)
+        {
+            if (User != null && User.IsInRole("Administrador"))
+            {
+                return true;
+            }
+
+            var contexto = WorkflowService.CargarContexto(solicitudId);
+            return contexto != null
+                && contexto.Inspeccion != null
+                && new AocrAuthorizationService().PuedeInspectorAbrirInspeccion(
+                    contexto.Inspeccion.CodigoInspeccion,
+                    ObtenerUsuarioActualId());
         }
 
         private int ObtenerUsuarioActualId()

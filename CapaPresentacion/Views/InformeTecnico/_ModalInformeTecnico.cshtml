@@ -105,7 +105,7 @@
     var urlDescargarListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
         ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })
         : string.Empty;
-    var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo);
+    var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo) && !vm.SoloLectura;
     var ayudaPdf = vm.ExistePdfInformeTecnico
         ? "Documento disponible para revisión, descarga y trazabilidad del expediente técnico."
         : "Aún no existe PDF definitivo. Use Guardar borrador o Previsualizar para revisar el contenido del informe antes de finalizar.";
@@ -130,7 +130,13 @@
                     <span class="aocr-status-badge"><strong>Estado Informe</strong> @estadoInformeVisual</span>
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(vm.MensajeBloqueo))
+                @if (vm.SoloLectura)
+                {
+                    <div class="alert alert-info aocr-inline-alert mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i> Este informe técnico se encuentra en modo de <strong>solo lectura</strong>. @(vm.MensajeEstado ?? "Ya ha sido firmado o se encuentra en un estado que no permite edición.")
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(vm.MensajeBloqueo))
                 {
                     <div class="alert alert-warning aocr-inline-alert mt-3 mb-0">@vm.MensajeBloqueo</div>
                 }

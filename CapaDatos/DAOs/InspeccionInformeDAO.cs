@@ -719,68 +719,119 @@ namespace CapaDatos.DAOs
             cmd.Parameters.AddWithValue("@resultado", (object)informe.Resultado ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@tipo_resultado_insatisfactorio", (object)informe.TipoResultadoInsatisfactorio ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@observaciones", (object)informe.Observaciones ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@conclusiones", (object)informe.Conclusiones ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@recomendaciones", (object)informe.Recomendaciones ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@updated_by", usuarioId);
-        }
+                    cmd.Parameters.AddWithValue("@conclusiones", (object)informe.Conclusiones ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@recomendaciones", (object)informe.Recomendaciones ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                }
 
         private static InspeccionInformeTecnico Map(NpgsqlDataReader dr)
         {
             var m = new InspeccionInformeTecnico
             {
-                CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
-                CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
-                Version = dr.GetInt32(dr.GetOrdinal("version")),
-                Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
-                Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
-                Antecedentes = dr["antecedentes"] == DBNull.Value ? null : dr["antecedentes"].ToString(),
-                Alcance = dr["alcance"] == DBNull.Value ? null : dr["alcance"].ToString(),
-                Desarrollo = dr["desarrollo"] == DBNull.Value ? null : dr["desarrollo"].ToString(),
-                Evidencias = dr["evidencias"] == DBNull.Value ? null : dr["evidencias"].ToString(),
-                NumeroLicenciaInspector = dr["numero_licencia_inspector"] == DBNull.Value ? null : dr["numero_licencia_inspector"].ToString(),
-                TrabajosRealizados = dr["trabajos_realizados"] == DBNull.Value ? null : dr["trabajos_realizados"].ToString(),
-                FechasInspeccionManual = dr["fechas_inspeccion_manual"] == DBNull.Value ? null : dr["fechas_inspeccion_manual"].ToString(),
-                EstacionesInspeccionManual = dr["estaciones_inspeccion_manual"] == DBNull.Value ? null : dr["estaciones_inspeccion_manual"].ToString(),
-                OperacionComercial = dr["operacion_comercial"] == DBNull.Value ? null : dr["operacion_comercial"].ToString(),
-                ServiciosEstaciones = dr["servicios_estaciones"] == DBNull.Value ? null : dr["servicios_estaciones"].ToString(),
-                Notas = dr["notas"] == DBNull.Value ? null : dr["notas"].ToString(),
-                NoConformidades = dr["no_conformidades"] == DBNull.Value ? null : dr["no_conformidades"].ToString(),
-                DocumentosAdjuntos = dr["documentos_adjuntos"] == DBNull.Value ? null : dr["documentos_adjuntos"].ToString(),
-                DocumentosAdjuntosArchivos = dr["documentos_adjuntos_archivos"] == DBNull.Value ? null : dr["documentos_adjuntos_archivos"].ToString(),
-                OtrosAdjuntos = dr["otros_adjuntos"] == DBNull.Value ? null : dr["otros_adjuntos"].ToString(),
-                Resultado = dr["resultado"] == DBNull.Value ? null : dr["resultado"].ToString(),
-                Observaciones = dr["observaciones"] == DBNull.Value ? null : dr["observaciones"].ToString(),
-                Conclusiones = dr["conclusiones"] == DBNull.Value ? null : dr["conclusiones"].ToString(),
-                Recomendaciones = dr["recomendaciones"] == DBNull.Value ? null : dr["recomendaciones"].ToString(),
-                RutaPdf = dr["ruta_pdf"] == DBNull.Value ? null : dr["ruta_pdf"].ToString(),
-                EstadoInforme = dr["estado_informe"] == DBNull.Value ? null : dr["estado_informe"].ToString(),
-                FirmadoInspector = dr["firmado_inspector"] != DBNull.Value && Convert.ToBoolean(dr["firmado_inspector"]),
-                FirmadoDirdac = dr["firmado_dirdac"] != DBNull.Value && Convert.ToBoolean(dr["firmado_dirdac"]),
-                RutaDocumentoFirmado = dr["ruta_documento_firmado"] == DBNull.Value ? null : dr["ruta_documento_firmado"].ToString(),
-                HashDocumento = dr["hash_documento"] == DBNull.Value ? null : dr["hash_documento"].ToString(),
-                FechaFirma1 = dr["fecha_firma_1"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_1"]),
-                FechaFirma2 = dr["fecha_firma_2"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_2"]),
-                UsuarioFirma1 = dr["usuario_firma_1"] == DBNull.Value ? null : dr["usuario_firma_1"].ToString(),
-                UsuarioFirma2 = dr["usuario_firma_2"] == DBNull.Value ? null : dr["usuario_firma_2"].ToString(),
-                FechaEnvioDirdac = dr["fecha_envio_dirdac"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_envio_dirdac"]),
-                UsuarioEnvioDirdac = dr["usuario_envio_dirdac"] == DBNull.Value ? null : dr["usuario_envio_dirdac"].ToString(),
-                Finalizado = dr["finalizado"] != DBNull.Value && Convert.ToBoolean(dr["finalizado"]),
-                CorreoEnviado = dr["correo_enviado"] != DBNull.Value && Convert.ToBoolean(dr["correo_enviado"]),
-                NotificadoRt = dr["notificado_rt"] != DBNull.Value && Convert.ToBoolean(dr["notificado_rt"]),
-                FechaNotificacionRt = dr["fecha_notificacion_rt"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_notificacion_rt"]),
-                FechaFinalizacion = dr["fecha_finalizacion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_finalizacion"]),
-                CreatedAt = dr["created_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["created_at"]),
-                CreatedBy = dr["created_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["created_by"]),
-                UpdatedAt = dr["updated_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["updated_at"]),
-                UpdatedBy = dr["updated_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["updated_by"])
+                CodigoInforme = GetInt(dr, "codigo_informe"),
+                CodigoInspeccion = GetInt(dr, "codigo_inspeccion"),
+                Version = GetInt(dr, "version"),
+                Titulo = GetString(dr, "titulo"),
+                Resumen = GetString(dr, "resumen"),
+                Antecedentes = GetString(dr, "antecedentes"),
+                Alcance = GetString(dr, "alcance"),
+                Desarrollo = GetString(dr, "desarrollo"),
+                Evidencias = GetString(dr, "evidencias"),
+                NumeroLicenciaInspector = GetString(dr, "numero_licencia_inspector"),
+                TrabajosRealizados = GetString(dr, "trabajos_realizados"),
+                FechasInspeccionManual = GetString(dr, "fechas_inspeccion_manual"),
+                EstacionesInspeccionManual = GetString(dr, "estaciones_inspeccion_manual"),
+                OperacionComercial = GetString(dr, "operacion_comercial"),
+                ServiciosEstaciones = GetString(dr, "servicios_estaciones"),
+                Notas = GetString(dr, "notas"),
+                NoConformidades = GetString(dr, "no_conformidades"),
+                DocumentosAdjuntos = GetString(dr, "documentos_adjuntos"),
+                DocumentosAdjuntosArchivos = GetString(dr, "documentos_adjuntos_archivos"),
+                OtrosAdjuntos = GetString(dr, "otros_adjuntos"),
+                Resultado = GetString(dr, "resultado"),
+                Observaciones = GetString(dr, "observaciones"),
+                Conclusiones = GetString(dr, "conclusiones"),
+                Recomendaciones = GetString(dr, "recomendaciones"),
+                RutaPdf = GetString(dr, "ruta_pdf"),
+                EstadoInforme = GetString(dr, "estado_informe"),
+                FirmadoInspector = GetBool(dr, "firmado_inspector"),
+                FirmadoDirdac = GetBool(dr, "firmado_dirdac"),
+                RutaDocumentoFirmado = GetString(dr, "ruta_documento_firmado"),
+                HashDocumento = GetString(dr, "hash_documento"),
+                FechaFirma1 = GetDateTime(dr, "fecha_firma_1"),
+                FechaFirma2 = GetDateTime(dr, "fecha_firma_2"),
+                UsuarioFirma1 = GetString(dr, "usuario_firma_1"),
+                UsuarioFirma2 = GetString(dr, "usuario_firma_2"),
+                FechaEnvioDirdac = GetDateTime(dr, "fecha_envio_dirdac"),
+                UsuarioEnvioDirdac = GetString(dr, "usuario_envio_dirdac"),
+                Finalizado = GetBool(dr, "finalizado"),
+                CorreoEnviado = GetBool(dr, "correo_enviado"),
+                NotificadoRt = GetBool(dr, "notificado_rt"),
+                FechaNotificacionRt = GetDateTime(dr, "fecha_notificacion_rt"),
+                FechaFinalizacion = GetDateTime(dr, "fecha_finalizacion"),
+                CreatedAt = GetDateTime(dr, "created_at"),
+                CreatedBy = GetNullableInt(dr, "created_by"),
+                UpdatedAt = GetDateTime(dr, "updated_at"),
+                UpdatedBy = GetNullableInt(dr, "updated_by"),
+                TipoResultadoInsatisfactorio = GetString(dr, "tipo_resultado_insatisfactorio"),
+                ObservacionDevolucion = GetString(dr, "observacion_devolucion"),
+                FechaDevolucion = GetDateTime(dr, "fecha_devolucion"),
+                UsuarioDevolucion = GetString(dr, "usuario_devolucion")
             };
 
-            try { m.TipoResultadoInsatisfactorio = dr["tipo_resultado_insatisfactorio"] == DBNull.Value ? null : dr["tipo_resultado_insatisfactorio"].ToString(); } catch { }
-            try { m.ObservacionDevolucion = dr["observacion_devolucion"] == DBNull.Value ? null : dr["observacion_devolucion"].ToString(); } catch { }
-            try { m.FechaDevolucion = dr["fecha_devolucion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_devolucion"]); } catch { }
-            try { m.UsuarioDevolucion = dr["usuario_devolucion"] == DBNull.Value ? null : dr["usuario_devolucion"].ToString(); } catch { }
-
             return m;
+        }
+
+        private static int GetInt(NpgsqlDataReader dr, string column)
+        {
+            if (!TryGetOrdinal(dr, column, out int ordinal)) return 0;
+            return dr.IsDBNull(ordinal) ? 0 : Convert.ToInt32(dr.GetValue(ordinal));
+        }
+
+        private static int? GetNullableInt(NpgsqlDataReader dr, string column)
+        {
+            if (!TryGetOrdinal(dr, column, out int ordinal)) return null;
+            return dr.IsDBNull(ordinal) ? (int?)null : Convert.ToInt32(dr.GetValue(ordinal));
+        }
+
+        private static string GetString(NpgsqlDataReader dr, string column)
+        {
+            if (!TryGetOrdinal(dr, column, out int ordinal)) return null;
+            return dr.IsDBNull(ordinal) ? null : Convert.ToString(dr.GetValue(ordinal));
+        }
+
+        private static bool GetBool(NpgsqlDataReader dr, string column)
+        {
+            if (!TryGetOrdinal(dr, column, out int ordinal)) return false;
+            return !dr.IsDBNull(ordinal) && Convert.ToBoolean(dr.GetValue(ordinal));
+        }
+
+        private static DateTime? GetDateTime(NpgsqlDataReader dr, string column)
+        {
+            if (!TryGetOrdinal(dr, column, out int ordinal)) return null;
+            return dr.IsDBNull(ordinal) ? (DateTime?)null : Convert.ToDateTime(dr.GetValue(ordinal));
+        }
+
+        private static bool TryGetOrdinal(NpgsqlDataReader dr, string column, out int ordinal)
+        {
+            ordinal = -1;
+            if (dr == null || string.IsNullOrWhiteSpace(column)) return false;
+            try
+            {
+                for (var index = 0; index < dr.FieldCount; index++)
+                {
+                    if (string.Equals(dr.GetName(index), column, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ordinal = index;
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("[INFORME][ESTADO_QUERY_ERROR] Error obteniendo columna " + column + ": " + ex.Message);
+            }
+            return false;
         }
 
         private static void EnsureSchema(NpgsqlConnection cn)
