@@ -11,6 +11,7 @@ using CapaDatos.Constants;
 using CapaDatos.Entidades;
 using CapaDatos.Services;
 using CapaPresentacion.Infrastructure;
+using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion.Controllers
 {
@@ -22,6 +23,7 @@ namespace CapaPresentacion.Controllers
     public class NotificacionController : Controller
     {
         private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
+        private readonly CapaDatos.Services.ILoggingService _logger = CapaDatos.Services.LoggingServiceFactory.Create();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly OrdenRecaudacionDAO _ordenDao = new OrdenRecaudacionDAO();
@@ -318,36 +320,62 @@ namespace CapaPresentacion.Controllers
         // GET: /Notificacion/ContarNoLeidas
         // Obtiene solo el conteo de notificaciones no leÃ­das
         // ============================================
-        [HttpGet]
-        public JsonResult ContarNoLeidas()
-        {
-            try
-            {
-                int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        cantidad = 0
-                    }, JsonRequestBehavior.AllowGet);
-                }
+          [HttpGet]
+          [AllowAnonymous]
+          public JsonResult ContarNoLeidas()
+          {
+              var authenticated = User != null && User.Identity != null && User.Identity.IsAuthenticated;
+              var codigoUsuario = ObtenerCodigoUsuario();
+              var rol = Convert.ToString(Session != null ? Session["Rol"] ?? Session["RolActivo"] ?? Session["SelectedRole"] : null);
+              var compania = Session != null ? CompaniaActivaSessionHelper.ObtenerCodigo(Session) : string.Empty;
+              _logger.LogInfo(string.Format(
+                  "[NOTIFICACIONES][CONTAR_IN] UsuarioId={0}; Rol={1}; CompaniaActiva={2}; Authenticated={3}",
+                  codigoUsuario, rol, compania, authenticated));
 
-                int cantidad = NotificacionBL.ContarNoLeidas(codigoUsuario);
+              try
+              {
+                  if (!authenticated || codigoUsuario == 0)
+                  {
+                      Response.StatusCode = 401;
+                      Response.SuppressFormsAuthenticationRedirect = true;
+                      Response.TrySkipIisCustomErrors = true;
+                      _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] HttpStatus=401; Code=401; Total=0; Motivo=Sesion no activa");
+                      return Json(new
+                      {
+                          success = false,
+                          ok = false,
+                          code = 401,
+                          cantidad = 0,
+                          message = "La sesión no está activa."
+                      }, JsonRequestBehavior.AllowGet);
+                  }
 
-                return Json(new
-                {
-                    success = true,
-                    cantidad = cantidad
+                  int cantidad = NotificacionBL.ContarNoLeidas(codigoUsuario);
+                  _logger.LogInfo(string.Format(
+                      "[NOTIFICACIONES][CONTAR_OUT] HttpStatus=200; Code=200; Total={0}; Motivo=OK",
+                      cantidad));
+
+                  return Json(new
+                  {
+                      success = true,
+                      ok = true,
+                      cantidad = cantidad
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
+                Response.StatusCode = 500;
+                Response.SuppressFormsAuthenticationRedirect = true;
+                Response.TrySkipIisCustomErrors = true;
+                _logger.LogError(ex, new CapaDatos.Services.LogContext { ErrorCode = "NOTIFICACIONES_CONTAR_ERROR", UserId = codigoUsuario.ToString() });
+                _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] HttpStatus=500; Code=500; Total=0; Motivo=Error interno");
                 return Json(new
                 {
                     success = false,
+                    ok = false,
+                    code = 500,
                     cantidad = 0,
-                    message = ex.Message
+                    message = "No se pudo consultar el total de notificaciones."
                 }, JsonRequestBehavior.AllowGet);
             }
         }

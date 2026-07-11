@@ -6862,9 +6862,8 @@ namespace CapaPresentacion.Controllers
                 NumeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud),
                 NombreOperadora = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible"),
                 NombreInspector = FirstNonEmpty(
-                    informe != null ? informe.UsuarioFirma1 : null,
                     inspeccion != null ? inspeccion.InspectorPrincipalNombre : null,
-                    solicitud != null ? solicitud.TecnicoResponsableNombre : null,
+                    inspeccion != null && solicitud != null && inspeccion.CodigoInspector == solicitud.CodigoTecnico ? solicitud.TecnicoResponsableNombre : null,
                     "No disponible"),
                 FechaFirmaInspector = informe != null ? informe.FechaFirma1 : null,
                 ResultadoTecnicoFinal = FirstNonEmpty(informe != null ? informe.Resultado : null, inspeccion != null ? inspeccion.Resultado : null, "No definido"),
@@ -6993,9 +6992,8 @@ namespace CapaPresentacion.Controllers
                 NumeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud),
                 NombreOperadora = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible"),
                 NombreInspector = FirstNonEmpty(
-                    informe != null ? informe.UsuarioFirma1 : null,
                     inspeccion != null ? inspeccion.InspectorPrincipalNombre : null,
-                    solicitud != null ? solicitud.TecnicoResponsableNombre : null,
+                    inspeccion != null && solicitud != null && inspeccion.CodigoInspector == solicitud.CodigoTecnico ? solicitud.TecnicoResponsableNombre : null,
                     "No disponible"),
                 FechaFirmaInspector = informe != null ? informe.FechaFirma1 : null,
                 EstadoSolicitud = FirstNonEmpty(solicitud != null ? solicitud.Estado : null, disponibilidadAocr != null ? disponibilidadAocr.EstadoSolicitud : null, "No definido"),

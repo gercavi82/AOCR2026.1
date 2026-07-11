@@ -76,7 +76,7 @@
                                             <span class="badge bg-warning text-dark">Pendiente reintento</span>
                                         }
                                     </td>
-                                    <td>@(!string.IsNullOrWhiteSpace(informe != null ? informe.UsuarioFirma1 : null) ? informe.UsuarioFirma1 : "Pendiente")</td>
+                                    <td>@(!string.IsNullOrWhiteSpace(inspeccion != null ? inspeccion.InspectorPrincipalNombre : null) ? inspeccion.InspectorPrincipalNombre : inspeccion != null && inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "Pendiente")</td>
                                     <td>@(informe != null && informe.FechaEnvioDirdac.HasValue ? informe.FechaEnvioDirdac.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</td>
                                     <td>
                                         <div class="d-flex gap-2 flex-wrap">

@@ -154,10 +154,25 @@
 
 <script>
     (function _initNotificaciones() {
+        var contexto = window.AocrContext || {};
+        var ruta = (window.location.pathname || '').toLowerCase();
+        var paginaPreparacion = ruta.indexOf('/account/login') >= 0
+            || ruta.indexOf('/account/cambiarcontrasena') >= 0
+            || ruta.indexOf('/account/seleccionarcompania') >= 0
+            || ruta === '/seleccionarcompania';
+        if (!contexto.autenticado || paginaPreparacion || (contexto.requiereCompania && !contexto.companiaSeleccionada)) {
+            console.info('[AOCR][NOTIFICACIONES_SKIP] Consulta omitida por contexto de sesión.');
+            return;
+        }
+        if (window._AOCR_NOTIFICACIONES_INITIALIZED) {
+            return;
+        }
         if (typeof jQuery === 'undefined') {
             setTimeout(_initNotificaciones, 150);
             return;
         }
+        window._AOCR_NOTIFICACIONES_INITIALIZED = true;
+        console.info('[AOCR][GLOBAL_INIT_START] Notificaciones privadas.');
         jQuery(function ($) {
         // Variables
         var $bell = $('#notificacionesBell');
@@ -166,7 +181,6 @@
         var $contador = $('#contadorNotificaciones');
         var $lista = $('#listaNotificaciones');
         var pollingInterval = 30000;
-        var contadorTimer = null;
         var currentLoadRequest = null;
 
         function getAntiForgeryToken() {
@@ -242,7 +256,7 @@
                         $badge.attr('aria-hidden', 'true');
                         // Si el servidor indica que no hay sesión, detener polling
                         if (result && result.success === false) {
-                            if (contadorTimer) { clearInterval(contadorTimer); contadorTimer = null; }
+                            if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
                         }
                     }
                 },
@@ -250,7 +264,7 @@
                     console.warn('Error al obtener contador de notificaciones');
                     // Si recibimos redirect a Login (HTML en vez de JSON) o 401, detener polling
                     if (xhr.status === 401 || xhr.status === 403 || xhr.status === 302) {
-                        if (contadorTimer) { clearInterval(contadorTimer); contadorTimer = null; }
+                        if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
                     }
                 }
             });
@@ -340,8 +354,8 @@
 
         // Auto-refresh cada 30 segundos
         cargarContador();
-        if (contadorTimer) { clearInterval(contadorTimer); }
-        contadorTimer = setInterval(cargarContador, pollingInterval);
+        if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); }
+        window.AocrNotificacionesTimer = setInterval(cargarContador, pollingInterval);
         });
     })();
 </script>

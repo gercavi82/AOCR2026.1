@@ -3,6 +3,7 @@
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Revision DCAV";
+    var observado = Model != null && (Model.Estado ?? string.Empty).IndexOf("OBSERVADO", StringComparison.OrdinalIgnoreCase) >= 0;
 }
 
 <div class="container-fluid mt-4">
@@ -12,6 +13,7 @@
                 <span class="badge bg-primary-subtle text-primary mb-2">Revision DCAV - @Model.TipoRevision</span>
                 <h2 class="mb-1">@Model.NumeroSolicitud</h2>
                 <p class="text-muted mb-0">@Model.NombreExplotador</p>
+                <p class="text-muted mb-0"><strong>Inspector:</strong> @(string.IsNullOrWhiteSpace(Model.InspectorResponsable) ? "No registrado" : Model.InspectorResponsable)</p>
             </div>
             <a class="btn btn-outline-secondary" href="@Url.Action("Revision", "AocrDcav")">Volver</a>
         </div>
@@ -67,35 +69,47 @@
                 <div class="card-header bg-light"><strong>Acciones</strong></div>
                 <div class="card-body">
                     <div class="d-grid gap-2 mb-3">
-                        <a class="btn btn-outline-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme = Model.InformeId })">Ver Informe Tecnico</a>
-                        <a class="btn btn-outline-primary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId, tipo = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
-                        <a class="btn btn-outline-primary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.SolicitudId, tipo = "CONDICIONES_LIMITACIONES" })" target="_blank">Ver Condiciones y Limitaciones</a>
+                        <a class="btn btn-outline-primary" href="@Url.Action("VerListaFirmada", "AocrDcav", new { solicitudId = Model.SolicitudId })" target="_blank">Ver LV firmada</a>
+                        <a class="btn btn-outline-primary" href="@Url.Action("VerInformeFirmado", "AocrDcav", new { solicitudId = Model.SolicitudId })" target="_blank">Ver Informe Tecnico</a>
+                        @if (Model.TipoRevision == "DOCUMENTOS_AOCR")
+                        {
+                            <a class="btn btn-outline-primary" href="@Url.Action("VerDocumentoEnviado", "AocrDcav", new { solicitudId = Model.SolicitudId, tipoDocumento = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
+                            <a class="btn btn-outline-primary" href="@Url.Action("VerDocumentoEnviado", "AocrDcav", new { solicitudId = Model.SolicitudId, tipoDocumento = "CONDICIONES_LIMITACIONES" })" target="_blank">Ver Condiciones y Limitaciones</a>
+                        }
+                        <a class="btn btn-outline-secondary" href="@Url.Action("Ver", "RecorridoTramite", new { solicitudId = Model.SolicitudId })" target="_blank">Ver historial</a>
                     </div>
 
-                    @using (Html.BeginForm("Aprobar", "AocrDcav", FormMethod.Post))
+                    @if (observado)
                     {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("solicitudId", Model.SolicitudId)
-                        <button type="submit" class="btn btn-success w-100 mb-3" @(Model.PuedeAprobar ? null : "disabled")>
-                            @(Model.TipoRevision == "INFORME_TECNICO" ? "Aprobar informe y habilitar documentos" : "Aprobar documentos y enviar al Director General")
-                        </button>
+                        <div class="alert alert-warning mb-0">Este expediente fue devuelto al Inspector para correccion.</div>
                     }
-
-                    @using (Html.BeginForm("Devolver", "AocrDcav", FormMethod.Post))
+                    else
                     {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("solicitudId", Model.SolicitudId)
-                        <div class="mb-2">
-                            <label class="form-label">Destino de devolucion</label>
-                            <select name="destino" class="form-select" required>
-                                <option value="Inspector">Inspector</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Observacion</label>
-                            <textarea name="observacion" class="form-control" rows="4" required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-outline-danger w-100">Devolver con observaciones</button>
+                        using (Html.BeginForm("Aprobar", "AocrDcav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("solicitudId", Model.SolicitudId)
+                            <button type="submit" class="btn btn-success w-100 mb-3" @(Model.PuedeAprobar ? null : "disabled")>
+                                @(Model.TipoRevision == "INFORME_TECNICO" ? "Aprobar informe y habilitar documentos" : "Aprobar documentos y enviar al Director General")
+                            </button>
+                        }
+
+                        using (Html.BeginForm("Devolver", "AocrDcav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("solicitudId", Model.SolicitudId)
+                            <div class="mb-2">
+                                <label class="form-label">Destino de devolucion</label>
+                                <select name="destino" class="form-select" required>
+                                    <option value="Inspector">Inspector</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Observacion</label>
+                                <textarea name="observacion" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger w-100">Devolver con observaciones</button>
+                        }
                     }
                 </div>
             </div>

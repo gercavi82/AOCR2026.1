@@ -14,6 +14,7 @@ using CapaDatos.Services;
 using CapaNegocio.Services;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
+using CapaPresentacion.Filters;
 
 namespace CapaPresentacion
 {
@@ -22,6 +23,8 @@ namespace CapaPresentacion
         private static EmailQueueProcessor _emailProcessor;
         private const string PerfStopwatchKey = "__AocrPerfStopwatch";
         private const string PerfLabelKey = "__AocrPerfLabel";
+        private const string AjaxStopwatchKey = "__AocrAjaxStopwatch";
+        private const string AjaxCorrelationKey = "__AocrAjaxCorrelation";
         private static readonly CapaDatos.Services.ILoggingService PerfLogger = CapaDatos.Services.LoggingServiceFactory.Create();
 
         protected void Application_Start()
@@ -66,6 +69,31 @@ namespace CapaPresentacion
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Request.ContentEncoding = System.Text.Encoding.UTF8;
 
+            if (IsAjaxLikeRequest(Request))
+            {
+                var correlationId = Request.Headers["X-Correlation-ID"];
+                if (string.IsNullOrWhiteSpace(correlationId)) correlationId = Guid.NewGuid().ToString("N");
+                Context.Items[AjaxCorrelationKey] = correlationId;
+                Context.Items[AjaxStopwatchKey] = Stopwatch.StartNew();
+                Response.Headers["X-Correlation-ID"] = correlationId;
+
+                PerfLogger.LogInfo(string.Format(
+                    "[AJAX][REQUEST_IN] CorrelationId={0}; Method={1}; Url={2}; Query={3}; Authenticated={4}",
+                    correlationId,
+                    Request.HttpMethod,
+                    Request.Url != null ? Request.Url.AbsolutePath : Request.Path,
+                    Request.Url != null ? Request.Url.Query : string.Empty,
+                    Request.IsAuthenticated));
+
+                if (IsNotificationCountRequest(Request))
+                {
+                    PerfLogger.LogInfo(string.Format(
+                        "[NOTIFICACIONES][CONTAR_IN] CorrelationId={0}; UsuarioId=; Rol=; CompaniaActiva=; Authenticated={1}; Origen=Pipeline",
+                        correlationId,
+                        Request.IsAuthenticated));
+                }
+            }
+
             if (IsWellKnownRequest(Request))
             {
                 Context.SkipAuthorization = true;
@@ -95,6 +123,72 @@ namespace CapaPresentacion
                     Request.HttpMethod,
                     Request.RawUrl));
             }
+        }
+
+        protected void Application_PreSendRequestHeaders()
+        {
+            try
+            {
+                var context = HttpContext.Current;
+                if (context == null || context.Items[AjaxCorrelationKey] == null) return;
+
+                var request = context.Request;
+                var response = context.Response;
+                var route = RouteTable.Routes.GetRouteData(new HttpContextWrapper(context));
+                var correlationId = Convert.ToString(context.Items[AjaxCorrelationKey]);
+                var stopwatch = context.Items[AjaxStopwatchKey] as Stopwatch;
+                var exception = context.Items[AjaxResponseMetadataFilter.ExceptionKey] as Exception;
+                var internalCode = context.Items[AjaxResponseMetadataFilter.InternalCodeKey];
+                var session = context.Session;
+                var identity = context.User != null ? context.User.Identity : null;
+                var controller = route != null ? Convert.ToString(route.Values["controller"]) : string.Empty;
+                var action = route != null ? Convert.ToString(route.Values["action"]) : string.Empty;
+                var role = session != null ? Convert.ToString(session["Rol"] ?? session["RolActivo"] ?? session["SelectedRole"]) : string.Empty;
+                var company = session != null ? Convert.ToString(session["CompaniaActivaCodigo"] ?? session["CodigoCompania"] ?? session["CompaniaCodigo"]) : string.Empty;
+                var status = response != null ? response.StatusCode : 0;
+                if (internalCode == null && (status == 401 || status == 403)) internalCode = status;
+
+                var message = string.Format(
+                    "[{0}] CorrelationId={1}; Method={2}; Url={3}; Query={4}; User={5}; Authenticated={6}; Rol={7}; CompaniaActiva={8}; Controller={9}; Action={10}; HttpStatus={11}; Code={12}; DurationMs={13}; Exception={14}",
+                    exception == null ? "AJAX][REQUEST_OUT" : "AJAX][REQUEST_ERROR",
+                    correlationId,
+                    request != null ? request.HttpMethod : string.Empty,
+                    request != null && request.Url != null ? request.Url.AbsolutePath : string.Empty,
+                    request != null && request.Url != null ? request.Url.Query : string.Empty,
+                    identity != null ? identity.Name : string.Empty,
+                    identity != null && identity.IsAuthenticated,
+                    role,
+                    company,
+                    controller,
+                    action,
+                    status,
+                    internalCode ?? string.Empty,
+                    stopwatch != null ? stopwatch.ElapsedMilliseconds : 0,
+                    exception != null ? exception.GetType().Name + ": " + exception.Message : string.Empty);
+
+                if (exception != null) PerfLogger.LogError(message);
+                else PerfLogger.LogInfo(message);
+
+                if (IsNotificationCountRequest(request))
+                {
+                    PerfLogger.LogInfo(string.Format(
+                        "[NOTIFICACIONES][CONTAR_OUT] CorrelationId={0}; HttpStatus={1}; Code={2}; Total=; Motivo={3}; Origen=Pipeline",
+                        correlationId,
+                        status,
+                        internalCode ?? string.Empty,
+                        status == 200 ? "OK" : (status == 401 ? "Sesion no activa" : "Respuesta no exitosa")));
+                }
+            }
+            catch (Exception ex)
+            {
+                PerfLogger.LogError("[AJAX][REQUEST_ERROR] No se pudo completar la traza AJAX. " + ex.Message);
+            }
+        }
+
+        private static bool IsNotificationCountRequest(HttpRequest request)
+        {
+            var path = request != null && request.Url != null ? request.Url.AbsolutePath : string.Empty;
+            return path.EndsWith("/Notificacion/ContarNoLeidas", StringComparison.OrdinalIgnoreCase);
         }
 
         protected void Application_EndRequest()
@@ -328,6 +422,8 @@ namespace CapaPresentacion
             response.SuppressFormsAuthenticationRedirect = true;
             response.TrySkipIisCustomErrors = true;
             response.StatusCode = 401;
+            response.RedirectLocation = null;
+            response.Headers.Remove("Location");
             response.ContentType = "application/json; charset=utf-8";
 
             var returnUrl = request.RawUrl ?? (request.Url != null ? request.Url.PathAndQuery : string.Empty);
@@ -597,7 +693,8 @@ namespace CapaPresentacion
                 return false;
             }
 
-            return path.IndexOf("/.well-known", StringComparison.OrdinalIgnoreCase) >= 0;
+            return path.IndexOf("/.well-known", StringComparison.OrdinalIgnoreCase) >= 0
+                || string.Equals(path, VirtualPathUtility.ToAbsolute("~/favicon.ico"), StringComparison.OrdinalIgnoreCase);
         }
 
         protected void Application_Error(object sender, EventArgs e)

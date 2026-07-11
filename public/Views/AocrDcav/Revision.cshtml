@@ -5,6 +5,38 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Revision DCAV";
     var items = Model != null ? Model.ToList() : new System.Collections.Generic.List<CapaNegocio.Services.AocrDcavRevisionItem>();
+    var informesPendientes = items.Where(i => i != null && i.TipoRevision == "INFORME_TECNICO" && (i.Estado ?? string.Empty).IndexOf("OBSERVADO", StringComparison.OrdinalIgnoreCase) < 0).ToList();
+    var documentosPendientes = items.Where(i => i != null && i.TipoRevision == "DOCUMENTOS_AOCR" && (i.Estado ?? string.Empty).IndexOf("OBSERVADO", StringComparison.OrdinalIgnoreCase) < 0).ToList();
+    var observados = items.Where(i => i != null && (i.Estado ?? string.Empty).IndexOf("OBSERVADO", StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+    var resumen = ViewBag.ResumenBandejaDcav as CapaNegocio.Services.AocrDcavBandejaResumen
+        ?? new CapaNegocio.Services.AocrDcavBandejaResumen();
+    var fase = Convert.ToString(ViewBag.FaseDcav ?? string.Empty).ToLowerInvariant();
+    var titulo = fase == "informe" ? "Informes técnicos pendientes de revisión"
+        : fase == "documentos" ? "AOCR y Condiciones pendientes de revisión"
+        : "Revisión DCAV";
+}
+
+@helper RenderFila(CapaNegocio.Services.AocrDcavRevisionItem item)
+{
+    <tr>
+        <td><strong>@item.NumeroSolicitud</strong><div class="small text-muted">SolicitudId @item.SolicitudId</div></td>
+        <td>@(string.IsNullOrWhiteSpace(item.NumeroAocr) ? "Pendiente" : item.NumeroAocr)</td>
+        <td>@item.NombreExplotador</td>
+        <td>@item.TipoTramite</td>
+        <td>@item.InspectorResponsable</td>
+        <td>@item.CoordinadorResponsable</td>
+        <td>@(item.FechaEnvioDcav.HasValue ? item.FechaEnvioDcav.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+        <td>@item.TipoRevision</td>
+        <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
+        <td>
+            <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "AocrDcav", new { solicitudId = item.SolicitudId })">Ver expediente</a>
+            @if (item.TipoRevision == "DOCUMENTOS_AOCR")
+            {
+                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("VerDocumentoEnviado", "AocrDcav", new { solicitudId = item.SolicitudId, tipoDocumento = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
+                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("VerDocumentoEnviado", "AocrDcav", new { solicitudId = item.SolicitudId, tipoDocumento = "CONDICIONES_LIMITACIONES" })" target="_blank">Ver Condiciones</a>
+            }
+        </td>
+    </tr>
 }
 
 <div class="container-fluid mt-4">
@@ -12,8 +44,8 @@
         <div class="card-body d-flex justify-content-between align-items-center">
             <div>
                 <span class="badge bg-primary-subtle text-primary mb-2">Director de Certificaciones DCAV</span>
-                <h2 class="mb-1">Revision DCAV</h2>
-                <p class="text-muted mb-0">Expedientes AOCR pendientes de revision previa a la firma del Director General.</p>
+                <h2 class="mb-1">@titulo</h2>
+                <p class="text-muted mb-0">@(fase == "informe" ? "Informes técnicos firmados pendientes de aprobación DCAV." : fase == "documentos" ? "AOCR y Condiciones enviados por el Inspector pendientes de aprobación DCAV." : "Expedientes pendientes de decisión del Director de Certificaciones DCAV.")</p>
             </div>
         </div>
     </div>
@@ -25,6 +57,17 @@
     @if (TempData["Success"] != null)
     {
         <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @if (!items.Any() && resumen.InformesGeneradosSinFirma > 0)
+    {
+        <div class="alert alert-warning d-flex align-items-start gap-2">
+            <i class="fas fa-file-signature mt-1"></i>
+            <div>
+                <strong>No existen informes firmados pendientes de DCAV.</strong>
+                Hay @resumen.InformesGeneradosSinFirma informe(s) con PDF generado que todavia requieren la firma digital del Inspector. Esos expedientes no pueden ingresar a revision DCAV hasta completar la firma.
+            </div>
+        </div>
     }
 
     <div class="card border-0 shadow-sm">
@@ -49,27 +92,38 @@
                         @if (!items.Any())
                         {
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-4">No existen expedientes pendientes de revision DCAV.</td>
-                            </tr>
-                        }
-                        @foreach (var item in items)
-                        {
-                            <tr>
-                                <td><strong>@item.NumeroSolicitud</strong><div class="small text-muted">SolicitudId @item.SolicitudId</div></td>
-                                <td>@(string.IsNullOrWhiteSpace(item.NumeroAocr) ? "Pendiente" : item.NumeroAocr)</td>
-                                <td>@item.NombreExplotador</td>
-                                <td>@item.TipoTramite</td>
-                                <td>@item.InspectorResponsable</td>
-                                <td>@item.CoordinadorResponsable</td>
-                                <td>@(item.FechaEnvioDcav.HasValue ? item.FechaEnvioDcav.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
-                                <td>@item.TipoRevision</td>
-                                <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
-                                <td>
-                                    <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "AocrDcav", new { solicitudId = item.SolicitudId })">Ver expediente</a>
-                                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.SolicitudId, tipo = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
-                                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.SolicitudId, tipo = "CONDICIONES_LIMITACIONES" })" target="_blank">Ver Condiciones</a>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    @(resumen.InformesGeneradosSinFirma > 0
+                                        ? "No existen informes firmados pendientes. Hay informes generados esperando firma del Inspector."
+                                        : fase == "documentos" ? "No existen AOCR y Condiciones enviados por el Inspector pendientes de revisión DCAV."
+                                        : fase == "informe" ? "No existen informes técnicos pendientes de revisión DCAV."
+                                        : "No existen expedientes pendientes de revision DCAV.")
                                 </td>
                             </tr>
+                        }
+                        @if (informesPendientes.Any())
+                        {
+                            <tr class="table-primary"><td colspan="10"><strong>Informes Tecnicos pendientes</strong></td></tr>
+                            foreach (var item in informesPendientes)
+                            {
+                                @RenderFila(item)
+                            }
+                        }
+                        @if (documentosPendientes.Any())
+                        {
+                            <tr class="table-info"><td colspan="10"><strong>AOCR y Condiciones pendientes</strong></td></tr>
+                            foreach (var item in documentosPendientes)
+                            {
+                                @RenderFila(item)
+                            }
+                        }
+                        @if (observados.Any())
+                        {
+                            <tr class="table-warning"><td colspan="10"><strong>Expedientes observados o devueltos</strong></td></tr>
+                            foreach (var item in observados)
+                            {
+                                @RenderFila(item)
+                            }
                         }
                     </tbody>
                 </table>

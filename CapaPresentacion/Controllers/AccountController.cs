@@ -463,6 +463,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            if (string.IsNullOrWhiteSpace(codigoActivo))
+            {
+                _logger.LogInfo("[AOCR][COMPANIA_NO_SELECCIONADA] UsuarioId=" + usuarioId
+                    + "; Rol=" + rolActivo
+                    + "; CompaniasDisponibles=" + companiasAsignadas.Count + ";");
+            }
             var vm = ConstruirSeleccionCompaniaViewModel(
                 companiasAsignadas,
                 !string.IsNullOrWhiteSpace(returnUrlSeguro)
@@ -525,6 +531,8 @@ namespace CapaPresentacion.Controllers
                 ? seleccion.CompaniaNombre
                 : ResolverNombreCompaniaPorCodigo(seleccion.CompaniaCodigo);
             CompaniaActivaSessionHelper.Establecer(Session, seleccion.CompaniaCodigo, nombreCompania);
+            _logger.LogInfo("[AOCR][COMPANIA_SELECCIONADA] UsuarioId=" + usuarioId
+                + "; Compania=" + (seleccion.CompaniaCodigo ?? string.Empty).Trim() + ";");
 
             var returnUrl = returnUrlSeguro;
             if (string.IsNullOrWhiteSpace(returnUrl))
@@ -2056,6 +2064,7 @@ namespace CapaPresentacion.Controllers
                     returnUrl ?? string.Empty,
                     returnUrlPermitido,
                     motivoReturnUrl));
+                RegistrarRedirectPostCompania(usuarioId, string.Join(",", rolesSesion), companiaCodigo, returnUrlPermitido);
                 return Redirect(returnUrlPermitido);
             }
 
@@ -2095,7 +2104,20 @@ namespace CapaPresentacion.Controllers
                 rolSesion ?? "null",
                 destino ?? "null"));
 
+            RegistrarRedirectPostCompania(usuarioId, rolSesion, companiaActiva, destino);
+
             return Redirect(destino);
+        }
+
+        private void RegistrarRedirectPostCompania(int usuarioId, string rol, string compania, string destino)
+        {
+            _logger.LogInfo(string.Format(
+                "[AUTH][POST_COMPANIA_REDIRECT] Destino={0}; Usuario={1}; UsuarioId={2}; Rol={3}; Compania={4}",
+                destino ?? string.Empty,
+                Session["CodigoUsuario"] as string ?? User.Identity.Name ?? string.Empty,
+                usuarioId,
+                rol ?? string.Empty,
+                compania ?? CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty));
         }
 
         private ActionResult LogLoginResult(ActionResult result, Stopwatch stopwatch, string mensaje)

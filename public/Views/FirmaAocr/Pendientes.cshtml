@@ -1,0 +1,93 @@
+@model CapaPresentacion.Models.FirmaAocrPendientesViewModel
+@using System.Linq
+@{
+    ViewBag.Title = Model != null && Model.EsBandejaInspector ? "AOCR y Condiciones pendientes de revisión" : "Firma institucional AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<style>
+    .firma-pendientes { padding: 22px; }
+    .firma-pendientes__hero { background: linear-gradient(135deg, #0f5578, #1f9aaa); color: #fff; border-radius: 8px; padding: 24px 28px; margin-bottom: 22px; }
+    .firma-pendientes__hero h1 { margin: 0 0 8px; font-size: 28px; font-weight: 800; }
+    .firma-pendientes__hero p { margin: 0; max-width: 840px; }
+    .firma-pendientes__stats { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .firma-pendientes__stat { background: #fff; border: 1px solid #dbe6ef; border-radius: 8px; padding: 16px 18px; box-shadow: 0 6px 18px rgba(15, 48, 75, .06); }
+    .firma-pendientes__stat span { color: #5c7188; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+    .firma-pendientes__stat strong { display: block; color: #0f2942; font-size: 28px; line-height: 1.1; margin-top: 6px; }
+    .firma-pendientes__panel { background: #fff; border: 1px solid #dbe6ef; border-radius: 8px; overflow: hidden; }
+    .firma-pendientes__table { width: 100%; border-collapse: collapse; }
+    .firma-pendientes__table th { background: #154f72; color: #fff; font-size: 12px; text-align: left; padding: 13px 14px; text-transform: uppercase; }
+    .firma-pendientes__table td { border-top: 1px solid #e7eef5; padding: 13px 14px; color: #17233a; vertical-align: middle; }
+    .firma-pendientes__code { font-weight: 800; color: #006ee6; }
+    .firma-pendientes__badge { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 800; background: #e9f3ff; color: #0b5795; }
+    .firma-pendientes__badge.is-ok { background: #e8f7ee; color: #14743d; }
+    .firma-pendientes__badge.is-warn { background: #fff4dc; color: #8a5a00; }
+    .firma-pendientes__btn { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 12px; border-radius: 6px; background: #0875f5; color: #fff; font-weight: 800; text-decoration: none; }
+    .firma-pendientes__btn:hover { color: #fff; text-decoration: none; background: #075fc5; }
+    .firma-pendientes__empty { padding: 36px 18px; text-align: center; color: #52677e; }
+    @@media (max-width: 900px) {
+        .firma-pendientes { padding: 14px; }
+        .firma-pendientes__stats { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+        .firma-pendientes__panel { overflow-x: auto; }
+        .firma-pendientes__table { min-width: 980px; }
+    }
+</style>
+
+<div class="firma-pendientes">
+    <section class="firma-pendientes__hero">
+        <h1>@(Model != null && !string.IsNullOrWhiteSpace(Model.Titulo) ? Model.Titulo : "Firma institucional AOCR")</h1>
+        <p>@(Model != null && !string.IsNullOrWhiteSpace(Model.Descripcion) ? Model.Descripcion : "Expedientes aprobados por DCAV y disponibles para generar, revisar o firmar AOCR y Condiciones y Limitaciones.")</p>
+    </section>
+
+    <section class="firma-pendientes__stats">
+        <div class="firma-pendientes__stat"><span>Total visibles</span><strong>@Model.Total</strong></div>
+        <div class="firma-pendientes__stat"><span>@(Model.EsBandejaInspector ? "Pendientes de revisión" : "Pendientes firma")</span><strong>@Model.PendientesFirma</strong></div>
+        <div class="firma-pendientes__stat"><span>@(Model.EsBandejaInspector ? "Devueltos por DCAV" : "Firma parcial")</span><strong>@(Model.EsBandejaInspector ? Model.Observados : Model.Parciales)</strong></div>
+        <div class="firma-pendientes__stat"><span>@(Model.EsBandejaInspector ? "Enviados al DCAV" : "Completos")</span><strong>@(Model.EsBandejaInspector ? Model.Enviados : Model.Completos)</strong></div>
+    </section>
+
+    <section class="firma-pendientes__panel">
+        @if (Model.Items == null || !Model.Items.Any())
+        {
+            <div class="firma-pendientes__empty">
+                @(Model.EsBandejaInspector ? "No existen AOCR o Condiciones y Limitaciones para los criterios seleccionados." : "No existen expedientes aprobados por DCAV pendientes de firma institucional.")
+            </div>
+        }
+        else
+        {
+            <table class="firma-pendientes__table">
+                <thead>
+                    <tr>
+                        <th>Solicitud</th>
+                        <th>Compania</th>
+                        <th>Inspector</th>
+                        <th>Estado proceso</th>
+                        <th>AOCR PDF</th>
+                        <th>Condiciones PDF</th>
+                        <th>AOCR firma</th>
+                        <th>Condiciones firma</th>
+                        <th>Fecha</th>
+                        <th>Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td><span class="firma-pendientes__code">@item.NumeroSolicitud</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Operadora) ? "-" : item.Operadora)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.InspectorResponsable) ? "No registrado" : item.InspectorResponsable)</td>
+                            <td><span class="firma-pendientes__badge">@item.EstadoProceso</span></td>
+                            <td><span class="firma-pendientes__badge @(item.PdfReconocimientoGenerado ? "is-ok" : "is-warn")">@(item.PdfReconocimientoGenerado ? "Generado" : "Pendiente")</span></td>
+                            <td><span class="firma-pendientes__badge @(item.PdfCondicionesGenerado ? "is-ok" : "is-warn")">@(item.PdfCondicionesGenerado ? "Generado" : "Pendiente")</span></td>
+                            <td><span class="firma-pendientes__badge @(item.ReconocimientoFirmado ? "is-ok" : "is-warn")">@(item.ReconocimientoFirmado ? "Firmado" : "Pendiente")</span></td>
+                            <td><span class="firma-pendientes__badge @(item.CondicionesFirmadas ? "is-ok" : "is-warn")">@(item.CondicionesFirmadas ? "Firmado" : "Pendiente")</span></td>
+                            <td>@(item.FechaEstado == DateTime.MinValue ? "-" : item.FechaEstado.ToString("dd/MM/yyyy HH:mm"))</td>
+                            <td><a class="firma-pendientes__btn" href="@item.UrlGestionar">@(Model.EsBandejaInspector && item.EstadoProceso == "PENDIENTE_REVISION_DOCUMENTOS_DCAV" ? "Consultar" : Model.EsBandejaInspector ? "Revisar y modificar" : "Gestionar")</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>

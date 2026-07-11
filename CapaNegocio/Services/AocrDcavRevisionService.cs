@@ -786,27 +786,54 @@ namespace CapaNegocio.Services
 
         private static string ResolverInspectorResponsable(SolicitudAOCR solicitud, Inspeccion inspeccion, InspeccionInformeTecnico informe)
         {
+            var mismaAsignacion = inspeccion != null && solicitud != null
+                && inspeccion.CodigoInspector.HasValue && solicitud.CodigoTecnico.HasValue
+                && inspeccion.CodigoInspector.Value == solicitud.CodigoTecnico.Value;
             var nombre = FirstNonEmpty(
-                informe != null ? informe.UsuarioFirma1 : null,
                 inspeccion != null ? inspeccion.InspectorPrincipalNombre : null,
-                solicitud != null ? solicitud.TecnicoResponsableNombre : null);
+                mismaAsignacion ? solicitud.TecnicoResponsableNombre : null);
 
             var identificador = FirstNonEmpty(
                 inspeccion != null ? inspeccion.InspectorPrincipalCedula : null,
-                solicitud != null ? solicitud.TecnicoResponsableCedula : null,
-                inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0
-                    ? inspeccion.CodigoInspector.Value.ToString()
-                    : null,
-                solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0
-                    ? solicitud.CodigoTecnico.Value.ToString()
-                    : null);
+                mismaAsignacion ? solicitud.TecnicoResponsableCedula : null);
+
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                int? inspectorId = inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0
+                    ? inspeccion.CodigoInspector.Value
+                    : (mismaAsignacion && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0 ? solicitud.CodigoTecnico.Value : (int?)null);
+
+                if (inspectorId.HasValue)
+                {
+                    try
+                    {
+                        var usuario = CapaDatos.DAOs.UsuarioDAO.ObtenerPorId(inspectorId.Value);
+                        if (usuario != null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
+                        {
+                            nombre = usuario.NombreCompleto;
+                        }
+                        else
+                        {
+                            var tecnico = CapaDatos.DAOs.TecnicoDAO.ObtenerPorId(inspectorId.Value);
+                            if (tecnico != null && !string.IsNullOrWhiteSpace(tecnico.NombreCompleto))
+                            {
+                                nombre = tecnico.NombreCompleto;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore
+                    }
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(nombre) && !string.IsNullOrWhiteSpace(identificador) && nombre.IndexOf(identificador, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 return nombre.Trim() + " - " + identificador.Trim();
             }
 
-            return FirstNonEmpty(nombre, identificador, "No registrado");
+            return FirstNonEmpty(nombre, "No registrado");
         }
 
         private static bool DocumentoGeneradoValido(AocrDocumentoGenerado documento)

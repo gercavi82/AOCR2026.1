@@ -435,6 +435,15 @@ namespace CapaPresentacion.Controllers
         public ActionResult Nueva()
         {
             var userId = GetUserId();
+            var rolActivo = Convert.ToString(Session != null ? Session["Rol"] ?? Session["RolActivo"] ?? Session["SelectedRole"] : null);
+            var companiaActiva = Session != null ? CompaniaActivaSessionHelper.ObtenerCodigo(Session) : string.Empty;
+            CapaNegocio.LogBL.RegistrarInfo(string.Format(
+                "[ORDEN_RECAUDACION][NUEVA_IN] Usuario={0}; UsuarioId={1}; Rol={2}; Compania={3}",
+                User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                userId,
+                rolActivo,
+                companiaActiva),
+                "OrdenRecaudacionController");
             if (userId <= 0)
             {
                 return RedirectToAction("Login", "Account");

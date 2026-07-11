@@ -250,6 +250,7 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\UnityConfig.cs" />
     <Compile Include="Filters\ValidateAntiForgeryTokenFromHeaderAttribute.cs" />
+    <Compile Include="Filters\AjaxResponseMetadataFilter.cs" />
     <Compile Include="Controllers\ConfigApiController.cs" />
     <Compile Include="Controllers\AocrDcavController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />

@@ -54,6 +54,91 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
+        public void InspectorColumns_ShouldUseAssignmentInsteadOfCertificateSigner()
+        {
+            var firmaController = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\FirmaAocrController.cs");
+            var dcavService = LeerArchivoRepositorio("CapaNegocio\\Services\\AocrDcavRevisionService.cs");
+            var directionController = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\InspeccionController.cs");
+            var pendingView = LeerArchivoRepositorio("CapaPresentacion\\Views\\Inspeccion\\PendientesFirmaDirdac.cshtml");
+
+            StringAssert.Contains(firmaController, "inspeccion != null ? inspeccion.InspectorPrincipalNombre : null");
+            StringAssert.Contains(dcavService, "inspeccion != null ? inspeccion.InspectorPrincipalNombre : null");
+            Assert.IsFalse(firmaController.Contains("informe != null ? informe.UsuarioFirma1 : null,\r\n                inspeccion != null ? inspeccion.InspectorPrincipalNombre"));
+            Assert.IsFalse(dcavService.Contains("informe != null ? informe.UsuarioFirma1 : null,\r\n                inspeccion != null ? inspeccion.InspectorPrincipalNombre"));
+            Assert.IsFalse(directionController.Contains("NombreInspector = FirstNonEmpty(\r\n                    informe != null ? informe.UsuarioFirma1"));
+            Assert.IsFalse(pendingView.Contains("informe.UsuarioFirma1 : \"Pendiente\""));
+        }
+
+        [TestMethod]
+        public void AuthPreparationPages_ShouldNotLoadPrivateLayout()
+        {
+            var login = LeerArchivoRepositorio("CapaPresentacion\\Views\\Account\\Login.cshtml");
+            var company = LeerArchivoRepositorio("CapaPresentacion\\Views\\Account\\SeleccionarCompania.cshtml");
+
+            StringAssert.Contains(login, "Layout = null;");
+            StringAssert.Contains(company, "Layout = null;");
+            Assert.IsFalse(login.Contains("_NotificacionesBadge"));
+            Assert.IsFalse(company.Contains("_NotificacionesBadge"));
+            StringAssert.Contains(company, "[AOCR][GLOBAL_INIT_SKIP]");
+        }
+
+        [TestMethod]
+        public void NotificationCount_ShouldReturnReal401AndUseSinglePollingTimer()
+        {
+            var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\NotificacionController.cs");
+            var badge = LeerArchivoRepositorio("CapaPresentacion\\Views\\Shared\\_NotificacionesBadge.cshtml");
+
+            StringAssert.Contains(controller, "Response.StatusCode = 401;");
+            StringAssert.Contains(controller, "Response.SuppressFormsAuthenticationRedirect = true;");
+            StringAssert.Contains(controller, "[AllowAnonymous]");
+            StringAssert.Contains(badge, "window.AocrNotificacionesTimer");
+            StringAssert.Contains(badge, "window._AOCR_NOTIFICACIONES_INITIALIZED");
+            StringAssert.Contains(badge, "[AOCR][NOTIFICACIONES_SKIP]");
+        }
+
+        [TestMethod]
+        public void PublicLayouts_ShouldReferencePublishedFavicon()
+        {
+            var login = LeerArchivoRepositorio("CapaPresentacion\\Views\\Account\\Login.cshtml");
+            var company = LeerArchivoRepositorio("CapaPresentacion\\Views\\Account\\SeleccionarCompania.cshtml");
+            var layout = LeerArchivoRepositorio("CapaPresentacion\\Views\\Shared\\_LayoutAOCR.cshtml");
+
+            StringAssert.Contains(login, "~/favicon.ico");
+            StringAssert.Contains(company, "~/favicon.ico");
+            StringAssert.Contains(layout, "~/favicon.ico");
+        }
+
+        [TestMethod]
+        public void AjaxRequests_ShouldHaveEndToEndCorrelationAndRealStatusCodes()
+        {
+            var global = LeerArchivoRepositorio("CapaPresentacion\\Global.asax.cs");
+            var filterConfig = LeerArchivoRepositorio("CapaPresentacion\\App_Start\\FilterConfig.cs");
+            var metadata = LeerArchivoRepositorio("CapaPresentacion\\Filters\\AjaxResponseMetadataFilter.cs");
+
+            StringAssert.Contains(global, "[AJAX][REQUEST_IN]");
+            StringAssert.Contains(global, "AJAX][REQUEST_OUT");
+            StringAssert.Contains(global, "AJAX][REQUEST_ERROR");
+            StringAssert.Contains(global, "X-Correlation-ID");
+            StringAssert.Contains(global, "response.RedirectLocation = null;");
+            StringAssert.Contains(filterConfig, "new AjaxResponseMetadataFilter()");
+            StringAssert.Contains(metadata, "InternalCodeKey");
+        }
+
+        [TestMethod]
+        public void CompanyRedirectAndOrderEntry_ShouldExposeContinuityLogs()
+        {
+            var account = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\AccountController.cs");
+            var order = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\OrdenRecaudacionController.cs");
+            var notification = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\NotificacionController.cs");
+
+            StringAssert.Contains(account, "[AUTH][POST_COMPANIA_REDIRECT]");
+            StringAssert.Contains(account, "Url.Action(\"Nueva\", \"OrdenRecaudacion\")");
+            StringAssert.Contains(order, "[ORDEN_RECAUDACION][NUEVA_IN]");
+            StringAssert.Contains(notification, "[NOTIFICACIONES][CONTAR_IN]");
+            StringAssert.Contains(notification, "[NOTIFICACIONES][CONTAR_OUT]");
+        }
+
+        [TestMethod]
         public void SolicitudAocr_ModificationInspectorActions_ShouldRequireInspectorRole()
         {
             AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "MarcarRequiereInspeccionModificacion", "Inspector,Administrador");

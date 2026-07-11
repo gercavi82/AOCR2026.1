@@ -181,7 +181,8 @@
     var informeTecnicoFirmadoInspector = informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector;
     var puedeRegistrarResultado = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos && informeTecnicoFirmadoInspector;
     var puedeRegistrarHallazgo = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
-    var puedeEditarInformeTecnico = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos;
+    var estadoTecnicoInspeccion = new CapaNegocio.Services.EstadoTecnicoInspeccionService().ObtenerEstadoTecnico(Model != null ? Model.CodigoInspeccion : 0);
+    var puedeEditarInformeTecnico = estadoTecnicoInspeccion.PuedeEditarInforme;
     var hallazgosAbiertos = hallazgosLista.Count(h => h != null && !string.Equals((h.Estado ?? string.Empty).Trim(), "CERRADO", System.StringComparison.OrdinalIgnoreCase));
     var puedeSubirCorreccionSolicitante = (User.IsInRole("Solicitante") || User.IsInRole("Administrador"))
         && (string.Equals(estadoActualNormalizado, EstadosInspeccion.OBSERVADA, System.StringComparison.OrdinalIgnoreCase)
@@ -189,7 +190,7 @@
             || string.Equals(estadoActualNormalizado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, System.StringComparison.OrdinalIgnoreCase));
     var esSolicitante = User.IsInRole("Solicitante");
     var esDirdac = usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "DirectorGeneral", "Director", "JefaturaTecnica", "Jefe" });
-    var puedeAbrirModalInformeTecnico = puedeEditarInformeTecnico || esCoordinadorRevision || esDirdac;
+    var puedeAbrirModalInformeTecnico = estadoTecnicoInspeccion.PuedeCrearInforme || estadoTecnicoInspeccion.PuedeEditarInforme || estadoTecnicoInspeccion.PuedeVerInforme || esCoordinadorRevision || esDirdac;
     var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
         ? informeTecnico.EstadoInforme
         : (informeTecnico != null && informeTecnico.Finalizado ? "GENERADO" : "BORRADOR");
@@ -240,6 +241,11 @@
         TituloBloqueoRevisionDocumental = "La revisión documental requiere una solicitud asociada y un rol Inspector o Administrador.",
         TextoAyudaRevision = "Aceptar, devolver y gestionar la fase documental previa a la LV/EAE y al informe técnico."
     };
+    var estadoSolicitudNormalizado = solicitud != null && solicitud.Estado != null ? CapaDatos.Constants.EstadoSolicitud.Normalizar(solicitud.Estado) : "";
+    var esEstadoDocumentosHabilitadosInspector = string.Equals(estadoSolicitudNormalizado, CapaDatos.Constants.AocrEstadosProceso.DocumentosHabilitadosInspector, System.StringComparison.OrdinalIgnoreCase);
+    var esEstadoDocumentosObservadosDcav = string.Equals(estadoSolicitudNormalizado, CapaDatos.Constants.AocrEstadosProceso.DocumentosObservadosDcav, System.StringComparison.OrdinalIgnoreCase);
+    var inspectorDebeRevisarAocr = esInspector && (esEstadoDocumentosHabilitadosInspector || esEstadoDocumentosObservadosDcav);
+
     var autoOpenLvFlow = Request != null && Request.QueryString != null
         ? (Request.QueryString["lvAutoFlow"] ?? string.Empty)
         : string.Empty;
@@ -265,14 +271,8 @@
             : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
             ? estadoRevisionDocumental.MensajeBloqueoDocumental
             : "Debe completar la revisión documental y aceptar los documentos subsanados antes de iniciar la LV/EAE."));
-    var informeTecnicoModalHabilitado = puedeAbrirLvEae && (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada);
-    var mensajeBloqueoInformeTecnico = !puedeAbrirLvEae
-        ? "No se puede elaborar el informe técnico hasta que la documentación observada haya sido subsanada y aceptada."
-        : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
-            ? (listaVerificacionFinalizada
-                ? "Debe firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico."
-                : "Debe finalizar y firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico.")
-            : string.Empty);
+    var informeTecnicoModalHabilitado = puedeAbrirModalInformeTecnico && (string.IsNullOrWhiteSpace(estadoTecnicoInspeccion.MotivoBloqueo) || estadoTecnicoInspeccion.PuedeVerInforme);
+    var mensajeBloqueoInformeTecnico = !string.IsNullOrWhiteSpace(estadoTecnicoInspeccion.MotivoBloqueo) ? estadoTecnicoInspeccion.MotivoBloqueo : string.Empty;
     var abrirModalListaVerificacionAlCargar = autoOpenLvEditor
         || autoOpenLvSignature
         || (!string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !listaVerificacionFinalizada);
@@ -3122,7 +3122,42 @@
                                         <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
                                     }
                                 }
-                            </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (inspectorDebeRevisarAocr)
+                            {
+                                <hr class="mt-4 mb-3" />
+                                <h4 class="mb-3"><i class="fas fa-file-signature text-primary"></i> Revisión de Documentos AOCR</h4>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <div class="card bg-light h-100">
+                                            <div class="card-body text-center">
+                                                <h5 class="card-title">AOCR</h5>
+                                                <p class="card-text text-muted small">Verifique el borrador del documento principal.</p>
+                                                <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, tipoDocumento = "RECONOCIMIENTO" })" target="_blank" class="btn btn-sm btn-outline-primary mb-2 w-100"><i class="fas fa-eye"></i> Vista Previa AOCR</a>
+                                                <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-sm btn-outline-secondary w-100"><i class="fas fa-edit"></i> Editar Datos AOCR</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card bg-light h-100">
+                                            <div class="card-body text-center">
+                                                <h5 class="card-title">Condiciones y Limitaciones</h5>
+                                                <p class="card-text text-muted small">Verifique el documento de condiciones.</p>
+                                                <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, tipoDocumento = "CONDICIONES" })" target="_blank" class="btn btn-sm btn-outline-primary mb-2 w-100"><i class="fas fa-eye"></i> Vista Previa Condiciones</a>
+                                                <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-sm btn-outline-secondary w-100"><i class="fas fa-edit"></i> Editar Condiciones</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <button type="button" class="btn btn-success" onclick="enviarDocumentosDcav(@Model.CodigoSolicitud)">
+                                        <i class="fas fa-paper-plane"></i> Finalizar revisión y enviar a DCAV
+                                    </button>
+                                </div>
+                            }
                         }
 
                         </div>
@@ -3773,6 +3808,44 @@
                 window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
             }, 320);
         })();
+    </script>
+    <script>
+        function enviarDocumentosDcav(solicitudId) {
+            if (confirm("¿Está seguro de enviar los documentos revisados a DCAV?")) {
+                var btn = event.currentTarget || event.target;
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+                }
+                var token = document.querySelector('input[name="__RequestVerificationToken"]');
+                var tokenValue = token ? token.value : '';
+                
+                $.ajax({
+                    url: '@Url.Action("EnviarDocumentosDcav", "Inspeccion")',
+                    type: 'POST',
+                    data: { solicitudId: solicitudId, observacion: 'Revisado por inspector', __RequestVerificationToken: tokenValue },
+                    success: function (res) {
+                        if (res.success) {
+                            alert(res.message);
+                            location.reload();
+                        } else {
+                            alert(res.message);
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Finalizar revisión y enviar a DCAV';
+                            }
+                        }
+                    },
+                    error: function () {
+                        alert("Ocurrió un error al procesar la solicitud.");
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Finalizar revisión y enviar a DCAV';
+                        }
+                    }
+                });
+            }
+        }
     </script>
     <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-informe-tecnico-modal.js")"></script>
     <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-lv-eae-flujo-automatico.js")"></script>

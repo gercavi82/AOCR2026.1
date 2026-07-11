@@ -756,7 +756,7 @@ namespace CapaDatos.Services
             {
                 try
                 {
-                    _logger.LogInfo("[EMAIL_QUEUE][READ_IN] Consultando siguiente correo en cola.");
+                    _logger.LogDebug("[EMAIL_QUEUE][READ_IN] Consultando siguiente correo en cola.");
                     var item = await _queueService.ObtenerSiguienteAsync();
 
                     if (item != null)

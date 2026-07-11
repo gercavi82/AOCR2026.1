@@ -923,29 +923,55 @@ namespace CapaPresentacion.Controllers
         {
             var solicitud = contexto != null && contexto.Solicitud != null ? contexto.Solicitud : solicitudBase;
             var inspeccion = contexto != null ? contexto.Inspeccion : null;
-            var informe = contexto != null ? contexto.Informe : null;
+            var mismaAsignacion = inspeccion != null && solicitud != null
+                && inspeccion.CodigoInspector.HasValue && solicitud.CodigoTecnico.HasValue
+                && inspeccion.CodigoInspector.Value == solicitud.CodigoTecnico.Value;
 
             var nombre = FirmaAocrWorkflowService.PrimerValorNoVacio(
-                informe != null ? informe.UsuarioFirma1 : null,
                 inspeccion != null ? inspeccion.InspectorPrincipalNombre : null,
-                solicitud != null ? solicitud.TecnicoResponsableNombre : null);
+                mismaAsignacion ? solicitud.TecnicoResponsableNombre : null);
 
             var identificador = FirmaAocrWorkflowService.PrimerValorNoVacio(
                 inspeccion != null ? inspeccion.InspectorPrincipalCedula : null,
-                solicitud != null ? solicitud.TecnicoResponsableCedula : null,
-                inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0
-                    ? inspeccion.CodigoInspector.Value.ToString(CultureInfo.InvariantCulture)
-                    : null,
-                solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0
-                    ? solicitud.CodigoTecnico.Value.ToString(CultureInfo.InvariantCulture)
-                    : null);
+                mismaAsignacion ? solicitud.TecnicoResponsableCedula : null);
+
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                int? inspectorId = inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0
+                    ? inspeccion.CodigoInspector.Value
+                    : (mismaAsignacion && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0 ? solicitud.CodigoTecnico.Value : (int?)null);
+
+                if (inspectorId.HasValue)
+                {
+                    try
+                    {
+                        var usuario = CapaDatos.DAOs.UsuarioDAO.ObtenerPorId(inspectorId.Value);
+                        if (usuario != null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
+                        {
+                            nombre = usuario.NombreCompleto;
+                        }
+                        else
+                        {
+                            var tecnico = CapaDatos.DAOs.TecnicoDAO.ObtenerPorId(inspectorId.Value);
+                            if (tecnico != null && !string.IsNullOrWhiteSpace(tecnico.NombreCompleto))
+                            {
+                                nombre = tecnico.NombreCompleto;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore
+                    }
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(nombre) && !string.IsNullOrWhiteSpace(identificador) && nombre.IndexOf(identificador, StringComparison.OrdinalIgnoreCase) < 0)
             {
                 return nombre.Trim() + " - " + identificador.Trim();
             }
 
-            return FirmaAocrWorkflowService.PrimerValorNoVacio(nombre, identificador, "No registrado");
+            return FirmaAocrWorkflowService.PrimerValorNoVacio(nombre, "No registrado");
         }
 
         private bool EsInspectorAsignadoSolicitud(int solicitudId)
