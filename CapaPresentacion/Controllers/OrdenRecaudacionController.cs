@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -443,6 +443,15 @@ namespace CapaPresentacion.Controllers
                 userId,
                 rolActivo,
                 companiaActiva),
+                "OrdenRecaudacionController");
+
+            CapaNegocio.LogBL.RegistrarInfo(string.Format(
+                "[AUTH][PAGE_CONTEXT] UsuarioId={0}; RolActivo={1}; CompaniaActiva={2}; SessionID={3}; Authenticated={4}; Destino=OrdenRecaudacion/Nueva",
+                userId,
+                rolActivo,
+                companiaActiva,
+                Session != null ? Session.SessionID : string.Empty,
+                User != null && User.Identity != null && User.Identity.IsAuthenticated),
                 "OrdenRecaudacionController");
             if (userId <= 0)
             {

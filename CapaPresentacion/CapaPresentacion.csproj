@@ -898,6 +898,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\js\menu-navigation.js" />
+    <Content Include="Content\js\aocr-recorrido-tramite.js" />
     <Content Include="Content\js\verificar-pago.js" />
     <Content Include="Content\plugins\bootstrap-colorpicker\css\bootstrap-colorpicker.css" />
     <Content Include="Content\plugins\bootstrap-colorpicker\css\bootstrap-colorpicker.min.css" />

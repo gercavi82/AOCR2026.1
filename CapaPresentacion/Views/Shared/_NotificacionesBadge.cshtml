@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage
+@inherits System.Web.Mvc.WebViewPage
 @* Partial View para Badge de Notificaciones en Navbar *@
 @* Se debe incluir en _Layout.cshtml dentro del navbar *@
 
@@ -153,6 +153,16 @@
 </li>
 
 <script>
+    window.addEventListener("unhandledrejection", function (event) {
+        console.error(
+            "[AOCR][UNHANDLED_REJECTION_DIAGNOSTICO]",
+            {
+                reason: event.reason,
+                promise: event.promise,
+                stack: event.reason && event.reason.stack
+            }
+        );
+    });
     (function _initNotificaciones() {
         var contexto = window.AocrContext || {};
         var ruta = (window.location.pathname || '').toLowerCase();
@@ -243,31 +253,60 @@
                 url: '@Url.Action("ContarNoLeidas", "Notificacion")',
                 type: 'GET',
                 dataType: 'json',
-                aocrSkipAuthRedirect: true,
-                timeout: 10000,
-                success: function (result) {
-                    if (result && result.success && result.cantidad > 0) {
-                        $badge.text(result.cantidad).show();
-                        $contador.text(result.cantidad);
-                        $badge.attr('aria-hidden', 'false');
-                    } else {
-                        $badge.hide();
-                        $contador.text('0');
-                        $badge.attr('aria-hidden', 'true');
-                        // Si el servidor indica que no hay sesión, detener polling
-                        if (result && result.success === false) {
-                            if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
-                        }
-                    }
-                },
-                error: function (xhr) {
-                    console.warn('Error al obtener contador de notificaciones');
-                    // Si recibimos redirect a Login (HTML en vez de JSON) o 401, detener polling
-                    if (xhr.status === 401 || xhr.status === 403 || xhr.status === 302) {
-                        if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
-                    }
+                cache: false,
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
                 }
+            })
+            .done(function (respuesta) {
+                var cantidad = 0;
+                if (respuesta && respuesta.ok === true) {
+                    cantidad = parseInt(respuesta.cantidad || 0, 10);
+                }
+                actualizarContador(cantidad);
+            })
+            .fail(function (xhr) {
+                var respuesta = xhr.responseJSON || {};
+                
+                if (xhr.status === 401) {
+                    console.info("[AOCR][NOTIFICACIONES_SESSION_EXPIRED]", respuesta);
+                    actualizarContador(0);
+                    if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
+                    return;
+                }
+                
+                if (xhr.status === 403) {
+                    console.warn("[AOCR][NOTIFICACIONES_FORBIDDEN]", respuesta);
+                    actualizarContador(0);
+                    if (window.AocrNotificacionesTimer) { clearInterval(window.AocrNotificacionesTimer); window.AocrNotificacionesTimer = null; }
+                    return;
+                }
+                
+                if (xhr.status === 500) {
+                    console.error("[AOCR][NOTIFICACIONES_CONTEXT_ERROR]", respuesta);
+                    actualizarContador(0);
+                    // No detenemos el timer porque puede ser un error temporal de DB o de sincronizacion
+                    return;
+                }
+                
+                console.error("[AOCR][NOTIFICACIONES_COUNT_ERROR]", {
+                    httpStatus: xhr.status,
+                    response: respuesta
+                });
+                actualizarContador(0);
             });
+        }
+        
+        function actualizarContador(cantidad) {
+            if (cantidad > 0) {
+                $badge.text(cantidad).show();
+                $contador.text(cantidad);
+                $badge.attr('aria-hidden', 'false');
+            } else {
+                $badge.hide();
+                $contador.text('0');
+                $badge.attr('aria-hidden', 'true');
+            }
         }
 
         // Cargar notificaciones recientes

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -36,8 +36,8 @@ namespace CapaPresentacion.Controllers
         // ============================================
         private int ObtenerCodigoUsuario()
         {
-            int id;
-            return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
+            var id = _userContext.ObtenerUsuarioIdSeguro(Session, HttpContext);
+            return id.HasValue ? id.Value : 0;
         }
 
 
@@ -321,64 +321,110 @@ namespace CapaPresentacion.Controllers
         // Obtiene solo el conteo de notificaciones no leÃ­das
         // ============================================
           [HttpGet]
-          [AllowAnonymous]
+          [Authorize]
           public JsonResult ContarNoLeidas()
           {
-              var authenticated = User != null && User.Identity != null && User.Identity.IsAuthenticated;
-              var codigoUsuario = ObtenerCodigoUsuario();
-              var rol = Convert.ToString(Session != null ? Session["Rol"] ?? Session["RolActivo"] ?? Session["SelectedRole"] : null);
-              var compania = Session != null ? CompaniaActivaSessionHelper.ObtenerCodigo(Session) : string.Empty;
+              var request = HttpContext.Request;
+              var formsCookie = request.Cookies[System.Web.Security.FormsAuthentication.FormsCookieName] != null;
+              var sessionCookie = request.Cookies["ASP.NET_SessionId"] != null;
+              
+              var codigoUsuarioSesion = ObtenerCodigoUsuario();
+              var rolSesion = Convert.ToString(Session != null ? Session["Rol"] ?? Session["RolActivo"] ?? Session["SelectedRole"] : null);
+              var companiaSesion = Session != null ? CompaniaActivaSessionHelper.ObtenerCodigo(Session) : string.Empty;
+
               _logger.LogInfo(string.Format(
-                  "[NOTIFICACIONES][CONTAR_IN] UsuarioId={0}; Rol={1}; CompaniaActiva={2}; Authenticated={3}",
-                  codigoUsuario, rol, compania, authenticated));
+                  "[NOTIFICACIONES][CONTAR_CONTEXT] RequestAuthenticated={0}; IdentityAuthenticated={1}; IdentityName={2}; FormsCookie={3}; SessionCookie={4}; SessionIdPresent={5}; UsuarioId={6}; RolActivo={7}; CompaniaActiva={8}; ApplicationPath={9}; Path={10}",
+                  request.IsAuthenticated,
+                  User != null && User.Identity != null && User.Identity.IsAuthenticated,
+                  User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                  formsCookie,
+                  sessionCookie,
+                  Session != null && !string.IsNullOrEmpty(Session.SessionID),
+                  codigoUsuarioSesion,
+                  rolSesion ?? string.Empty,
+                  companiaSesion ?? string.Empty,
+                  request.ApplicationPath,
+                  request.Path
+              ));
+
+              var autenticado = request.IsAuthenticated && User != null && User.Identity != null && User.Identity.IsAuthenticated;
+
+              if (!autenticado)
+              {
+                  Response.StatusCode = 401;
+                  Response.SuppressFormsAuthenticationRedirect = true;
+                  Response.TrySkipIisCustomErrors = true;
+
+                  return Json(new
+                  {
+                      success = false,
+                      ok = false,
+                      code = 401,
+                      cantidad = 0,
+                      message = "La sesión no está activa."
+                  }, JsonRequestBehavior.AllowGet);
+              }
+
+              var contexto = CapaPresentacion.Services.AocrUserContextService.FromHttpContext(HttpContext);
+
+              if (contexto == null || contexto.UsuarioId == 0)
+              {
+                  Response.StatusCode = 500;
+                  Response.SuppressFormsAuthenticationRedirect = true;
+                  Response.TrySkipIisCustomErrors = true;
+
+                  return Json(new
+                  {
+                      success = false,
+                      ok = false,
+                      code = 500,
+                      cantidad = 0,
+                      message = "No fue posible recuperar el contexto de la sesión."
+                  }, JsonRequestBehavior.AllowGet);
+              }
+
+              if (RoleGroupingHelper.RolRequiereCompaniaActiva(contexto.RolActivo) && string.IsNullOrWhiteSpace(contexto.CodigoCompaniaActiva))
+              {
+                  return Json(new
+                  {
+                      success = true,
+                      ok = true,
+                      code = 200,
+                      cantidad = 0,
+                      total = 0,
+                      requiereSeleccionCompania = true
+                  }, JsonRequestBehavior.AllowGet);
+              }
 
               try
               {
-                  if (!authenticated || codigoUsuario == 0)
-                  {
-                      Response.StatusCode = 401;
-                      Response.SuppressFormsAuthenticationRedirect = true;
-                      Response.TrySkipIisCustomErrors = true;
-                      _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] HttpStatus=401; Code=401; Total=0; Motivo=Sesion no activa");
-                      return Json(new
-                      {
-                          success = false,
-                          ok = false,
-                          code = 401,
-                          cantidad = 0,
-                          message = "La sesión no está activa."
-                      }, JsonRequestBehavior.AllowGet);
-                  }
-
-                  int cantidad = NotificacionBL.ContarNoLeidas(codigoUsuario);
-                  _logger.LogInfo(string.Format(
-                      "[NOTIFICACIONES][CONTAR_OUT] HttpStatus=200; Code=200; Total={0}; Motivo=OK",
-                      cantidad));
+                  int cantidad = NotificacionBL.ContarNoLeidas(contexto.UsuarioId);
 
                   return Json(new
                   {
                       success = true,
                       ok = true,
+                      code = 200,
                       cantidad = cantidad
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                Response.StatusCode = 500;
-                Response.SuppressFormsAuthenticationRedirect = true;
-                Response.TrySkipIisCustomErrors = true;
-                _logger.LogError(ex, new CapaDatos.Services.LogContext { ErrorCode = "NOTIFICACIONES_CONTAR_ERROR", UserId = codigoUsuario.ToString() });
-                _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] HttpStatus=500; Code=500; Total=0; Motivo=Error interno");
-                return Json(new
-                {
-                    success = false,
-                    ok = false,
-                    code = 500,
-                    cantidad = 0,
-                    message = "No se pudo consultar el total de notificaciones."
-                }, JsonRequestBehavior.AllowGet);
-            }
-        }
+                  }, JsonRequestBehavior.AllowGet);
+              }
+              catch (Exception ex)
+              {
+                  Response.StatusCode = 500;
+                  Response.SuppressFormsAuthenticationRedirect = true;
+                  Response.TrySkipIisCustomErrors = true;
+                  _logger.LogError(ex, new CapaDatos.Services.LogContext { ErrorCode = "NOTIFICACIONES_CONTAR_ERROR", UserId = contexto.UsuarioId.ToString() });
+                  
+                  return Json(new
+                  {
+                      success = false,
+                      ok = false,
+                      code = 500,
+                      cantidad = 0,
+                      message = "No se pudo consultar el total de notificaciones."
+                  }, JsonRequestBehavior.AllowGet);
+              }
+          }
 
 
         // ============================================

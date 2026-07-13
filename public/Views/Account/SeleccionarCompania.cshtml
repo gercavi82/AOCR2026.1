@@ -11,6 +11,18 @@
     var companiasAsignadas = Model != null && Model.Companias != null
         ? Model.Companias.Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo)).ToList()
         : new System.Collections.Generic.List<CapaPresentacion.Models.CompaniaAsignadaViewModel>();
+    var faviconVersion = "1";
+    try
+    {
+        var faviconPath = Server.MapPath("~/Content/imganes/logo1.png");
+        if (System.IO.File.Exists(faviconPath))
+        {
+            faviconVersion = System.IO.File.GetLastWriteTimeUtc(faviconPath).Ticks.ToString();
+        }
+    }
+    catch
+    {
+    }
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -18,8 +30,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title - AOCR</title>
-    <link rel="shortcut icon" href="@Url.Content("~/favicon.ico")" type="image/x-icon" />
-    <link rel="icon" href="@Url.Content("~/favicon.ico")" type="image/x-icon" />
+    <link rel="shortcut icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" type="image/png" />
+    <link rel="icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" type="image/png" />
     <script>
         window.AocrContext = {
             autenticado: true,

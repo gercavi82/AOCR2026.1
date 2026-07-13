@@ -310,6 +310,34 @@ namespace CapaPresentacion
             }
 
             response.SuppressFormsAuthenticationRedirect = true;
+            
+            int userId = 0;
+            var userContext = new CapaPresentacion.Infrastructure.UserContextAccessor();
+            var isContextInconsistent = context.Session != null && !userContext.TryGetUserId(new System.Web.HttpSessionStateWrapper(context.Session), out userId);
+
+            if (isContextInconsistent)
+            {
+                PerfLogger.LogWarning(string.Format(
+                    "[AUTH][CONTEXT_INCONSISTENT] User={0}; Path={1}; Method={2}; Status=401",
+                    identity.Name ?? string.Empty,
+                    path,
+                    request.HttpMethod));
+                
+                // Mantener como 401 para que la app sepa que la sesion es invalida
+                if (IsAjaxLikeRequest(request))
+                {
+                    response.TrySkipIisCustomErrors = true;
+                    // No cambiamos a 403
+                }
+                else
+                {
+                    var destino = VirtualPathUtility.ToAbsolute("~/Account/Login");
+                    response.StatusCode = 302;
+                    response.RedirectLocation = destino;
+                    response.AddHeader("Location", destino);
+                }
+                return true;
+            }
 
             if (IsAjaxLikeRequest(request))
             {

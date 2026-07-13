@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>C:\proyectos\AOCR\public</_PublishTargetUrl>
-    <History>True|2026-07-11T22:24:46.6672026Z||;False|2026-07-11T17:16:15.0838260-05:00||;True|2026-07-11T16:29:10.8398052-05:00||;True|2026-07-10T16:41:02.6671974-05:00||;True|2026-07-09T15:51:24.8014894-05:00||;True|2026-07-09T14:12:57.4786411-05:00||;</History>
+    <History>True|2026-07-11T23:04:58.8043114Z||;True|2026-07-11T17:24:46.6672026-05:00||;False|2026-07-11T17:16:15.0838260-05:00||;True|2026-07-11T16:29:10.8398052-05:00||;True|2026-07-10T16:41:02.6671974-05:00||;True|2026-07-09T15:51:24.8014894-05:00||;True|2026-07-09T14:12:57.4786411-05:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
   <ItemGroup>
@@ -47,10 +47,10 @@
       <publishTime>07/11/2026 17:16:12</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>07/11/2026 17:23:37</publishTime>
+      <publishTime>07/11/2026 22:07:44</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>07/11/2026 17:23:37</publishTime>
+      <publishTime>07/11/2026 22:07:44</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>07/10/2026 15:17:03</publishTime>
@@ -2034,6 +2034,9 @@
     </File>
     <File Include="Content/imganes/Warning.png">
       <publishTime>01/20/2026 14:59:02</publishTime>
+    </File>
+    <File Include="Content/js/aocr-recorrido-tramite.js">
+      <publishTime>07/11/2026 17:32:08</publishTime>
     </File>
     <File Include="Content/js/menu-navigation.js">
       <publishTime>01/20/2026 14:59:02</publishTime>
@@ -7898,10 +7901,10 @@
       <publishTime>06/05/2026 10:47:13</publishTime>
     </File>
     <File Include="Views/Account/Login.cshtml">
-      <publishTime>07/11/2026 15:37:28</publishTime>
+      <publishTime>07/12/2026 08:27:48</publishTime>
     </File>
     <File Include="Views/Account/SeleccionarCompania.cshtml">
-      <publishTime>07/11/2026 15:37:28</publishTime>
+      <publishTime>07/12/2026 08:28:44</publishTime>
     </File>
     <File Include="Views/Account/_CuentasBancosPartial.cshtml">
       <publishTime>05/06/2026 09:02:34</publishTime>
@@ -8345,7 +8348,7 @@
       <publishTime>06/05/2026 12:32:32</publishTime>
     </File>
     <File Include="Views/Shared/_LayoutAOCR.cshtml">
-      <publishTime>07/11/2026 17:16:08</publishTime>
+      <publishTime>07/12/2026 08:27:48</publishTime>
     </File>
     <File Include="Views/Shared/_LoginPartial.cshtml">
       <publishTime>01/28/2026 10:36:51</publishTime>
@@ -8357,7 +8360,7 @@
       <publishTime>05/22/2026 08:32:17</publishTime>
     </File>
     <File Include="Views/Shared/_NotificacionesBadge.cshtml">
-      <publishTime>07/11/2026 15:37:28</publishTime>
+      <publishTime>07/11/2026 22:04:44</publishTime>
     </File>
     <File Include="Views/Shared/_PageHeader.cshtml">
       <publishTime>06/08/2026 09:42:00</publishTime>
@@ -8498,7 +8501,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>07/11/2026 17:24:30</publishTime>
+      <publishTime>07/12/2026 08:51:47</publishTime>
     </File>
   </ItemGroup>
 </Project>

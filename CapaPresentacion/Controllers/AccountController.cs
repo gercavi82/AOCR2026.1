@@ -533,6 +533,8 @@ namespace CapaPresentacion.Controllers
             CompaniaActivaSessionHelper.Establecer(Session, seleccion.CompaniaCodigo, nombreCompania);
             _logger.LogInfo("[AOCR][COMPANIA_SELECCIONADA] UsuarioId=" + usuarioId
                 + "; Compania=" + (seleccion.CompaniaCodigo ?? string.Empty).Trim() + ";");
+            _logger.LogInfo("[AUTH][COMPANIA_SESSION_CONTEXT] UsuarioIdAntes=" + usuarioId
+                + "; UsuarioIdDespues=" + ObtenerUsuarioSesionId() + "; CompaniaActiva=" + (seleccion.CompaniaCodigo ?? string.Empty).Trim());
 
             var returnUrl = returnUrlSeguro;
             if (string.IsNullOrWhiteSpace(returnUrl))
@@ -1254,6 +1256,7 @@ namespace CapaPresentacion.Controllers
                 return;
             }
 
+            Session["UsuarioId"] = usuario.Id;
             Session["UserId"] = usuario.Id;
             Session["IdUsuario"] = usuario.Id;
             Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
@@ -1331,6 +1334,13 @@ namespace CapaPresentacion.Controllers
                     rolActual ?? string.Empty,
                     Session["Rol"] as string ?? string.Empty,
                     limpiarCompaniaActiva,
+                    Session[CompaniaActivaSessionHelper.SessionCompaniaActivaCodigo] as string ?? string.Empty));
+
+                _logger.LogInfo(string.Format(
+                    "[AUTH][SESSION_SYNC] UsuarioId={0}; Login={1}; RolActivo={2}; CompaniaActiva={3}",
+                    usuario.Id,
+                    usuarioClaveRoles,
+                    Session["Rol"] as string ?? string.Empty,
                     Session[CompaniaActivaSessionHelper.SessionCompaniaActivaCodigo] as string ?? string.Empty));
             }
             catch

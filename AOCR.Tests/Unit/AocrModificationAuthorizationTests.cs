@@ -139,6 +139,29 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
+        public void RecorridoScript_ShouldBePublishedAndRespectVirtualApplicationPath()
+        {
+            var project = LeerArchivoRepositorio("CapaPresentacion\\CapaPresentacion.csproj");
+            var layout = LeerArchivoRepositorio("CapaPresentacion\\Views\\Shared\\_LayoutAOCR.cshtml");
+            var script = LeerArchivoRepositorio("CapaPresentacion\\Content\\js\\aocr-recorrido-tramite.js");
+
+            StringAssert.Contains(project, "Content\\js\\aocr-recorrido-tramite.js");
+            StringAssert.Contains(layout, "applicationPath");
+            StringAssert.Contains(script, "function aocrUrl(path)");
+            Assert.IsFalse(script.Contains("$.get('/RecorridoTramite/"));
+        }
+
+        [TestMethod]
+        public void NotificationCount_ShouldTreatPendingCompanyAsInformational()
+        {
+            var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\NotificacionController.cs");
+
+            StringAssert.Contains(controller, "requiereSeleccionCompania = true");
+            StringAssert.Contains(controller, "Motivo=Compania activa pendiente");
+            StringAssert.Contains(controller, "cantidad = 0");
+        }
+
+        [TestMethod]
         public void SolicitudAocr_ModificationInspectorActions_ShouldRequireInspectorRole()
         {
             AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "MarcarRequiereInspeccionModificacion", "Inspector,Administrador");

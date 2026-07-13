@@ -12,6 +12,7 @@ namespace CapaPresentacion.Infrastructure
         string GetNombreUsuario(HttpSessionStateBase session, IPrincipal principal);
         string GetRol(HttpSessionStateBase session);
         string GetCorreo(HttpSessionStateBase session);
+        int? ObtenerUsuarioIdSeguro(HttpSessionStateBase session, HttpContextBase httpContext);
     }
 
     public class UserContextAccessor : IUserContextAccessor
@@ -24,8 +25,43 @@ namespace CapaPresentacion.Infrastructure
                 return false;
             }
 
-            var value = session["UserId"] ?? session["IdUsuario"];
+            var value = session["UsuarioId"] ?? session["UserId"] ?? session["IdUsuario"];
             return value != null && int.TryParse(value.ToString(), out userId) && userId > 0;
+        }
+
+        public int? ObtenerUsuarioIdSeguro(HttpSessionStateBase session, HttpContextBase httpContext)
+        {
+            int userId;
+            if (session != null)
+            {
+                var val = session["UsuarioId"] ?? session["UserId"] ?? session["IdUsuario"];
+                if (val != null && int.TryParse(val.ToString(), out userId) && userId > 0)
+                {
+                    return userId;
+                }
+
+                var codigo = session["CodigoUsuario"];
+                if (codigo != null && int.TryParse(codigo.ToString(), out userId) && userId > 0)
+                {
+                    return userId;
+                }
+            }
+
+            if (httpContext != null && httpContext.User != null && httpContext.User.Identity != null && httpContext.User.Identity.IsAuthenticated)
+            {
+                AuthenticatedSessionBootstrapper.EnsureSession(httpContext);
+
+                if (session != null)
+                {
+                    var val = session["UsuarioId"] ?? session["UserId"] ?? session["IdUsuario"];
+                    if (val != null && int.TryParse(val.ToString(), out userId) && userId > 0)
+                    {
+                        return userId;
+                    }
+                }
+            }
+
+            return null;
         }
 
         public bool TryGetCodigoUsuario(HttpSessionStateBase session, out int codigoUsuario)
