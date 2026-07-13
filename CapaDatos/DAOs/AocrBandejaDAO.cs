@@ -256,10 +256,20 @@ namespace CapaDatos.DAOs
                     ORDER BY {ColumnaFecha("d", "fecha_carga", columnasDocumento)} DESC NULLS LAST, {ColumnaEntera("d", "codigo_documento", columnasDocumento)} DESC
                     LIMIT 1
                 ) daocr ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT
+                        pe.estado_actual AS EstadoCentralRaw
+                    FROM public.aocr_proceso_estado pe
+                    WHERE pe.solicitud_id = sb.SolicitudId
+                      AND pe.activo = TRUE
+                    ORDER BY pe.id DESC
+                    LIMIT 1
+                ) pcent ON TRUE
                 WHERE cert.CertificadoId IS NOT NULL
                     OR frec.FirmaReconocimientoId IS NOT NULL
                     OR fcond.FirmaCondicionesId IS NOT NULL
                     OR daocr.RutaAocrGenerada IS NOT NULL
+                    OR {NormalizarEstadoSql("pcent.EstadoCentralRaw")} IN ({estadosBandejaGeneradasFirmadasSql})
                     OR {estadoSolicitudNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
                     OR {estadoCertificadoNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
                     OR {estadoInformeNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})

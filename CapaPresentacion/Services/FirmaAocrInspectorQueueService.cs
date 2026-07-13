@@ -33,6 +33,7 @@ namespace CapaPresentacion.Services
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly AocrAuthorizationService _authorization = new AocrAuthorizationService();
+        private readonly AocrDocumentoGeneradoDAO _documentoDao = new AocrDocumentoGeneradoDAO();
 
         public FirmaAocrInspectorQueueResult Obtener(int usuarioId, bool administrador)
         {
@@ -54,6 +55,12 @@ namespace CapaPresentacion.Services
                 }
 
                 if (!administrador && !_authorization.PuedeInspectorAbrirInspeccion(inspeccion.CodigoInspeccion, usuarioId))
+                {
+                    continue;
+                }
+
+                var inspectorAsignado=inspeccion.CodigoInspector.HasValue?inspeccion.CodigoInspector.Value:(solicitud.CodigoTecnico??0);
+                if(inspectorAsignado<=0 || !_documentoDao.TieneParDocumentosInspector(solicitud.CodigoSolicitud,inspeccion.CodigoInspeccion,inspectorAsignado))
                 {
                     continue;
                 }

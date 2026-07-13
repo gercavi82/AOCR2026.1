@@ -17,12 +17,24 @@ using CapaDatos.Services;
 using CapaPresentacion.Models;
 using CapaDatos.DAOs;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
     public class AccountController : Controller
     {
         private static readonly ILoggingService _logger = LoggingServiceFactory.Create();
+        private readonly IUsuarioContextoService _usuarioContextoService;
+
+        public AccountController()
+            : this(new UsuarioContextoService())
+        {
+        }
+
+        public AccountController(IUsuarioContextoService usuarioContextoService)
+        {
+            _usuarioContextoService = usuarioContextoService ?? throw new ArgumentNullException("usuarioContextoService");
+        }
 
         private static readonly HashSet<string> RolesInternosNoBloqueoDesignacion = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -530,11 +542,16 @@ namespace CapaPresentacion.Controllers
             var nombreCompania = !string.IsNullOrWhiteSpace(seleccion.CompaniaNombre)
                 ? seleccion.CompaniaNombre
                 : ResolverNombreCompaniaPorCodigo(seleccion.CompaniaCodigo);
+            _logger.LogInfo("[AUTH][COMPANIA_CONTEXT_BEFORE] UsuarioId=" + usuarioId
+                + "; CompaniaActiva=" + CompaniaActivaSessionHelper.ObtenerCodigo(Session));
             CompaniaActivaSessionHelper.Establecer(Session, seleccion.CompaniaCodigo, nombreCompania);
+            _usuarioContextoService.InvalidarCache();
             _logger.LogInfo("[AOCR][COMPANIA_SELECCIONADA] UsuarioId=" + usuarioId
                 + "; Compania=" + (seleccion.CompaniaCodigo ?? string.Empty).Trim() + ";");
             _logger.LogInfo("[AUTH][COMPANIA_SESSION_CONTEXT] UsuarioIdAntes=" + usuarioId
                 + "; UsuarioIdDespues=" + ObtenerUsuarioSesionId() + "; CompaniaActiva=" + (seleccion.CompaniaCodigo ?? string.Empty).Trim());
+            _logger.LogInfo("[AUTH][COMPANIA_CONTEXT_AFTER] UsuarioId=" + ObtenerUsuarioSesionId()
+                + "; CompaniaActiva=" + CompaniaActivaSessionHelper.ObtenerCodigo(Session));
 
             var returnUrl = returnUrlSeguro;
             if (string.IsNullOrWhiteSpace(returnUrl))
@@ -1301,6 +1318,7 @@ namespace CapaPresentacion.Controllers
             Session["RolActual"] = Session["Rol"];
             Session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             Session["LastActivity"] = DateTime.Now;
+            _usuarioContextoService.InvalidarCache();
 
             try
             {
@@ -1574,13 +1592,10 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerUsuarioSesionId()
         {
-            var v = Session["UserId"] ?? Session["IdUsuario"];
-            int id;
-            if (v != null && int.TryParse(v.ToString(), out id) && id > 0)
+            UsuarioContextoDto contexto;
+            if (_usuarioContextoService.TryObtenerContextoActual(out contexto) && contexto.UsuarioId > 0)
             {
-                Session["UserId"] = id;
-                Session["IdUsuario"] = id;
-                return id;
+                return contexto.UsuarioId;
             }
 
             Usuario usuario;

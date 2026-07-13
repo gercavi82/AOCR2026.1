@@ -1,0 +1,3 @@
+@model IList<CapaPresentacion.Models.HistorialDcavViewModel>
+@{Layout="~/Views/Shared/_LayoutAOCR.cshtml";ViewBag.Title="Historial documental DCAV";}
+<div class="container mt-4"><h2>HISTORIAL DE AOCR Y CONDICIONES</h2><div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Acción</th><th>Usuario</th><th>Rol</th><th>Anterior</th><th>Nuevo</th><th>Observación</th><th>Fecha</th></tr></thead><tbody>@foreach(var h in Model){<tr><td>@h.Accion</td><td>@h.Usuario</td><td>@h.Rol</td><td>@h.EstadoAnterior</td><td>@h.EstadoNuevo</td><td>@h.Observacion</td><td>@h.Fecha.ToString("dd/MM/yyyy HH:mm")</td></tr>}</tbody></table></div></div></div>

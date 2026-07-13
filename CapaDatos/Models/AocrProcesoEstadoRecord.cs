@@ -17,5 +17,6 @@ namespace CapaDatos.Models
         public string Observacion { get; set; }
         public DateTime FechaEstado { get; set; }
         public bool Activo { get; set; }
+        public long Version { get; set; }
     }
 }

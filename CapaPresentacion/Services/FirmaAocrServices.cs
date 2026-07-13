@@ -418,10 +418,11 @@ namespace CapaPresentacion.Services
 
             return new FirmaAocrDocumentoItemViewModel
             {
+                Version = documento != null && documento.Version > 0 ? documento.Version : 1,
                 TipoDocumento = tipo,
                 Titulo = titulo,
                 Descripcion = descripcion,
-                Estado = firmado ? "Firmado" : (pdfExiste ? "Generado" : "Pendiente"),
+                Estado = firmado ? "FIRMADO" : (pdfExiste ? "GENERADO" : (!string.IsNullOrWhiteSpace(documento != null ? documento.Estado : null) ? documento.Estado : "EN_REVISION_INSPECTOR")),
                 NombreArchivoPdf = pdfExiste ? Path.GetFileName(rutaPdfFisica) : null,
                 NombreArchivoFirmado = firmado ? Path.GetFileName(rutaFirmadaFisica) : null,
                 PdfExiste = pdfExiste,

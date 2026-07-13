@@ -13,6 +13,8 @@ namespace CapaNegocio.Services
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly RevisionDocumentalBandejaService _revisionDocumentalBandejaService = new RevisionDocumentalBandejaService();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
+        private readonly AocrProcesoEstadoDAO _estadoDao = new AocrProcesoEstadoDAO();
+        private readonly AocrDocumentoGeneradoDAO _documentoGeneradoDao = new AocrDocumentoGeneradoDAO();
 
         public int ContarRevisionDocumentalPendiente(AocrBandejaRoleContext context)
         {
@@ -37,20 +39,18 @@ namespace CapaNegocio.Services
         public IList<SolicitudAOCR> ObtenerDocumentosPendientesRevision(AocrBandejaRoleContext context)
         {
             var inspecciones = ObtenerInspeccionesAsignadas(context);
-            var solicitudesIds = inspecciones.Select(i => i.CodigoSolicitud).Distinct().ToList();
+            var inspeccionesPorSolicitud = inspecciones.GroupBy(i=>i.CodigoSolicitud).ToDictionary(g=>g.Key,g=>g.OrderByDescending(i=>i.CodigoInspeccion).First());
+            var estados = _estadoDao.ListarActivosPorEstado(AocrEstadosProceso.DocumentosHabilitadosInspector,AocrEstadosProceso.DocumentosEnRevisionInspector,AocrEstadosProceso.DocumentosObservadosDcav) ?? new List<AocrProcesoEstadoRecord>();
             var result = new List<SolicitudAOCR>();
-            
-            foreach (var id in solicitudesIds)
+
+            foreach (var estado in estados.Where(e=>e!=null && inspeccionesPorSolicitud.ContainsKey(e.SolicitudId)))
             {
-                var solicitud = _solicitudDao.ObtenerPorId(id);
-                if (solicitud != null)
+                var inspeccion=inspeccionesPorSolicitud[estado.SolicitudId];
+                var solicitud = _solicitudDao.ObtenerPorId(estado.SolicitudId);
+                var inspector=inspeccion.CodigoInspector??(solicitud!=null?solicitud.CodigoTecnico:null)??0;
+                if (solicitud != null && inspector>0 && _documentoGeneradoDao.TieneParDocumentosInspector(solicitud.CodigoSolicitud,inspeccion.CodigoInspeccion,inspector))
                 {
-                    var estadoCentral = CapaDatos.Constants.EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
-                    if (string.Equals(estadoCentral, AocrEstadosProceso.DocumentosHabilitadosInspector, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(estadoCentral, AocrEstadosProceso.DocumentosObservadosDcav, StringComparison.OrdinalIgnoreCase))
-                    {
-                        result.Add(solicitud);
-                    }
+                    result.Add(solicitud);
                 }
             }
             return result;

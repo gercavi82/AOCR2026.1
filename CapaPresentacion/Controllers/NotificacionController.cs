@@ -12,6 +12,7 @@ using CapaDatos.Entidades;
 using CapaDatos.Services;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
@@ -22,7 +23,7 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class NotificacionController : Controller
     {
-        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
+        private readonly IUsuarioContextoService _usuarioContextoService;
         private readonly CapaDatos.Services.ILoggingService _logger = CapaDatos.Services.LoggingServiceFactory.Create();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
@@ -31,13 +32,23 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionCorreoService _inspeccionCorreoService = new InspeccionCorreoService();
         private readonly OrdenRecaudacionCorreoService _ordenCorreoService = new OrdenRecaudacionCorreoService();
 
+        public NotificacionController()
+            : this(new UsuarioContextoService())
+        {
+        }
+
+        public NotificacionController(IUsuarioContextoService usuarioContextoService)
+        {
+            _usuarioContextoService = usuarioContextoService ?? throw new ArgumentNullException("usuarioContextoService");
+        }
+
         // ============================================
         // OBTENER CODIGOUSUARIO DE SESIÃ“N
         // ============================================
         private int ObtenerCodigoUsuario()
         {
-            var id = _userContext.ObtenerUsuarioIdSeguro(Session, HttpContext);
-            return id.HasValue ? id.Value : 0;
+            UsuarioContextoDto contexto;
+            return _usuarioContextoService.TryObtenerContextoActual(out contexto) ? contexto.UsuarioId : 0;
         }
 
 
@@ -321,10 +332,11 @@ namespace CapaPresentacion.Controllers
         // Obtiene solo el conteo de notificaciones no leÃ­das
         // ============================================
           [HttpGet]
-          [Authorize]
+          [AllowAnonymous]
           public JsonResult ContarNoLeidas()
           {
               var request = HttpContext.Request;
+              _logger.LogInfo("[NOTIFICACIONES][CONTAR_IN] Path=" + request.Path);
               var formsCookie = request.Cookies[System.Web.Security.FormsAuthentication.FormsCookieName] != null;
               var sessionCookie = request.Cookies["ASP.NET_SessionId"] != null;
               
@@ -365,11 +377,10 @@ namespace CapaPresentacion.Controllers
                   }, JsonRequestBehavior.AllowGet);
               }
 
-              var contexto = CapaPresentacion.Services.AocrUserContextService.FromHttpContext(HttpContext);
-
-              if (contexto == null || contexto.UsuarioId == 0)
+              UsuarioContextoDto contexto;
+              if (!_usuarioContextoService.TryObtenerContextoActual(out contexto))
               {
-                  Response.StatusCode = 500;
+                  Response.StatusCode = 401;
                   Response.SuppressFormsAuthenticationRedirect = true;
                   Response.TrySkipIisCustomErrors = true;
 
@@ -377,14 +388,32 @@ namespace CapaPresentacion.Controllers
                   {
                       success = false,
                       ok = false,
-                      code = 500,
+                      code = 401,
+                      cantidad = 0,
+                      message = "No fue posible recuperar el contexto de la sesion. Inicie sesion nuevamente."
+                  }, JsonRequestBehavior.AllowGet);
+              }
+
+              if (contexto.UsuarioId <= 0)
+              {
+                  Response.StatusCode = 401;
+                  Response.SuppressFormsAuthenticationRedirect = true;
+                  Response.TrySkipIisCustomErrors = true;
+
+                  return Json(new
+                  {
+                      success = false,
+                      ok = false,
+                      code = 401,
                       cantidad = 0,
                       message = "No fue posible recuperar el contexto de la sesión."
                   }, JsonRequestBehavior.AllowGet);
               }
 
-              if (RoleGroupingHelper.RolRequiereCompaniaActiva(contexto.RolActivo) && string.IsNullOrWhiteSpace(contexto.CodigoCompaniaActiva))
+              if (RoleGroupingHelper.RolRequiereCompaniaActiva(contexto.RolActivo) && string.IsNullOrWhiteSpace(contexto.CompaniaCodigo))
               {
+                  _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] UsuarioId=" + contexto.UsuarioId
+                      + "; Cantidad=0; Motivo=Compania activa pendiente");
                   return Json(new
                   {
                       success = true,
@@ -399,6 +428,8 @@ namespace CapaPresentacion.Controllers
               try
               {
                   int cantidad = NotificacionBL.ContarNoLeidas(contexto.UsuarioId);
+                  _logger.LogInfo("[NOTIFICACIONES][CONTAR_OUT] UsuarioId=" + contexto.UsuarioId
+                      + "; Cantidad=" + cantidad);
 
                   return Json(new
                   {

@@ -1,0 +1,67 @@
+@model CapaPresentacion.Models.RevisionDocumentosInspectorViewModel
+@{
+    ViewBag.Title = "Revisión de documentos finales";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+<link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
+<div class="firma-aocr">
+    <section class="firma-aocr__header">
+        <div><p class="firma-aocr__eyebrow">Sección exclusiva del Inspector</p><h1>AOCR y Condiciones y Limitaciones</h1><p>@Model.NumeroSolicitud · @Model.Operador</p></div>
+        <div class="firma-aocr__state"><span>Estado del proceso</span><strong>@Model.EstadoProceso</strong></div>
+    </section>
+
+    @if(Model.Observaciones.Count>0)
+    {
+        <section class="firma-aocr__box"><div class="firma-aocr__box-head"><div><p class="firma-aocr__eyebrow">DCAV</p><h2>Observaciones recibidas</h2></div></div>
+            @foreach(var o in Model.Observaciones){<div class="firma-aocr__notice"><strong>@o.TipoDocumento · @o.Seccion · @o.Campo</strong><span>@o.Observacion</span><small>Estado: @o.Estado · origen #@o.DocumentoOrigenId v@o.VersionOrigen / PDF #@o.PdfOrigenId · corrección #@o.DocumentoCorreccionId v@o.VersionCorreccion · @o.Fecha.ToString("dd/MM/yyyy HH:mm") · @o.Usuario (@o.Rol)</small>@if(o.Estado=="ABIERTA"){using(Html.BeginForm("AtenderObservacion","InspectorDocumentosFinales",FormMethod.Post)){@Html.AntiForgeryToken()<input type="hidden" name="observacionId" value="@o.ObservacionId"/><input type="hidden" name="solicitudId" value="@Model.SolicitudId"/><input type="hidden" name="documentoCorreccionId" value="@o.DocumentoCorreccionId"/><button class="btn btn-sm btn-outline-primary" type="submit">Marcar atendida</button>}}</div>}
+        </section>
+    }
+
+    <section class="firma-aocr__box" id="aocr">
+        <div class="firma-aocr__box-head"><div><p class="firma-aocr__eyebrow">Documento independiente</p><h2>AOCR</h2><p>Número @Model.Aocr.Numero</p></div><span class="firma-aocr__badge">@Model.Aocr.Estado · v@Model.Aocr.Version</span></div>
+        <dl class="firma-aocr__meta">
+            <div><dt>Operador</dt><dd>@Model.Aocr.Operador</dd></div><div><dt>País</dt><dd>@Model.Aocr.Pais</dd></div>
+            <div><dt>Tipo de trámite</dt><dd>@Model.Aocr.TipoTramite</dd></div><div><dt>Emisión</dt><dd>@Model.Aocr.FechaEmision.ToString("dd/MM/yyyy")</dd></div>
+            <div><dt>Aeronaves</dt><dd>@Model.Aocr.Aeronaves</dd></div><div><dt>Aeropuertos</dt><dd>@Model.Aocr.Aeropuertos</dd></div>
+        </dl>
+        @using(Html.BeginForm("GuardarAocr","InspectorDocumentosFinales",FormMethod.Post,new{@class="firma-aocr__data"}))
+        {
+            @Html.AntiForgeryToken()<input type="hidden" name="SolicitudId" value="@Model.SolicitudId"/><input type="hidden" name="DocumentoId" value="@Model.Aocr.DocumentoId"/><input type="hidden" name="VersionEsperada" value="@Model.Aocr.Version"/>
+            <div class="firma-aocr__form-grid"><label class="firma-aocr__field"><span>Estado del explotador</span><input name="EstadoExplotador" value="@Model.Aocr.EstadoExplotador" required @(Model.Aocr.Editable?null:"readonly") /></label><label class="firma-aocr__field"><span>Fecha de vencimiento</span><input type="date" name="FechaVencimiento" value="@(Model.Aocr.FechaVencimiento.HasValue?Model.Aocr.FechaVencimiento.Value.ToString("yyyy-MM-dd"):"")" required @(Model.Aocr.Editable?null:"readonly") /></label></div>
+            <div class="firma-aocr__actions">@if(Model.Aocr.Editable){<button class="firma-aocr__btn firma-aocr__btn--primary" type="submit">Guardar AOCR</button>}<a class="firma-aocr__btn firma-aocr__btn--outline" target="_blank" rel="noopener" href="@Url.Action("PrevisualizarAocr",new{solicitudId=Model.SolicitudId})">Previsualizar borrador</a></div>
+        }
+        @if(Model.Aocr.Editable){using(Html.BeginForm("GenerarPdfAocr","InspectorDocumentosFinales",FormMethod.Post,new{@class="firma-aocr__actions"})){@Html.AntiForgeryToken()<input type="hidden" name="solicitudId" value="@Model.SolicitudId"/><input type="hidden" name="documentoId" value="@Model.Aocr.DocumentoId"/><input type="hidden" name="versionEsperada" value="@Model.Aocr.Version"/><button class="firma-aocr__btn firma-aocr__btn--success" type="submit">Generar PDF AOCR</button>}}
+        @Html.Partial("~/Views/InspectorDocumentosFinales/_Versiones.cshtml",Model.Aocr.Versiones)
+    </section>
+
+    <section class="firma-aocr__box" id="condiciones">
+        <div class="firma-aocr__box-head"><div><p class="firma-aocr__eyebrow">Documento independiente</p><h2>Condiciones y Limitaciones</h2><p>@Model.Condiciones.Operador</p></div><span class="firma-aocr__badge">@Model.Condiciones.Estado · v@Model.Condiciones.Version</span></div>
+        <dl class="firma-aocr__meta"><div><dt>Aeronaves</dt><dd>@Model.Condiciones.Aeronaves</dd></div><div><dt>Modelos</dt><dd>@Model.Condiciones.Modelos</dd></div><div><dt>Aeropuertos</dt><dd>@Model.Condiciones.Aeropuertos</dd></div><div><dt>Rutas</dt><dd>@Model.Condiciones.Rutas</dd></div></dl>
+        @using(Html.BeginForm("GuardarCondiciones","InspectorDocumentosFinales",FormMethod.Post,new{@class="firma-aocr__data"}))
+        {
+            @Html.AntiForgeryToken()<input type="hidden" name="SolicitudId" value="@Model.SolicitudId"/><input type="hidden" name="DocumentoId" value="@Model.Condiciones.DocumentoId"/><input type="hidden" name="VersionEsperada" value="@Model.Condiciones.Version"/>
+            <div class="firma-aocr__form-grid"><label class="firma-aocr__field"><span>Limitaciones</span><textarea name="Limitaciones" rows="4" required @(Model.Condiciones.Editable?null:"readonly")>@Model.Condiciones.Limitaciones</textarea></label><label class="firma-aocr__field"><span>Condiciones</span><textarea name="Condiciones" rows="4" required @(Model.Condiciones.Editable?null:"readonly")>@Model.Condiciones.Condiciones</textarea></label></div>
+            <div class="firma-aocr__actions">@if(Model.Condiciones.Editable){<button class="firma-aocr__btn firma-aocr__btn--primary" type="submit">Guardar Condiciones</button>}<a class="firma-aocr__btn firma-aocr__btn--outline" target="_blank" rel="noopener" href="@Url.Action("PrevisualizarCondiciones",new{solicitudId=Model.SolicitudId})">Previsualizar borrador</a></div>
+        }
+        @if(Model.Condiciones.Editable){using(Html.BeginForm("GenerarPdfCondiciones","InspectorDocumentosFinales",FormMethod.Post,new{@class="firma-aocr__actions"})){@Html.AntiForgeryToken()<input type="hidden" name="solicitudId" value="@Model.SolicitudId"/><input type="hidden" name="documentoId" value="@Model.Condiciones.DocumentoId"/><input type="hidden" name="versionEsperada" value="@Model.Condiciones.Version"/><button class="firma-aocr__btn firma-aocr__btn--success" type="submit">Generar PDF Condiciones</button>}}
+        @Html.Partial("~/Views/InspectorDocumentosFinales/_Versiones.cshtml",Model.Condiciones.Versiones)
+    </section>
+    <section class="firma-aocr__box" id="envio-dcav">
+        <div class="firma-aocr__box-head"><div><p class="firma-aocr__eyebrow">AcciÃ³n conjunta</p><h2>Finalizar revisiÃ³n</h2><p>AOCR y Condiciones y Limitaciones se remitirÃ¡n como un solo paquete documental.</p></div></div>
+        @using(Html.BeginForm("FinalizarYEnviarDcav","InspectorDocumentosFinales",FormMethod.Post,new{id="frmFinalizarEnviarDcav",@class="firma-aocr__actions"}))
+        {
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="SolicitudId" value="@Model.SolicitudId"/><input type="hidden" name="InspeccionId" value="@Model.InspeccionId"/>
+            <input type="hidden" name="EstadoEsperado" value="@Model.EstadoProceso"/><input type="hidden" name="VersionExpediente" value="@Model.VersionExpediente"/>
+            <input type="hidden" name="AocrId" value="@Model.Aocr.DocumentoId"/><input type="hidden" name="AocrPdfId" value="@Model.AocrPdfId"/><input type="hidden" name="VersionAocr" value="@Model.Aocr.Version"/>
+            <input type="hidden" name="CondicionesId" value="@Model.Condiciones.DocumentoId"/><input type="hidden" name="CondicionesPdfId" value="@Model.CondicionesPdfId"/><input type="hidden" name="VersionCondiciones" value="@Model.Condiciones.Version"/>
+            <input type="hidden" name="ClaveIdempotencia" value="@Model.ClaveIdempotenciaEnvio"/>
+            <button id="btnFinalizarEnviarDcav" class="firma-aocr__btn firma-aocr__btn--primary" type="submit" @(!Model.PuedeFinalizarYEnviar?"disabled":null)>FINALIZAR REVISIÃ“N Y ENVIAR A DCAV</button>
+        }
+        @if(!Model.PuedeFinalizarYEnviar){<p class="firma-aocr__notice">Debe completar y generar los PDF vigentes de ambos documentos antes del envÃ­o.</p>}
+    </section>
+    <a class="firma-aocr__btn firma-aocr__btn--outline" href="@Url.Action("Revision")">Volver a AOCR y Condiciones</a>
+</div>
+<script>
+(function(){var form=document.getElementById('frmFinalizarEnviarDcav');if(!form)return;form.addEventListener('submit',function(e){var message='Se enviarÃ¡n conjuntamente el AOCR y las Condiciones y Limitaciones a DCAV. DespuÃ©s del envÃ­o no podrÃ¡ modificar los documentos hasta que sean aprobados o devueltos. Â¿Desea continuar?';if(!window.confirm(message)){e.preventDefault();return;}var button=document.getElementById('btnFinalizarEnviarDcav');if(button){button.disabled=true;button.textContent='ENVIANDO A DCAV...';}});})();
+</script>

@@ -24,7 +24,17 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly InspectorDashboardService _inspectorDashboardService = new InspectorDashboardService();
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
-        private readonly IUserContextAccessor _userContext = new UserContextAccessor();
+        private readonly IUsuarioContextoService _usuarioContextoService;
+
+        public HomeController()
+            : this(new UsuarioContextoService())
+        {
+        }
+
+        public HomeController(IUsuarioContextoService usuarioContextoService)
+        {
+            _usuarioContextoService = usuarioContextoService ?? throw new ArgumentNullException("usuarioContextoService");
+        }
 
         public ActionResult Index()
         {
@@ -286,8 +296,8 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerIdUsuario()
         {
-            int idUsuario;
-            return _userContext.TryGetUserId(Session, out idUsuario) ? idUsuario : 0;
+            UsuarioContextoDto contexto;
+            return _usuarioContextoService.TryObtenerContextoActual(out contexto) ? contexto.UsuarioId : 0;
         }
 
         private HashSet<int> ObtenerCodigosInspector()
@@ -302,7 +312,7 @@ namespace CapaPresentacion.Controllers
                 ids.Add(idUsuario);
             }
 
-            if (_userContext.TryGetCodigoUsuario(Session, out codigoUsuarioNumerico) && codigoUsuarioNumerico > 0)
+            if (int.TryParse(codigoUsuarioTexto, out codigoUsuarioNumerico) && codigoUsuarioNumerico > 0)
             {
                 ids.Add(codigoUsuarioNumerico);
             }

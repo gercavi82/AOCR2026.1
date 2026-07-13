@@ -289,6 +289,7 @@ namespace CapaPresentacion.Models
 
     public class FirmaAocrDocumentoItemViewModel
     {
+        public int Version { get; set; }
         public string TipoDocumento { get; set; }
         public string Titulo { get; set; }
         public string Descripcion { get; set; }

@@ -24,12 +24,14 @@
         <td>@item.NombreExplotador</td>
         <td>@item.TipoTramite</td>
         <td>@item.InspectorResponsable</td>
+        <td>@(item.AocrId > 0 ? "AOCR v" + item.VersionAocr : "-")</td>
+        <td>@(item.CondicionesId > 0 ? "Condiciones v" + item.VersionCondiciones : "-")</td>
         <td>@item.CoordinadorResponsable</td>
         <td>@(item.FechaEnvioDcav.HasValue ? item.FechaEnvioDcav.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
         <td>@item.TipoRevision</td>
         <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
         <td>
-            <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "AocrDcav", new { solicitudId = item.SolicitudId })">Ver expediente</a>
+            <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "AocrDcav", new { solicitudId = item.SolicitudId })">Revisar</a>
             @if (item.TipoRevision == "DOCUMENTOS_AOCR")
             {
                 <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("VerDocumentoEnviado", "AocrDcav", new { solicitudId = item.SolicitudId, tipoDocumento = "RECONOCIMIENTO" })" target="_blank">Ver AOCR</a>
@@ -81,6 +83,8 @@
                             <th>Explotador</th>
                             <th>Tipo de tramite</th>
                             <th>Inspector</th>
+                            <th>AOCR</th>
+                            <th>Condiciones</th>
                             <th>Coordinador</th>
                             <th>Envio a DCAV</th>
                             <th>Revision</th>
@@ -92,7 +96,7 @@
                         @if (!items.Any())
                         {
                             <tr>
-                                <td colspan="10" class="text-center text-muted py-4">
+                                <td colspan="12" class="text-center text-muted py-4">
                                     @(resumen.InformesGeneradosSinFirma > 0
                                         ? "No existen informes firmados pendientes. Hay informes generados esperando firma del Inspector."
                                         : fase == "documentos" ? "No existen AOCR y Condiciones enviados por el Inspector pendientes de revisión DCAV."
@@ -103,7 +107,7 @@
                         }
                         @if (informesPendientes.Any())
                         {
-                            <tr class="table-primary"><td colspan="10"><strong>Informes Tecnicos pendientes</strong></td></tr>
+                            <tr class="table-primary"><td colspan="12"><strong>Informes Tecnicos pendientes</strong></td></tr>
                             foreach (var item in informesPendientes)
                             {
                                 @RenderFila(item)
@@ -111,7 +115,7 @@
                         }
                         @if (documentosPendientes.Any())
                         {
-                            <tr class="table-info"><td colspan="10"><strong>AOCR y Condiciones pendientes</strong></td></tr>
+                            <tr class="table-info"><td colspan="12"><strong>AOCR y Condiciones pendientes</strong></td></tr>
                             foreach (var item in documentosPendientes)
                             {
                                 @RenderFila(item)
@@ -119,7 +123,7 @@
                         }
                         @if (observados.Any())
                         {
-                            <tr class="table-warning"><td colspan="10"><strong>Expedientes observados o devueltos</strong></td></tr>
+                            <tr class="table-warning"><td colspan="12"><strong>Expedientes observados o devueltos</strong></td></tr>
                             foreach (var item in observados)
                             {
                                 @RenderFila(item)

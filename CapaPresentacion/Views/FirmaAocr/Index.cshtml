@@ -131,6 +131,8 @@
                     </div>
 
                     <dl class="firma-aocr__meta">
+                        <div><dt>Versión</dt><dd>v@doc.Version</dd></div>
+                        <div><dt>Fecha de habilitación</dt><dd>@(doc.FechaGeneracion.HasValue ? doc.FechaGeneracion.Value.ToString("dd/MM/yyyy HH:mm") : "-")</dd></div>
                         <div><dt>Archivo preliminar</dt><dd>@(doc.PdfExiste ? doc.NombreArchivoPdf : "-")</dd></div>
                         <div><dt>Paginas</dt><dd>@doc.Paginas</dd></div>
                         <div><dt>Tamano</dt><dd>@((doc.Firmado ? doc.TamanioPdfFirmado : doc.TamanioPdf).ToString("N0")) bytes</dd></div>
@@ -214,6 +216,7 @@
                             <span>@(!documentos.Any(d => d.TipoDocumento == "RECONOCIMIENTO" && d.PdfExiste) ? "Genere el PDF del AOCR. " : "")@(!documentos.Any(d => d.TipoDocumento == "CONDICIONES_LIMITACIONES" && d.PdfExiste) ? "Genere el PDF de Condiciones y Limitaciones." : "")</span>
                         </div>
                     }
+                    @* Legacy send entry point removed. The package is sent only from InspectorDocumentosFinales.
                     <form method="post" action="@Url.Action("EnviarRevisionDcav", "AocrDcav")">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
@@ -221,6 +224,8 @@
                             Finalizar revisión y enviar a DCAV
                         </button>
                     </form>
+                    *@
+                    <a class="firma-aocr__btn firma-aocr__btn--primary" href="@Url.Action("Detalle","InspectorDocumentosFinales",new{solicitudId=Model.SolicitudId})">Ir a la seccion exclusiva del Inspector</a>
                 </article>
             }
 

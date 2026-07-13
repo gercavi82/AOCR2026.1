@@ -2091,6 +2091,7 @@
                     <i class="fas fa-paper-plane"></i>
                     <span>Envio a DCAV / DGAC</span>
                 </div>
+                @* Legacy send entry point removed. The package is sent only from InspectorDocumentosFinales.
                 <form method="post" action="@Url.Action("EnviarRevisionDcav", "AocrDcav")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("solicitudId", Model.CodigoSolicitud)
@@ -2107,6 +2108,9 @@
                         </div>
                     </div>
                 </form>
+                *@
+                <p>El envio conjunto se realiza exclusivamente desde AOCR y Condiciones del Inspector.</p>
+                <a class="btn btn-success aocr-action-btn" href="@Url.Action("Detalle","InspectorDocumentosFinales",new{solicitudId=Model.CodigoSolicitud})"><i class="fas fa-external-link-alt"></i> Abrir seccion del Inspector</a>
             </div>
         </div>
     }

@@ -74,7 +74,6 @@ namespace CapaNegocio
                 return false;
             }
 
-            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
             var estadoDestino = EstadoSolicitud.Normalizar(nuevoEstado);
 
             if (puedeTransicionar != null && !puedeTransicionar(estadoDestino))
@@ -83,66 +82,51 @@ namespace CapaNegocio
                 return false;
             }
 
-            if (ValidacionCanonicaHabilitada && !EsTransicionAocrPermitida(estadoActual, estadoDestino))
+            try
             {
-                mensaje = "Transicion no permitida: '" + estadoActual + "' -> '" + estadoDestino + "'.";
+                var service = new AocrEstadoProcesoService();
+                var result = service.CambiarEstado(
+                    solicitudId: codigoSolicitud,
+                    estadoNuevo: estadoDestino,
+                    accion: "AOCR_CAMBIO_ESTADO",
+                    usuarioId: usuarioId,
+                    rolUsuario: "SISTEMA", // Or extract from user logic
+                    observacion: observacion
+                );
+
+                if (!result.Ok)
+                {
+                    mensaje = result.Motivo;
+                    return false;
+                }
+
+                // Temporary backward compatibility to update legacy table
+                _solicitudDAO.CambiarEstado(codigoSolicitud, estadoDestino, usuarioId, observacion ?? string.Empty);
+
+                try
+                {
+                    NotificarCambioEstadoAocr(
+                        solicitud,
+                        codigoSolicitud,
+                        result.EstadoAnterior,
+                        result.EstadoNuevo,
+                        result.EstadoActual?.Id,
+                        omitirCorreoGenericoCambioEstado,
+                        omitirCorreoWorkflowEstado);
+                }
+                catch
+                {
+                    // Notificacion auxiliar: no bloquear flujo principal.
+                }
+
+                mensaje = "Estado actualizado correctamente.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error al cambiar estado: " + ex.Message;
                 return false;
             }
-
-            var ok = _solicitudDAO.CambiarEstado(codigoSolicitud, estadoDestino, usuarioId, observacion ?? string.Empty);
-            if (!ok)
-            {
-                mensaje = "No se pudo persistir el cambio de estado.";
-                return false;
-            }
-
-            int? codigoHistorial = null;
-            try
-            {
-                codigoHistorial = new HistorialEstadoDAO().RegistrarCambioYObtenerCodigo(
-                    codigoSolicitud,
-                    estadoActual,
-                    estadoDestino,
-                    usuarioId,
-                    observacion ?? string.Empty);
-            }
-            catch
-            {
-                // Historial auxiliar: no se revierte cambio principal.
-            }
-
-            try
-            {
-                NotificarCambioEstadoAocr(
-                    solicitud,
-                    codigoSolicitud,
-                    estadoActual,
-                    estadoDestino,
-                    codigoHistorial,
-                    omitirCorreoGenericoCambioEstado,
-                    omitirCorreoWorkflowEstado);
-            }
-            catch
-            {
-                // Notificacion auxiliar: no bloquear flujo principal.
-            }
-
-            try
-            {
-                new AocrEstadoProcesoService().SincronizarDesdeFuentesActuales(
-                    codigoSolicitud,
-                    "AOCR_CAMBIO_ESTADO",
-                    usuarioId,
-                    "SISTEMA",
-                    observacion ?? string.Empty);
-            }
-            catch
-            {
-                // Estado central auxiliar: no bloquear flujo principal.
-            }
-
-            mensaje = "Estado actualizado correctamente.";
-            return true;
         }
 
         /// <summary>

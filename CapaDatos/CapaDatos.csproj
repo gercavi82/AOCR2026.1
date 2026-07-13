@@ -260,6 +260,7 @@
     <Compile Include="DAOs\AocrBandejaDAO.cs" />
     <Compile Include="DAOs\AocrFirmaDocumentoDAO.cs" />
     <Compile Include="DAOs\AocrDocumentoGeneradoDAO.cs" />
+    <Compile Include="DAOs\HabilitacionDocumentosFinalesDAO.cs" />
     <Compile Include="DAOs\AocrFirmaPosicionDocumentoDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />
@@ -315,6 +316,13 @@
     <Compile Include="DAOs\DocumentoDAO.cs" />
     <Compile Include="DAOs\DocumentoRTDao.cs" />
     <Compile Include="DAOs\DocumentoInspeccionDAO.cs" />
+    <Compile Include="DAOs\DocumentoPdfDAO.cs" />
+    <Compile Include="DAOs\EnvioDocumentosDcavDAO.cs" />
+    <Compile Include="DAOs\AocrDcavDocumentosDAO.cs" />
+    <Compile Include="DAOs\DevolucionDocumentosDcavDAO.cs" />
+    <Compile Include="DAOs\AprobacionDocumentosDcavDAO.cs" />
+    <Compile Include="DAOs\FirmaInstitucionalAocrDAO.cs" />
+    <Compile Include="DAOs\FirmaDocumentoInstitucionalDAO.cs" />
     <Compile Include="DAOs\DeclaracionTemporalDAO.cs" />
     <Compile Include="DAOs\FinancieroDAO.cs" />
     <Compile Include="DAOs\InspeccionHistorialDAO.cs" />
@@ -356,6 +364,13 @@
     <Compile Include="Models\UsuarioInternoAs400Info.cs" />
     <Compile Include="Models\AocrProcesoEstadoHistorialRecord.cs" />
     <Compile Include="Models\AocrProcesoEstadoRecord.cs" />
+    <Compile Include="Models\DocumentoPdfRegistro.cs" />
+    <Compile Include="Models\EnvioDocumentosDcavSnapshot.cs" />
+    <Compile Include="Models\RevisionDocumentosDcavDtos.cs" />
+    <Compile Include="Models\DevolucionDocumentosDcavModels.cs" />
+    <Compile Include="Models\FirmaInstitucionalAocrDtos.cs" />
+    <Compile Include="Models\FirmaDocumentoInstitucionalSnapshot.cs" />
+    <Compile Include="Models\HabilitacionDocumentosSnapshot.cs" />
     <Compile Include="Models\AsignacionRTRegistro.cs" />
     <Compile Include="Models\TecnicoInternoDisponible.cs" />
     <Compile Include="Models\UsuarioInternoRTRegistro.cs" />

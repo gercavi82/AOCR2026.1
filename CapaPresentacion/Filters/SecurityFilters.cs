@@ -811,6 +811,8 @@ namespace CapaPresentacion.Filters
             var action = Convert.ToString(filterContext.RouteData.Values["action"]) ?? string.Empty;
 
             if (string.Equals(controller, "AocrDcav", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "FirmaInstitucionalAocr", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(controller, "DocumentoPdf", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(controller, "Account", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(controller, "Error", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(controller, "Notificacion", StringComparison.OrdinalIgnoreCase)

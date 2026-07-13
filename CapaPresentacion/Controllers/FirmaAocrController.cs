@@ -10,6 +10,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Constants;
 using CapaModelo;
 using CapaNegocio.Services;
+using CapaNegocio.DTOs.DocumentosPdf;
 using CapaPresentacion.Models;
 using CapaPresentacion.Services;
 
@@ -377,30 +378,24 @@ namespace CapaPresentacion.Controllers
                     return JsonError(409, "No se puede regenerar un documento AOCR ya firmado.", solicitudId);
                 }
 
-                var pdfBytes = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
-                    ? _pdfService.GenerarPdfCondiciones(ControllerContext, contexto.Documento)
-                    : _pdfService.GenerarPdfReconocimiento(ControllerContext, contexto.Documento);
-                if (pdfBytes == null || pdfBytes.LongLength <= 0)
+                var origen = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
+                    ? contexto.DocumentoCondiciones : contexto.DocumentoReconocimiento;
+                if (origen == null) return JsonError(409, "No existe un documento origen vigente para generar el PDF.", solicitudId);
+                var servicioPdf = new DocumentoPdfService(Server.MapPath("~/App_Data/AOCR"));
+                var generado = servicioPdf.Generar(new GenerarPdfRequest
                 {
-                    return JsonError(500, "No se pudo generar el PDF oficial AOCR.", solicitudId);
-                }
-
-                var ruta = StorageService.GuardarPdfDocumento(solicitudId, tipoDocumento, pdfBytes);
-                var rutaFisica = StorageService.ResolverRutaFisica(ruta);
-                var existe = !string.IsNullOrWhiteSpace(rutaFisica) && System.IO.File.Exists(rutaFisica);
-                var bytes = existe ? new FileInfo(rutaFisica).Length : 0;
-                if (!existe || bytes <= 0)
-                {
-                    Trace.TraceError("[FIRMA_AOCR][PDF_VERIFY_FAIL] SolicitudId=" + solicitudId
-                        + "; RutaRelativa=" + (ruta ?? string.Empty)
-                        + "; RutaFisica=" + (rutaFisica ?? string.Empty)
-                        + "; Existe=" + existe
-                        + "; Bytes=" + bytes + ";");
-                    return JsonError(500, "El PDF oficial se genero, pero no se pudo verificar el archivo fisico.", solicitudId);
-                }
-
-                workflow.RegistrarDocumentoGenerado(contexto, tipoDocumento, ruta, bytes, ObtenerUsuarioActualId(), ObtenerUsuarioActualNombre());
-                SincronizarRevisionInspectorSiCorresponde(solicitudId, contexto);
+                    SolicitudId=solicitudId,InspeccionId=contexto.Inspeccion.CodigoInspeccion,DocumentoOrigenId=origen.CodigoDocumento,
+                    TipoDocumento=tipoDocumento,VersionOrigen=origen.Version,VersionRegistroEsperada=origen.Version,
+                    UsuarioId=ObtenerUsuarioActualId(),Rol=ObtenerRolActual(),EstadoEsperado=origen.Estado,CodigoCompania=origen.CodigoCompania,
+                    CamposFaltantes=contexto.CamposFaltantes??new List<string>(),
+                    Generador=()=>string.Equals(tipoDocumento,"CONDICIONES_LIMITACIONES",StringComparison.OrdinalIgnoreCase)
+                        ?_pdfService.GenerarPdfCondiciones(ControllerContext,contexto.Documento)
+                        :_pdfService.GenerarPdfReconocimiento(ControllerContext,contexto.Documento),
+                    CorrelationId=Guid.NewGuid().ToString("N")
+                });
+                var ruta = generado.Documento.RutaLogica;
+                var bytes = generado.Documento.TamanoBytes;
+                // Generar no equivale a enviar ni cambia el estado central del expediente.
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][GENERAR_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; Ruta=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][GENERAR_PDF_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; RutaPdf=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
 
@@ -410,9 +405,14 @@ namespace CapaPresentacion.Controllers
                     rutaPdf = ruta,
                     bytes,
                     tipoDocumento,
-                    urlVer = Url.Action("VerPdf", "FirmaAocr", new { solicitudId, tipoDocumento, firmado = false }),
-                    urlDescarga = Url.Action("DescargarPdf", "FirmaAocr", new { solicitudId, tipoDocumento, firmado = false })
+                    urlVer = Url.Action("Descargar", "DocumentoPdf", new { id=generado.Documento.Id }),
+                    urlDescarga = Url.Action("Descargar", "DocumentoPdf", new { id=generado.Documento.Id })
                 });
+            }
+            catch (DocumentoPdfException ex)
+            {
+                Trace.TraceWarning("[FIRMA_AOCR_NUEVA][GENERAR_DENY] SolicitudId="+solicitudId+";Codigo="+ex.Codigo+";Motivo="+ex.Message);
+                return JsonError(ex.Codigo, ex.Message, solicitudId);
             }
             catch (Exception ex)
             {
@@ -481,6 +481,11 @@ namespace CapaPresentacion.Controllers
 
                 var estadoCentral = _procesoEstadoDao.ObtenerActivoPorSolicitud(id);
                 var estadoFirma = estadoCentral != null ? estadoCentral.EstadoActual : null;
+                if (string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmasInstitucionales, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoFirma, AocrEstadosProceso.DocumentosFirmadosInstitucionalmente, StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonError(409, "Este expediente usa la firma institucional diferenciada. Utilice la bandeja DGAC/DCAV correspondiente.", id);
+                }
                 var estadoPermiteFirma = string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmaDirectorGeneral, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoFirma, AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoFirma, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase)

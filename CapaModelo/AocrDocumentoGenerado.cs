@@ -21,5 +21,12 @@ namespace CapaModelo
         public DateTime? FechaLiberacion { get; set; }
         public bool DisponibleRt { get; set; }
         public DateTime? FechaDisponibleRt { get; set; }
+        public string CodigoCompania { get; set; }
+        public int? CodigoInspector { get; set; }
+        public int Version { get; set; }
+        public bool Vigente { get; set; }
+        public bool Eliminado { get; set; }
+        public int? UsuarioCreadorId { get; set; }
+        public DateTime? FechaActualizacion { get; set; }
     }
 }

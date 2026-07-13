@@ -23,17 +23,7 @@ namespace CapaNegocio.Services
 
         public int ContarFirmasPendientesDirdac()
         {
-            var estadosFirmaAocr = _procesoEstadoDao.ListarActivosPorEstado(
-                AocrEstadosProceso.PendienteFirmaDirectorGeneral,
-                AocrEstadosProceso.AocrFirmadoDirdac,
-                AocrEstadosProceso.CondicionesFirmadasDirdac,
-                AocrEstadosProceso.PendienteFirmaDirectorGeneralLegacy,
-                "PENDIENTE_FIRMA_DIRECCION");
-
-            var pendientesInformeLegacy = _informeDao.ListarPendientesFirmaDirdac()
-                ?? new List<CapaModelo.InspeccionInformeTecnico>();
-
-            return (estadosFirmaAocr != null ? estadosFirmaAocr.Count : 0) + pendientesInformeLegacy.Count;
+            return new FirmaInstitucionalAocrService().ContarPendientesDgac();
         }
     }
 }

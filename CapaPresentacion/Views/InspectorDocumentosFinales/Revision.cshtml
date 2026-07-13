@@ -1,0 +1,22 @@
+@model CapaPresentacion.Models.RevisionDocumentosInspectorBandejaViewModel
+@{
+    ViewBag.Title = "AOCR y Condiciones";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+<link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
+<div class="firma-aocr">
+    <section class="firma-aocr__header">
+        <div><p class="firma-aocr__eyebrow">Inspector Técnico</p><h1>AOCR y Condiciones</h1><p>Documentos finales habilitados para revisión, corrección y generación.</p></div>
+        <div class="firma-aocr__state"><span>Pendientes</span><strong>@Model.Total</strong></div>
+    </section>
+    <section class="firma-aocr__box">
+        @if(Model.Items.Count==0){<div class="firma-aocr__notice"><strong>Sin documentos pendientes.</strong><span>No existen expedientes finales asignados al Inspector actual.</span></div>}
+        else
+        {
+            <div class="table-responsive"><table class="table table-hover align-middle">
+                <thead><tr><th>Solicitud</th><th>Operador</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+                <tbody>@foreach(var item in Model.Items){<tr><td>@item.NumeroSolicitud</td><td>@item.Operador</td><td><span class="firma-aocr__badge">@item.Estado</span></td><td>@item.FechaEstado.ToString("dd/MM/yyyy HH:mm")</td><td><a class="firma-aocr__btn firma-aocr__btn--primary" href="@item.UrlDetalle">Abrir</a></td></tr>}</tbody>
+            </table></div>
+        }
+    </section>
+</div>

@@ -1,10 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 using CapaNegocio.Services;
-using CapaPresentacion.Helpers;
-using CapaPresentacion.Infrastructure;
+using System.Web;
 
 namespace CapaPresentacion.Services
 {
@@ -31,41 +27,34 @@ namespace CapaPresentacion.Services
     {
         public static AocrUserContext FromHttpContext(HttpContextBase httpContext)
         {
-            if (httpContext != null && httpContext.Session != null
-                && httpContext.User != null
-                && httpContext.User.Identity != null
-                && httpContext.User.Identity.IsAuthenticated)
+            UsuarioContextoDto contexto;
+            var servicio = new UsuarioContextoService(() => httpContext, null);
+            if (!servicio.TryObtenerContextoActual(out contexto))
             {
-                AuthenticatedSessionBootstrapper.EnsureSession(httpContext);
+                return new AocrUserContext
+                {
+                    RolesRaw = new List<string>(),
+                    RolesUnificados = new List<string>()
+                };
             }
-
-            var auth = AocrAuthorizationContextFactory.Build(httpContext);
-            var rolesRaw = auth.RawRoles ?? new List<string>();
-            var rolesUnificados = auth.Roles ?? new List<string>();
-            var rolActivo = RoleGroupingHelper.NormalizeSelectedRole(auth.SelectedRole);
 
             return new AocrUserContext
             {
-                UsuarioId = auth.UserId,
-                Login = !string.IsNullOrWhiteSpace(auth.CodigoUsuario)
-                    ? auth.CodigoUsuario
-                    : (httpContext != null && httpContext.User != null && httpContext.User.Identity != null
-                        ? httpContext.User.Identity.Name
-                        : string.Empty),
-                Nombre = auth.UserName,
-                RolesRaw = rolesRaw,
-                RolesUnificados = rolesUnificados,
-                RolActivo = rolActivo,
-                EsAdministrador = RoleGroupingHelper.IsAdministrador(rolActivo),
-                EsCoordinacion = RoleGroupingHelper.IsCoordinacion(rolActivo),
-                EsInspectorTecnico = RoleGroupingHelper.IsInspectorTecnico(rolActivo),
-                EsFinanciero = RoleGroupingHelper.IsFinanciero(rolActivo),
-                EsDireccionJefaturaTecnica = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActivo),
-                EsSolicitante = RoleGroupingHelper.IsSolicitante(rolActivo),
-                EsLegal = RoleGroupingHelper.IsCoordinacion(rolActivo)
-                    && rolesRaw.Any(r => RoleGroupingHelper.HasAnyRawRole(new[] { r }, "CoordinacionLegal", "CoordinadorLegal")),
-                CodigoCompaniaActiva = auth.CompanyCode,
-                NombreCompaniaActiva = auth.CompanyName
+                UsuarioId = contexto.UsuarioId,
+                Login = contexto.Login,
+                Nombre = contexto.NombreCompleto,
+                RolesRaw = contexto.RolesRaw,
+                RolesUnificados = contexto.Roles,
+                RolActivo = contexto.RolActivo,
+                EsAdministrador = contexto.EsAdministrador,
+                EsCoordinacion = contexto.EsCoordinacion,
+                EsInspectorTecnico = contexto.EsInspectorTecnico,
+                EsFinanciero = contexto.EsFinanciero,
+                EsDireccionJefaturaTecnica = contexto.EsDireccionJefaturaTecnica,
+                EsSolicitante = contexto.EsSolicitante,
+                EsLegal = contexto.EsLegal,
+                CodigoCompaniaActiva = contexto.CompaniaCodigo,
+                NombreCompaniaActiva = contexto.CompaniaNombre
             };
         }
 

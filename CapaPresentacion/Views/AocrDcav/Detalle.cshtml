@@ -89,6 +89,11 @@
                         {
                             @Html.AntiForgeryToken()
                             @Html.Hidden("solicitudId", Model.SolicitudId)
+                            @Html.Hidden("inspeccionId", Model.InspeccionId)
+                            @Html.Hidden("informeId", Model.InformeId)
+                            @Html.Hidden("versionRegistro", Model.VersionRegistro)
+                            @Html.Hidden("versionInforme", Model.VersionInforme)
+                            @Html.Hidden("claveIdempotencia", CapaNegocio.Services.HabilitacionDocumentosFinalesService.ConstruirClaveIdempotencia(Model.SolicitudId, Model.InspeccionId, Model.InformeId, Model.VersionInforme))
                             <button type="submit" class="btn btn-success w-100 mb-3" @(Model.PuedeAprobar ? null : "disabled")>
                                 @(Model.TipoRevision == "INFORME_TECNICO" ? "Aprobar informe y habilitar documentos" : "Aprobar documentos y enviar al Director General")
                             </button>

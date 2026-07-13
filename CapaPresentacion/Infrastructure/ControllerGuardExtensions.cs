@@ -265,7 +265,7 @@ namespace CapaPresentacion.Infrastructure
                 return false;
             }
 
-            var value = session["UserId"] ?? session["IdUsuario"];
+            var value = session["UsuarioId"] ?? session["UserId"] ?? session["IdUsuario"];
             return value != null && int.TryParse(value.ToString(), out userId) && userId > 0;
         }
 
@@ -354,6 +354,7 @@ namespace CapaPresentacion.Infrastructure
                 return;
             }
 
+            session["UsuarioId"] = usuario.Id;
             session["UserId"] = usuario.Id;
             session["IdUsuario"] = usuario.Id;
             session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)

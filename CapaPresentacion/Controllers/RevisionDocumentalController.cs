@@ -430,9 +430,16 @@ namespace CapaPresentacion.Controllers
                     devueltos > 0,
                     ConstruirResumenRevisionDocumental(documentosCierre, revisionesResumen, true));
 
-                if (!_solicitudDao.CambiarEstado(solicitud.CodigoSolicitud, decisionCierre.EstadoDestino, usuarioId, decisionCierre.ObservacionCierre))
+                string mensajeCambio;
+                if (!new CapaNegocio.SolicitudEstadoTransitionBL().CambiarEstadoConReglasAocr(
+                        solicitud.CodigoSolicitud, 
+                        decisionCierre.EstadoDestino, 
+                        decisionCierre.ObservacionCierre, 
+                        usuarioId, 
+                        null, 
+                        out mensajeCambio))
                 {
-                    return JsonRevisionError(400, "No se pudo actualizar el estado de la solicitud tras la revision documental.", solicitud.CodigoSolicitud, "Fallo cambio estado");
+                    return JsonRevisionError(400, "No se pudo actualizar el estado de la solicitud tras la revision documental: " + mensajeCambio, solicitud.CodigoSolicitud, "Fallo cambio estado");
                 }
 
                 siguienteEstado = decisionCierre.EstadoDestino;

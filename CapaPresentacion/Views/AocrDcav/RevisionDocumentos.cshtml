@@ -1,0 +1,13 @@
+@model CapaPresentacion.Models.DocumentosPendientesDcavViewModel
+@{Layout="~/Views/Shared/_LayoutAOCR.cshtml";ViewBag.Title="AOCR y Condiciones pendientes de revisión DCAV";}
+<div class="container-fluid mt-4">
+ <div class="card border-0 shadow-sm mb-4"><div class="card-body"><span class="badge bg-primary">Director de Certificaciones DCAV</span><h2 class="mt-2">AOCR Y CONDICIONES PENDIENTES DE REVISIÓN DCAV</h2><p class="text-muted mb-0">Segunda revisión documental. Total: @Model.Total</p></div></div>
+ @if(TempData["Success"]!=null){<div class="alert alert-success">@TempData["Success"]</div>}
+ <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead class="table-light"><tr><th>Solicitud</th><th>Explotador</th><th>Trámite</th><th>Inspector</th><th>AOCR y versión</th><th>Condiciones y versión</th><th>Fecha de envío</th><th>Estado</th><th>Acciones</th></tr></thead>
+  <tbody>
+  @if(Model.Items.Count==0){<tr><td colspan="9" class="text-center text-muted py-4">No existen documentos finales pendientes de revisión DCAV.</td></tr>}
+  @foreach(var x in Model.Items){<tr><td><strong>@x.NumeroSolicitud</strong></td><td>@x.Explotador</td><td>@x.TipoTramite</td><td>@x.Inspector</td><td>AOCR v@x.VersionAocr</td><td>Condiciones v@x.VersionCondiciones</td><td>@x.FechaEnvio.ToString("dd/MM/yyyy HH:mm")</td><td><span class="badge bg-warning text-dark">@x.Estado</span></td><td><a class="btn btn-sm btn-primary" href="@Url.Action("DetalleDocumentos","AocrDcav",new{solicitudId=x.SolicitudId,inspeccionId=x.InspeccionId})">Revisar</a> <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("HistorialDocumentos","AocrDcav",new{solicitudId=x.SolicitudId,inspeccionId=x.InspeccionId})">Historial</a></td></tr>}
+  </tbody>
+ </table></div></div>
+</div>

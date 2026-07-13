@@ -7,6 +7,7 @@ using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
+using Npgsql;
 
 namespace CapaNegocio.Services
 {
@@ -31,7 +32,27 @@ namespace CapaNegocio.Services
             string observacion = null,
             int? ordenRecaudacionId = null,
             int? inspeccionId = null,
-            int? informeId = null);
+            int? informeId = null,
+            string claveIdempotencia = null,
+            long? versionEsperada = null,
+            string ip = null,
+            string correlationId = null);
+        AocrEstadoProcesoResult CambiarEstadoEnTransaccion(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int solicitudId,
+            string estadoEsperado,
+            string estadoNuevo,
+            string accion,
+            int usuarioId,
+            string rolUsuario,
+            long versionEsperada,
+            int inspeccionId,
+            int informeId,
+            string observacion,
+            string claveIdempotencia,
+            string ip,
+            string correlationId);
         AocrEstadoProcesoResult SincronizarDesdeFuentesActuales(
             int solicitudId,
             string accion,
@@ -88,7 +109,7 @@ namespace CapaNegocio.Services
                 { AocrEstadosProceso.InformeTecnicoGenerado, new[] { AocrEstadosProceso.InformeTecnicoFirmado, AocrEstadosProceso.InformeTecnicoFirmadoInspector } },
                 { AocrEstadosProceso.InformeTecnicoFirmado, new[] { AocrEstadosProceso.InformeTecnicoFirmadoInspector, AocrEstadosProceso.PendienteRevisionInformeDcav, AocrEstadosProceso.InformeEnviadoDireccion, AocrEstadosProceso.InformeAprobadoDireccion } },
                 { AocrEstadosProceso.InformeTecnicoFirmadoInspector, new[] { AocrEstadosProceso.PendienteRevisionInformeDcav } },
-                { AocrEstadosProceso.PendienteRevisionInformeDcav, new[] { AocrEstadosProceso.InformeTecnicoAprobadoDcav, AocrEstadosProceso.InformeTecnicoObservadoDcav } },
+                { AocrEstadosProceso.PendienteRevisionInformeDcav, new[] { AocrEstadosProceso.InformeTecnicoAprobadoDcav, AocrEstadosProceso.InformeTecnicoObservadoDcav, AocrEstadosProceso.DocumentosHabilitadosInspector } },
                 { AocrEstadosProceso.InformeTecnicoObservadoDcav, new[] { AocrEstadosProceso.InformeTecnicoPendiente, AocrEstadosProceso.InformeTecnicoGenerado, AocrEstadosProceso.PendienteRevisionInformeDcav } },
                 { AocrEstadosProceso.InformeTecnicoAprobadoDcav, new[] { AocrEstadosProceso.DocumentosHabilitadosInspector } },
                 { AocrEstadosProceso.DocumentosHabilitadosInspector, new[] { AocrEstadosProceso.DocumentosEnRevisionInspector, AocrEstadosProceso.PendienteRevisionDocumentosDcav } },
@@ -283,7 +304,11 @@ namespace CapaNegocio.Services
             string observacion = null,
             int? ordenRecaudacionId = null,
             int? inspeccionId = null,
-            int? informeId = null)
+            int? informeId = null,
+            string claveIdempotencia = null,
+            long? versionEsperada = null,
+            string ip = null,
+            string correlationId = null)
         {
             var estadoDestino = NormalizeProcesoState(estadoNuevo);
             var actual = _procesoEstadoDao.ObtenerActivoPorSolicitud(solicitudId);
@@ -310,70 +335,150 @@ namespace CapaNegocio.Services
                 }
             }
 
-            var metadata = ResolveMetadata(estadoDestino);
-            var record = new AocrProcesoEstadoRecord
-            {
-                SolicitudId = solicitudId,
-                OrdenRecaudacionId = ordenRecaudacionId ?? (actual != null ? actual.OrdenRecaudacionId : null),
-                InspeccionId = inspeccionId ?? (actual != null ? actual.InspeccionId : null),
-                InformeId = informeId ?? (actual != null ? actual.InformeId : null),
-                EstadoActual = estadoDestino,
-                EtapaActual = metadata.Etapa,
-                RolResponsable = metadata.RolResponsable,
-                UsuarioResponsableId = actual != null ? actual.UsuarioResponsableId : null,
-                SiguienteAccion = metadata.SiguienteAccion,
-                Observacion = observacion,
-                FechaEstado = DateTime.Now,
-                Activo = true
-            };
+            var connectionString = ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString ?? ConexionDAO.CadenaConexion;
 
-            _procesoEstadoDao.UpsertEstadoActual(record);
-
-            // Regla anti-duplicado: No insertar dos veces el mismo estado, accion y solicitud en menos de 10 segundos para el mismo usuario
-            var recentHistory = _procesoEstadoDao.ObtenerHistorialPorSolicitud(solicitudId);
-            bool isDuplicate = false;
-            if (recentHistory != null && recentHistory.Count > 0)
+            using (var cn = new NpgsqlConnection(connectionString))
             {
-                var last = recentHistory[recentHistory.Count - 1];
-                if (last.EstadoNuevo == estadoDestino &&
-                    last.Accion == accion &&
-                    last.UsuarioId == (usuarioId > 0 ? (int?)usuarioId : null) &&
-                    Math.Abs((DateTime.Now - last.FechaCreacion).TotalSeconds) < 10)
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
                 {
-                    isDuplicate = true;
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(claveIdempotencia))
+                        {
+                            if (_procesoEstadoDao.ExisteIdempotencia(cn, tx, claveIdempotencia))
+                            {
+                                return new AocrEstadoProcesoResult
+                                {
+                                    Ok = true,
+                                    EstadoAnterior = estadoAnterior,
+                                    EstadoNuevo = estadoDestino,
+                                    EstadoActual = actual // Or query again if needed
+                                };
+                            }
+                            _procesoEstadoDao.RegistrarIdempotencia(cn, tx, claveIdempotencia, solicitudId);
+                        }
+
+                        var metadata = ResolveMetadata(estadoDestino);
+                        var record = new AocrProcesoEstadoRecord
+                        {
+                            SolicitudId = solicitudId,
+                            OrdenRecaudacionId = ordenRecaudacionId ?? (actual != null ? actual.OrdenRecaudacionId : null),
+                            InspeccionId = inspeccionId ?? (actual != null ? actual.InspeccionId : null),
+                            InformeId = informeId ?? (actual != null ? actual.InformeId : null),
+                            EstadoActual = estadoDestino,
+                            EtapaActual = metadata.Etapa,
+                            RolResponsable = metadata.RolResponsable,
+                            UsuarioResponsableId = actual != null ? actual.UsuarioResponsableId : null,
+                            SiguienteAccion = metadata.SiguienteAccion,
+                            Observacion = observacion,
+                            FechaEstado = DateTime.Now,
+                            Activo = true
+                        };
+
+                        long currentVersion = actual != null ? actual.Version : 0;
+                        if (versionEsperada.HasValue && versionEsperada.Value != currentVersion)
+                        {
+                            throw new InvalidOperationException("Conflicto de concurrencia: versión de estado no coincide.");
+                        }
+
+                        _procesoEstadoDao.UpsertEstadoActualConVersion(cn, tx, record, currentVersion);
+
+                        _procesoEstadoDao.InsertarHistorial(cn, tx, new AocrProcesoEstadoHistorialRecord
+                        {
+                            SolicitudId = solicitudId,
+                            OrdenRecaudacionId = record.OrdenRecaudacionId,
+                            InspeccionId = record.InspeccionId,
+                            InformeId = record.InformeId,
+                            EstadoAnterior = estadoAnterior,
+                            EstadoNuevo = estadoDestino,
+                            Etapa = record.EtapaActual,
+                            Accion = accion,
+                            RolUsuario = NormalizeRole(rolUsuario),
+                            UsuarioId = usuarioId > 0 ? (int?)usuarioId : null,
+                            RolResponsable = record.RolResponsable,
+                            UsuarioResponsableId = record.UsuarioResponsableId,
+                            Observacion = observacion,
+                            FechaCreacion = DateTime.Now,
+                            Ip = ip,
+                            CorrelationId = correlationId,
+                            ClaveIdempotencia = claveIdempotencia,
+                            Resultado = "EXITO"
+                        });
+
+                        tx.Commit();
+
+                        Trace.TraceInformation("[AOCR_ESTADO][CAMBIO_OK] SolicitudId=" + solicitudId + "; EstadoNuevo=" + estadoDestino + ";");
+                        SafeProcessNotifications(solicitudId, estadoDestino);
+                        return new AocrEstadoProcesoResult
+                        {
+                            Ok = true,
+                            EstadoAnterior = estadoAnterior,
+                            EstadoNuevo = estadoDestino,
+                            EstadoActual = record
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        Trace.TraceError("[AOCR_ESTADO][CAMBIO_ERROR] SolicitudId=" + solicitudId + "; Error=" + ex.Message + ";");
+                        return Deny(solicitudId, estadoAnterior, estadoDestino, "Error interno durante la transición: " + ex.Message);
+                    }
                 }
             }
+        }
 
-            if (!isDuplicate)
-            {
-                _procesoEstadoDao.InsertarHistorial(new AocrProcesoEstadoHistorialRecord
-                {
-                    SolicitudId = solicitudId,
-                    OrdenRecaudacionId = record.OrdenRecaudacionId,
-                    InspeccionId = record.InspeccionId,
-                    InformeId = record.InformeId,
-                    EstadoAnterior = estadoAnterior,
-                    EstadoNuevo = estadoDestino,
-                    Etapa = record.EtapaActual,
-                    Accion = accion,
-                    RolUsuario = NormalizeRole(rolUsuario),
-                    UsuarioId = usuarioId > 0 ? (int?)usuarioId : null,
-                    RolResponsable = record.RolResponsable,
-                    UsuarioResponsableId = record.UsuarioResponsableId,
-                    Observacion = observacion,
-                    FechaCreacion = DateTime.Now
-                });
-            }
+        public AocrEstadoProcesoResult CambiarEstadoEnTransaccion(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            int solicitudId,
+            string estadoEsperado,
+            string estadoNuevo,
+            string accion,
+            int usuarioId,
+            string rolUsuario,
+            long versionEsperada,
+            int inspeccionId,
+            int informeId,
+            string observacion,
+            string claveIdempotencia,
+            string ip,
+            string correlationId)
+        {
+            if (connection == null) throw new ArgumentNullException(nameof(connection));
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+            var actual = _procesoEstadoDao.ObtenerActivoPorSolicitud(connection, transaction, solicitudId, true);
+            if (actual == null) return Deny(solicitudId, null, estadoNuevo, "No existe estado central activo.");
 
-            Trace.TraceInformation("[AOCR_ESTADO][CAMBIO_OK] SolicitudId=" + solicitudId + "; EstadoNuevo=" + estadoDestino + ";");
-            SafeProcessNotifications(solicitudId, estadoDestino);
-            return new AocrEstadoProcesoResult
+            var estadoAnterior = NormalizeProcesoState(actual.EstadoActual);
+            var destino = NormalizeProcesoState(estadoNuevo);
+            if (!string.Equals(estadoAnterior, NormalizeProcesoState(estadoEsperado), StringComparison.OrdinalIgnoreCase))
+                return Deny(solicitudId, estadoAnterior, destino, "Conflicto de estado esperado.");
+            if (actual.Version != versionEsperada)
+                return Deny(solicitudId, estadoAnterior, destino, "Conflicto de version del expediente.");
+            if (!CanTransition(estadoAnterior, destino))
+                return Deny(solicitudId, estadoAnterior, destino, "Transicion central no permitida.");
+
+            var metadata = ResolveMetadata(destino);
+            var record = new AocrProcesoEstadoRecord
             {
-                Ok = true,
-                EstadoAnterior = estadoAnterior,
-                EstadoNuevo = estadoDestino,
-                EstadoActual = record
+                SolicitudId=solicitudId, OrdenRecaudacionId=actual.OrdenRecaudacionId,
+                InspeccionId=inspeccionId, InformeId=informeId, EstadoActual=destino,
+                EtapaActual=metadata.Etapa, RolResponsable=metadata.RolResponsable,
+                UsuarioResponsableId=actual.UsuarioResponsableId, SiguienteAccion=metadata.SiguienteAccion,
+                Observacion=observacion, FechaEstado=DateTime.Now, Activo=true, Version=versionEsperada+1
             };
+            record.Id = _procesoEstadoDao.UpsertEstadoActualConVersion(connection, transaction, record, versionEsperada);
+            _procesoEstadoDao.InsertarHistorial(connection, transaction, new AocrProcesoEstadoHistorialRecord
+            {
+                SolicitudId=solicitudId, InspeccionId=inspeccionId, InformeId=informeId,
+                EstadoAnterior=estadoAnterior, EstadoNuevo=destino, Etapa=metadata.Etapa,
+                Accion=accion, RolUsuario=NormalizeRole(rolUsuario), UsuarioId=usuarioId,
+                RolResponsable=metadata.RolResponsable, UsuarioResponsableId=actual.UsuarioResponsableId,
+                Observacion=observacion, FechaCreacion=DateTime.Now, Ip=ip,
+                CorrelationId=correlationId, ClaveIdempotencia=claveIdempotencia, Resultado="EXITO"
+            });
+            return new AocrEstadoProcesoResult { Ok=true, EstadoAnterior=estadoAnterior, EstadoNuevo=destino, EstadoActual=record };
         }
 
         public AocrEstadoProcesoResult SincronizarDesdeFuentesActuales(
@@ -568,7 +673,7 @@ namespace CapaNegocio.Services
         {
             var raw = ConfigurationManager.AppSettings["toggle.aocr.estadoProceso.strict"];
             bool enabled;
-            return bool.TryParse(raw, out enabled) && enabled;
+            return !bool.TryParse(raw, out enabled) || enabled; // True by default
         }
 
         private static AocrEstadoProcesoResult Deny(int solicitudId, string estadoActual, string estadoIntentado, string motivo)

@@ -13,6 +13,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Interfaces;
 using CapaDatos.Services;
 using CapaPresentacion.Infrastructure;
+using CapaPresentacion.Services;
 
 namespace CapaPresentacion
 {
@@ -33,6 +34,7 @@ namespace CapaPresentacion
             container.RegisterType<CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<CapaDatos.Services.ISecureConfigurationService, CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<IUserContextAccessor, UserContextAccessor>(new HierarchicalLifetimeManager());
+            container.RegisterType<IUsuarioContextoService, UsuarioContextoService>(new PerRequestLifetimeManager());
             container.RegisterFactory<BancoP9DAO>(c =>
             {
                 var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();

@@ -19,6 +19,10 @@ namespace CapaDatos.Models
         public int? UsuarioResponsableId { get; set; }
         public string Observacion { get; set; }
         public DateTime FechaCreacion { get; set; }
+        public string Ip { get; set; }
+        public string CorrelationId { get; set; }
+        public string ClaveIdempotencia { get; set; }
+        public string Resultado { get; set; }
 
         // Mapped values for views
         public string UsuarioNombre { get; set; }

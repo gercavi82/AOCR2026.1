@@ -8,6 +8,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaDatos.Services;
 using CapaModelo;
+using CapaNegocio.DTOs;
 
 namespace CapaNegocio.Services
 {
@@ -29,9 +30,15 @@ namespace CapaNegocio.Services
         public bool InformeSatisfactorio { get; set; }
         public bool AocrGenerado { get; set; }
         public bool CondicionesGeneradas { get; set; }
+        public int AocrId { get; set; }
+        public int VersionAocr { get; set; }
+        public int CondicionesId { get; set; }
+        public int VersionCondiciones { get; set; }
         public bool PuedeAprobar { get; set; }
         public string MotivoBloqueo { get; set; }
         public string TipoRevision { get; set; }
+        public long VersionRegistro { get; set; }
+        public int VersionInforme { get; set; }
     }
 
     public sealed class AocrDcavResultado
@@ -39,6 +46,10 @@ namespace CapaNegocio.Services
         public bool Ok { get; set; }
         public string Mensaje { get; set; }
         public AocrDcavRevisionItem Item { get; set; }
+        public int Codigo { get; set; }
+        public bool YaProcesado { get; set; }
+        public int AocrId { get; set; }
+        public int CondicionesId { get; set; }
     }
 
     public sealed class AocrDcavBandejaResumen
@@ -61,9 +72,8 @@ namespace CapaNegocio.Services
         private readonly AocrFirmaDocumentoDAO _firmaDao;
         private readonly AocrEstadoProcesoService _estadoProcesoService;
         private readonly AocrProcesoNotificacionService _notificacionService;
-        private readonly GeneracionAOCRService _generacionAocrService;
-        private readonly GeneracionCondicionesService _generacionCondicionesService;
         private readonly ILoggingService _logger;
+        private readonly IHabilitacionDocumentosFinalesService _habilitacionDocumentosService;
         // Re-evaluating Roslyn cache
 
         public AocrDcavRevisionService()
@@ -95,9 +105,8 @@ namespace CapaNegocio.Services
             _firmaDao = firmaDao ?? new AocrFirmaDocumentoDAO();
             _estadoProcesoService = estadoProcesoService ?? new AocrEstadoProcesoService();
             _notificacionService = notificacionService ?? new AocrProcesoNotificacionService();
-            _generacionAocrService = new GeneracionAOCRService();
-            _generacionCondicionesService = new GeneracionCondicionesService();
             _logger = LoggingServiceFactory.Create();
+            _habilitacionDocumentosService = new HabilitacionDocumentosFinalesService();
         }
 
         public IList<AocrDcavRevisionItem> ListarPendientes()
@@ -132,6 +141,15 @@ namespace CapaNegocio.Services
                 + "; TotalVisible=" + items.Count
                 + "; DuracionMs=" + sw.ElapsedMilliseconds + ";");
             return items;
+        }
+
+        public IList<AocrDcavRevisionItem> ListarPendientesInformes()
+        {
+            var records=new List<AocrProcesoEstadoRecord>();
+            records.AddRange(_dcavDao.ObtenerPendientesRevisionInforme());
+            records.AddRange(ObtenerInformesFirmadosPendientesPorDatos());
+            return records.GroupBy(x=>x.SolicitudId).Select(g=>g.OrderByDescending(x=>x.FechaEstado).First())
+                .Select(x=>ConstruirItem(x.SolicitudId,x)).Where(x=>x!=null&&x.TipoRevision=="INFORME_TECNICO").ToList();
         }
 
         public AocrDcavBandejaResumen ObtenerResumenBandeja()
@@ -260,7 +278,7 @@ namespace CapaNegocio.Services
             };
         }
 
-        public AocrDcavResultado EnviarRevisionDcav(int solicitudId, int usuarioId, string rolUsuario, string observacion)
+        public AocrDcavResultado EnviarRevisionDcav(int solicitudId, int usuarioId, string rolUsuario, string observacion, IDocumentoPdfService documentoPdfService = null)
         {
             var item = ConstruirItem(solicitudId, _estadoDao.ObtenerActivoPorSolicitud(solicitudId));
             _logger.LogInfo("[INSPECTOR][FINALIZAR_DOCUMENTOS_IN] SolicitudId=" + solicitudId
@@ -276,6 +294,22 @@ namespace CapaNegocio.Services
                 _logger.LogWarning("[INSPECTOR][ENVIAR_DOCUMENTOS_DCAV_ERROR] SolicitudId=" + solicitudId + "; Motivo=" + (validacion.Mensaje ?? string.Empty) + ";");
                 Trace.TraceWarning("[DCAV_TRANSICION][DOCUMENTOS_ENVIO_DENY] SolicitudId=" + solicitudId + "; Motivo=" + (validacion.Mensaje ?? string.Empty) + ";");
                 return validacion;
+            }
+
+            if (documentoPdfService != null)
+            {
+                var aocr = documentoPdfService.ObtenerVigente(solicitudId, item.InspeccionId, "RECONOCIMIENTO");
+                var condiciones = documentoPdfService.ObtenerVigente(solicitudId, item.InspeccionId, "CONDICIONES_LIMITACIONES");
+                if (aocr == null || condiciones == null)
+                    return new AocrDcavResultado { Ok=false,Codigo=409,Mensaje="No existe el par de PDF oficiales AOCR y Condiciones.",Item=item };
+                var integridadAocr = documentoPdfService.ValidarArchivo(aocr.Id);
+                var integridadCondiciones = documentoPdfService.ValidarArchivo(condiciones.Id);
+                if (!integridadAocr.Valido || !integridadCondiciones.Valido)
+                {
+                    var motivo = !integridadAocr.Valido ? "AOCR: " + integridadAocr.Mensaje : "Condiciones: " + integridadCondiciones.Mensaje;
+                    _logger.LogWarning("[INSPECTOR][VALIDAR_PDF_INTEGRIDAD_ERROR] SolicitudId=" + solicitudId + ";Motivo=" + motivo + ";");
+                    return new AocrDcavResultado { Ok=false,Codigo=409,Mensaje="No se puede enviar a DCAV. " + motivo,Item=item };
+                }
             }
 
             AocrEstadoProcesoResult result;
@@ -326,13 +360,14 @@ namespace CapaNegocio.Services
             };
         }
 
-        public AocrDcavResultado AprobarEnviarDirectorGeneral(int solicitudId, int usuarioId, string rolUsuario, string observacion)
+        public AocrDcavResultado AprobarEnviarDirectorGeneral(int solicitudId, int usuarioId, string rolUsuario, string observacion,
+            long? versionRegistro=null,int? inspeccionId=null,int? informeId=null,int? versionInforme=null,string claveIdempotencia=null,string ip=null,string correlationId=null)
         {
             var item = ObtenerDetalle(solicitudId);
             Trace.TraceInformation("[DCAV_TRANSICION][APROBAR_IN] SolicitudId=" + solicitudId + "; Usuario=" + usuarioId + "; Rol=" + (rolUsuario ?? string.Empty) + "; EstadoActual=" + (item != null ? item.Estado : string.Empty) + "; TipoRevision=" + (item != null ? item.TipoRevision : string.Empty) + ";");
             if (item != null && string.Equals(item.Estado, AocrEstadosProceso.PendienteRevisionInformeDcav, StringComparison.OrdinalIgnoreCase))
             {
-                return AprobarInformeTecnico(solicitudId, item, usuarioId, rolUsuario, observacion);
+                return AprobarInformeTecnico(solicitudId,item,usuarioId,rolUsuario,observacion,versionRegistro,inspeccionId,informeId,versionInforme,claveIdempotencia,ip,correlationId);
             }
 
             if (item != null && string.Equals(item.Estado, AocrEstadosProceso.PendienteRevisionDocumentosDcav, StringComparison.OrdinalIgnoreCase))
@@ -343,7 +378,8 @@ namespace CapaNegocio.Services
             return new AocrDcavResultado { Ok = false, Mensaje = "El expediente no se encuentra en una etapa de revision DCAV.", Item = item };
         }
 
-        private AocrDcavResultado AprobarInformeTecnico(int solicitudId, AocrDcavRevisionItem item, int usuarioId, string rolUsuario, string observacion)
+        private AocrDcavResultado AprobarInformeTecnico(int solicitudId,AocrDcavRevisionItem item,int usuarioId,string rolUsuario,string observacion,
+            long? versionRegistro,int? inspeccionId,int? informeId,int? versionInforme,string claveIdempotencia,string ip,string correlationId)
         {
             var validacion = ValidarPrecondicionesInformeDcav(item, exigirEstadoPendiente: true);
             if (!validacion.Ok)
@@ -351,6 +387,31 @@ namespace CapaNegocio.Services
                 Trace.TraceWarning("[DCAV_TRANSICION][APROBAR_INFORME_DENY] SolicitudId=" + solicitudId + "; Motivo=" + (validacion.Mensaje ?? string.Empty) + ";");
                 return validacion;
             }
+
+            var ins=inspeccionId??item.InspeccionId;
+            var inf=informeId??item.InformeId;
+            var verInf=versionInforme??item.VersionInforme;
+            var clave=string.IsNullOrWhiteSpace(claveIdempotencia)
+                ? HabilitacionDocumentosFinalesService.ConstruirClaveIdempotencia(solicitudId,ins,inf,verInf)
+                : claveIdempotencia;
+            var resultado=_habilitacionDocumentosService.Habilitar(new HabilitarDocumentosRequest
+            {
+                SolicitudId=solicitudId, InspeccionId=ins, InformeTecnicoId=inf,
+                UsuarioDcavId=usuarioId, Rol=rolUsuario,
+                EstadoEsperado=AocrEstadosProceso.PendienteRevisionInformeDcav,
+                ClaveIdempotencia=clave, VersionRegistro=versionRegistro??item.VersionRegistro,
+                VersionInforme=verInf, Ip=ip, CorrelationId=correlationId
+            });
+            Trace.TraceInformation("[DCAV_TRANSICION][APROBAR_INFORME_OUT] SolicitudId="+solicitudId+"; EstadoNuevo="+resultado.EstadoNuevo+"; Ok="+resultado.Exitoso+"; Codigo="+resultado.Codigo+";");
+            return new AocrDcavResultado
+            {
+                Ok=resultado.Exitoso, Codigo=resultado.Codigo, Mensaje=resultado.Mensaje,
+                YaProcesado=resultado.YaProcesado, AocrId=resultado.AocrId,
+                CondicionesId=resultado.CondicionesId,
+                Item=resultado.Exitoso?ObtenerDetalle(solicitudId):item
+            };
+
+#if false
 
             AocrEstadoProcesoResult habilitado;
             using (var scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions
@@ -429,6 +490,7 @@ namespace CapaNegocio.Services
                 Mensaje = habilitado != null && habilitado.Ok ? "Informe aprobado por DCAV. AOCR y Condiciones habilitados para el Inspector." : (habilitado != null ? habilitado.Motivo : "No se pudo habilitar documentos para el Inspector."),
                 Item = ObtenerDetalle(solicitudId)
             };
+#endif
         }
 
         private AocrDcavResultado AprobarDocumentosEnviarDirectorGeneral(int solicitudId, AocrDcavRevisionItem item, int usuarioId, string rolUsuario, string observacion)
@@ -681,13 +743,19 @@ namespace CapaNegocio.Services
                 InformeSatisfactorio = EsInformeSatisfactorio(informe),
                 AocrGenerado = aocrGenerado && firmaAocr == null,
                 CondicionesGeneradas = condicionesGeneradas && firmaCond == null,
+                AocrId = docAocr != null ? docAocr.CodigoDocumento : 0,
+                VersionAocr = docAocr != null ? docAocr.Version : 0,
+                CondicionesId = docCond != null ? docCond.CodigoDocumento : 0,
+                VersionCondiciones = docCond != null ? docCond.Version : 0,
                 TipoRevision = string.Equals(estadoActual, AocrEstadosProceso.PendienteRevisionInformeDcav, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoActual, AocrEstadosProceso.InformeTecnicoObservadoDcav, StringComparison.OrdinalIgnoreCase)
                     ? "INFORME_TECNICO"
                     : (string.Equals(estadoActual, AocrEstadosProceso.PendienteRevisionDocumentosDcav, StringComparison.OrdinalIgnoreCase)
                         || string.Equals(estadoActual, AocrEstadosProceso.DocumentosObservadosDcav, StringComparison.OrdinalIgnoreCase)
                         ? "DOCUMENTOS_AOCR"
-                        : "GENERAL")
+                        : "GENERAL"),
+                VersionRegistro = estado != null ? estado.Version : 0,
+                VersionInforme = informe != null ? informe.Version : 0
             };
 
             if (string.Equals(estadoActual, AocrEstadosProceso.InformeTecnicoObservadoDcav, StringComparison.OrdinalIgnoreCase)

@@ -54,6 +54,12 @@ namespace CapaDatos.Constants
         public const string AocrFirmadoDirdac = "AOCR_FIRMADO_DIRDAC";
         public const string CondicionesFirmadasDirdac = "CONDICIONES_FIRMADAS_DIRDAC";
         public const string DocumentosFirmadosDirdac = "DOCUMENTOS_FIRMADOS_DIRDAC";
+        public const string PendienteFirmasInstitucionales = "PENDIENTE_FIRMAS_INSTITUCIONALES";
+        public const string PendienteFirmaDgac = "PENDIENTE_FIRMA_DGAC";
+        public const string PendienteFirmaDcav = "PENDIENTE_FIRMA_DCAV";
+        public const string FirmadoDgac = "FIRMADO_DGAC";
+        public const string FirmadoDcav = "FIRMADO_DCAV";
+        public const string DocumentosFirmadosInstitucionalmente = "DOCUMENTOS_FIRMADOS_INSTITUCIONALMENTE";
         public const string AocrDatosPendientes = "AOCR_DATOS_PENDIENTES";
         public const string AocrDatosCompletos = "AOCR_DATOS_COMPLETOS";
         public const string AocrPdfGenerado = "AOCR_PDF_GENERADO";

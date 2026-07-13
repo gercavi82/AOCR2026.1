@@ -32,7 +32,7 @@ namespace CapaDatos.DAOs
                 const string sql = @"
                     SELECT id, solicitud_id, orden_recaudacion_id, inspeccion_id, informe_id,
                            estado_actual, etapa_actual, rol_responsable, usuario_responsable_id,
-                           siguiente_accion, observacion, fecha_estado, activo
+                           siguiente_accion, observacion, fecha_estado, activo, version
                     FROM public.aocr_proceso_estado
                     WHERE solicitud_id = @solicitud_id
                       AND activo = TRUE
@@ -47,6 +47,23 @@ namespace CapaDatos.DAOs
                         return rd.Read() ? MapEstado(rd) : null;
                     }
                 }
+            }
+        }
+
+        public AocrProcesoEstadoRecord ObtenerActivoPorSolicitud(NpgsqlConnection cn, NpgsqlTransaction tx, int solicitudId, bool bloquear)
+        {
+            if (cn == null) throw new ArgumentNullException(nameof(cn));
+            EnsureSchema(cn);
+            var sql = @"SELECT id, solicitud_id, orden_recaudacion_id, inspeccion_id, informe_id,
+                               estado_actual, etapa_actual, rol_responsable, usuario_responsable_id,
+                               siguiente_accion, observacion, fecha_estado, activo, version
+                        FROM public.aocr_proceso_estado
+                        WHERE solicitud_id=@solicitud AND activo=TRUE
+                        ORDER BY id DESC LIMIT 1" + (bloquear ? " FOR UPDATE;" : ";");
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@solicitud", solicitudId);
+                using (var rd = cmd.ExecuteReader()) return rd.Read() ? MapEstado(rd) : null;
             }
         }
 
@@ -174,6 +191,85 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public int UpsertEstadoActualConVersion(NpgsqlConnection cn, NpgsqlTransaction tx, AocrProcesoEstadoRecord record, long versionEsperada)
+        {
+            if (cn == null) throw new ArgumentNullException(nameof(cn));
+            if (record == null) throw new ArgumentNullException(nameof(record));
+
+            EnsureSchema(cn);
+
+            const string sqlDeactivate = @"
+                UPDATE public.aocr_proceso_estado
+                SET activo = FALSE
+                WHERE solicitud_id = @solicitud_id
+                  AND activo = TRUE
+                  AND version = @version_esperada;";
+
+            using (var cmd = new NpgsqlCommand(sqlDeactivate, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@solicitud_id", record.SolicitudId);
+                cmd.Parameters.AddWithValue("@version_esperada", versionEsperada);
+                int rowsAffected = cmd.ExecuteNonQuery();
+                if (rowsAffected == 0 && versionEsperada > 0)
+                {
+                    // If no rows affected and we expected a specific version, it's a concurrency conflict
+                    throw new InvalidOperationException("Conflicto de concurrencia: el estado fue modificado por otra transacción.");
+                }
+            }
+
+            const string sqlInsert = @"
+                INSERT INTO public.aocr_proceso_estado
+                (
+                    solicitud_id, orden_recaudacion_id, inspeccion_id, informe_id,
+                    estado_actual, etapa_actual, rol_responsable, usuario_responsable_id,
+                    siguiente_accion, observacion, fecha_estado, activo, version
+                )
+                VALUES
+                (
+                    @solicitud_id, @orden_recaudacion_id, @inspeccion_id, @informe_id,
+                    @estado_actual, @etapa_actual, @rol_responsable, @usuario_responsable_id,
+                    @siguiente_accion, @observacion, COALESCE(@fecha_estado, NOW()), TRUE, @version
+                )
+                RETURNING id;";
+
+            using (var cmd = new NpgsqlCommand(sqlInsert, cn, tx))
+            {
+                BindEstado(cmd, record);
+                cmd.Parameters.AddWithValue("@version", versionEsperada + 1);
+                var result = cmd.ExecuteScalar();
+                return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
+            }
+        }
+
+        public bool ExisteIdempotencia(NpgsqlConnection cn, NpgsqlTransaction tx, string claveIdempotencia)
+        {
+            if (string.IsNullOrWhiteSpace(claveIdempotencia)) return false;
+
+            const string sql = "SELECT 1 FROM public.aocr_proceso_idempotencia WHERE clave = @clave LIMIT 1;";
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@clave", claveIdempotencia);
+                var result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value;
+            }
+        }
+
+        public void RegistrarIdempotencia(NpgsqlConnection cn, NpgsqlTransaction tx, string claveIdempotencia, int solicitudId)
+        {
+            if (string.IsNullOrWhiteSpace(claveIdempotencia)) return;
+
+            const string sql = @"
+                INSERT INTO public.aocr_proceso_idempotencia (clave, solicitud_id, fecha_registro)
+                VALUES (@clave, @solicitud_id, NOW())
+                ON CONFLICT (clave) DO NOTHING;";
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@clave", claveIdempotencia);
+                cmd.Parameters.AddWithValue("@solicitud_id", solicitudId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         public int InsertarHistorial(AocrProcesoEstadoHistorialRecord record)
         {
             if (record == null)
@@ -218,8 +314,7 @@ namespace CapaDatos.DAOs
                     usuario_id,
                     rol_responsable,
                     usuario_responsable_id,
-                    observacion,
-                    fecha_creacion
+                    observacion, fecha_creacion, ip, correlation_id, clave_idempotencia, resultado
                 )
                 VALUES
                 (
@@ -235,8 +330,7 @@ namespace CapaDatos.DAOs
                     @usuario_id,
                     @rol_responsable,
                     @usuario_responsable_id,
-                    @observacion,
-                    COALESCE(@fecha_creacion, NOW())
+                    @observacion, COALESCE(@fecha_creacion, NOW()), @ip, @correlation_id, @clave_idempotencia, @resultado
                 )
                 RETURNING id;";
 
@@ -264,7 +358,8 @@ namespace CapaDatos.DAOs
                 SiguienteAccion = rd["siguiente_accion"] == DBNull.Value ? null : rd["siguiente_accion"].ToString(),
                 Observacion = rd["observacion"] == DBNull.Value ? null : rd["observacion"].ToString(),
                 FechaEstado = rd["fecha_estado"] == DBNull.Value ? DateTime.Now : Convert.ToDateTime(rd["fecha_estado"]),
-                Activo = rd["activo"] != DBNull.Value && Convert.ToBoolean(rd["activo"])
+                Activo = rd["activo"] != DBNull.Value && Convert.ToBoolean(rd["activo"]),
+                Version = rd["version"] == DBNull.Value ? 1 : Convert.ToInt64(rd["version"])
             };
         }
 
@@ -299,6 +394,10 @@ namespace CapaDatos.DAOs
             cmd.Parameters.AddWithValue("@usuario_responsable_id", (object)record.UsuarioResponsableId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@observacion", (object)record.Observacion ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@fecha_creacion", record.FechaCreacion == DateTime.MinValue ? (object)DBNull.Value : record.FechaCreacion);
+            cmd.Parameters.AddWithValue("@ip", (object)record.Ip ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@correlation_id", (object)record.CorrelationId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@clave_idempotencia", (object)record.ClaveIdempotencia ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@resultado", (object)record.Resultado ?? DBNull.Value);
         }
 
         private static void EnsureSchema(NpgsqlConnection cn)
@@ -330,7 +429,8 @@ namespace CapaDatos.DAOs
                         siguiente_accion VARCHAR(150) NULL,
                         observacion TEXT NULL,
                         fecha_estado TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
-                        activo BOOLEAN NOT NULL DEFAULT TRUE
+                        activo BOOLEAN NOT NULL DEFAULT TRUE,
+                        version BIGINT NOT NULL DEFAULT 1
                     );
 
                     CREATE INDEX IF NOT EXISTS ix_aocr_proceso_estado_solicitud
@@ -355,7 +455,11 @@ namespace CapaDatos.DAOs
                         rol_responsable VARCHAR(100) NULL,
                         usuario_responsable_id INTEGER NULL,
                         observacion TEXT NULL,
-                        fecha_creacion TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
+                        fecha_creacion TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+                        ip VARCHAR(50) NULL,
+                        correlation_id VARCHAR(100) NULL,
+                        clave_idempotencia VARCHAR(100) NULL,
+                        resultado VARCHAR(50) NULL
                     );
 
                     CREATE INDEX IF NOT EXISTS ix_aocr_proceso_estado_historial_solicitud
@@ -364,6 +468,18 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS etapa VARCHAR(150) NULL;
                     ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS rol_responsable VARCHAR(100) NULL;
                     ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS usuario_responsable_id INTEGER NULL;
+                    ALTER TABLE public.aocr_proceso_estado ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 1;
+                    ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS ip VARCHAR(50) NULL;
+                    ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(100) NULL;
+                    ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS clave_idempotencia VARCHAR(100) NULL;
+                    ALTER TABLE public.aocr_proceso_estado_historial ADD COLUMN IF NOT EXISTS resultado VARCHAR(50) NULL;
+
+                    CREATE TABLE IF NOT EXISTS public.aocr_proceso_idempotencia
+                    (
+                        clave VARCHAR(100) PRIMARY KEY,
+                        solicitud_id INTEGER NOT NULL,
+                        fecha_registro TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
+                    );
                 ";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
