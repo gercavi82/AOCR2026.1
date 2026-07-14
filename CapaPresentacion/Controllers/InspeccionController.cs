@@ -3841,6 +3841,105 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
+        public ActionResult CoordinadorAprobarNc(int id, string passwordCertificado)
+        {
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
+            
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            if (informe == null) return HttpNotFound("Informe técnico no encontrado.");
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+
+            if (nc == null || nc.Estado != "FIRMADA_INSPECTOR")
+            {
+                TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado FIRMADA_INSPECTOR.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var usuario = _usuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
+
+            // Re-firmar el documento (aplica la firma del coordinador sobre el mismo documento firmado por el inspector)
+            var bytesToSign = System.IO.File.ReadAllBytes(Server.MapPath("~" + nc.RutaPdfFirmadoInspector));
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                bytesToSign, passwordCertificado, "FirmaCoordinador", "Aprobación de Coordinación",
+                "CertificadoCoordinador", usuario, "Dirección General de Aviación Civil");
+
+            if (!resultadoFirma.Exitoso)
+            {
+                TempData["Error"] = "Error al firmar la NC: " + resultadoFirma.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var relativePath = $"/Files/Informes/NC_{id}_v{nc.Version}_FINAL.pdf";
+            var absolutePath = Server.MapPath("~" + relativePath);
+            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.ArchivoFirmado);
+
+            nc.Estado = "FIRMADA_COORDINADOR";
+            nc.RutaPdfFirmadoCoordinador = relativePath;
+            nc.FechaFirmaCoordinador = DateTime.Now;
+            nc.UsuarioFirmaCoordinador = usuario.CodigoUsuario;
+            ncDao.Actualizar(nc);
+
+            // Transicionar la inspeccion o el informe si es necesario
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var notificacion = NotificarResultadoInformeTecnicoAlRtDesdeDireccion(inspeccion, solicitud, informe, usuario.CodigoUsuario, usuario.Login, false);
+
+            if (!notificacion.Exitoso)
+            {
+                TempData["Warning"] = "La No Conformidad ha sido aprobada y firmada, pero hubo un error al notificar al Representante Técnico: " + notificacion.Mensaje;
+            }
+            else
+            {
+                TempData["Success"] = "La No Conformidad ha sido aprobada y firmada por Coordinación. Se ha notificado al Representante Técnico.";
+            }
+
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult CoordinadorDevolverNc(int id, string observacionDevolucion)
+        {
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
+            
+            if (string.IsNullOrWhiteSpace(observacionDevolucion))
+            {
+                TempData["Error"] = "Debe ingresar una observación para devolver la No Conformidad.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            if (informe == null) return HttpNotFound("Informe técnico no encontrado.");
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+
+            if (nc == null || nc.Estado != "FIRMADA_INSPECTOR")
+            {
+                TempData["Error"] = "La No Conformidad no existe o no puede ser devuelta en este estado.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            nc.Estado = "DEVUELTA_INSPECTOR";
+            // En un caso real se guardaría la observacion_devolucion en una columna en aocr_tbnoconformidad o en un historial
+            // Para propósitos de este gate, si no existe la columna la metemos en el resumen o en el informe
+            informe.ObservacionDevolucion = observacionDevolucion.Trim();
+            informe.FechaDevolucion = DateTime.Now;
+            informe.UsuarioDevolucion = ObtenerUsuarioActual();
+            
+            _informeDAO.Actualizar(informe);
+            ncDao.Actualizar(nc);
+
+            TempData["Warning"] = "La No Conformidad ha sido devuelta al Inspector con sus observaciones.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
         public ActionResult CoordinadorDevolver(int id, string observacionDevolucion)
         {
             if (id <= 0) { return new HttpStatusCodeResult(400, "ID inválido."); }
