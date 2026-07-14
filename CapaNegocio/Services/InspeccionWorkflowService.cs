@@ -94,6 +94,11 @@ namespace CapaNegocio.Services
 
                 if (!esSatisfactorio)
                 {
+                    // Si el informe pertenece a una reevaluación, materializa una NC de
+                    // nuevo ciclo (idempotente) y conserva intacta la NC antecedente.
+                    new ReevaluacionInspeccionService().CrearNcNuevoCicloInsatisfactorio(
+                        inspeccionId, informe.CodigoInforme, usuarioId);
+
                     var resultadoNc = AsegurarNoConformidadDesdeInforme(inspeccionId, informe, usuarioId, usuarioNombre);
                     if (!resultadoNc.Exitoso)
                     {
@@ -109,6 +114,16 @@ namespace CapaNegocio.Services
 
                 if (esSatisfactorio)
                 {
+                    // En una reevaluación, el informe firmado y con hash es la evidencia que
+                    // cierra formalmente la NC. El cierre ocurre antes de validar bloqueos.
+                    new ReevaluacionInspeccionService().CerrarNcConInformeSatisfactorio(
+                        inspeccionId,
+                        informe.CodigoInforme,
+                        usuarioId,
+                        string.IsNullOrWhiteSpace(observacion)
+                            ? "Subsanación verificada mediante Informe Técnico satisfactorio."
+                            : observacion);
+
                     var noConformidadesAbiertas = ContarNoConformidadesAbiertas(inspeccionId);
                     if (noConformidadesAbiertas > 0)
                     {

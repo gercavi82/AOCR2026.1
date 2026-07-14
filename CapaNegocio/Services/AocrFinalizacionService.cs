@@ -34,6 +34,13 @@ namespace CapaNegocio.Services
                 }
 
                 var estadoAnterior = EstadoSolicitud.Normalizar(solicitud.Estado);
+                var planCierre = new AocrCierrePorTipoTramiteService().Resolver(solicitud);
+                if (!planCierre.EsValido)
+                {
+                    resultado.Motivo = planCierre.Motivo;
+                    LogPendiente(solicitudId, resultado.Motivo);
+                    return resultado;
+                }
                 if (string.Equals(estadoAnterior, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoAnterior, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoAnterior, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase))
@@ -54,9 +61,11 @@ namespace CapaNegocio.Services
                 var aocrFirmada = DocumentoFirmadoValido(firmaAocr, solicitudId, rutaExiste);
                 var condicionesFirmadas = DocumentoFirmadoValido(firmaCondiciones, solicitudId, rutaExiste);
 
-                if (!aocrFirmada || !condicionesFirmadas)
+                if ((planCierre.GenerarAocr && !aocrFirmada) || !condicionesFirmadas)
                 {
-                    resultado.Motivo = "Documentos firmados incompletos. AocrFirmada=" + aocrFirmada + "; CondicionesFirmadas=" + condicionesFirmadas;
+                    resultado.Motivo = "Documentos requeridos por " + planCierre.Modulo
+                        + " incompletos. AocrRequerida=" + planCierre.GenerarAocr
+                        + "; AocrFirmada=" + aocrFirmada + "; CondicionesFirmadas=" + condicionesFirmadas;
                     LogPendiente(solicitudId, resultado.Motivo);
                     return resultado;
                 }
@@ -74,12 +83,16 @@ namespace CapaNegocio.Services
                     return resultado;
                 }
 
-                var estadoNuevo = EstadoSolicitud.AOCR_Legalizado;
+                var estadoNuevo = planCierre.TipoCierre == AocrTipoCierre.Modificacion
+                    ? EstadoSolicitud.Finalizado
+                    : EstadoSolicitud.AOCR_Legalizado;
                 var actualizado = _solicitudDao.CambiarEstado(
                     solicitudId,
                     estadoNuevo,
                     usuarioId,
-                    "AOCR y Condiciones firmadas. Documentos finales disponibles.");
+                    planCierre.TipoCierre == AocrTipoCierre.Modificacion
+                        ? "Modificación de Condiciones y Limitaciones firmada. Documento final disponible."
+                        : "AOCR y Condiciones firmadas. Documentos finales disponibles.");
 
                 if (!actualizado)
                 {
@@ -95,7 +108,7 @@ namespace CapaNegocio.Services
                         estadoAnterior,
                         estadoNuevo,
                         usuarioId,
-                        "Liberacion final AOCR por firma institucional completa.");
+                        "Liberación final " + planCierre.Modulo + " por firma institucional completa.");
                 }
                 catch
                 {

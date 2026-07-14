@@ -202,6 +202,22 @@
                                 </div>
                             }
 
+                            @if (doc.HistorialVersiones != null && doc.HistorialVersiones.Count > 1)
+                            {
+                                <details class="mb-2">
+                                    <summary class="small fw-semibold text-primary">Historial de versiones (@doc.HistorialVersiones.Count)</summary>
+                                    <ul class="small text-muted mb-0 mt-1">
+                                        @foreach (var version in doc.HistorialVersiones)
+                                        {
+                                            <li>
+                                                Versión @(version.Version ?? 1) — @version.NombreArchivo — @version.Estado
+                                                @if (version.FechaCarga.HasValue) { <span>(@version.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm"))</span> }
+                                            </li>
+                                        }
+                                    </ul>
+                                </details>
+                            }
+
                             <div class="doc-actions-inline mb-2">
                                 <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
                                    class="btn btn-sm btn-outline-secondary">

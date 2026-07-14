@@ -4482,7 +4482,8 @@ namespace CapaPresentacion.Controllers
         private DocumentoSubsanacionVM MapearDocumentoSubsanacionVm(
             Documento documento,
             IDictionary<int, Tuple<string, string>> revisiones,
-            bool puedeSubsanar)
+            bool puedeSubsanar,
+            IEnumerable<Documento> todasLasVersiones = null)
         {
             if (documento == null)
             {
@@ -4507,7 +4508,19 @@ namespace CapaPresentacion.Controllers
                 FechaCarga = documento.FechaCarga,
                 Version = documento.Version,
                 PuedeSubsanar = puedeSubsanar,
-                EsBloqueado = !puedeSubsanar
+                EsBloqueado = !puedeSubsanar,
+                HistorialVersiones = (todasLasVersiones ?? Enumerable.Empty<Documento>())
+                    .Where(d => d != null && string.Equals(d.TipoDocumento, documento.TipoDocumento, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(d => d.Version ?? 1)
+                    .ThenByDescending(d => d.CodigoDocumento)
+                    .Select(d => new DocumentoVersionHistorialVM
+                    {
+                        CodigoDocumento = d.CodigoDocumento,
+                        NombreArchivo = d.NombreArchivo,
+                        Estado = EstadoDocumentoInstitucional.Normalizar(d.Estado),
+                        Version = d.Version,
+                        FechaCarga = d.FechaCarga
+                    }).ToList()
             };
         }
 
@@ -4672,6 +4685,7 @@ namespace CapaPresentacion.Controllers
             var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
             var documentos = ObtenerDocumentosPendientesSubsanacionParaSolicitud(id, revisionesDocumentales);
             var documentosVigentes = ObtenerDocumentosVigentesParaRevision(id);
+            var todasLasVersiones = _documentoDAO.ObtenerPorSolicitud(id);
             var clasificacion = _documentoSubsanacionService.ClasificarDocumentosParaRt(
                 documentosVigentes,
                 revisionesDocumentales,
@@ -4705,9 +4719,9 @@ namespace CapaPresentacion.Controllers
                 InspectorNombre = inspectorNombre,
                 ObservacionesInspector = solicitud.Observaciones,
                 HistorialObservaciones = historialObs,
-                DocumentosObservados = documentos.Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, true)).ToList(),
+                DocumentosObservados = documentos.Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, true, todasLasVersiones)).ToList(),
                 DocumentosBloqueados = clasificacion.DocumentosBloqueados
-                    .Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, false))
+                    .Select(d => MapearDocumentoSubsanacionVm(d, revisionesDocumentales, false, todasLasVersiones))
                     .ToList()
             };
 
@@ -4750,6 +4764,17 @@ namespace CapaPresentacion.Controllers
                 TempData["NotificacionMensaje"] = "La solicitud ya no se encuentra en estado Observada.";
                 return RedirectToAction("Detalle", new { id = codigoSolicitud });
             }
+
+            var ncSubsanacionIndividual = new NoConformidadDAO()
+                .ListarPorSolicitud(codigoSolicitud)
+                .Where(nc => nc != null &&
+                    string.Equals(nc.TipoRuta, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase) &&
+                    (string.Equals(nc.Estado, "FIRMADA_COORDINADOR", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(nc.Estado, "EN_SUBSANACION", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(nc.Estado, "SUBSANACION_DEVUELTA", StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(nc => nc.Version)
+                .ThenByDescending(nc => nc.CodigoNoConformidad)
+                .FirstOrDefault();
 
             if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
             {
@@ -4921,14 +4946,40 @@ namespace CapaPresentacion.Controllers
                             UsuarioRegistro = usuarioRegistro
                         };
 
-                        var codigoNuevoDocumento = _documentoDAO.Crear(nuevoDoc);
+                        int codigoNuevoDocumento;
+                        if (ncSubsanacionIndividual != null)
+                        {
+                            try
+                            {
+                                codigoNuevoDocumento = _documentoDAO.CrearVersionSubsanadaNc(
+                                    nuevoDoc,
+                                    docOriginal.CodigoDocumento,
+                                    ncSubsanacionIndividual.CodigoNoConformidad,
+                                    usuarioId,
+                                    docOriginal.ObservacionRevision ?? docOriginal.Observaciones,
+                                    result.HashSha256,
+                                    Guid.NewGuid().ToString("N"));
+                            }
+                            catch
+                            {
+                                if (!string.IsNullOrWhiteSpace(result.StoredPath) && System.IO.File.Exists(result.StoredPath))
+                                {
+                                    System.IO.File.Delete(result.StoredPath);
+                                }
+                                throw;
+                            }
+                        }
+                        else
+                        {
+                            // Compatibilidad con subsanaciones documentales ordinarias no originadas en una NC.
+                            codigoNuevoDocumento = _documentoDAO.Crear(nuevoDoc);
+                            docOriginal.Estado = EstadoDocumentoInstitucional.ResolverEstadoVersionAnterior();
+                            docOriginal.Observaciones = string.IsNullOrWhiteSpace(docOriginal.Observaciones)
+                                ? "Versión anterior conservada por subsanación RT."
+                                : docOriginal.Observaciones.Trim();
+                            _documentoDAO.Actualizar(docOriginal);
+                        }
                         nuevoDoc.CodigoDocumento = codigoNuevoDocumento;
-
-                        docOriginal.Estado = EstadoDocumentoInstitucional.ResolverEstadoVersionAnterior();
-                        docOriginal.Observaciones = string.IsNullOrWhiteSpace(docOriginal.Observaciones)
-                            ? "Versión anterior conservada por subsanación RT."
-                            : docOriginal.Observaciones.Trim();
-                        _documentoDAO.Actualizar(docOriginal);
 
                         documentosSubsanadosNotificacion.Add(nuevoDoc);
                         LogBL.RegistrarInfo(

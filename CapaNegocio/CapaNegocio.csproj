@@ -210,6 +210,7 @@
     <Compile Include="Services\CompaniaActivaInfo.cs" />
     <Compile Include="Services\AocrProcesoActivoService.cs" />
     <Compile Include="Services\DocumentoSubsanacionService.cs" />
+    <Compile Include="Services\NuevaInspeccionPorNcService.cs" />
     <Compile Include="Services\RevisionDocumentalBandejaService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\SolicitudAocrCorreoService.cs" />
@@ -254,6 +255,8 @@
     <Compile Include="SolicitudBL.cs" />
     <Compile Include="Services\Fr3RetryService.cs" />
     <Compile Include="Services\GeneracionAOCRService.cs" />
+    <Compile Include="Services\ReevaluacionInspeccionService.cs" />
+    <Compile Include="Services\AocrCierrePorTipoTramiteService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -287,6 +287,13 @@ namespace CapaPresentacion.Controllers
                     return JsonError(404, "No existe contexto documental AOCR para firmar.", id);
                 }
 
+                string motivoTipoTramite;
+                if (!new AocrCierrePorTipoTramiteService().PuedeGenerarDocumento(
+                    contexto.Solicitud, tipoDocumento, out motivoTipoTramite))
+                {
+                    return JsonError(409, motivoTipoTramite, id);
+                }
+
                 var firmaActual = ObtenerFirmaPorTipo(contexto, tipoDocumento);
                 if (firmaActual != null && !string.IsNullOrWhiteSpace(firmaActual.RutaDocumento) && StorageService.Existe(firmaActual.RutaDocumento))
                 {

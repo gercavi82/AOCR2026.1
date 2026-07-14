@@ -93,5 +93,15 @@ namespace CapaPresentacion.Models
         public int? Version { get; set; }
         public bool PuedeSubsanar { get; set; }
         public bool EsBloqueado { get; set; }
+        public List<DocumentoVersionHistorialVM> HistorialVersiones { get; set; } = new List<DocumentoVersionHistorialVM>();
+    }
+
+    public class DocumentoVersionHistorialVM
+    {
+        public int CodigoDocumento { get; set; }
+        public string NombreArchivo { get; set; }
+        public string Estado { get; set; }
+        public int? Version { get; set; }
+        public DateTime? FechaCarga { get; set; }
     }
 }

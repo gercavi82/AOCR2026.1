@@ -138,6 +138,14 @@ namespace CapaNegocio.Services
 
             resultado.EstadoSolicitud = solicitud.Estado ?? string.Empty;
 
+            string motivoTipoTramite;
+            if (!new AocrCierrePorTipoTramiteService().PuedeGenerarDocumento(
+                solicitud, AocrCierrePorTipoTramiteService.Reconocimiento, out motivoTipoTramite))
+            {
+                resultado.Motivo = motivoTipoTramite;
+                return resultado;
+            }
+
             Documento existente = ObtenerAocrGeneradoVigente(codigoSolicitud);
             if (existente != null)
             {
@@ -659,14 +667,17 @@ namespace CapaNegocio.Services
 
             try
             {
+                var noConformidades = new NoConformidadDAO().ContarAbiertasRelacionadasConInspeccion(codigoInspeccion);
                 var hallazgos = _hallazgoDao.ObtenerPorInspeccion(codigoInspeccion) ?? new List<Hallazgo>();
-                return hallazgos.Count(hallazgo => hallazgo != null
+                return noConformidades + hallazgos.Count(hallazgo => hallazgo != null
                     && !string.Equals((hallazgo.Estado ?? string.Empty).Trim(), "CERRADO", StringComparison.OrdinalIgnoreCase)
                     && !string.Equals((hallazgo.Estado ?? string.Empty).Trim(), "RESUELTO", StringComparison.OrdinalIgnoreCase));
             }
             catch
             {
-                return 0;
+                // Ante una falla de persistencia se bloquea la emisión: nunca se debe
+                // interpretar un error de lectura como ausencia de NC.
+                return 1;
             }
         }
 

@@ -89,6 +89,12 @@
     <Compile Include="Unit\SecurityTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
     <Compile Include="Integration\NoConformidadDAOTests.cs" />
+    <Compile Include="Integration\Gate1NoConformidadRelacionesIntegrationTests.cs" />
+    <Compile Include="Integration\Gate2SubsanacionIndividualNcIntegrationTests.cs" />
+    <Compile Include="Integration\Gate3RevisionSubsanacionInspectorIntegrationTests.cs" />
+    <Compile Include="Integration\Gate4NuevaSolicitudPorNcIntegrationTests.cs" />
+    <Compile Include="Integration\Gate5ReevaluacionIntegrationTests.cs" />
+    <Compile Include="Unit\AocrCierrePorTipoTramiteServiceTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
   </ItemGroup>
   <ItemGroup>

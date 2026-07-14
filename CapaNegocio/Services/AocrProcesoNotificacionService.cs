@@ -73,6 +73,13 @@ namespace CapaNegocio.Services
                     return false;
                 }
 
+                var planCierre = new AocrCierrePorTipoTramiteService().Resolver(solicitud);
+                if (!planCierre.EsValido)
+                {
+                    LogError(solicitudId, EventoFinalRt, string.Empty, planCierre.Motivo);
+                    return false;
+                }
+
                 var rt = ResolverRt(solicitud);
                 if (rt == null || !EsCorreoPermitido(rt.Email))
                 {
@@ -87,7 +94,7 @@ namespace CapaNegocio.Services
                 var docAocr = ResolverDocumentoFirmado(solicitudId, TipoReconocimiento);
                 var docCondiciones = ResolverDocumentoFirmado(solicitudId, TipoCondiciones);
 
-                if (!docAocr.EsValido || !docCondiciones.EsValido)
+                if ((planCierre.GenerarAocr && !docAocr.EsValido) || !docCondiciones.EsValido)
                 {
                     var motivo = "Documentos finales incompletos. AOCR=" + docAocr.Motivo + "; Condiciones=" + docCondiciones.Motivo;
                     LogError(solicitudId, EventoFinalRt, rt.Email, motivo);
@@ -99,7 +106,10 @@ namespace CapaNegocio.Services
                 Trace.TraceInformation("[AOCR_FINAL][DOC_CONDICIONES_OK] SolicitudId=" + solicitudId + "; Ruta=" + docCondiciones.RutaPersistida + "; Bytes=" + docCondiciones.Bytes + ";");
                 Trace.TraceInformation("[AOCR_FINAL][DOCS_COMPLETOS] SolicitudId=" + solicitudId + ";");
 
-                LiberarDocumentoRt(solicitudId, TipoReconocimiento, docAocr);
+                if (planCierre.GenerarAocr)
+                {
+                    LiberarDocumentoRt(solicitudId, TipoReconocimiento, docAocr);
+                }
                 LiberarDocumentoRt(solicitudId, TipoCondiciones, docCondiciones);
 
                 var eventKey = SolicitudAocrCorreoService.BuildAocrEventKey(EventoFinalRt, solicitudId, null, null, rt.Email);
@@ -109,12 +119,31 @@ namespace CapaNegocio.Services
                     return true;
                 }
 
+                var adjuntos = new List<EmailAttachmentItem>();
+                if (planCierre.GenerarAocr)
+                {
+                    adjuntos.Add(new EmailAttachmentItem
+                    {
+                        FileName = NombreAdjunto(solicitud, "RECONOCIMIENTO_CERTIFICADO_EXPLOTADOR.pdf"),
+                        ContentType = "application/pdf",
+                        FilePath = docAocr.RutaPersistida,
+                        FileSize = docAocr.Bytes
+                    });
+                }
+                adjuntos.Add(new EmailAttachmentItem
+                {
+                    FileName = NombreAdjunto(solicitud, "CONDICIONES_Y_LIMITACIONES.pdf"),
+                    ContentType = "application/pdf",
+                    FilePath = docCondiciones.RutaPersistida,
+                    FileSize = docCondiciones.Bytes
+                });
+
                 var item = new EmailQueueItem
                 {
                     Para = rt.Email,
                     ParaNombre = rt.Nombre,
                     Asunto = "Sistema AOCR - Proceso AOCR finalizado",
-                    Cuerpo = ConstruirCuerpoFinal(solicitud, rt.Nombre),
+                    Cuerpo = ConstruirCuerpoFinal(solicitud, rt.Nombre, planCierre),
                     Estado = EstadoEmail.Pendiente,
                     SolicitudId = solicitudId,
                     TipoNotificacion = EventoFinalRt,
@@ -122,23 +151,7 @@ namespace CapaNegocio.Services
                     CorrelationId = "AOCRFINAL-" + solicitudId,
                     EsHtml = true,
                     MaxIntentos = 5,
-                    Adjuntos = new List<EmailAttachmentItem>
-                    {
-                        new EmailAttachmentItem
-                        {
-                            FileName = NombreAdjunto(solicitud, "RECONOCIMIENTO_CERTIFICADO_EXPLOTADOR.pdf"),
-                            ContentType = "application/pdf",
-                            FilePath = docAocr.RutaPersistida,
-                            FileSize = docAocr.Bytes
-                        },
-                        new EmailAttachmentItem
-                        {
-                            FileName = NombreAdjunto(solicitud, "CONDICIONES_Y_LIMITACIONES.pdf"),
-                            ContentType = "application/pdf",
-                            FilePath = docCondiciones.RutaPersistida,
-                            FileSize = docCondiciones.Bytes
-                        }
-                    }
+                    Adjuntos = adjuntos
                 };
 
                 _emailQueue.EncolarConAdjuntosAsync(item, item.Adjuntos).GetAwaiter().GetResult();
@@ -147,6 +160,7 @@ namespace CapaNegocio.Services
 
                 NotificarInternoSeguro(solicitud.CodigoUsuario, "Proceso AOCR finalizado",
                     "Los documentos finales firmados se encuentran disponibles para descarga.", solicitudId);
+                NotificarInspectorFinal(solicitud, planCierre);
                 Trace.TraceInformation("[AOCR_FINAL][BANDEJA_RT_OK] SolicitudId=" + solicitudId + ";");
                 return true;
             }
@@ -323,7 +337,24 @@ namespace CapaNegocio.Services
             }
         }
 
-        private static string ConstruirCuerpoFinal(SolicitudAOCR solicitud, string nombre)
+        private void NotificarInspectorFinal(SolicitudAOCR solicitud, AocrCierrePorTipoTramitePlan plan)
+        {
+            try
+            {
+                var inspeccion = (new InspeccionDAO().ListarPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>())
+                    .Where(i => i != null && i.CodigoInspector.HasValue).OrderByDescending(i => i.CodigoInspeccion).FirstOrDefault();
+                var inspectorId = inspeccion != null ? inspeccion.CodigoInspector.GetValueOrDefault() : solicitud.CodigoTecnico.GetValueOrDefault();
+                if (inspectorId <= 0) return;
+                NotificarInternoSeguro(inspectorId, "Cierre " + plan.Modulo,
+                    plan.TipoCierre == AocrTipoCierre.Modificacion
+                        ? "Las Condiciones y Limitaciones modificadas fueron firmadas y liberadas al RT."
+                        : "El AOCR y las Condiciones y Limitaciones fueron firmados y liberados al RT.",
+                    solicitud.CodigoSolicitud);
+            }
+            catch { }
+        }
+
+        private static string ConstruirCuerpoFinal(SolicitudAOCR solicitud, string nombre, AocrCierrePorTipoTramitePlan plan)
         {
             var sb = new StringBuilder();
             sb.Append("<p>Se informa que el proceso AOCR correspondiente a la Solicitud <strong>")
@@ -331,7 +362,8 @@ namespace CapaNegocio.Services
               .Append("</strong> ha finalizado correctamente.</p>");
             sb.Append("<p>Se adjuntan los documentos finales firmados:</p>");
             sb.Append("<ul>");
-            sb.Append("<li>RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS</li>");
+            if (plan != null && plan.GenerarAocr)
+                sb.Append("<li>RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS</li>");
             sb.Append("<li>CONDICIONES Y LIMITACIONES</li>");
             sb.Append("</ul>");
             sb.Append("<p>Los documentos tambien se encuentran disponibles para descarga en su bandeja del Sistema AOCR.</p>");

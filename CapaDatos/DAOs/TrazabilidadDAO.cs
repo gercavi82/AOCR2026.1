@@ -96,20 +96,32 @@ namespace CapaDatos.DAOs
                     SELECT
                         ds.codigo_documento,
                         ds.codigo_subsanacion,
-                        s.codigo_solicitud,
+                        COALESCE(s.codigo_solicitud, nc.codigo_solicitud) AS codigo_solicitud,
                         ds.nombre_archivo,
                         ds.ruta_archivo,
                         ds.tipo_documento,
                         ds.tamanio_bytes,
                         ds.fecha_carga,
                         ds.codigo_usuario_carga,
+                        ds.codigo_no_conformidad,
+                        ds.codigo_documento_origen,
+                        ds.codigo_documento_nueva_version,
+                        ds.version_anterior,
+                        ds.version_nueva,
+                        ds.hash_sha256,
+                        ds.correlation_id,
+                        ds.decision_inspector,
+                        ds.comentario_inspector,
+                        ds.codigo_usuario_revision,
+                        ds.fecha_revision,
                         COALESCE(u.nombres || ' ' || u.apellidos, u.usuario, 'RT') AS usuario_nombre,
                         s.observacion        AS observacion_motivo,
                         s.fecha_solicitud    AS fecha_subsanacion
                     FROM aocr_tbdocumento_subsanacion ds
-                    JOIN aocr_tbsubsanacion s ON s.codigo_subsanacion = ds.codigo_subsanacion
+                    LEFT JOIN aocr_tbsubsanacion s ON s.codigo_subsanacion = ds.codigo_subsanacion
+                    LEFT JOIN aocr_tbnoconformidad nc ON nc.codigo_no_conformidad = ds.codigo_no_conformidad
                     LEFT JOIN usuario u ON u.idusuario = ds.codigo_usuario_carga
-                    WHERE s.codigo_solicitud = @id
+                    WHERE COALESCE(s.codigo_solicitud, nc.codigo_solicitud) = @id
                     ORDER BY ds.fecha_carga DESC NULLS LAST, ds.codigo_documento DESC;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
@@ -167,6 +179,17 @@ namespace CapaDatos.DAOs
                 UsuarioCargaNombre          = rd["usuario_nombre"]          == DBNull.Value ? null : rd["usuario_nombre"].ToString(),
                 ObservacionMotivo           = rd["observacion_motivo"]      == DBNull.Value ? null : rd["observacion_motivo"].ToString(),
                 FechaSubsanacionSolicitada  = rd["fecha_subsanacion"]       == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd["fecha_subsanacion"])
+                ,CodigoNoConformidad         = rd["codigo_no_conformidad"]  == DBNull.Value ? (int?)null : Convert.ToInt32(rd["codigo_no_conformidad"])
+                ,CodigoDocumentoOrigen       = rd["codigo_documento_origen"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["codigo_documento_origen"])
+                ,CodigoDocumentoNuevaVersion = rd["codigo_documento_nueva_version"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["codigo_documento_nueva_version"])
+                ,VersionAnterior             = rd["version_anterior"]       == DBNull.Value ? (int?)null : Convert.ToInt32(rd["version_anterior"])
+                ,VersionNueva                = rd["version_nueva"]          == DBNull.Value ? (int?)null : Convert.ToInt32(rd["version_nueva"])
+                ,HashSha256                  = rd["hash_sha256"]            == DBNull.Value ? null : rd["hash_sha256"].ToString()
+                ,CorrelationId               = rd["correlation_id"]         == DBNull.Value ? null : rd["correlation_id"].ToString()
+                ,DecisionInspector           = rd["decision_inspector"]     == DBNull.Value ? null : rd["decision_inspector"].ToString()
+                ,ComentarioInspector         = rd["comentario_inspector"]   == DBNull.Value ? null : rd["comentario_inspector"].ToString()
+                ,CodigoUsuarioRevision       = rd["codigo_usuario_revision"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["codigo_usuario_revision"])
+                ,FechaRevision               = rd["fecha_revision"]         == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd["fecha_revision"])
             };
         }
 

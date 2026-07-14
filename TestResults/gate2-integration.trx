@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="ab2bb2a0-20da-4e33-a70c-ef7e78b5a9d0" name="german.cajas@DESKTOP-S4GE44J 2026-07-14 14:13:39" runUser="DGAC\german.cajas" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-14T14:13:39.5300836-05:00" queuing="2026-07-14T14:13:39.5300836-05:00" start="2026-07-14T14:13:38.2385679-05:00" finish="2026-07-14T14:13:39.5626974-05:00" />
+  <TestSettings name="default" id="69a78bda-f262-4658-a0d7-bac72452e646">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-07-14_14_13_39" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="83d68f22-b36b-404b-88af-3eaa9eba7eef" testId="0569d7e2-4c17-3311-940b-773e49dd4c8e" testName="Gate2_Integridad_RechazaVinculoIndividualIncompleto" computerName="DESKTOP-S4GE44J" duration="00:00:00.2354789" startTime="2026-07-14T14:13:39.2211366-05:00" endTime="2026-07-14T14:13:39.4675099-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="83d68f22-b36b-404b-88af-3eaa9eba7eef" />
+    <UnitTestResult executionId="74968ef2-aad0-4348-96eb-5417c6053d6a" testId="61fcb730-667d-43e9-6e65-2202a645cd97" testName="Gate2_Dao_NcInvalidaHaceRollbackSinAlterarDocumento" computerName="DESKTOP-S4GE44J" duration="00:00:00.0999775" startTime="2026-07-14T14:13:39.1291890-05:00" endTime="2026-07-14T14:13:39.2211366-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="74968ef2-aad0-4348-96eb-5417c6053d6a" />
+    <UnitTestResult executionId="c6b862d0-79fd-4fee-abd4-45917238b9a8" testId="1a0e3478-9b2b-317e-4399-027fd0c6c323" testName="Gate2_EsquemaReal_TieneVinculoVersionadoNc" computerName="DESKTOP-S4GE44J" duration="00:00:00.6552120" startTime="2026-07-14T14:13:38.3999431-05:00" endTime="2026-07-14T14:13:39.1174993-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c6b862d0-79fd-4fee-abd4-45917238b9a8" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Gate2_Integridad_RechazaVinculoIndividualIncompleto" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="0569d7e2-4c17-3311-940b-773e49dd4c8e">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="83d68f22-b36b-404b-88af-3eaa9eba7eef" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate2SubsanacionIndividualNcIntegrationTests" name="Gate2_Integridad_RechazaVinculoIndividualIncompleto" />
+    </UnitTest>
+    <UnitTest name="Gate2_EsquemaReal_TieneVinculoVersionadoNc" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="1a0e3478-9b2b-317e-4399-027fd0c6c323">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="c6b862d0-79fd-4fee-abd4-45917238b9a8" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate2SubsanacionIndividualNcIntegrationTests" name="Gate2_EsquemaReal_TieneVinculoVersionadoNc" />
+    </UnitTest>
+    <UnitTest name="Gate2_Dao_NcInvalidaHaceRollbackSinAlterarDocumento" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="61fcb730-667d-43e9-6e65-2202a645cd97">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="74968ef2-aad0-4348-96eb-5417c6053d6a" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate2SubsanacionIndividualNcIntegrationTests" name="Gate2_Dao_NcInvalidaHaceRollbackSinAlterarDocumento" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="0569d7e2-4c17-3311-940b-773e49dd4c8e" executionId="83d68f22-b36b-404b-88af-3eaa9eba7eef" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="61fcb730-667d-43e9-6e65-2202a645cd97" executionId="74968ef2-aad0-4348-96eb-5417c6053d6a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1a0e3478-9b2b-317e-4399-027fd0c6c323" executionId="c6b862d0-79fd-4fee-abd4-45917238b9a8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="3" executed="3" passed="3" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

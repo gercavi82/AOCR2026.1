@@ -7,6 +7,10 @@ namespace CapaModelo
         public int CodigoInforme { get; set; }
         public int CodigoInspeccion { get; set; }
         public int Version { get; set; }
+        public int? CodigoInformeAnterior { get; set; }
+        public int? CodigoNoConformidadOrigen { get; set; }
+        public int CicloEvaluacion { get; set; } = 1;
+        public bool EsReevaluacion { get; set; }
         public string Titulo { get; set; }
         public string Resumen { get; set; }
         public string Antecedentes { get; set; }

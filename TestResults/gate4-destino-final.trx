@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="50bf5fa1-cb22-4df8-b1a5-db0519b9ebfe" name="german.cajas@DESKTOP-S4GE44J 2026-07-14 15:00:01" runUser="DGAC\german.cajas" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-14T15:00:01.9499634-05:00" queuing="2026-07-14T15:00:01.9499634-05:00" start="2026-07-14T15:00:00.7633053-05:00" finish="2026-07-14T15:00:01.9783192-05:00" />
+  <TestSettings name="default" id="81e7891a-da39-4ebb-805b-4fb42cc67a81">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-07-14_15_00_01" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="6498fa60-3dbe-4bf7-96f9-1b33ea6a39b5" testId="32ae0596-aeb5-5e00-609f-35f87a96eef1" testName="Gate4_Destino_DiferenciaEmisionRenovacionYModificacion" computerName="DESKTOP-S4GE44J" duration="00:00:00.0029472" startTime="2026-07-14T15:00:01.9060625-05:00" endTime="2026-07-14T15:00:01.9075273-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6498fa60-3dbe-4bf7-96f9-1b33ea6a39b5" />
+    <UnitTestResult executionId="be915a70-c72d-4df4-9ec5-8234f166d6bd" testId="5c545f63-516c-6264-c3ca-fd7eb20ad0f0" testName="Gate4_IndiceUnico_SeAplicaSoloASolicitudesActivas" computerName="DESKTOP-S4GE44J" duration="00:00:00.0046517" startTime="2026-07-14T15:00:01.8899387-05:00" endTime="2026-07-14T15:00:01.9060625-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be915a70-c72d-4df4-9ec5-8234f166d6bd" />
+    <UnitTestResult executionId="5f406223-b1e2-45ea-ab52-f09fdcddc73a" testId="39eb4b34-0f53-b4f1-6cdb-764fb67667f8" testName="Gate4_Servicio_EntradaSinNcNoCreaSolicitudParalela" computerName="DESKTOP-S4GE44J" duration="00:00:00.3854146" startTime="2026-07-14T15:00:01.5111646-05:00" endTime="2026-07-14T15:00:01.8899387-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5f406223-b1e2-45ea-ab52-f09fdcddc73a" />
+    <UnitTestResult executionId="bf5f1198-9219-4ffe-afa1-c93121f19074" testId="13e2041c-bd70-968f-9e79-5771d070c913" testName="Gate4_EsquemaReal_TieneRelacionesOrigenEIdempotencia" computerName="DESKTOP-S4GE44J" duration="00:00:00.5807483" startTime="2026-07-14T15:00:00.8570305-05:00" endTime="2026-07-14T15:00:01.4909484-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bf5f1198-9219-4ffe-afa1-c93121f19074" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Gate4_IndiceUnico_SeAplicaSoloASolicitudesActivas" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="5c545f63-516c-6264-c3ca-fd7eb20ad0f0">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="be915a70-c72d-4df4-9ec5-8234f166d6bd" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate4NuevaSolicitudPorNcIntegrationTests" name="Gate4_IndiceUnico_SeAplicaSoloASolicitudesActivas" />
+    </UnitTest>
+    <UnitTest name="Gate4_Servicio_EntradaSinNcNoCreaSolicitudParalela" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="39eb4b34-0f53-b4f1-6cdb-764fb67667f8">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="5f406223-b1e2-45ea-ab52-f09fdcddc73a" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate4NuevaSolicitudPorNcIntegrationTests" name="Gate4_Servicio_EntradaSinNcNoCreaSolicitudParalela" />
+    </UnitTest>
+    <UnitTest name="Gate4_EsquemaReal_TieneRelacionesOrigenEIdempotencia" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="13e2041c-bd70-968f-9e79-5771d070c913">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="bf5f1198-9219-4ffe-afa1-c93121f19074" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate4NuevaSolicitudPorNcIntegrationTests" name="Gate4_EsquemaReal_TieneRelacionesOrigenEIdempotencia" />
+    </UnitTest>
+    <UnitTest name="Gate4_Destino_DiferenciaEmisionRenovacionYModificacion" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="32ae0596-aeb5-5e00-609f-35f87a96eef1">
+      <Execution id="6498fa60-3dbe-4bf7-96f9-1b33ea6a39b5" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate4NuevaSolicitudPorNcIntegrationTests" name="Gate4_Destino_DiferenciaEmisionRenovacionYModificacion" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="32ae0596-aeb5-5e00-609f-35f87a96eef1" executionId="6498fa60-3dbe-4bf7-96f9-1b33ea6a39b5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5c545f63-516c-6264-c3ca-fd7eb20ad0f0" executionId="be915a70-c72d-4df4-9ec5-8234f166d6bd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="39eb4b34-0f53-b4f1-6cdb-764fb67667f8" executionId="5f406223-b1e2-45ea-ab52-f09fdcddc73a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="13e2041c-bd70-968f-9e79-5771d070c913" executionId="bf5f1198-9219-4ffe-afa1-c93121f19074" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="4" executed="4" passed="4" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

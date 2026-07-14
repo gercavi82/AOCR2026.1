@@ -19,6 +19,8 @@ namespace CapaDatos.Constants
         public const string Bloqueado = "BLOQUEADO";
         public const string VersionAnterior = "VERSION_ANTERIOR";
         public const string PendienteRevisionSubsanacion = "PENDIENTE_REVISION_SUBSANACION";
+        public const string AceptadoSubsanacion = "ACEPTADO_SUBSANACION";
+        public const string RechazadoSubsanacion = "RECHAZADO_SUBSANACION";
 
         public const string DevueltoPorRolInspector = "INSPECTOR";
 
@@ -29,6 +31,7 @@ namespace CapaDatos.Constants
             PendienteSubsanacion,
             PendienteRevisionSubsanacion,
             "RECHAZADO",
+            RechazadoSubsanacion,
             "SUBSANACION"
         };
 
@@ -78,6 +81,10 @@ namespace CapaDatos.Constants
                     return EnRevisionInspector;
                 case "RECHAZADO":
                     return Rechazado;
+                case "ACEPTADO_SUBSANACION":
+                    return AceptadoSubsanacion;
+                case "RECHAZADO_SUBSANACION":
+                    return RechazadoSubsanacion;
                 case "BLOQUEADO":
                     return Bloqueado;
                 case "VERSION_ANTERIOR":

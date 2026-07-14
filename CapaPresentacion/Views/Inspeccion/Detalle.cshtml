@@ -3179,8 +3179,17 @@
 
         @{ var ncSubsanacion = informeTecnico != null
                ? new CapaDatos.DAOs.NoConformidadDAO().ObtenerUltimaPorInforme(informeTecnico.CodigoInforme)
-               : null; }
-        @if (ncSubsanacion != null && ncSubsanacion.Estado == "SUBSANADA_RT" && (User.IsInRole("Inspector") || User.IsInRole("Administrador")))
+               : null;
+           var documentosGate3 = ncSubsanacion != null
+               ? new CapaDatos.DAOs.TrazabilidadDAO().ObtenerDocumentosSubsanacionPorSolicitud(Model.CodigoSolicitud)
+                   .Where(d => d.CodigoNoConformidad == ncSubsanacion.CodigoNoConformidad).ToList()
+               : new List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>();
+           var documentosGate3Vigentes = documentosGate3
+               .Where(d => d.CodigoDocumentoNuevaVersion.HasValue &&
+                   !documentosGate3.Any(s => s.CodigoDocumentoOrigen == d.CodigoDocumentoNuevaVersion))
+               .ToList();
+           var todosGate3Aceptados = documentosGate3Vigentes.Any() && documentosGate3Vigentes.All(d => d.DecisionInspector == "ACEPTADO_SUBSANACION"); }
+        @if (ncSubsanacion != null && (ncSubsanacion.Estado == "SUBSANADA_RT" || ncSubsanacion.Estado == "EN_REVISION_INSPECTOR" || ncSubsanacion.Estado == "SUBSANACION_DEVUELTA") && (User.IsInRole("Inspector") || User.IsInRole("Administrador")))
         {
             <div class="card mb-4 border-info shadow-sm">
                 <div class="card-header bg-info text-white d-flex align-items-center">
@@ -3189,6 +3198,31 @@
                 </div>
                 <div class="card-body">
                     <p class="mb-2">El Representante Técnico ha enviado un documento de subsanación para la No Conformidad <strong>@(ncSubsanacion.NumeroNoConformidad ?? "N/D")</strong>.</p>
+
+                    @foreach (var docGate3 in documentosGate3Vigentes)
+                    {
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h6>@(docGate3.TipoDocumento ?? "Documento") — versión @(docGate3.VersionAnterior ?? 1) a @(docGate3.VersionNueva ?? 2)</h6>
+                                <p class="small text-muted mb-2"><strong>Observación:</strong> @(docGate3.ObservacionMotivo ?? docGate3.ComentarioInspector ?? "Sin observación registrada")</p>
+                                <div class="d-flex gap-2 flex-wrap mb-3">
+                                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Descargar","Documento",new{id=docGate3.CodigoDocumentoOrigen})" target="_blank">Ver versión anterior</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Descargar","Documento",new{id=docGate3.CodigoDocumentoNuevaVersion})" target="_blank">Ver nueva versión</a>
+                                    @if (!string.IsNullOrWhiteSpace(docGate3.DecisionInspector)) { <span class="badge bg-info text-dark align-self-center">@docGate3.DecisionInspector</span> }
+                                </div>
+                                @using (Html.BeginForm("RevisarDocumentoSubsanado", "Inspeccion", FormMethod.Post))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="codigoNoConformidad" value="@ncSubsanacion.CodigoNoConformidad" />
+                                    <input type="hidden" name="codigoInspeccion" value="@Model.CodigoInspeccion" />
+                                    <input type="hidden" name="codigoDocumento" value="@docGate3.CodigoDocumentoNuevaVersion" />
+                                    <textarea name="comentario" class="form-control form-control-sm mb-2" rows="2" placeholder="Comentario obligatorio para rechazar">@docGate3.ComentarioInspector</textarea>
+                                    <button name="decision" value="ACEPTAR" class="btn btn-sm btn-success" type="submit">Aceptar</button>
+                                    <button name="decision" value="RECHAZAR" class="btn btn-sm btn-danger" type="submit">Rechazar</button>
+                                }
+                            </div>
+                        </div>
+                    }
                     
                     <div class="d-flex align-items-center mb-4">
                         <a href="@Url.Action("DescargarSubsanacionNc","Inspeccion",new{codigoNoConformidad=ncSubsanacion.CodigoNoConformidad,codigoInspeccion=Model.CodigoInspeccion})" target="_blank" class="btn btn-outline-info">
@@ -3203,8 +3237,8 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="codigoNoConformidad" value="@ncSubsanacion.CodigoNoConformidad" />
                             <input type="hidden" name="codigoInspeccion" value="@Model.CodigoInspeccion" />
-                            <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de aceptar la subsanación? Esto habilitará el registro de un nuevo informe técnico.');">
-                                <i class="fas fa-check"></i> Aceptar Subsanación
+                            <button type="submit" class="btn btn-success" @(!todosGate3Aceptados ? "disabled=\"disabled\"" : null) onclick="return confirm('¿Confirma el cierre documental? Se habilitará un nuevo informe sin cambiar el resultado actual.');">
+                                <i class="fas fa-check"></i> Cerrar revisión y habilitar reevaluación
                             </button>
                         }
 

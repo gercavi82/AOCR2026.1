@@ -43,5 +43,16 @@ namespace CapaDatos.Entidades
         public string UsuarioCargaNombre { get; set; }
         public string ObservacionMotivo { get; set; }
         public DateTime? FechaSubsanacionSolicitada { get; set; }
+        public int? CodigoNoConformidad { get; set; }
+        public int? CodigoDocumentoOrigen { get; set; }
+        public int? CodigoDocumentoNuevaVersion { get; set; }
+        public int? VersionAnterior { get; set; }
+        public int? VersionNueva { get; set; }
+        public string HashSha256 { get; set; }
+        public string CorrelationId { get; set; }
+        public string DecisionInspector { get; set; }
+        public string ComentarioInspector { get; set; }
+        public int? CodigoUsuarioRevision { get; set; }
+        public DateTime? FechaRevision { get; set; }
     }
 }

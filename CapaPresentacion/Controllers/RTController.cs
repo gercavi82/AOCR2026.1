@@ -359,95 +359,26 @@ namespace CapaPresentacion.Controllers
         public ActionResult SolicitarNuevaInspeccion(int codigoSolicitud)
         {
             var usuarioId = ObtenerUsuarioId();
-            
-            var solicitudDao = new CapaDatos.DAOs.SolicitudAOCRDAO();
-            var solicitud = solicitudDao.ObtenerPorId(codigoSolicitud);
-            if (solicitud == null) 
-                return HttpNotFound("Solicitud no encontrada.");
-
-            // Basic ownership validation: the RT must be the owner of the application
-            if (solicitud.CodigoUsuario != usuarioId)
+            var resultado = new CapaNegocio.Services.NuevaInspeccionPorNcService()
+                .Crear(codigoSolicitud, usuarioId, User.Identity.Name ?? usuarioId.ToString());
+            if (!resultado.Ok)
             {
-                TempData["Error"] = "No está autorizado para realizar esta acción.";
+                TempData["Error"] = resultado.Mensaje;
                 return RedirectToAction("Detalle", "SolicitudAOCR", new { id = codigoSolicitud });
             }
-
-            int nuevaOrdenId = 0;
-            try 
+            TempData["Success"] = resultado.Existente
+                ? "La solicitud institucional para esta NC ya existía; no se creó un duplicado."
+                : "Nueva solicitud institucional creada y vinculada a la NC, inspección e informe originales.";
+            if (string.Equals(resultado.ModuloDestino, "M5_SOLICITUD_INSPECCION_EMISION_RENOVACION", StringComparison.OrdinalIgnoreCase))
             {
-                var ordenService = new CapaNegocio.Services.OrdenRecaudacionService();
-                string nuevoNumero = ordenService.GenerarNumeroOrdenInstitucional(DateTime.Now.Year);
-
-                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["cnPostgres"].ConnectionString;
-                using (var conn = new Npgsql.NpgsqlConnection(connectionString))
-                {
-                    conn.Open();
-                    
-                    var cmdGet = new Npgsql.NpgsqlCommand("SELECT id FROM aocr_or_orden WHERE codigo_solicitud = @solId ORDER BY id DESC LIMIT 1", conn);
-                    cmdGet.Parameters.AddWithValue("@solId", codigoSolicitud.ToString());
-                    var lastOrderIdObj = cmdGet.ExecuteScalar();
-                    
-                    if (lastOrderIdObj != null && lastOrderIdObj != DBNull.Value)
-                    {
-                        int lastOrderId = Convert.ToInt32(lastOrderIdObj);
-                        
-                        var cmdClone = new Npgsql.NpgsqlCommand(@"
-                            INSERT INTO aocr_or_orden 
-                            (codigo_usuario, codigo_solicitud, numero_orden, fecha_creacion, estado, observacion, 
-                             subtotal, admin, total, lugar_emision, compania, ruc_cedula, correo, telefono, concepto_id)
-                            SELECT 
-                             codigo_usuario, codigo_solicitud, @nuevoNumero, @fecha, 'BORRADOR', 'Generada por nueva inspección (NC)', 
-                             subtotal, admin, total, lugar_emision, compania, ruc_cedula, correo, telefono, concepto_id
-                            FROM aocr_or_orden
-                            WHERE id = @lastId
-                            RETURNING id;
-                        ", conn);
-                        cmdClone.Parameters.AddWithValue("@nuevoNumero", nuevoNumero);
-                        cmdClone.Parameters.AddWithValue("@fecha", DateTime.Now);
-                        cmdClone.Parameters.AddWithValue("@lastId", lastOrderId);
-                        nuevaOrdenId = Convert.ToInt32(cmdClone.ExecuteScalar());
-                        
-                        if (nuevaOrdenId > 0)
-                        {
-                            var cmdCloneDetalles = new Npgsql.NpgsqlCommand(@"
-                                INSERT INTO aocr_or_detalle_orden 
-                                (orden_id, subconcepto_id, cantidad, precio_unitario, total)
-                                SELECT 
-                                 @newId, subconcepto_id, cantidad, precio_unitario, total
-                                FROM aocr_or_detalle_orden
-                                WHERE orden_id = @lastId;
-                            ", conn);
-                            cmdCloneDetalles.Parameters.AddWithValue("@newId", nuevaOrdenId);
-                            cmdCloneDetalles.Parameters.AddWithValue("@lastId", lastOrderId);
-                            cmdCloneDetalles.ExecuteNonQuery();
-                        }
-                    }
-                }
-            } 
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error cloning order: {ex.Message}");
+                if (resultado.CodigoOrden.HasValue)
+                    return RedirectToAction("Detalles", "OrdenRecaudacion", new { id = resultado.CodigoOrden.Value });
+                return RedirectToAction("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = resultado.CodigoSolicitud, tipoSolicitud = resultado.TipoTramite == "RENOVACION" ? 2 : 1 });
             }
-
-            try 
-            {
-                _solicitudDAO.CambiarEstado(codigoSolicitud, CapaDatos.Constants.EstadoSolicitud.RequiereInspeccion, usuarioId, "Se requiere pago para nueva inspección por NC en ruta CON INSPECCION.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error changing state: {ex.Message}");
-            }
-
-            if (nuevaOrdenId > 0) 
-            {
-                TempData["Success"] = "Se generó una orden de recaudación clonada de la anterior. Por favor complétela y proceda con el flujo institucional.";
-                return RedirectToAction("Detalles", "OrdenRecaudacion", new { id = nuevaOrdenId });
-            } 
-            else 
-            {
-                TempData["Success"] = "Por favor, genere una nueva orden de recaudación con el concepto de solicitud de inspección.";
-                return RedirectToAction("Index", "OrdenRecaudacion", new { solicitudId = codigoSolicitud });
-            }
+            if (string.Equals(resultado.ModuloDestino, "M6_SOLICITUD_INSPECCION_MODIFICACION", StringComparison.OrdinalIgnoreCase) && resultado.CodigoInspeccion.HasValue)
+                return RedirectToAction("Detalle", "Inspeccion", new { id = resultado.CodigoInspeccion.Value });
+            TempData["Error"] = "La solicitud fue creada, pero no se pudo determinar el destino institucional.";
+            return RedirectToAction("Index", "SolicitudAOCR", new { tipoSolicitud = 3 });
         }
         
         [HttpGet]

@@ -187,7 +187,10 @@ namespace CapaNegocio.Services
 
             if (TieneNuevoAeropuertoDeclarado(solicitud))
             {
-                return CrearPlanError("warning", MensajeRechazoClConInspeccionRequerida);
+                if (!TieneInspeccionSatisfactoriaSinNc(solicitud.CodigoSolicitud))
+                {
+                    return CrearPlanError("warning", MensajeRechazoClConInspeccionRequerida);
+                }
             }
 
             return CrearPlanExito(
@@ -195,6 +198,25 @@ namespace CapaNegocio.Services
                 string.IsNullOrWhiteSpace(observacion)
                     ? "El inspector determinó que la modificación no requiere nueva inspección. Se habilita la generación de Condiciones y Limitaciones."
                     : observacion.Trim());
+        }
+
+        private static bool TieneInspeccionSatisfactoriaSinNc(int codigoSolicitud)
+        {
+            try
+            {
+                var inspecciones = new InspeccionDAO().ListarPorSolicitud(codigoSolicitud) ?? new List<Inspeccion>();
+                foreach (var inspeccion in inspecciones.Where(i => i != null).OrderByDescending(i => i.CodigoInspeccion))
+                {
+                    var informe = new InspeccionInformeDAO().ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion);
+                    if (informe == null || !informe.Finalizado || !informe.FirmadoInspector
+                        || !string.Equals((informe.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (new NoConformidadDAO().ContarAbiertasRelacionadasConInspeccion(inspeccion.CodigoInspeccion) == 0)
+                        return true;
+                }
+            }
+            catch { }
+            return false;
         }
 
         public AocrModificationWorkflowPlan PrepararRevisionFinalCondicionesLimitaciones(SolicitudAOCR solicitud, string observacion)

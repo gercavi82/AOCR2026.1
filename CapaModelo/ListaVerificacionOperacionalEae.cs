@@ -9,6 +9,10 @@ namespace CapaModelo
         public int CodigoListaVerificacion { get; set; }
         public int CodigoInspeccion { get; set; }
         public int Version { get; set; }
+        public int? CodigoListaAnterior { get; set; }
+        public int? CodigoNoConformidadOrigen { get; set; }
+        public int CicloEvaluacion { get; set; } = 1;
+        public bool EsReevaluacion { get; set; }
         public string EstadoLista { get; set; }
         public string NombreEae { get; set; }
         public string NumeroAocFechaValidez { get; set; }

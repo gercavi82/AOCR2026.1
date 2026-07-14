@@ -8,6 +8,18 @@ namespace CapaModelo
         public int CodigoInspeccion { get; set; }
         public int CodigoInforme { get; set; }
         public int CodigoSolicitud { get; set; }
+        public int? CodigoNoConformidadRaiz { get; set; }
+        public int? CodigoSolicitudOrigen { get; set; }
+        public int? CodigoInspeccionOrigen { get; set; }
+        public int? CodigoInformeOrigen { get; set; }
+        public int? CodigoSolicitudNueva { get; set; }
+        public int? CodigoInspeccionNueva { get; set; }
+        public int? CodigoInformeCierre { get; set; }
+        public int CicloEvaluacion { get; set; } = 1;
+        public DateTime? FechaCierre { get; set; }
+        public int? UsuarioCierre { get; set; }
+        public string ObservacionCierre { get; set; }
+        public string CorrelationId { get; set; }
         
         /// <summary>
         /// CON_INSPECCION o SIN_INSPECCION

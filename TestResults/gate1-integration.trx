@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="af5f0f04-0922-4a7f-9082-5a14844f3b62" name="german.cajas@DESKTOP-S4GE44J 2026-07-14 14:00:31" runUser="DGAC\german.cajas" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-14T14:00:31.3467177-05:00" queuing="2026-07-14T14:00:31.3467177-05:00" start="2026-07-14T14:00:28.6551024-05:00" finish="2026-07-14T14:00:31.3635114-05:00" />
+  <TestSettings name="default" id="75a31c7d-04f2-4898-8f2d-0bba01f89e86">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-07-14_14_00_31" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="9bacfae5-5759-47e2-b20f-caca672b208f" testId="10fe6006-2ece-b512-4c69-1105b1f66714" testName="Gate1_EsquemaReal_TieneRelacionesRestriccionesEIndices" computerName="DESKTOP-S4GE44J" duration="00:00:01.0364608" startTime="2026-07-14T14:00:29.6566381-05:00" endTime="2026-07-14T14:00:30.9250301-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9bacfae5-5759-47e2-b20f-caca672b208f" />
+    <UnitTestResult executionId="871c9bef-446f-4db2-aef3-d278706e3853" testId="e848da9d-3550-5144-919b-ed267fea28ae" testName="Gate1_RestriccionTipoRuta_RechazaValorInvalidoSinPersistir" computerName="DESKTOP-S4GE44J" duration="00:00:00.0037624" startTime="2026-07-14T14:00:31.1667560-05:00" endTime="2026-07-14T14:00:31.1729529-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="871c9bef-446f-4db2-aef3-d278706e3853" />
+    <UnitTestResult executionId="e24f58c5-1b4b-43d8-9e26-e8d9d89ae6ca" testId="9b1515cc-132f-d239-a6e7-32a708caf004" testName="Gate1_VinculoNuevaEvaluacion_EsTransaccionalEIdempotente" computerName="DESKTOP-S4GE44J" duration="00:00:00.2293848" startTime="2026-07-14T14:00:30.9362059-05:00" endTime="2026-07-14T14:00:31.1662206-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e24f58c5-1b4b-43d8-9e26-e8d9d89ae6ca">
+      <Output>
+        <ErrorInfo>
+          <Message>Excepción método de prueba AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests.Gate1_VinculoNuevaEvaluacion_EsTransaccionalEIdempotente: &#xD;
+Npgsql.PostgresException: 23503: insert or update on table "aocr_tbnoconformidad" violates foreign key constraint "fk_aocr_nc_solicitud_origen"</Message>
+          <StackTrace>    en Npgsql.NpgsqlConnector.&lt;&gt;c__DisplayClass158_0.&lt;&lt;DoReadMessage&gt;g__ReadMessageLong|0&gt;d.MoveNext()&#xD;
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---&#xD;
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()&#xD;
+   en Npgsql.NpgsqlConnector.&lt;&gt;c__DisplayClass158_0.&lt;&lt;DoReadMessage&gt;g__ReadMessageLong|0&gt;d.MoveNext()&#xD;
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---&#xD;
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()&#xD;
+   en Npgsql.NpgsqlDataReader.&lt;NextResult&gt;d__44.MoveNext()&#xD;
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---&#xD;
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()&#xD;
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)&#xD;
+   en Npgsql.NpgsqlDataReader.NextResult()&#xD;
+   en Npgsql.NpgsqlCommand.&lt;ExecuteReaderAsync&gt;d__97.MoveNext()&#xD;
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---&#xD;
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()&#xD;
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)&#xD;
+   en Npgsql.NpgsqlCommand.&lt;ExecuteNonQuery&gt;d__87.MoveNext()&#xD;
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---&#xD;
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()&#xD;
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)&#xD;
+   en Npgsql.NpgsqlCommand.ExecuteNonQuery()&#xD;
+   en CapaDatos.DAOs.NoConformidadDAO.VincularNuevaEvaluacion(Int32 codigoNoConformidad, Int32 codigoSolicitudNueva, Nullable`1 codigoInspeccionNueva, String correlationId, NpgsqlTransaction trx) en C:\proyectos\AOCR\CapaDatos\DAOs\NoConformidadDAO.cs:línea 278&#xD;
+   en AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests.Gate1_VinculoNuevaEvaluacion_EsTransaccionalEIdempotente() en C:\proyectos\AOCR\AOCR.Tests\Integration\Gate1NoConformidadRelacionesIntegrationTests.cs:línea 66&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Gate1_RestriccionTipoRuta_RechazaValorInvalidoSinPersistir" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e848da9d-3550-5144-919b-ed267fea28ae">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="871c9bef-446f-4db2-aef3-d278706e3853" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests" name="Gate1_RestriccionTipoRuta_RechazaValorInvalidoSinPersistir" />
+    </UnitTest>
+    <UnitTest name="Gate1_EsquemaReal_TieneRelacionesRestriccionesEIndices" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="10fe6006-2ece-b512-4c69-1105b1f66714">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="9bacfae5-5759-47e2-b20f-caca672b208f" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests" name="Gate1_EsquemaReal_TieneRelacionesRestriccionesEIndices" />
+    </UnitTest>
+    <UnitTest name="Gate1_VinculoNuevaEvaluacion_EsTransaccionalEIdempotente" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="9b1515cc-132f-d239-a6e7-32a708caf004">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="e24f58c5-1b4b-43d8-9e26-e8d9d89ae6ca" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests" name="Gate1_VinculoNuevaEvaluacion_EsTransaccionalEIdempotente" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="10fe6006-2ece-b512-4c69-1105b1f66714" executionId="9bacfae5-5759-47e2-b20f-caca672b208f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e848da9d-3550-5144-919b-ed267fea28ae" executionId="871c9bef-446f-4db2-aef3-d278706e3853" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9b1515cc-132f-d239-a6e7-32a708caf004" executionId="e24f58c5-1b4b-43d8-9e26-e8d9d89ae6ca" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="3" executed="3" passed="2" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

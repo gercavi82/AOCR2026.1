@@ -7,3 +7,12 @@ c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\ClassLibrary1\obj\Release\CapaUtilidades.
 c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\ClassLibrary1\obj\Release\CapaUtil.A07A3F14.Up2Date
 c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\ClassLibrary1\obj\Release\ClassLibrary1.dll
 c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\ClassLibrary1\obj\Release\ClassLibrary1.pdb
+C:\proyectos\AOCR\ClassLibrary1\bin\Release\ClassLibrary1.dll
+C:\proyectos\AOCR\ClassLibrary1\bin\Release\ClassLibrary1.pdb
+C:\proyectos\AOCR\ClassLibrary1\bin\Release\BCrypt.Net-Next.dll
+C:\proyectos\AOCR\ClassLibrary1\bin\Release\BCrypt.Net-Next.xml
+C:\proyectos\AOCR\ClassLibrary1\obj\Release\CapaUtilidades.csproj.AssemblyReference.cache
+C:\proyectos\AOCR\ClassLibrary1\obj\Release\CapaUtilidades.csproj.CoreCompileInputs.cache
+C:\proyectos\AOCR\ClassLibrary1\obj\Release\CapaUtil.A07A3F14.Up2Date
+C:\proyectos\AOCR\ClassLibrary1\obj\Release\ClassLibrary1.dll
+C:\proyectos\AOCR\ClassLibrary1\obj\Release\ClassLibrary1.pdb

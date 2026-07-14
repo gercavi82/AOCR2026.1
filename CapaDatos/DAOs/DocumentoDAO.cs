@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Npgsql;
 using NpgsqlTypes;
 using CapaModelo;
+using CapaDatos.Constants;
 
 namespace CapaDatos.DAOs
 {
@@ -14,6 +15,154 @@ namespace CapaDatos.DAOs
     {
         private string ConnectionString =>
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
+
+        /// <summary>
+        /// Crea una nueva versión documental, conserva la anterior y registra su
+        /// relación con la NC SIN_INSPECCION en una sola transacción PostgreSQL.
+        /// Requiere la migración 015_gate2_subsanacion_individual_nc.sql.
+        /// </summary>
+        public int CrearVersionSubsanadaNc(
+            Documento nuevaVersion,
+            int codigoDocumentoAnterior,
+            int codigoNoConformidad,
+            int codigoUsuario,
+            string observacionOrigen,
+            string hashSha256,
+            string correlationId)
+        {
+            if (nuevaVersion == null) throw new ArgumentNullException(nameof(nuevaVersion));
+            if (codigoDocumentoAnterior <= 0) throw new ArgumentOutOfRangeException(nameof(codigoDocumentoAnterior));
+            if (codigoNoConformidad <= 0) throw new ArgumentOutOfRangeException(nameof(codigoNoConformidad));
+            if (codigoUsuario <= 0) throw new ArgumentOutOfRangeException(nameof(codigoUsuario));
+            if (string.IsNullOrWhiteSpace(hashSha256) || hashSha256.Length != 64)
+                throw new ArgumentException("El hash SHA-256 es obligatorio.", nameof(hashSha256));
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction(IsolationLevel.ReadCommitted))
+                {
+                    try
+                    {
+                        int versionAnterior;
+                        string estadoAnterior;
+                        int solicitudAnterior;
+                        using (var lockCmd = new NpgsqlCommand(@"
+                            SELECT codigo_solicitud, COALESCE(version, 1), COALESCE(estado, '')
+                            FROM aocr_tbdocumento
+                            WHERE codigo_documento=@documento
+                            FOR UPDATE;", cn, tx))
+                        {
+                            lockCmd.Parameters.AddWithValue("@documento", codigoDocumentoAnterior);
+                            using (var rd = lockCmd.ExecuteReader())
+                            {
+                                if (!rd.Read()) throw new InvalidOperationException("El documento anterior no existe.");
+                                solicitudAnterior = rd.GetInt32(0);
+                                versionAnterior = rd.GetInt32(1);
+                                estadoAnterior = rd.GetString(2);
+                            }
+                        }
+
+                        if (solicitudAnterior != nuevaVersion.CodigoSolicitud)
+                            throw new InvalidOperationException("El documento no pertenece a la solicitud indicada.");
+                        if (string.Equals(estadoAnterior, "ACEPTADO", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoAnterior, "APROBADO", StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("Un documento aceptado no puede ser reemplazado.");
+
+                        using (var ncCmd = new NpgsqlCommand(@"
+                            SELECT 1 FROM aocr_tbnoconformidad
+                            WHERE codigo_no_conformidad=@nc
+                              AND codigo_solicitud=@solicitud
+                              AND UPPER(tipo_ruta)='SIN_INSPECCION'
+                              AND estado IN ('FIRMADA_COORDINADOR','EN_SUBSANACION','SUBSANACION_DEVUELTA')
+                            FOR UPDATE;", cn, tx))
+                        {
+                            ncCmd.Parameters.AddWithValue("@nc", codigoNoConformidad);
+                            ncCmd.Parameters.AddWithValue("@solicitud", nuevaVersion.CodigoSolicitud);
+                            if (ncCmd.ExecuteScalar() == null)
+                                throw new InvalidOperationException("La NC no habilita subsanación documental individual.");
+                        }
+
+                        nuevaVersion.Version = versionAnterior + 1;
+                        var estadoNuevo = ResolverEstadoParaInsercion(cn, nuevaVersion.Estado);
+                        int codigoNuevo;
+                        using (var insert = new NpgsqlCommand(@"
+                            INSERT INTO aocr_tbdocumento
+                            (codigo_solicitud,tipo_documento,nombre_archivo,ruta_guardada,tipo,extension,tamano_bytes,
+                             estado,validado,fecha_carga,observaciones,version,created_at,created_by,
+                             nombre_original,nombre_visible,nombre_fisico)
+                            VALUES
+                            (@solicitud,@tipo_documento,@nombre,@ruta,'ARCHIVO',@extension,@tamano,
+                             @estado,FALSE,@fecha,@observaciones,@version,NOW(),@usuario,
+                             @nombre_original,@nombre_visible,@nombre_fisico)
+                            RETURNING codigo_documento;", cn, tx))
+                        {
+                            insert.Parameters.AddWithValue("@solicitud", nuevaVersion.CodigoSolicitud);
+                            insert.Parameters.AddWithValue("@tipo_documento", (object)nuevaVersion.TipoDocumento ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@nombre", (object)nuevaVersion.NombreArchivo ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@ruta", (object)nuevaVersion.RutaGuardada ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@extension", (object)nuevaVersion.Extension ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@tamano", (object)nuevaVersion.TamanoBytes ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@estado", (object)estadoNuevo ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@fecha", (object)nuevaVersion.FechaCarga ?? DateTime.Now);
+                            insert.Parameters.AddWithValue("@observaciones", (object)nuevaVersion.Observaciones ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@version", nuevaVersion.Version.Value);
+                            insert.Parameters.AddWithValue("@usuario", (object)nuevaVersion.UsuarioRegistro ?? "sistema");
+                            insert.Parameters.AddWithValue("@nombre_original", (object)(nuevaVersion.NombreArchivoOriginal ?? nuevaVersion.NombreArchivo) ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@nombre_visible", (object)(nuevaVersion.NombreArchivoVisible ?? nuevaVersion.NombreArchivo) ?? DBNull.Value);
+                            insert.Parameters.AddWithValue("@nombre_fisico", (object)(nuevaVersion.NombreArchivoFisico ?? nuevaVersion.NombreArchivoGuardado) ?? DBNull.Value);
+                            codigoNuevo = Convert.ToInt32(insert.ExecuteScalar());
+                        }
+
+                        using (var update = new NpgsqlCommand(@"
+                            UPDATE aocr_tbdocumento
+                            SET estado=@estado, updated_at=NOW(), updated_by=@usuario
+                            WHERE codigo_documento=@documento;", cn, tx))
+                        {
+                            update.Parameters.AddWithValue("@estado", EstadoDocumentoInstitucional.ResolverEstadoVersionAnterior());
+                            update.Parameters.AddWithValue("@usuario", (object)nuevaVersion.UsuarioRegistro ?? "sistema");
+                            update.Parameters.AddWithValue("@documento", codigoDocumentoAnterior);
+                            if (update.ExecuteNonQuery() != 1) throw new InvalidOperationException("No se pudo conservar la versión anterior.");
+                        }
+
+                        using (var trace = new NpgsqlCommand(@"
+                            INSERT INTO aocr_tbdocumento_subsanacion
+                            (codigo_subsanacion,nombre_archivo,ruta_archivo,tipo_documento,tamanio_bytes,fecha_carga,
+                             codigo_usuario_carga,codigo_no_conformidad,codigo_documento_origen,
+                             codigo_documento_nueva_version,version_anterior,version_nueva,observacion_origen,
+                             hash_sha256,correlation_id)
+                            VALUES
+                            (NULL,@nombre,@ruta,@tipo,@tamano,NOW(),@usuario,@nc,@anterior,@nuevo,
+                             @version_anterior,@version_nueva,@observacion,@hash,@correlation);", cn, tx))
+                        {
+                            trace.Parameters.AddWithValue("@nombre", nuevaVersion.NombreArchivoOriginal ?? nuevaVersion.NombreArchivo);
+                            trace.Parameters.AddWithValue("@ruta", nuevaVersion.RutaGuardada);
+                            trace.Parameters.AddWithValue("@tipo", (object)nuevaVersion.TipoDocumento ?? DBNull.Value);
+                            trace.Parameters.AddWithValue("@tamano", (object)nuevaVersion.TamanoBytes ?? DBNull.Value);
+                            trace.Parameters.AddWithValue("@usuario", codigoUsuario);
+                            trace.Parameters.AddWithValue("@nc", codigoNoConformidad);
+                            trace.Parameters.AddWithValue("@anterior", codigoDocumentoAnterior);
+                            trace.Parameters.AddWithValue("@nuevo", codigoNuevo);
+                            trace.Parameters.AddWithValue("@version_anterior", versionAnterior);
+                            trace.Parameters.AddWithValue("@version_nueva", nuevaVersion.Version.Value);
+                            trace.Parameters.AddWithValue("@observacion", (object)observacionOrigen ?? DBNull.Value);
+                            trace.Parameters.AddWithValue("@hash", hashSha256.ToLowerInvariant());
+                            trace.Parameters.AddWithValue("@correlation", (object)correlationId ?? DBNull.Value);
+                            trace.ExecuteNonQuery();
+                        }
+
+                        tx.Commit();
+                        nuevaVersion.CodigoDocumento = codigoNuevo;
+                        return codigoNuevo;
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
 
         // =========================================================
         // INSERTAR DOCUMENTO

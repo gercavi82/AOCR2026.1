@@ -3968,22 +3968,81 @@ namespace CapaPresentacion.Controllers
             if (nc == null || inspeccion == null || nc.CodigoInspeccion != codigoInspeccion || nc.CodigoSolicitud != inspeccion.CodigoSolicitud)
                 return new HttpStatusCodeResult(404,"No existe relación entre la NC y la inspección indicada.");
             if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403,"No está autorizado para revisar esta subsanación.");
-            if (nc.Estado != "SUBSANADA_RT" || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
+            if ((nc.Estado != "SUBSANADA_RT" && nc.Estado != "EN_REVISION_INSPECTOR") || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado de subsanación.";
                 return RedirectToAction("Detalle", new { id = codigoInspeccion });
             }
 
-            if(!ncDao.CerrarSubsanacion(codigoNoConformidad))return new HttpStatusCodeResult(409,"La NC cambió de estado antes de ser aceptada.");
+            var inspectorId = ObtenerCodigoUsuario();
+            if(!ncDao.AceptarSubsanacionDocumentalCompleta(codigoNoConformidad,codigoInspeccion,inspectorId))
+                return new HttpStatusCodeResult(409,"No puede cerrar la revisión: existen documentos pendientes, rechazados o sin nueva versión obligatoria.");
 
-            // Reabrir el estado documental o simplemente indicar que requiere nuevo informe
-            if (inspeccion != null)
+            try
             {
-                inspeccion.EstadoDocumental = "SUBSANADA";
-                _inspeccionDAO.Actualizar(inspeccion);
+                var solicitudReevaluacion = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                var ciclo = new ReevaluacionInspeccionService().Preparar(
+                    codigoInspeccion,
+                    codigoNoConformidad,
+                    inspectorId,
+                    UsaFlujoListaVerificacionOperacionalEae(solicitudReevaluacion));
+                _logger.LogInfo("[GATE5] Ciclo de reevaluacion preparado. InspeccionId=" + codigoInspeccion
+                    + ", NcId=" + codigoNoConformidad + ", InformeId=" + ciclo.CodigoInforme
+                    + ", Ciclo=" + ciclo.CicloEvaluacion + ", Existente=" + ciclo.Existente);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[GATE5] No se pudo preparar el ciclo de reevaluacion. InspeccionId="
+                    + codigoInspeccion + ", NcId=" + codigoNoConformidad + ", Error=" + ex);
+                TempData["Warning"] = "La subsanacion fue aceptada, pero no se pudo preparar el nuevo ciclo de evaluacion: " + ex.Message;
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
             }
 
-            TempData["Success"] = "La subsanación ha sido aceptada y la NC ha sido CERRADA. Por favor, registre un nuevo informe técnico (Reevaluación).";
+            NotificacionBL.EnviarNotificacion(inspectorId,
+                "Reevaluación técnica pendiente",
+                "La subsanación documental fue aceptada. Debe elaborar un nuevo Informe Técnico; el resultado anterior no ha cambiado.",
+                "INFO", Url.Action("Detalle", "Inspeccion", new { id = codigoInspeccion }), "INSPECCION", codigoInspeccion, "INSPECCION");
+            TempData["Success"] = "Todos los documentos fueron aceptados. La NC queda en SUBSANACION_ACEPTADA y debe registrar un nuevo informe técnico. El resultado no cambió automáticamente.";
+            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult RevisarDocumentoSubsanado(int codigoNoConformidad, int codigoInspeccion,
+            int codigoDocumento, string decision, string comentario)
+        {
+            var ncDao = new NoConformidadDAO();
+            var nc = ncDao.ObtenerPorId(codigoNoConformidad);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            if (nc == null || inspeccion == null || nc.CodigoInspeccion != codigoInspeccion || nc.CodigoSolicitud != inspeccion.CodigoSolicitud)
+                return new HttpStatusCodeResult(404, "No existe relación entre la NC, inspección y documento.");
+            if (!PuedeAccederInspeccion(inspeccion)) return new HttpStatusCodeResult(403);
+
+            var aceptar = string.Equals(decision, "ACEPTAR", StringComparison.OrdinalIgnoreCase);
+            var rechazar = string.Equals(decision, "RECHAZAR", StringComparison.OrdinalIgnoreCase);
+            if (!aceptar && !rechazar) return new HttpStatusCodeResult(400, "Decisión inválida.");
+            if (rechazar && string.IsNullOrWhiteSpace(comentario))
+            {
+                TempData["Error"] = "El comentario es obligatorio al rechazar una subsanación.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            if (!ncDao.RegistrarDecisionDocumentoSubsanado(codigoNoConformidad, codigoDocumento, aceptar,
+                comentario, ObtenerCodigoUsuario()))
+                return new HttpStatusCodeResult(409, "El documento o la NC cambiaron de estado antes de registrar la decisión.");
+
+            if (rechazar)
+            {
+                var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                if (solicitud != null && solicitud.CodigoUsuario > 0)
+                    NotificacionBL.EnviarNotificacion(solicitud.CodigoUsuario,
+                        "Documento de subsanación rechazado", comentario.Trim(), "WARNING",
+                        Url.Action("Subsanar", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }),
+                        "NO_CONFORMIDAD", codigoNoConformidad, "NO_CONFORMIDAD");
+                TempData["Warning"] = "Documento rechazado. El RT fue notificado y puede cargar una nueva versión.";
+            }
+            else TempData["Success"] = "Documento aceptado. Esto no modifica el resultado de la inspección.";
             return RedirectToAction("Detalle", new { id = codigoInspeccion });
         }
 
