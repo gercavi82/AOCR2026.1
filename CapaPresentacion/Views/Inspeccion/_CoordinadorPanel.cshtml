@@ -23,6 +23,12 @@
     var urlVerPdf = codigoInspeccion > 0
         ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })
         : "#";
+
+    var requiereNoConformidad = vm.RequiereNoConformidad;
+    var nc = vm.NoConformidad;
+    var ncPendienteCoordinador = requiereNoConformidad && nc != null && nc.Estado == "FIRMADA_INSPECTOR";
+    var ncDevueltaInspector = requiereNoConformidad && nc != null && nc.Estado == "DEVUELTA_INSPECTOR";
+    var ncFirmadaCoordinador = requiereNoConformidad && nc != null && nc.Estado == "FIRMADA_COORDINADOR";
 }
 
 @if (codigoInspeccion <= 0)
@@ -156,6 +162,115 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
                 document.getElementById('coordDecisionBtns').style.display = 'flex';
             }
         </script>
+    }
+
+    if (esCoordinador && requiereNoConformidad && nc != null)
+    {
+        <div class="it-panel coord" style="margin-top: 20px; border-left-color: #e53935;">
+            <h4><i class="fas fa-exclamation-triangle" style="color:#e53935;"></i> Revisión de No Conformidad (NC)</h4>
+            <p>El informe contiene una No Conformidad. La ruta seleccionada es: <strong>@(nc.TipoRuta == "CON_INSPECCION" ? "Nueva Inspección In-situ" : "Subsanación Documental")</strong>.</p>
+            
+            <div class="it-btn-row" style="margin-bottom: 12px;">
+                <a class="it-btn ghost" href="@nc.RutaPdfFirmadoInspector" target="_blank" rel="noopener">
+                    <i class="fas fa-file-pdf"></i> Ver PDF de No Conformidad (Firma Inspector)
+                </a>
+            </div>
+
+            @if (ncPendienteCoordinador)
+            {
+                <p class="hint">La No Conformidad ha sido firmada por el inspector y requiere su revisión para aprobar (cerrando fase DIRDAC) o devolver.</p>
+
+                <div id="ncDecisionBtns" class="it-btn-row">
+                    <button type="button" class="it-btn success" onclick="itNcMostrar('ncFormAprob')">
+                        <i class="fas fa-signature"></i> Aprobar y Firmar NC
+                    </button>
+                    <button type="button" class="it-btn warn" onclick="itNcMostrar('ncFormDevol')">
+                        <i class="fas fa-undo"></i> Devolver NC al Inspector
+                    </button>
+                </div>
+
+                <div id="ncFormAprob" style="display:none; margin-top: 14px;">
+                    @using (Html.BeginForm("CoordinadorAprobarNc", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@codigoInspeccion" />
+                        <div class="it-alert success" style="margin-bottom: 10px;">
+                            <i class="fas fa-info-circle"></i>
+                            <div>Cargue su certificado para aprobar y firmar la No Conformidad. Esto cerrará la fase DIRDAC para este documento.</div>
+                        </div>
+                        
+                        <div class="it-field">
+                            <label for="fileCertNcCoord">Certificado digital (.p12 / .pfx)</label>
+                            <input type="file" name="CertificadoCoordinador" id="fileCertNcCoord"
+                                   class="it-input" accept=".p12,.pfx" required="required" />
+                        </div>
+
+                        <div class="it-field">
+                            <label for="pwdCertNcCoord">Contraseña del certificado</label>
+                            <input type="password" name="passwordCertificado" id="pwdCertNcCoord"
+                                   class="it-input" autocomplete="off" required="required" placeholder="•••••••••••" />
+                            <button type="button" class="it-toggle" onclick="itTogglePwd('pwdCertNcCoord', this)" title="Mostrar / ocultar">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+
+                        <div class="it-btn-row">
+                            <button type="submit" class="it-btn success"><i class="fas fa-check"></i> Firmar y Aprobar</button>
+                            <button type="button" class="it-btn ghost" onclick="itNcCancelar()">Cancelar</button>
+                        </div>
+                    }
+                </div>
+
+                <div id="ncFormDevol" style="display:none; margin-top: 14px;">
+                    @using (Html.BeginForm("CoordinadorDevolverNc", "Inspeccion", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@codigoInspeccion" />
+                        <div class="it-field">
+                            <label>Observación de devolución <span style="color:#d64545;">*</span></label>
+                            <textarea name="observacionDevolucion" class="it-input" rows="3" required="required"
+                                      placeholder="Indique la observación por la cual devuelve la NC al inspector..."></textarea>
+                        </div>
+                        <div class="it-btn-row">
+                            <button type="submit" class="it-btn warn"><i class="fas fa-undo"></i> Confirmar devolución</button>
+                            <button type="button" class="it-btn ghost" onclick="itNcCancelar()">Cancelar</button>
+                        </div>
+                    }
+                </div>
+
+                <script>
+                    function itNcMostrar(id) {
+                        document.getElementById('ncDecisionBtns').style.display = 'none';
+                        document.getElementById('ncFormAprob').style.display = id === 'ncFormAprob' ? 'block' : 'none';
+                        document.getElementById('ncFormDevol').style.display = id === 'ncFormDevol' ? 'block' : 'none';
+                    }
+                    function itNcCancelar() {
+                        document.getElementById('ncFormAprob').style.display = 'none';
+                        document.getElementById('ncFormDevol').style.display = 'none';
+                        document.getElementById('ncDecisionBtns').style.display = 'flex';
+                    }
+                </script>
+            }
+            else if (ncFirmadaCoordinador)
+            {
+                <div class="it-alert success">
+                    <i class="fas fa-check-circle"></i>
+                    <div>La No Conformidad ha sido firmada por Coordinación. Flujo DIRDAC completado para este documento.</div>
+                </div>
+                <div class="it-btn-row" style="margin-top: 12px;">
+                    <a class="it-btn success" href="@nc.RutaPdfFirmadoCoordinador" target="_blank" rel="noopener">
+                        <i class="fas fa-file-pdf"></i> Descargar NC Firmada (Final)
+                    </a>
+                </div>
+            }
+            else if (ncDevueltaInspector)
+            {
+                <div class="it-alert danger">
+                    <i class="fas fa-undo"></i>
+                    <div>La No Conformidad fue devuelta al Inspector y se encuentra en corrección.</div>
+                </div>
+            }
+        </div>
     }
 
     if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion))

@@ -312,6 +312,7 @@
     <Compile Include="DAOs\CertificadoDAO.cs" />
     <Compile Include="DAOs\DashboardInspeccionDAO.cs" />
     <Compile Include="DAOs\HallazgoDAO.cs" />
+    <Compile Include="DAOs\NoConformidadDAO.cs" />
     <Compile Include="DAOs\PagoDAO.cs" />
     <Compile Include="DAOs\DocumentoDAO.cs" />
     <Compile Include="DAOs\DocumentoRTDao.cs" />

@@ -1648,6 +1648,40 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "Ver")]
+        public ActionResult VistaPreviaNcPdf(int id)
+        {
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
+
+            if (!PuedeAccederInspeccion(inspeccion))
+                return new HttpStatusCodeResult(403, "No autorizado para ver la inspección.");
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerUltimaPorInforme(id);
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+
+            if (nc == null)
+            {
+                // Generar una NC mock para la vista previa
+                nc = new CapaModelo.NoConformidad
+                {
+                    CodigoInspeccion = id,
+                    Resumen = "Vista previa de No Conformidad",
+                    Detalle = informe?.NoConformidades ?? "No existen detalles registrados."
+                };
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var bytes = GenerarPdfNoConformidad(inspeccion, solicitud, nc, informe, true);
+
+            Response.Headers.Add("Content-Disposition", "inline; filename=VistaPreviaNC.pdf");
+            return File(bytes, "application/pdf");
+        }
+
+        [HttpGet]
         [AocrAuthorize(Modulo = "Inspeccion", Accion = "RevisionDireccion", CodigoInformeParameter = "codigoInforme")]
         [AocrAuthorize(Roles = ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL)]
         public ActionResult VerInformeFirmadoInspectorDireccion(int codigoInforme)
@@ -3585,6 +3619,90 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "Inspeccion", Accion = "FirmarInformeInspector")]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
+        public ActionResult FirmarNcInspector(int? id, string tipoRuta, string passwordCertificado)
+        {
+            var codigoInspeccion = id.GetValueOrDefault();
+            if (codigoInspeccion <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
+            
+            if (string.IsNullOrWhiteSpace(tipoRuta) || (tipoRuta != "CON_INSPECCION" && tipoRuta != "SIN_INSPECCION"))
+            {
+                TempData["Error"] = "Debe seleccionar una ruta válida para la No Conformidad.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            if (informe == null || informe.Resultado != "INSATISFACTORIO")
+            {
+                TempData["Error"] = "El informe no existe o su resultado no es insatisfactorio.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+
+            if (nc == null)
+            {
+                // Crear NC si no existe
+                nc = new CapaModelo.NoConformidad
+                {
+                    CodigoInspeccion = codigoInspeccion,
+                    CodigoInforme = informe.CodigoInforme,
+                    CodigoSolicitud = inspeccion.CodigoSolicitud,
+                    TipoRuta = tipoRuta,
+                    Estado = "GENERADA",
+                    Version = 1,
+                    RequiereNuevaInspeccion = (tipoRuta == "CON_INSPECCION"),
+                    Resumen = "No Conformidad derivada del Informe Técnico.",
+                    Detalle = informe.NoConformidades ?? "Detalles no registrados en el informe.",
+                    UsuarioCreacion = ObtenerCodigoUsuario()
+                };
+                nc = ncDao.Insertar(nc);
+            }
+            else
+            {
+                nc.TipoRuta = tipoRuta;
+                nc.RequiereNuevaInspeccion = (tipoRuta == "CON_INSPECCION");
+                ncDao.Actualizar(nc);
+            }
+
+            // Aquí se procede con la firma (se omite la integración dura con IText para esta demo o se asume el servicio existente)
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var bytesToSign = GenerarPdfNoConformidad(inspeccion, solicitud, nc, informe, false);
+            
+            var usuario = _usuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                bytesToSign, passwordCertificado, "FirmaInspector", "Firma del Inspector",
+                "CertificadoInspector", usuario, "Dirección General de Aviación Civil");
+
+            if (!resultadoFirma.Exitoso)
+            {
+                TempData["Error"] = "Error al firmar la NC: " + resultadoFirma.Mensaje;
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            // Guardar PDF (Simulado para no crear un nuevo DAO solo de Archivos)
+            var relativePath = $"/Files/Informes/NC_{codigoInspeccion}_v{nc.Version}.pdf";
+            var absolutePath = Server.MapPath("~" + relativePath);
+            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.ArchivoFirmado);
+
+            nc.Estado = "FIRMADA_INSPECTOR";
+            nc.RutaPdfFirmadoInspector = relativePath;
+            nc.FechaFirmaInspector = DateTime.Now;
+            nc.UsuarioFirmaInspector = ObtenerCodigoUsuario();
+            ncDao.Actualizar(nc);
+
+            // Transicionar estado de Inspeccion si es necesario, o notificar
+            TempData["Success"] = "La No Conformidad ha sido firmada y enviada al Coordinador.";
+            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+        }
+
+        [HttpPost]
+        [AocrAuthorize(Modulo = "Inspeccion", Accion = "FirmarInformeInspector")]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
         public ActionResult FirmarInformeInspector(int? id, string passwordCertificado)
         {
             var form = Request?.Unvalidated?.Form;
@@ -4987,6 +5105,31 @@ namespace CapaPresentacion.Controllers
                 PageSize = Rotativa.Options.Size.A4,
                 PageOrientation = Rotativa.Options.Orientation.Portrait,
                 CustomSwitches = ConstruirSwitchesPdfInformeTecnico()
+            };
+
+            return pdf.BuildFile(ControllerContext);
+        }
+
+        private byte[] GenerarPdfNoConformidad(Inspeccion inspeccion, SolicitudAOCR solicitud, CapaModelo.NoConformidad nc, InspeccionInformeTecnico informe, bool esVistaPrevia = false)
+        {
+            EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
+
+            var vm = new CapaPresentacion.Models.ViewModels.NoConformidadPdfViewModel
+            {
+                Inspeccion = inspeccion,
+                Solicitud = solicitud,
+                NoConformidad = nc,
+                Informe = informe,
+                EsVistaPrevia = esVistaPrevia,
+                MostrarMarcaAguaBorrador = esVistaPrevia,
+                MostrarFirmas = true
+            };
+
+            var pdf = new PartialViewAsPdf("NoConformidadPdf", vm)
+            {
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                CustomSwitches = ConstruirSwitchesPdfInformeTecnico() // Reutilizamos estilos
             };
 
             return pdf.BuildFile(ControllerContext);
@@ -7213,6 +7356,17 @@ namespace CapaPresentacion.Controllers
                 && !notificacionFormalDirdac
                 && !informeAprobadoDireccion;
 
+            var requiereNoConformidad = informe.Resultado == "INSATISFACTORIO" || (informe.NoConformidades != null && informe.NoConformidades.Trim().Length > 0);
+            CapaModelo.NoConformidad nc = null;
+            bool puedeFirmarNoConformidad = false;
+
+            if (requiereNoConformidad && informe.FirmadoInspector)
+            {
+                var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+                nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+                puedeFirmarNoConformidad = (nc == null || nc.Estado == "GENERADA" || nc.Estado == "DEVUELTA_INSPECTOR" || nc.Estado == "BORRADOR");
+            }
+
             return new FirmaInspectorPanelVm
             {
                 CodigoInspeccion = inspeccion.CodigoInspeccion,
@@ -7225,7 +7379,10 @@ namespace CapaPresentacion.Controllers
                 InformeDevueltoCoordinador = informeDevueltoCoordinador,
                 InformeDevueltoDireccion = informeDevueltoDireccion,
                 InformeAprobadoDireccion = informeAprobadoDireccion,
-                EstadoInformeTecnico = estadoInformeTecnico
+                EstadoInformeTecnico = estadoInformeTecnico,
+                RequiereNoConformidad = requiereNoConformidad,
+                NoConformidad = nc,
+                PuedeFirmarNoConformidad = puedeFirmarNoConformidad
             };
         }
 

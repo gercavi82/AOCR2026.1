@@ -3143,13 +3143,22 @@
                SECCIÓN: COORDINADOR
                Bloque de revisión de solo lectura por el coordinador.
                ══════════════════════════════════════════════════════════════ *@
+            var requiereNc = informeTecnico != null && (informeTecnico.Resultado == "INSATISFACTORIO" || (informeTecnico.NoConformidades != null && informeTecnico.NoConformidades.Trim().Length > 0));
+            CapaModelo.NoConformidad nc = null;
+            if (requiereNc && informeTecnico != null)
+            {
+                nc = new CapaDatos.DAOs.NoConformidadDAO().ObtenerUltimaPorInforme(informeTecnico.CodigoInforme);
+            }
+
             var coordinadorVm = new CoordinadorPanelVm
             {
                 CodigoInspeccion = Model.CodigoInspeccion,
                 InformeTecnico = informeTecnico,
                 EsCoordinador = esCoordinadorRevision,
                 EstadoInformeTecnico = estadoInformeTecnico,
-                RutaInformeVisual = rutaInformeVisual
+                RutaInformeVisual = rutaInformeVisual,
+                RequiereNoConformidad = requiereNc,
+                NoConformidad = nc
             };
             @Html.Partial("_CoordinadorPanel", coordinadorVm)
           }

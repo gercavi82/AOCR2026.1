@@ -86,6 +86,7 @@
     <Compile Include="Unit\RTServiceStateTests.cs" />
     <Compile Include="Unit\SecurityTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
+    <Compile Include="Integration\NoConformidadDAOTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
   </ItemGroup>
   <ItemGroup>

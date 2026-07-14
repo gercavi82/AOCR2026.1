@@ -48,6 +48,11 @@ namespace CapaPresentacion.Models.ViewModels
         public bool InformeDevueltoDireccion { get; set; }
         public bool InformeAprobadoDireccion { get; set; }
         public string EstadoInformeTecnico { get; set; }
+        
+        // Propiedades de NC
+        public bool RequiereNoConformidad { get; set; }
+        public CapaModelo.NoConformidad NoConformidad { get; set; }
+        public bool PuedeFirmarNoConformidad { get; set; }
 
         public FirmaInspectorPanelVm()
         {
@@ -145,6 +150,10 @@ namespace CapaPresentacion.Models.ViewModels
         public bool EsCoordinador { get; set; }
         public string EstadoInformeTecnico { get; set; }
         public string RutaInformeVisual { get; set; }
+        
+        // Propiedades de NC
+        public bool RequiereNoConformidad { get; set; }
+        public CapaModelo.NoConformidad NoConformidad { get; set; }
 
         public CoordinadorPanelVm()
         {

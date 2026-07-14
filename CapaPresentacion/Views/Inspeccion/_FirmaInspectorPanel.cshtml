@@ -222,6 +222,69 @@ else if (informeTecnico != null)
         }
     }
 
+    @* ── Panel de firma de No Conformidad ── *@
+    if (requiereNoConformidad && pasoFirmado && puedeFirmarNoConformidad)
+    {
+        <div class="it-panel" style="margin-top: 20px; border-left-color: #e53935;">
+            <h4><i class="fas fa-exclamation-triangle" style="color: #e53935;"></i> Generar y Firmar No Conformidad</h4>
+            <p class="hint">El informe técnico tiene resultado insatisfactorio. Debe definir la ruta a seguir y firmar digitalmente la No Conformidad.</p>
+
+            <div class="it-actions" style="margin-bottom: 15px;">
+                <a href="@Url.Action("VistaPreviaNcPdf", "Inspeccion", new { id = codigoInspeccion })" target="_blank" class="it-btn it-btn-secondary">
+                    <i class="fas fa-search"></i> Vista previa de la NC (Borrador)
+                </a>
+            </div>
+
+            @using (Html.BeginForm("FirmarNcInspector", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", id = "frmFirmaNc" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@codigoInspeccion" />
+
+                <div class="it-field">
+                    <label for="tipoRutaNc">Ruta obligatoria requerida</label>
+                    <select name="tipoRuta" id="tipoRutaNc" class="it-input" required="required">
+                        <option value="">-- Seleccione la ruta a seguir --</option>
+                        <option value="SIN_INSPECCION">Requiere Subsanación Documental (Sin nueva inspección in-situ)</option>
+                        <option value="CON_INSPECCION">Requiere Nueva Inspección In-situ</option>
+                    </select>
+                </div>
+
+                <div class="it-field">
+                    <label for="fileCertNc">Certificado digital (.p12 / .pfx)</label>
+                    <input type="file" name="CertificadoInspector" id="fileCertNc"
+                           class="it-input" accept=".p12,.pfx" required="required" />
+                </div>
+
+                <div class="it-field">
+                    <label for="pwdCertNc">Contraseña del certificado</label>
+                    <input type="password" name="passwordCertificado" id="pwdCertNc"
+                           class="it-input" autocomplete="off" required="required" placeholder="•••••••••••" />
+                    <button type="button" class="it-toggle" onclick="itTogglePwd('pwdCertNc', this)" title="Mostrar / ocultar">
+                        <i class="far fa-eye"></i>
+                    </button>
+                </div>
+
+                <div class="it-actions">
+                    <button type="submit" class="it-btn it-btn-primary" onclick="return confirm('¿Está seguro de generar y firmar digitalmente esta No Conformidad? Se enviará al Coordinador.')">
+                        <i class="fas fa-signature"></i> Firmar y Generar NC
+                    </button>
+                </div>
+            }
+        </div>
+    }
+    else if (requiereNoConformidad && pasoFirmado && !puedeFirmarNoConformidad)
+    {
+        <div class="it-panel" style="margin-top: 20px; border-left-color: #4caf50;">
+            <h4><i class="fas fa-check-circle" style="color: #4caf50;"></i> No Conformidad Generada</h4>
+            <p>La No Conformidad (NC) ha sido generada y firmada.</p>
+            <div class="it-actions">
+                <a href="@Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })" target="_blank" class="it-btn it-btn-secondary">
+                    <i class="far fa-file-pdf"></i> Descargar NC Firmada
+                </a>
+            </div>
+        </div>
+    }
+
     @* ── Enviar a DIRDAC ── *@
     if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
     {
