@@ -1355,7 +1355,7 @@ namespace CapaNegocio.Services
             if (Matches(normalized, "INSPECTOR", "TECNICO", "EVALUADORTECNICO", "INSPECTORTECNICO")) return "InspectorTecnico";
             if (Matches(normalized, "FINANCIERO", "COORDINADORFINANCIERO", "DIRECTORFINANCIERO")) return "Financiero";
             if (Matches(normalized, "COORDINACION", "COORDINADOR", "COORDINADORINSPECCIONES", "COORDINACIONLEGAL", "COORDINADORLEGAL")) return "Coordinacion";
-            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DCAV", "DIRECTORGENERAL", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
+            if (Matches(normalized, "DIRECCION", "JEFATURATECNICA", "DIRDAC", "DCAV", "DIRECTORCERTIFICACIONESDCAV", "DIRECTORGENERAL", "DIRECCIONJEFATURA", "DIRECCIONJEFATURATECNICA")) return "DireccionJefaturaTecnica";
             return rol == null ? string.Empty : rol.Trim();
         }
 

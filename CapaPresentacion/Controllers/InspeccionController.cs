@@ -70,6 +70,7 @@ namespace CapaPresentacion.Controllers
         private const string ROL_DIRECTOR = "Director";
         private const string ROL_DIRECTOR_GENERAL = "DirectorGeneral";
         private const string ROL_DIRDAC = "DIRDAC";
+        private const string ROL_DIRECTOR_CERTIFICACIONES_DCAV = "DirectorCertificacionesDcav";
         private const string ROL_LEGAL = "Legal";
         private const string ROL_COORD_LEGAL = "CoordinacionLegal";
         private const string ROL_COORDINADOR_LEGAL = "CoordinadorLegal";
@@ -81,7 +82,7 @@ namespace CapaPresentacion.Controllers
             ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
             ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
-        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECCION_JEFATURA_TECNICA + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
+        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECTOR_CERTIFICACIONES_DCAV + "," + ROL_DIRECCION + "," + ROL_DIRECCION_JEFATURA_TECNICA + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
         // La decisión institucional final es exclusiva de DIRDAC/Dirección/Jefatura (más Administrador).
         // Inspector y Coordinador no deben tener acceso ni siquiera a nivel de atributo: el guard interno
         // EsRolDireccionOJefatura() ya los rechazaba, esto alinea la primera capa de autorización.
@@ -232,6 +233,7 @@ namespace CapaPresentacion.Controllers
                 ROL_DIRECCION_JEFATURA_TECNICA,
                 ROL_DIRECTOR,
                 ROL_DIRDAC,
+                ROL_DIRECTOR_CERTIFICACIONES_DCAV,
                 ROL_LEGAL,
                 ROL_COORD_LEGAL,
                 ROL_COORDINADOR_LEGAL);
@@ -382,7 +384,19 @@ namespace CapaPresentacion.Controllers
 
         private static bool InformePuedeEditarsePorInspector(InspeccionInformeTecnico informe)
         {
-            return informe == null || !informe.FirmadoInspector || InformeEstaDevueltoParaCorreccion(informe);
+            if (informe == null || !informe.FirmadoInspector || InformeEstaDevueltoParaCorreccion(informe))
+            {
+                return true;
+            }
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+            if (nc != null && nc.Estado == "CERRADA" && informe.Resultado == "INSATISFACTORIO")
+            {
+                return true; // Reevaluación permitida tras cerrar NC
+            }
+
+            return false;
         }
 
         private string ObtenerMensajeBloqueoEdicionInformeTecnico(InspeccionInformeTecnico informe)
@@ -402,7 +416,7 @@ namespace CapaPresentacion.Controllers
                 return "El Informe Técnico ya cuenta con decisión institucional final. No es posible editarlo desde el panel del inspector.";
             }
 
-            return "El Informe Técnico ya fue firmado digitalmente. Solo podrá editarlo nuevamente si es devuelto para corrección.";
+            return "El Informe Técnico ya fue firmado digitalmente. Solo podrá crear una nueva versión para reevaluación si la No Conformidad es subsanada y aceptada.";
         }
 
         private bool EsSolicitudAjaxInformeTecnico()
@@ -1132,6 +1146,14 @@ namespace CapaPresentacion.Controllers
 
             EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
 
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var ultimaNc = informe != null ? ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme) : null;
+            if (ultimaNc != null && ultimaNc.Estado == "CERRADA" && informe != null && informe.Resultado == "INSATISFACTORIO")
+            {
+                ViewBag.EsReevaluacion = true;
+                ViewBag.MensajeReevaluacion = "La No Conformidad anterior ha sido subsanada y cerrada. Está a punto de generar una nueva versión (Reevaluación) del Informe Técnico. Por favor, modifique el resultado y la información que considere necesaria.";
+            }
+
             var vm = ConstruirInformeTecnicoModalViewModel(inspeccion, solicitud, informe, listaVerificacion, documentosSolicitante);
             _logger.LogInfo("[GestionInspeccion] ModalInformeTecnico cargado. InspeccionId=" + codigoInspeccion
                 + ", InformeId=" + (vm.CodigoInformeTecnico.HasValue ? vm.CodigoInformeTecnico.Value.ToString() : "0")
@@ -1179,7 +1201,7 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogInfo("[INFTEC_DIR][BANDEJA_IN] Usuario=" + ObtenerUsuarioActual() + "; Rol=" + ObtenerRolActual() + ";");
 
-                var pendientes = (_informeDAO.ListarPendientesFirmaDirdac() ?? new List<InspeccionInformeTecnico>())
+                var pendientes = (_informeDAO.ListarPendientesRevisionInformeDcav() ?? new List<InspeccionInformeTecnico>())
                     .Select(informe =>
                     {
                         var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
@@ -1195,21 +1217,6 @@ namespace CapaPresentacion.Controllers
                     .OrderByDescending(x => x.Informe.FechaEnvioDirdac ?? x.Informe.FechaFirma1 ?? x.Informe.FechaFinalizacion ?? x.Informe.UpdatedAt ?? DateTime.MinValue)
                     .Select(x => ConstruirPendienteRevisionDireccionItem(x.Inspeccion, x.Solicitud, x.Informe))
                     .ToList();
-
-                var codigosIncluidos = new HashSet<int>(pendientes.Select(p => p.CodigoSolicitud).Where(id => id > 0));
-                var solicitudesEjecutivas = _solicitudDAO.ObtenerParaBandejaEjecutivaAprobacion() ?? new List<SolicitudAOCR>();
-                foreach (var solicitudEjecutiva in solicitudesEjecutivas.Where(s => s != null && s.CodigoSolicitud > 0 && !codigosIncluidos.Contains(s.CodigoSolicitud)))
-                {
-                    var inspeccionEjecutiva = (_inspeccionDAO.ListarPorSolicitud(solicitudEjecutiva.CodigoSolicitud) ?? new List<Inspeccion>())
-                        .OrderByDescending(i => i.CodigoInspeccion)
-                        .FirstOrDefault();
-                    var informeEjecutivo = inspeccionEjecutiva != null
-                        ? _informeDAO.ObtenerUltimoPorInspeccion(inspeccionEjecutiva.CodigoInspeccion)
-                        : null;
-
-                    pendientes.Add(ConstruirPendienteRevisionDireccionItem(inspeccionEjecutiva, solicitudEjecutiva, informeEjecutivo));
-                    codigosIncluidos.Add(solicitudEjecutiva.CodigoSolicitud);
-                }
 
                 foreach (var item in pendientes.Where(p => p != null))
                 {
@@ -3671,11 +3678,17 @@ namespace CapaPresentacion.Controllers
             // Aquí se procede con la firma (se omite la integración dura con IText para esta demo o se asume el servicio existente)
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             var bytesToSign = GenerarPdfNoConformidad(inspeccion, solicitud, nc, informe, false);
-            
-            var usuario = _usuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
+
+            var certificado = Request.Files["certificadoDigital"] ?? Request.Files["CertificadoInspector"];
+            if (certificado == null || certificado.ContentLength <= 0)
+                return new HttpStatusCodeResult(400, "Debe adjuntar el certificado digital.");
+            byte[] certificadoBytes;
+            using (var ms = new MemoryStream()) { certificado.InputStream.CopyTo(ms); certificadoBytes = ms.ToArray(); }
+            var usuario = UsuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
             var resultadoFirma = _firmaDigitalService.FirmarPdf(
-                bytesToSign, passwordCertificado, "FirmaInspector", "Firma del Inspector",
-                "CertificadoInspector", usuario, "Dirección General de Aviación Civil");
+                bytesToSign, certificadoBytes, passwordCertificado,
+                usuario != null ? usuario.NombreCompleto : ObtenerUsuarioActual(),
+                "Firma del Inspector", "Sistema AOCR DGAC", "NC_INSPECTOR");
 
             if (!resultadoFirma.Exitoso)
             {
@@ -3686,7 +3699,7 @@ namespace CapaPresentacion.Controllers
             // Guardar PDF (Simulado para no crear un nuevo DAO solo de Archivos)
             var relativePath = $"/Files/Informes/NC_{codigoInspeccion}_v{nc.Version}.pdf";
             var absolutePath = Server.MapPath("~" + relativePath);
-            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.ArchivoFirmado);
+            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.PdfFirmado);
 
             nc.Estado = "FIRMADA_INSPECTOR";
             nc.RutaPdfFirmadoInspector = relativePath;
@@ -3857,13 +3870,19 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            var usuario = _usuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
+            var usuario = UsuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
 
             // Re-firmar el documento (aplica la firma del coordinador sobre el mismo documento firmado por el inspector)
             var bytesToSign = System.IO.File.ReadAllBytes(Server.MapPath("~" + nc.RutaPdfFirmadoInspector));
+            var certificado = Request.Files["certificadoDigital"] ?? Request.Files["CertificadoCoordinador"];
+            if (certificado == null || certificado.ContentLength <= 0)
+                return new HttpStatusCodeResult(400, "Debe adjuntar el certificado digital.");
+            byte[] certificadoBytes;
+            using (var ms = new MemoryStream()) { certificado.InputStream.CopyTo(ms); certificadoBytes = ms.ToArray(); }
             var resultadoFirma = _firmaDigitalService.FirmarPdf(
-                bytesToSign, passwordCertificado, "FirmaCoordinador", "Aprobación de Coordinación",
-                "CertificadoCoordinador", usuario, "Dirección General de Aviación Civil");
+                bytesToSign, certificadoBytes, passwordCertificado,
+                usuario != null ? usuario.NombreCompleto : ObtenerUsuarioActual(),
+                "Aprobación de Coordinación", "Sistema AOCR DGAC", "NC_COORDINADOR");
 
             if (!resultadoFirma.Exitoso)
             {
@@ -3873,18 +3892,18 @@ namespace CapaPresentacion.Controllers
 
             var relativePath = $"/Files/Informes/NC_{id}_v{nc.Version}_FINAL.pdf";
             var absolutePath = Server.MapPath("~" + relativePath);
-            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.ArchivoFirmado);
+            System.IO.File.WriteAllBytes(absolutePath, resultadoFirma.PdfFirmado);
 
             nc.Estado = "FIRMADA_COORDINADOR";
             nc.RutaPdfFirmadoCoordinador = relativePath;
             nc.FechaFirmaCoordinador = DateTime.Now;
-            nc.UsuarioFirmaCoordinador = usuario.CodigoUsuario;
+            nc.UsuarioFirmaCoordinador = usuario != null ? (int?)usuario.Id : ObtenerCodigoUsuario();
             ncDao.Actualizar(nc);
 
             // Transicionar la inspeccion o el informe si es necesario
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
-            var notificacion = NotificarResultadoInformeTecnicoAlRtDesdeDireccion(inspeccion, solicitud, informe, usuario.CodigoUsuario, usuario.Login, false);
+            var notificacion = NotificarResultadoInformeTecnicoAlRtDesdeDireccion(inspeccion, solicitud, informe, usuario != null ? usuario.Id : ObtenerCodigoUsuario(), usuario != null ? usuario.NombreUsuario : ObtenerUsuarioActual(), false);
 
             if (!notificacion.Exitoso)
             {
@@ -3930,11 +3949,82 @@ namespace CapaPresentacion.Controllers
             informe.FechaDevolucion = DateTime.Now;
             informe.UsuarioDevolucion = ObtenerUsuarioActual();
             
-            _informeDAO.Actualizar(informe);
+            _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme, observacionDevolucion.Trim(), ObtenerUsuarioActual(), "DEVUELTA_INSPECTOR", ObtenerCodigoUsuario());
             ncDao.Actualizar(nc);
 
             TempData["Warning"] = "La No Conformidad ha sido devuelta al Inspector con sus observaciones.";
             return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult AceptarSubsanacionNc(int codigoNoConformidad, int codigoInspeccion)
+        {
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerPorId(codigoNoConformidad);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+
+            if (nc == null || inspeccion == null || nc.CodigoInspeccion != codigoInspeccion || nc.CodigoSolicitud != inspeccion.CodigoSolicitud)
+                return new HttpStatusCodeResult(404,"No existe relación entre la NC y la inspección indicada.");
+            if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403,"No está autorizado para revisar esta subsanación.");
+            if (nc.Estado != "SUBSANADA_RT" || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado de subsanación.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            if(!ncDao.CerrarSubsanacion(codigoNoConformidad))return new HttpStatusCodeResult(409,"La NC cambió de estado antes de ser aceptada.");
+
+            // Reabrir el estado documental o simplemente indicar que requiere nuevo informe
+            if (inspeccion != null)
+            {
+                inspeccion.EstadoDocumental = "SUBSANADA";
+                _inspeccionDAO.Actualizar(inspeccion);
+            }
+
+            TempData["Success"] = "La subsanación ha sido aceptada y la NC ha sido CERRADA. Por favor, registre un nuevo informe técnico (Reevaluación).";
+            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverSubsanacionNc(int codigoNoConformidad, int codigoInspeccion, string observacionDevolucion)
+        {
+            if (string.IsNullOrWhiteSpace(observacionDevolucion))
+            {
+                TempData["Error"] = "Debe ingresar una observación para devolver la subsanación.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+            var nc = ncDao.ObtenerPorId(codigoNoConformidad);
+            var inspeccion=_inspeccionDAO.ObtenerPorId(codigoInspeccion);
+
+            if(nc==null||inspeccion==null||nc.CodigoInspeccion!=codigoInspeccion||nc.CodigoSolicitud!=inspeccion.CodigoSolicitud)return new HttpStatusCodeResult(404,"No existe relación entre la NC y la inspección indicada.");
+            if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403,"No está autorizado para revisar esta subsanación.");
+            if (nc.Estado != "SUBSANADA_RT" || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado de subsanación.";
+                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            }
+
+            if(ncDao.DevolverSubsanacionComoNuevaVersion(codigoNoConformidad,observacionDevolucion)==null)return new HttpStatusCodeResult(409,"La NC cambió de estado antes de ser devuelta.");
+
+            TempData["Warning"] = "La subsanación ha sido devuelta al Representante Técnico.";
+            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        public ActionResult DescargarSubsanacionNc(int codigoNoConformidad,int codigoInspeccion)
+        {
+            var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);var inspeccion=_inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            if(nc==null||inspeccion==null||nc.CodigoInspeccion!=codigoInspeccion)return HttpNotFound();
+            if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403);
+            if(string.IsNullOrWhiteSpace(nc.RutaPdfSubsanacionRt))return HttpNotFound();var path=Server.MapPath(nc.RutaPdfSubsanacionRt);if(!System.IO.File.Exists(path))return HttpNotFound();
+            return File(path,"application/pdf","Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf");
         }
 
         [HttpPost]
@@ -4110,12 +4200,14 @@ namespace CapaPresentacion.Controllers
             var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "ENVIADO_A_DIRDAC");
             var observacionAprobacion = string.IsNullOrWhiteSpace(observacionDireccion) ? string.Empty : observacionDireccion.Trim();
 
-            _informeDAO.RegistrarAprobacionDireccion(
-                informe.CodigoInforme,
-                DateTime.Now,
-                usuarioActual,
-                "APROBADO_DIRECCION",
-                usuarioId);
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                _informeDAO.RegistrarAprobacionDireccion(informe.CodigoInforme,DateTime.Now,usuarioActual,"APROBADO_DIRECCION",usuarioId);
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud,id,
+                    AocrEstadosProceso.InformeTecnicoAprobadoDcav,"EMISION_AOCR_CONDICIONES",ROL_COORD_GRUPO,usuarioId,observacionAprobacion);
+                scope.Complete();
+            }
 
             RegistrarAuditoriaInformeDigital(
                 id,
@@ -4246,12 +4338,14 @@ namespace CapaPresentacion.Controllers
             var usuarioActual = ObtenerUsuarioActual();
             var observacion = observacionRechazo.Trim();
 
-            _informeDAO.RegistrarDevolucionCoordinador(
-                informe.CodigoInforme,
-                observacion,
-                usuarioActual,
-                "DEVUELTO_DIRECCION",
-                usuarioId);
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme,observacion,usuarioActual,"DEVUELTO_DIRECCION",usuarioId);
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    inspeccion.CodigoSolicitud,id,AocrEstadosProceso.InformeTecnicoObservadoDcav,
+                    "CORRECCION_INFORME_INSPECTOR",ROL_INSPECTOR,usuarioId,observacion);
+                scope.Complete();
+            }
 
             RegistrarAuditoriaInformeDigital(
                 id,
@@ -7960,6 +8054,11 @@ namespace CapaPresentacion.Controllers
                 return ResultadoOperacion.Error("El informe técnico debe estar firmado por el inspector antes de remitirse a DIRDAC / Dirección - Jefatura.");
             }
 
+            if (!string.Equals((informe.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+            {
+                return ResultadoOperacion.Error("Solo un informe técnico SATISFACTORIO puede enviarse a revisión DCAV.");
+            }
+
             if (informe.FirmadoDirdac)
             {
                 return ResultadoOperacion.Error("El informe técnico ya cuenta con aprobación final de Dirección / Jefatura.");
@@ -7974,7 +8073,19 @@ namespace CapaPresentacion.Controllers
             if (!yaEnviadoADirdac)
             {
                 var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "GENERADO");
-                _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
+                using (var scope = new TransactionScope(TransactionScopeOption.Required))
+                {
+                    _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
+                    new AocrProcesoEstadoDAO().CambiarEstado(
+                        solicitud.CodigoSolicitud,
+                        inspeccion.CodigoInspeccion,
+                        AocrEstadosProceso.PendienteRevisionInformeDcav,
+                        "REVISION_INFORME_DCAV",
+                        ROL_DIRECTOR_CERTIFICACIONES_DCAV,
+                        usuarioId,
+                        "Informe técnico firmado SATISFACTORIO enviado por Inspector a DCAV.");
+                    scope.Complete();
+                }
                 RegistrarAuditoriaInformeDigital(
                     inspeccion.CodigoInspeccion,
                     estadoAnterior,
@@ -8096,6 +8207,7 @@ namespace CapaPresentacion.Controllers
             var usuariosDireccion = new[]
                 {
                     ROL_DIRDAC,
+                    ROL_DIRECTOR_CERTIFICACIONES_DCAV,
                     ROL_DIRECCION,
                     ROL_DIRECCION_JEFATURA_TECNICA,
                     "DirectorGeneral",
@@ -9470,6 +9582,7 @@ namespace CapaPresentacion.Controllers
                 if (User.IsInRole(ROL_DIRECTOR)) roles.Add(ROL_DIRECTOR);
                 if (User.IsInRole(ROL_DIRECTOR_GENERAL)) roles.Add(ROL_DIRECTOR_GENERAL);
                 if (User.IsInRole(ROL_DIRDAC)) roles.Add(ROL_DIRDAC);
+                if (User.IsInRole(ROL_DIRECTOR_CERTIFICACIONES_DCAV)) roles.Add(ROL_DIRECTOR_CERTIFICACIONES_DCAV);
                 if (User.IsInRole(ROL_LEGAL)) roles.Add(ROL_LEGAL);
                 if (User.IsInRole(ROL_COORD_LEGAL)) roles.Add(ROL_COORD_LEGAL);
                 if (User.IsInRole(ROL_COORDINADOR_LEGAL)) roles.Add(ROL_COORDINADOR_LEGAL);

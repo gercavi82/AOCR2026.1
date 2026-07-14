@@ -102,6 +102,7 @@ namespace CapaPresentacion.Services
     {
         private static readonly string[] RolesFirma =
         {
+            "DirectorCertificacionesDcav",
             "Direccion",
             "DireccionJefaturaTecnica",
             "DIRDAC",

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -231,6 +232,22 @@ namespace CapaNegocio.Services
                 return DocumentoFinalInfo.Invalido("archivo vacio");
             }
 
+            if (string.IsNullOrWhiteSpace(firma.HashDocumento))
+            {
+                return DocumentoFinalInfo.Invalido("hash no registrado");
+            }
+
+            string hashReal;
+            using (var stream = File.OpenRead(rutaFisica))
+            using (var sha = SHA256.Create())
+            {
+                hashReal = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty);
+            }
+            if (!string.Equals(hashReal, firma.HashDocumento.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return DocumentoFinalInfo.Invalido("hash no coincide");
+            }
+
             return new DocumentoFinalInfo
             {
                 EsValido = true,
@@ -280,6 +297,7 @@ namespace CapaNegocio.Services
         private List<NotificacionDestinatario> ResolverDestinatariosInstitucionales(SolicitudAOCR solicitud)
         {
             var destinatarios = new List<NotificacionDestinatario>();
+            AgregarUsuariosPorRol(destinatarios, "DirectorCertificacionesDcav");
             AgregarUsuariosPorRol(destinatarios, "Coordinador");
             AgregarUsuariosPorRol(destinatarios, "Direccion");
             AgregarUsuariosPorRol(destinatarios, "DIRDAC");

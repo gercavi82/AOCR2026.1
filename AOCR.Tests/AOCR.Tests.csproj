@@ -79,6 +79,8 @@
     <Compile Include="Integration\FinancieroAprobacionPagoIntegrationTest.cs" />
     <Compile Include="Unit\OrdenRecaudacionOperativaHelperTests.cs" />
     <Compile Include="Unit\GateDNoConformidadTests.cs" />
+    <Compile Include="Unit\GateHDcavFlowTests.cs" />
+    <Compile Include="Unit\GateFSubsanacionDocumentalTests.cs" />
     <Compile Include="Unit\GateEAuthorizationTests.cs" />
     <Compile Include="Unit\RevisionDocumentalPreAsignacionTests.cs" />
     <Compile Include="Unit\RevisionDocumentalBandejaServiceTests.cs" />

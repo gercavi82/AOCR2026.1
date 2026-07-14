@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="1167a090-2ae8-44c4-a452-dca940543e33" name="german.cajas@DESKTOP-S4GE44J 2026-07-14 11:52:14" runUser="DGAC\german.cajas" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-14T11:52:14.9650013-05:00" queuing="2026-07-14T11:52:14.9650013-05:00" start="2026-07-14T11:52:13.8021828-05:00" finish="2026-07-14T11:52:15.1088713-05:00" />
+  <TestSettings name="default" id="bb4e2484-f711-45fb-a4db-8eb680ed6b71">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-07-14_11_52_14" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="72cbb08f-af50-4e04-89d4-6a460b0d250a" testId="e879048b-4b1a-d748-2927-388fab1c0671" testName="CierreGateH_TieneMigracionIdempotenteYRollback" computerName="DESKTOP-S4GE44J" duration="00:00:00.0002425" startTime="2026-07-14T11:52:14.9437077-05:00" endTime="2026-07-14T11:52:14.9437077-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="72cbb08f-af50-4e04-89d4-6a460b0d250a" />
+    <UnitTestResult executionId="7c30ee4c-69cd-4824-a568-b5eabd4d098b" testId="cbd1b235-38a2-98c6-98bb-833d77404c80" testName="BandejaDcav_UsaEstadoCentral_NoConsultaLegacy" computerName="DESKTOP-S4GE44J" duration="00:00:00.0010314" startTime="2026-07-14T11:52:14.9307047-05:00" endTime="2026-07-14T11:52:14.9317060-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7c30ee4c-69cd-4824-a568-b5eabd4d098b" />
+    <UnitTestResult executionId="73197cc7-5754-4c88-8d7d-59e0400aa39e" testId="6929b532-3455-7dbe-aaee-0ae04ed24374" testName="AprobacionDcav_HabilitaModulosSieteYOcho" computerName="DESKTOP-S4GE44J" duration="00:00:00.0019287" startTime="2026-07-14T11:52:14.9337064-05:00" endTime="2026-07-14T11:52:14.9367061-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="73197cc7-5754-4c88-8d7d-59e0400aa39e" />
+    <UnitTestResult executionId="06b2c55f-288e-45a5-ab12-295856f1dc48" testId="d3481fb1-a6d5-f6f6-9745-a4c4ee9902b1" testName="FirmaActualizaEstadoCentralDeModulosSieteYOcho" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003663" startTime="2026-07-14T11:52:14.9437077-05:00" endTime="2026-07-14T11:52:14.9437077-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="06b2c55f-288e-45a5-ab12-295856f1dc48" />
+    <UnitTestResult executionId="d72c1784-384e-407d-8f84-32ee0fbdb686" testId="2bb8e568-0ad5-039f-021c-fa5b556cba09" testName="DescargarCondiciones_NoFinalizaComoEfectoSecundario" computerName="DESKTOP-S4GE44J" duration="00:00:00.0055600" startTime="2026-07-14T11:52:14.9437077-05:00" endTime="2026-07-14T11:52:14.9437077-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d72c1784-384e-407d-8f84-32ee0fbdb686" />
+    <UnitTestResult executionId="a3dc262b-bd9e-4f77-b17e-f4cdd392d450" testId="b24bcd80-7089-5dbf-c4c9-fe5f42818384" testName="NotificacionFinalVerificaSha256YDestinatarioDcav" computerName="DESKTOP-S4GE44J" duration="00:00:00.0004940" startTime="2026-07-14T11:52:14.9397077-05:00" endTime="2026-07-14T11:52:14.9407107-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a3dc262b-bd9e-4f77-b17e-f4cdd392d450" />
+    <UnitTestResult executionId="705c0d80-39b8-4ae6-b92b-ec6f29292a38" testId="181aab31-b3c8-b35d-da1e-50c233600bad" testName="EstadoCentralDcav_EstaDefinido" computerName="DESKTOP-S4GE44J" duration="00:00:00.0065986" startTime="2026-07-14T11:52:14.7041715-05:00" endTime="2026-07-14T11:52:14.9210852-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="705c0d80-39b8-4ae6-b92b-ec6f29292a38" />
+    <UnitTestResult executionId="b3d35b48-2830-4f0d-8b5a-dde6d8073061" testId="6a764846-cce6-3a3c-cd99-0e21086a6d1e" testName="MigracionIncluyeRollback" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003237" startTime="2026-07-14T11:52:14.9387037-05:00" endTime="2026-07-14T11:52:14.9387037-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b3d35b48-2830-4f0d-8b5a-dde6d8073061" />
+    <UnitTestResult executionId="b573cd5a-bf07-403f-9083-abef14bf03df" testId="2686d838-491d-508e-8cbd-c7ea00afc91c" testName="DirectorDcav_PuedeEntrarYFirmarCondiciones" computerName="DESKTOP-S4GE44J" duration="00:00:00.0017077" startTime="2026-07-14T11:52:14.9367061-05:00" endTime="2026-07-14T11:52:14.9387037-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b573cd5a-bf07-403f-9083-abef14bf03df" />
+    <UnitTestResult executionId="5294da7b-4f6f-4fec-8e57-ca095626e12b" testId="1ac50a39-1c83-9157-d1bb-3b00d3520252" testName="CierreExigeDosFirmasHashTamanoFirmanteYArchivo" computerName="DESKTOP-S4GE44J" duration="00:00:00.0002760" startTime="2026-07-14T11:52:14.9387037-05:00" endTime="2026-07-14T11:52:14.9397077-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5294da7b-4f6f-4fec-8e57-ca095626e12b" />
+    <UnitTestResult executionId="e5d6e7c7-93bd-453e-8ece-142364e30a9d" testId="eaf3fc54-d5b8-45e4-050f-781d005fddef" testName="TransicionInspector_AsignaResponsableDcav" computerName="DESKTOP-S4GE44J" duration="00:00:00.0016168" startTime="2026-07-14T11:52:14.9327061-05:00" endTime="2026-07-14T11:52:14.9337064-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e5d6e7c7-93bd-453e-8ece-142364e30a9d" />
+    <UnitTestResult executionId="c63c099c-97af-4608-9093-e9f321236f73" testId="95e10363-758b-b0ba-8ce9-3bf975d1ba94" testName="CierreEsBloqueadoPorNoConformidadesVigentes" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001985" startTime="2026-07-14T11:52:14.9397077-05:00" endTime="2026-07-14T11:52:14.9397077-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c63c099c-97af-4608-9093-e9f321236f73" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="FirmaActualizaEstadoCentralDeModulosSieteYOcho" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="d3481fb1-a6d5-f6f6-9745-a4c4ee9902b1">
+      <Execution id="06b2c55f-288e-45a5-ab12-295856f1dc48" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="FirmaActualizaEstadoCentralDeModulosSieteYOcho" />
+    </UnitTest>
+    <UnitTest name="DirectorDcav_PuedeEntrarYFirmarCondiciones" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="2686d838-491d-508e-8cbd-c7ea00afc91c">
+      <Execution id="b573cd5a-bf07-403f-9083-abef14bf03df" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="DirectorDcav_PuedeEntrarYFirmarCondiciones" />
+    </UnitTest>
+    <UnitTest name="TransicionInspector_AsignaResponsableDcav" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="eaf3fc54-d5b8-45e4-050f-781d005fddef">
+      <Execution id="e5d6e7c7-93bd-453e-8ece-142364e30a9d" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="TransicionInspector_AsignaResponsableDcav" />
+    </UnitTest>
+    <UnitTest name="EstadoCentralDcav_EstaDefinido" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="181aab31-b3c8-b35d-da1e-50c233600bad">
+      <Execution id="705c0d80-39b8-4ae6-b92b-ec6f29292a38" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="EstadoCentralDcav_EstaDefinido" />
+    </UnitTest>
+    <UnitTest name="CierreEsBloqueadoPorNoConformidadesVigentes" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="95e10363-758b-b0ba-8ce9-3bf975d1ba94">
+      <Execution id="c63c099c-97af-4608-9093-e9f321236f73" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="CierreEsBloqueadoPorNoConformidadesVigentes" />
+    </UnitTest>
+    <UnitTest name="CierreGateH_TieneMigracionIdempotenteYRollback" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e879048b-4b1a-d748-2927-388fab1c0671">
+      <Execution id="72cbb08f-af50-4e04-89d4-6a460b0d250a" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="CierreGateH_TieneMigracionIdempotenteYRollback" />
+    </UnitTest>
+    <UnitTest name="AprobacionDcav_HabilitaModulosSieteYOcho" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6929b532-3455-7dbe-aaee-0ae04ed24374">
+      <Execution id="73197cc7-5754-4c88-8d7d-59e0400aa39e" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="AprobacionDcav_HabilitaModulosSieteYOcho" />
+    </UnitTest>
+    <UnitTest name="DescargarCondiciones_NoFinalizaComoEfectoSecundario" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="2bb8e568-0ad5-039f-021c-fa5b556cba09">
+      <Execution id="d72c1784-384e-407d-8f84-32ee0fbdb686" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="DescargarCondiciones_NoFinalizaComoEfectoSecundario" />
+    </UnitTest>
+    <UnitTest name="MigracionIncluyeRollback" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6a764846-cce6-3a3c-cd99-0e21086a6d1e">
+      <Execution id="b3d35b48-2830-4f0d-8b5a-dde6d8073061" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="MigracionIncluyeRollback" />
+    </UnitTest>
+    <UnitTest name="NotificacionFinalVerificaSha256YDestinatarioDcav" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="b24bcd80-7089-5dbf-c4c9-fe5f42818384">
+      <Execution id="a3dc262b-bd9e-4f77-b17e-f4cdd392d450" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="NotificacionFinalVerificaSha256YDestinatarioDcav" />
+    </UnitTest>
+    <UnitTest name="BandejaDcav_UsaEstadoCentral_NoConsultaLegacy" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="cbd1b235-38a2-98c6-98bb-833d77404c80">
+      <Execution id="7c30ee4c-69cd-4824-a568-b5eabd4d098b" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="BandejaDcav_UsaEstadoCentral_NoConsultaLegacy" />
+    </UnitTest>
+    <UnitTest name="CierreExigeDosFirmasHashTamanoFirmanteYArchivo" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="1ac50a39-1c83-9157-d1bb-3b00d3520252">
+      <Execution id="5294da7b-4f6f-4fec-8e57-ca095626e12b" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateHDcavFlowTests" name="CierreExigeDosFirmasHashTamanoFirmanteYArchivo" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="e879048b-4b1a-d748-2927-388fab1c0671" executionId="72cbb08f-af50-4e04-89d4-6a460b0d250a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cbd1b235-38a2-98c6-98bb-833d77404c80" executionId="7c30ee4c-69cd-4824-a568-b5eabd4d098b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6929b532-3455-7dbe-aaee-0ae04ed24374" executionId="73197cc7-5754-4c88-8d7d-59e0400aa39e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d3481fb1-a6d5-f6f6-9745-a4c4ee9902b1" executionId="06b2c55f-288e-45a5-ab12-295856f1dc48" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2bb8e568-0ad5-039f-021c-fa5b556cba09" executionId="d72c1784-384e-407d-8f84-32ee0fbdb686" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b24bcd80-7089-5dbf-c4c9-fe5f42818384" executionId="a3dc262b-bd9e-4f77-b17e-f4cdd392d450" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="181aab31-b3c8-b35d-da1e-50c233600bad" executionId="705c0d80-39b8-4ae6-b92b-ec6f29292a38" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6a764846-cce6-3a3c-cd99-0e21086a6d1e" executionId="b3d35b48-2830-4f0d-8b5a-dde6d8073061" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2686d838-491d-508e-8cbd-c7ea00afc91c" executionId="b573cd5a-bf07-403f-9083-abef14bf03df" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1ac50a39-1c83-9157-d1bb-3b00d3520252" executionId="5294da7b-4f6f-4fec-8e57-ca095626e12b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eaf3fc54-d5b8-45e4-050f-781d005fddef" executionId="e5d6e7c7-93bd-453e-8ece-142364e30a9d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="95e10363-758b-b0ba-8ce9-3bf975d1ba94" executionId="c63c099c-97af-4608-9093-e9f321236f73" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="12" executed="12" passed="12" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

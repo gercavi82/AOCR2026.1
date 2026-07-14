@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Configuration;
 using Npgsql;
 using CapaModelo;
+using System.Linq;
+using CapaDatos.Constants;
 
 namespace CapaDatos.DAOs
 {
@@ -226,6 +228,17 @@ namespace CapaDatos.DAOs
             }
 
             return lista;
+        }
+
+        public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDcav()
+        {
+            var ids = new AocrProcesoEstadoDAO().ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDcav);
+            return ids.Select(ObtenerUltimoPorInspeccion)
+                .Where(x => x != null && x.Finalizado && x.FirmadoInspector && !x.FirmadoDirdac
+                    && !string.IsNullOrWhiteSpace(x.RutaDocumentoFirmado)
+                    && string.Equals((x.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x.FechaEnvioDirdac ?? x.UpdatedAt ?? x.CreatedAt)
+                .ToList();
         }
 
         public List<InspeccionInformeTecnico> ListarTodos()

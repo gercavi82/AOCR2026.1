@@ -32,6 +32,7 @@ namespace CapaModelo
         public string RutaPdf { get; set; }
         public string RutaPdfFirmadoInspector { get; set; }
         public string RutaPdfFirmadoCoordinador { get; set; }
+        public string RutaPdfSubsanacionRt { get; set; }
         public string HashDocumento { get; set; }
         
         public DateTime? FechaGeneracion { get; set; }
@@ -40,6 +41,7 @@ namespace CapaModelo
         public DateTime? FechaDevolucion { get; set; }
         public DateTime? FechaFirmaCoordinador { get; set; }
         public DateTime? FechaNotificacionRt { get; set; }
+        public DateTime? FechaSubsanacionRt { get; set; }
         
         public int? UsuarioCreacion { get; set; }
         public int? UsuarioFirmaInspector { get; set; }

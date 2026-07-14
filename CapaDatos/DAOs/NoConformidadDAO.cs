@@ -75,28 +75,18 @@ namespace CapaDatos.DAOs
                     Estado = LeerTextoOpcional(dr, "estado"),
                     NumeroNoConformidad = LeerTextoOpcional(dr, "numero_no_conformidad"),
                     Resumen = LeerTextoOpcional(dr, "resumen"),
-                    Detalle = LeerTextoOpcional(dr, "detalle"),
-                    FundamentoTecnico = LeerTextoOpcional(dr, "fundamento_tecnico"),
-                    AccionesRequeridas = LeerTextoOpcional(dr, "acciones_requeridas"),
-                    PlazoSubsanacion = LeerEnteroOpcional(dr, "plazo_subsanacion"),
-                    RequiereNuevaInspeccion = LeerBooleanObligatorio(dr, "requiere_nueva_inspeccion"),
-                    Version = LeerEnteroObligatorio(dr, "version"),
-                    RutaPdf = LeerTextoOpcional(dr, "ruta_pdf"),
-                    RutaPdfFirmadoInspector = LeerTextoOpcional(dr, "ruta_pdf_firmado_inspector"),
-                    RutaPdfFirmadoCoordinador = LeerTextoOpcional(dr, "ruta_pdf_firmado_coordinador"),
-                    HashDocumento = LeerTextoOpcional(dr, "hash_documento"),
-                    FechaGeneracion = LeerFechaOpcional(dr, "fecha_generacion"),
-                    FechaFirmaInspector = LeerFechaOpcional(dr, "fecha_firma_inspector"),
-                    FechaEnvioCoordinador = LeerFechaOpcional(dr, "fecha_envio_coordinador"),
-                    FechaDevolucion = LeerFechaOpcional(dr, "fecha_devolucion"),
-                    FechaFirmaCoordinador = LeerFechaOpcional(dr, "fecha_firma_coordinador"),
-                    FechaNotificacionRt = LeerFechaOpcional(dr, "fecha_notificacion_rt"),
-                    UsuarioCreacion = LeerEnteroOpcional(dr, "usuario_creacion"),
-                    UsuarioFirmaInspector = LeerEnteroOpcional(dr, "usuario_firma_inspector"),
-                    UsuarioFirmaCoordinador = LeerEnteroOpcional(dr, "usuario_firma_coordinador"),
-                    ObservacionDevolucion = LeerTextoOpcional(dr, "observacion_devolucion"),
-                    CreatedAt = LeerFechaOpcional(dr, "created_at"),
-                    UpdatedAt = LeerFechaOpcional(dr, "updated_at")
+                    Detalle = LeerTextoOpcional(dr, "detalle"),FundamentoTecnico = LeerTextoOpcional(dr, "fundamento_tecnico"),
+                    AccionesRequeridas = LeerTextoOpcional(dr, "acciones_requeridas"),PlazoSubsanacion = LeerEnteroOpcional(dr, "plazo_subsanacion"),
+                    RequiereNuevaInspeccion = LeerBooleanObligatorio(dr, "requiere_nueva_inspeccion"),Version = LeerEnteroObligatorio(dr, "version"),
+                    RutaPdf = LeerTextoOpcional(dr, "ruta_pdf"),RutaPdfFirmadoInspector = LeerTextoOpcional(dr, "ruta_pdf_firmado_inspector"),
+                    RutaPdfFirmadoCoordinador = LeerTextoOpcional(dr, "ruta_pdf_firmado_coordinador"),RutaPdfSubsanacionRt = LeerTextoOpcional(dr, "ruta_pdf_subsanacion_rt"),
+                    HashDocumento = LeerTextoOpcional(dr, "hash_documento"),FechaGeneracion = LeerFechaOpcional(dr, "fecha_generacion"),
+                    FechaFirmaInspector = LeerFechaOpcional(dr, "fecha_firma_inspector"),FechaEnvioCoordinador = LeerFechaOpcional(dr, "fecha_envio_coordinador"),
+                    FechaDevolucion = LeerFechaOpcional(dr, "fecha_devolucion"),FechaFirmaCoordinador = LeerFechaOpcional(dr, "fecha_firma_coordinador"),
+                    FechaNotificacionRt = LeerFechaOpcional(dr, "fecha_notificacion_rt"),FechaSubsanacionRt = LeerFechaOpcional(dr, "fecha_subsanacion_rt"),
+                    UsuarioCreacion = LeerEnteroOpcional(dr, "usuario_creacion"),UsuarioFirmaInspector = LeerEnteroOpcional(dr, "usuario_firma_inspector"),
+                    UsuarioFirmaCoordinador = LeerEnteroOpcional(dr, "usuario_firma_coordinador"),ObservacionDevolucion = LeerTextoOpcional(dr, "observacion_devolucion"),
+                    CreatedAt = LeerFechaOpcional(dr, "created_at"),UpdatedAt = LeerFechaOpcional(dr, "updated_at")
                 };
             }
             catch (Exception ex)
@@ -112,16 +102,16 @@ namespace CapaDatos.DAOs
                 INSERT INTO {TABLA} (
                     codigo_inspeccion, codigo_informe, codigo_solicitud, tipo_ruta, estado, numero_no_conformidad,
                     resumen, detalle, fundamento_tecnico, acciones_requeridas, plazo_subsanacion, requiere_nueva_inspeccion,
-                    version, ruta_pdf, ruta_pdf_firmado_inspector, ruta_pdf_firmado_coordinador, hash_documento,
+                    version, ruta_pdf, ruta_pdf_firmado_inspector, ruta_pdf_firmado_coordinador, ruta_pdf_subsanacion_rt, hash_documento,
                     fecha_generacion, fecha_firma_inspector, fecha_envio_coordinador, fecha_devolucion,
-                    fecha_firma_coordinador, fecha_notificacion_rt, usuario_creacion, usuario_firma_inspector,
+                    fecha_firma_coordinador, fecha_notificacion_rt, fecha_subsanacion_rt, usuario_creacion, usuario_firma_inspector,
                     usuario_firma_coordinador, observacion_devolucion, created_at
                 ) VALUES (
                     @codigo_inspeccion, @codigo_informe, @codigo_solicitud, @tipo_ruta, @estado, @numero_no_conformidad,
                     @resumen, @detalle, @fundamento_tecnico, @acciones_requeridas, @plazo_subsanacion, @requiere_nueva_inspeccion,
-                    @version, @ruta_pdf, @ruta_pdf_firmado_inspector, @ruta_pdf_firmado_coordinador, @hash_documento,
+                    @version, @ruta_pdf, @ruta_pdf_firmado_inspector, @ruta_pdf_firmado_coordinador, @ruta_pdf_subsanacion_rt, @hash_documento,
                     @fecha_generacion, @fecha_firma_inspector, @fecha_envio_coordinador, @fecha_devolucion,
-                    @fecha_firma_coordinador, @fecha_notificacion_rt, @usuario_creacion, @usuario_firma_inspector,
+                    @fecha_firma_coordinador, @fecha_notificacion_rt, @fecha_subsanacion_rt, @usuario_creacion, @usuario_firma_inspector,
                     @usuario_firma_coordinador, @observacion_devolucion, NOW()
                 ) RETURNING codigo_no_conformidad;";
 
@@ -155,6 +145,7 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@ruta_pdf", (object)entidad.RutaPdf ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta_pdf_firmado_inspector", (object)entidad.RutaPdfFirmadoInspector ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta_pdf_firmado_coordinador", (object)entidad.RutaPdfFirmadoCoordinador ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ruta_pdf_subsanacion_rt", (object)entidad.RutaPdfSubsanacionRt ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@hash_documento", (object)entidad.HashDocumento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_generacion", (object)entidad.FechaGeneracion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_firma_inspector", (object)entidad.FechaFirmaInspector ?? DBNull.Value);
@@ -162,6 +153,7 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@fecha_devolucion", (object)entidad.FechaDevolucion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_firma_coordinador", (object)entidad.FechaFirmaCoordinador ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_notificacion_rt", (object)entidad.FechaNotificacionRt ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fecha_subsanacion_rt", (object)entidad.FechaSubsanacionRt ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_creacion", (object)entidad.UsuarioCreacion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_firma_inspector", (object)entidad.UsuarioFirmaInspector ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_firma_coordinador", (object)entidad.UsuarioFirmaCoordinador ?? DBNull.Value);
@@ -186,6 +178,45 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool RegistrarSubsanacionRt(int codigoNoConformidad,string ruta,DateTime fecha)
+        {
+            if(codigoNoConformidad<=0||string.IsNullOrWhiteSpace(ruta))return false;
+            var sql=$@"UPDATE {TABLA} SET ruta_pdf_subsanacion_rt=@ruta,fecha_subsanacion_rt=@fecha,estado='SUBSANADA_RT',observacion_devolucion=NULL,updated_at=NOW()
+WHERE codigo_no_conformidad=@id AND UPPER(tipo_ruta)='SIN_INSPECCION' AND estado IN ('FIRMADA_COORDINADOR','EN_SUBSANACION');";
+            using(var cn=new NpgsqlConnection(CS))using(var cmd=new NpgsqlCommand(sql,cn)){cmd.Parameters.AddWithValue("@ruta",ruta);cmd.Parameters.AddWithValue("@fecha",fecha);cmd.Parameters.AddWithValue("@id",codigoNoConformidad);cn.Open();return cmd.ExecuteNonQuery()==1;}
+        }
+
+        public bool ReabrirSubsanacionRt(int codigoNoConformidad)
+        {
+            var sql = $@"UPDATE {TABLA}
+SET ruta_pdf_subsanacion_rt=NULL, fecha_subsanacion_rt=NULL, estado='EN_SUBSANACION', updated_at=NOW()
+WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='SIN_INSPECCION';";
+            using (var cn = new NpgsqlConnection(CS))
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@id", codigoNoConformidad);
+                cn.Open();
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        public bool CerrarSubsanacion(int codigoNoConformidad)
+        {
+            var sql=$@"UPDATE {TABLA} SET estado='CERRADA',updated_at=NOW() WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='SIN_INSPECCION';";
+            using(var cn=new NpgsqlConnection(CS))using(var cmd=new NpgsqlCommand(sql,cn)){cmd.Parameters.AddWithValue("@id",codigoNoConformidad);cn.Open();return cmd.ExecuteNonQuery()==1;}
+        }
+
+        public NoConformidad DevolverSubsanacionComoNuevaVersion(int codigoNoConformidad,string observacion)
+        {
+            if(codigoNoConformidad<=0||string.IsNullOrWhiteSpace(observacion))return null;
+            using(var cn=new NpgsqlConnection(CS)){cn.Open();using(var tx=cn.BeginTransaction()){
+                using(var close=new NpgsqlCommand($"UPDATE {TABLA} SET estado='SUBSANACION_DEVUELTA',observacion_devolucion=@obs,updated_at=NOW() WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='SIN_INSPECCION';",cn,tx)){close.Parameters.AddWithValue("@obs",observacion.Trim());close.Parameters.AddWithValue("@id",codigoNoConformidad);if(close.ExecuteNonQuery()!=1)return null;}
+                int nuevoId;using(var insert=new NpgsqlCommand($@"INSERT INTO {TABLA}(codigo_inspeccion,codigo_informe,codigo_solicitud,tipo_ruta,estado,numero_no_conformidad,resumen,detalle,fundamento_tecnico,acciones_requeridas,plazo_subsanacion,requiere_nueva_inspeccion,version,ruta_pdf,ruta_pdf_firmado_inspector,ruta_pdf_firmado_coordinador,hash_documento,fecha_generacion,fecha_firma_inspector,fecha_envio_coordinador,fecha_firma_coordinador,fecha_notificacion_rt,usuario_creacion,usuario_firma_inspector,usuario_firma_coordinador,observacion_devolucion,created_at)
+SELECT codigo_inspeccion,codigo_informe,codigo_solicitud,tipo_ruta,'EN_SUBSANACION',numero_no_conformidad,resumen,detalle,fundamento_tecnico,acciones_requeridas,plazo_subsanacion,requiere_nueva_inspeccion,version+1,ruta_pdf,ruta_pdf_firmado_inspector,ruta_pdf_firmado_coordinador,hash_documento,fecha_generacion,fecha_firma_inspector,fecha_envio_coordinador,fecha_firma_coordinador,fecha_notificacion_rt,usuario_creacion,usuario_firma_inspector,usuario_firma_coordinador,@obs,NOW() FROM {TABLA} WHERE codigo_no_conformidad=@id RETURNING codigo_no_conformidad;",cn,tx)){insert.Parameters.AddWithValue("@obs",observacion.Trim());insert.Parameters.AddWithValue("@id",codigoNoConformidad);nuevoId=Convert.ToInt32(insert.ExecuteScalar());}
+                tx.Commit();return ObtenerPorId(nuevoId);
+            }}
+        }
+
         public bool Actualizar(NoConformidad entidad, NpgsqlTransaction trx = null)
         {
             string query = $@"
@@ -200,12 +231,14 @@ namespace CapaDatos.DAOs
                     ruta_pdf = @ruta_pdf,
                     ruta_pdf_firmado_inspector = @ruta_pdf_firmado_inspector,
                     ruta_pdf_firmado_coordinador = @ruta_pdf_firmado_coordinador,
+                    ruta_pdf_subsanacion_rt = @ruta_pdf_subsanacion_rt,
                     hash_documento = @hash_documento,
                     fecha_firma_inspector = @fecha_firma_inspector,
                     fecha_envio_coordinador = @fecha_envio_coordinador,
                     fecha_devolucion = @fecha_devolucion,
                     fecha_firma_coordinador = @fecha_firma_coordinador,
                     fecha_notificacion_rt = @fecha_notificacion_rt,
+                    fecha_subsanacion_rt = @fecha_subsanacion_rt,
                     usuario_firma_inspector = @usuario_firma_inspector,
                     usuario_firma_coordinador = @usuario_firma_coordinador,
                     observacion_devolucion = @observacion_devolucion,
@@ -237,12 +270,14 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@ruta_pdf", (object)entidad.RutaPdf ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta_pdf_firmado_inspector", (object)entidad.RutaPdfFirmadoInspector ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta_pdf_firmado_coordinador", (object)entidad.RutaPdfFirmadoCoordinador ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@ruta_pdf_subsanacion_rt", (object)entidad.RutaPdfSubsanacionRt ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@hash_documento", (object)entidad.HashDocumento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_firma_inspector", (object)entidad.FechaFirmaInspector ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_envio_coordinador", (object)entidad.FechaEnvioCoordinador ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_devolucion", (object)entidad.FechaDevolucion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_firma_coordinador", (object)entidad.FechaFirmaCoordinador ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_notificacion_rt", (object)entidad.FechaNotificacionRt ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fecha_subsanacion_rt", (object)entidad.FechaSubsanacionRt ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_firma_inspector", (object)entidad.UsuarioFirmaInspector ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_firma_coordinador", (object)entidad.UsuarioFirmaCoordinador ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@observacion_devolucion", (object)entidad.ObservacionDevolucion ?? DBNull.Value);
@@ -290,6 +325,27 @@ namespace CapaDatos.DAOs
             using (var cmd = new NpgsqlCommand(query, conn))
             {
                 cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+                conn.Open();
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        var item = MapearDesdeDataReader(dr);
+                        if (item != null) lista.Add(item);
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public List<NoConformidad> ListarPorSolicitud(int codigoSolicitud)
+        {
+            var lista = new List<NoConformidad>();
+            string query = $"SELECT * FROM {TABLA} WHERE codigo_solicitud = @id ORDER BY version DESC, codigo_no_conformidad DESC;";
+            using (var conn = new NpgsqlConnection(CS))
+            using (var cmd = new NpgsqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@id", codigoSolicitud);
                 conn.Open();
                 using (var dr = cmd.ExecuteReader())
                 {

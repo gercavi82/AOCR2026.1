@@ -12,7 +12,7 @@ using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica")]
+    [Authorize(Roles = "DirectorCertificacionesDcav,Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica")]
     public class FirmaAocrController : Controller
     {
         private readonly FirmaAocrAuthorizationService _authorizationService = new FirmaAocrAuthorizationService();
@@ -377,6 +377,7 @@ namespace CapaPresentacion.Controllers
                 Trace.TraceInformation("[FIRMA_AOCR_V2][DB_UPDATE] SolicitudId=" + id + "; EstadoAnterior=" + (contexto.Solicitud.Estado ?? string.Empty) + "; EstadoNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
 
                 var finalizacion = _finalizacionService.LiberarDocumentoFinal(id, ObtenerUsuarioActualId(), StorageService.Existe);
+                ActualizarEstadoCentralSeguro(contexto, tipoDocumento, finalizacion);
                 var estadoSolicitudNuevo = finalizacion != null && !string.IsNullOrWhiteSpace(finalizacion.EstadoNuevo)
                     ? finalizacion.EstadoNuevo
                     : contexto.Solicitud.Estado;
@@ -419,7 +420,35 @@ namespace CapaPresentacion.Controllers
             {
                 Trace.TraceError("[FIRMA_AOCR_NUEVA][ERROR] FIRMAR SolicitudId=" + id + "; Motivo=" + ex.Message + "; Exception=" + ex);
                 Trace.TraceError("[FIRMA_AOCR_V2][ERROR] SolicitudId=" + id + "; Motivo=" + ex.Message + "; Exception=" + ex);
-                return JsonError(500, "Error interno al firmar AOCR. " + ex.Message, id);
+                return JsonError(500, "No se pudo completar la firma institucional. Consulte el registro de auditoria.", id);
+            }
+        }
+
+        private void ActualizarEstadoCentralSeguro(FirmaAocrContexto contexto, string tipoDocumento, AocrFinalizacionResultado finalizacion)
+        {
+            if (contexto == null || contexto.Solicitud == null || contexto.Inspeccion == null) return;
+            try
+            {
+                var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+                var estado = finalizacion != null && finalizacion.Finalizado
+                    ? CapaDatos.Constants.AocrEstadosProceso.DocumentacionFinalCompleta
+                    : (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase)
+                        ? CapaDatos.Constants.AocrEstadosProceso.PendienteGeneracionCyl
+                        : CapaDatos.Constants.AocrEstadosProceso.CylFirmadas);
+                var etapa = finalizacion != null && finalizacion.Finalizado ? "ENTREGA_DOCUMENTOS_FINALES" : "EMISION_AOCR_CONDICIONES";
+                var rol = finalizacion != null && finalizacion.Finalizado ? "Solicitante" : "DirectorCertificacionesDcav";
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    contexto.Solicitud.CodigoSolicitud,
+                    contexto.Inspeccion.CodigoInspeccion,
+                    estado,
+                    etapa,
+                    rol,
+                    ObtenerUsuarioActualId(),
+                    "Actualizacion central GATE H posterior a firma de " + tipo + ".");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[GATE_H][ESTADO_CENTRAL_ERROR] SolicitudId=" + contexto.Solicitud.CodigoSolicitud + "; Error=" + ex.Message);
             }
         }
 

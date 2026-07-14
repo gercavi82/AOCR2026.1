@@ -223,6 +223,14 @@
         modificacionConNuevoAeropuerto &&
         esPropietario &&
         estadoActual == EstadoSolicitud.RequiereInspeccion;
+    var puedeRtSolicitarNuevaInspeccionNoConformidad = 
+        ViewBag.TieneNcFirmadaConInspeccion != null && (bool)ViewBag.TieneNcFirmadaConInspeccion &&
+        esPropietario &&
+        !procesoCerradoOperativamente;
+    var puedeRtSubsanarNc = 
+        ViewBag.TieneNcSinInspeccion != null && (bool)ViewBag.TieneNcSinInspeccion &&
+        esPropietario &&
+        !procesoCerradoOperativamente;
     var puedePrepararCondicionesModificacion =
         !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
@@ -1993,6 +2001,51 @@
                         </div>
                     </form>
                 }
+            </div>
+        </div>
+    }
+
+    @if (puedeRtSolicitarNuevaInspeccionNoConformidad)
+    {
+        <div class="card aocr-detail-card aocr-review-card danger mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Solicitar nueva inspeccion por No Conformidad</span>
+                    </div>
+                    <p class="text-muted mb-0">La inspección anterior resultó insatisfactoria y requiere una nueva inspección in situ. Se generará una nueva orden de recaudación para que pueda realizar el pago correspondiente.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="post" action="@Url.Action("SolicitarNuevaInspeccion", "RT")">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="codigoSolicitud" value="@Model.CodigoSolicitud" />
+                        <button type="submit" class="btn btn-danger aocr-action-btn">
+                            <i class="fas fa-redo-alt"></i>
+                            Solicitar nueva inspeccion
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeRtSubsanarNc)
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-signature text-warning"></i>
+                        <span class="text-warning">Subsanar No Conformidad (Fase Documental)</span>
+                    </div>
+                    <p class="text-muted mb-0">La inspección anterior identificó hallazgos que pueden resolverse enviando documentación adicional. Por favor, cargue su respuesta.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("SubsanarNc", "RT", new { codigoSolicitud = Model.CodigoSolicitud })" class="btn btn-warning aocr-action-btn">
+                        <i class="fas fa-file-upload"></i> Subsanar No Conformidad
+                    </a>
+                </div>
             </div>
         </div>
     }

@@ -321,6 +321,7 @@
     <Compile Include="DAOs\FinancieroDAO.cs" />
     <Compile Include="DAOs\InspeccionHistorialDAO.cs" />
     <Compile Include="DAOs\InspeccionInformeDAO.cs" />
+    <Compile Include="DAOs\AocrProcesoEstadoDAO.cs" />
     <Compile Include="DAOs\InspeccionDAO.cs" />
     <Compile Include="Entidades\ArchivoSubido.cs" />
     <Compile Include="Entidades\DetalleOrden.cs" />
@@ -332,6 +333,7 @@
     <Compile Include="Entidades\EventoTrazabilidad.cs" />
     <Compile Include="DAOs\TrazabilidadDAO.cs" />
     <Compile Include="Constants\EstadoConstants.cs" />
+    <Compile Include="Constants\AocrEstadosProceso.cs" />
     <Compile Include="Constants\EstadoDocumentoInstitucional.cs" />
     <Compile Include="Constants\EstadoSolicitudSql.cs" />
     <Compile Include="Infrastructure\ILoggerService.cs" />

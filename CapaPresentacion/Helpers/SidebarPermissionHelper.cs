@@ -64,8 +64,9 @@ namespace CapaPresentacion.Helpers
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
             snapshot.EsDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorGeneral"));
-            snapshot.EsDirdacRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral"));
+            snapshot.EsDirdacRol = (RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral")))
+                || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorCertificacionesDcav");
             snapshot.PuedeAdministracion = snapshot.EsAdministrador;
             snapshot.PuedeAprobarUsuarios = snapshot.EsAdministrador || snapshot.EsLegalRol || snapshot.EsCoordinadorRol || snapshot.EsDirdacRol;
             snapshot.TieneNavegacionRol = snapshot.EsSolicitanteRol

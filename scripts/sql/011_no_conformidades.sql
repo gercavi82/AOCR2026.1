@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.aocr_tbnoconformidad (
     ruta_pdf VARCHAR(500) NULL,
     ruta_pdf_firmado_inspector VARCHAR(500) NULL,
     ruta_pdf_firmado_coordinador VARCHAR(500) NULL,
+    ruta_pdf_subsanacion_rt VARCHAR(500) NULL,
     hash_documento VARCHAR(256) NULL,
     fecha_generacion TIMESTAMP NULL,
     fecha_firma_inspector TIMESTAMP NULL,
@@ -29,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.aocr_tbnoconformidad (
     fecha_devolucion TIMESTAMP NULL,
     fecha_firma_coordinador TIMESTAMP NULL,
     fecha_notificacion_rt TIMESTAMP NULL,
+    fecha_subsanacion_rt TIMESTAMP NULL,
     usuario_creacion INT NULL,
     usuario_firma_inspector INT NULL,
     usuario_firma_coordinador INT NULL,
@@ -37,8 +39,16 @@ CREATE TABLE IF NOT EXISTS public.aocr_tbnoconformidad (
     updated_at TIMESTAMP NULL
 );
 
+-- En instalaciones existentes CREATE TABLE IF NOT EXISTS no agrega columnas nuevas.
+ALTER TABLE public.aocr_tbnoconformidad
+    ADD COLUMN IF NOT EXISTS ruta_pdf_subsanacion_rt VARCHAR(500) NULL;
+ALTER TABLE public.aocr_tbnoconformidad
+    ADD COLUMN IF NOT EXISTS fecha_subsanacion_rt TIMESTAMP NULL;
+
 -- Crear índices para acelerar búsquedas
 CREATE INDEX IF NOT EXISTS idx_noconf_informe ON public.aocr_tbnoconformidad(codigo_informe);
 CREATE INDEX IF NOT EXISTS idx_noconf_inspeccion ON public.aocr_tbnoconformidad(codigo_inspeccion);
 CREATE INDEX IF NOT EXISTS idx_noconf_solicitud ON public.aocr_tbnoconformidad(codigo_solicitud);
 CREATE INDEX IF NOT EXISTS idx_noconf_estado ON public.aocr_tbnoconformidad(estado);
+CREATE INDEX IF NOT EXISTS idx_noconf_solicitud_ruta_version
+    ON public.aocr_tbnoconformidad(codigo_solicitud, tipo_ruta, version DESC);

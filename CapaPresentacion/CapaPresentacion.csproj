@@ -351,6 +351,7 @@
     <Compile Include="Models\ViewModels\InspeccionPanelViewModels.cs" />
     <Compile Include="Models\ViewModels\AocrPdfViewerViewModel.cs" />
     <Compile Include="Models\ViewModels\InformeTecnicoPdfViewModel.cs" />
+    <Compile Include="Models\ViewModels\NoConformidadPdfViewModel.cs" />
     <Compile Include="Models\ViewModels\ListaVerificacionOperacionalEaePdfViewModel.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\ViewModels\SolicitudInspeccionExtPanelViewModel.cs" />

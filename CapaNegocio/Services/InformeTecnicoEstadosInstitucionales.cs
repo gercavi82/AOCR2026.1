@@ -20,6 +20,7 @@ namespace CapaNegocio.Services
                 "FIRMADO_INSPECTOR",
                 "FIRMADO_POR_INSPECTOR",
                 "INFORME_TECNICO_FIRMADO_INSPECTOR"
+                ,"PENDIENTE_REVISION_INFORME_DCAV"
             };
 
         public static readonly HashSet<string> Cerrados =

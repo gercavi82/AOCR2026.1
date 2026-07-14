@@ -23,7 +23,7 @@ using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
     public class CoordinacionJefaturaController : Controller
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
@@ -965,7 +965,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "ValidarAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult FirmaAocr(int solicitudId)
         {
             if (UsarFirmaAocrNueva())
@@ -1010,7 +1010,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult GenerarPdfAocr(int solicitudId)
         {
             if (UsarFirmaAocrNueva())
@@ -1485,7 +1485,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult FirmarAocr(FirmarAocrRequest request, int solicitudId = 0, int? aocrId = null)
         {
             if (UsarFirmaAocrNueva())
@@ -1520,7 +1520,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "GenerarDocumentoValidacionAocr", CodigoSolicitudParameter = "solicitudId")]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult FirmarCondiciones(FirmarAocrRequest request, int solicitudId = 0, int? condicionesId = null)
         {
             if (UsarFirmaAocrNueva())

@@ -172,11 +172,12 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void DescargaFinalRt_ShouldRemainCoupledToFinalizadoInCurrentFlow()
+        public void DescargaFinalRt_NoDebeCambiarEstadoDelExpediente()
         {
             var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs");
 
-            StringAssert.Contains(controller, "CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, \"Descarga final de Condiciones y Limitaciones firmada por RT.\"");
+            Assert.IsFalse(controller.Contains("Descarga final de Condiciones y Limitaciones firmada por RT."));
+            StringAssert.Contains(LeerArchivoRepositorio("CapaNegocio\\Services\\AocrFinalizacionService.cs"), "IntentarFinalizarEmision");
         }
 
         [TestMethod]

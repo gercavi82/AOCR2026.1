@@ -130,6 +130,14 @@
                     <span class="aocr-status-badge"><strong>Estado Informe</strong> @estadoInformeVisual</span>
                 </div>
 
+                @if (ViewBag.EsReevaluacion != null && (bool)ViewBag.EsReevaluacion)
+                {
+                    <div class="alert alert-info aocr-inline-alert mt-3 mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Atención:</strong> @ViewBag.MensajeReevaluacion
+                    </div>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(vm.MensajeBloqueo))
                 {
                     <div class="alert alert-warning aocr-inline-alert mt-3 mb-0">@vm.MensajeBloqueo</div>

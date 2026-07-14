@@ -5207,6 +5207,37 @@ namespace CapaPresentacion.Controllers
 
             ViewBag.InspeccionesSolicitud = inspeccionesSolicitud;
 
+            var inspeccionVinculada = inspeccionesSolicitud.OrderByDescending(i => i.CodigoInspeccion).FirstOrDefault();
+            bool tieneNcFirmadaConInspeccion = false;
+            if (inspeccionVinculada != null && (inspeccionVinculada.Estado == "RESULTADO_NO_SATISFACTORIO" || inspeccionVinculada.Estado == "No Satisfactorio"))
+            {
+                var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+                var informeDao = new CapaDatos.DAOs.InspeccionInformeDAO();
+                var informe = informeDao.ObtenerUltimoPorInspeccion(inspeccionVinculada.CodigoInspeccion);
+                if (informe != null)
+                {
+                    var nc = ncDao.ObtenerUltimaPorInforme(informe.CodigoInforme);
+                    if (nc != null && nc.Estado == "FIRMADA_COORDINADOR" && nc.TipoRuta == "CON_INSPECCION")
+                    {
+                        tieneNcFirmadaConInspeccion = true;
+                    }
+                }
+            }
+            ViewBag.TieneNcFirmadaConInspeccion = tieneNcFirmadaConInspeccion;
+
+            bool tieneNcSinInspeccion = false;
+            if (inspeccionVinculada != null && (inspeccionVinculada.Estado == "RESULTADO_NO_SATISFACTORIO" || inspeccionVinculada.Estado == "No Satisfactorio"))
+            {
+                var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
+                var ncs = ncDao.ListarPorSolicitud(id);
+                var ultimaNc = ncs.OrderByDescending(n => n.Version).FirstOrDefault();
+                if (ultimaNc != null && ultimaNc.TipoRuta == "SIN_INSPECCION" && (ultimaNc.Estado == "FIRMADA_COORDINADOR" || ultimaNc.Estado == "EN_SUBSANACION"))
+                {
+                    tieneNcSinInspeccion = true;
+                }
+            }
+            ViewBag.TieneNcSinInspeccion = tieneNcSinInspeccion;
+
             ViewBag.AsignacionActiva = _solicitudAocrInfraBL.ObtenerAsignacionActiva(id);
             ViewBag.HistorialAsignaciones = _solicitudAocrInfraBL.ObtenerHistorialAsignacion(id);
             var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
@@ -5542,15 +5573,6 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
             {
                 return HttpNotFound("No se encontró el archivo PDF firmado en almacenamiento.");
-            }
-
-            if (!vistaPrevia && esPropietario && string.Equals(estadoActual, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase))
-            {
-                string mensajeCambio;
-                if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, "Descarga final de Condiciones y Limitaciones firmada por RT.", out mensajeCambio))
-                {
-                    System.Diagnostics.Debug.WriteLine("[DescargarCondicionesLimitacionesModificacion] No se pudo marcar la solicitud como finalizada: " + mensajeCambio);
-                }
             }
 
             var nombreArchivo = ConstruirNombrePdfCondicionesLimitaciones(solicitud, firma.FechaFirma);

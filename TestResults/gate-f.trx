@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="763d762a-46a6-47a1-8b09-e80a0074631b" name="german.cajas@DESKTOP-S4GE44J 2026-07-14 11:41:06" runUser="DGAC\german.cajas" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-14T11:41:06.9380889-05:00" queuing="2026-07-14T11:41:06.9380889-05:00" start="2026-07-14T11:41:05.6267593-05:00" finish="2026-07-14T11:41:06.9696965-05:00" />
+  <TestSettings name="default" id="ce767465-94b9-4b5a-b0c9-7c7f8a9f2a26">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-07-14_11_41_06" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="c77f2d3f-8350-4ca8-81d2-4948b075fd21" testId="84fc64fa-bc10-9d15-f934-3e4856c7d3ea" testName="Rt_ValidaPropiedadEstadoTamanoFirmaPdfYAlmacenaFueraDePublico" computerName="DESKTOP-S4GE44J" duration="00:00:00.0066579" startTime="2026-07-14T11:41:06.5514669-05:00" endTime="2026-07-14T11:41:06.7530567-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c77f2d3f-8350-4ca8-81d2-4948b075fd21" />
+    <UnitTestResult executionId="30f14f93-a7c0-4ef6-b729-d6a77b04f95c" testId="e9ef9185-b157-384b-98ea-ca073bd9d557" testName="TransicionesNc_SonOptimistasYDevolucionCreaVersionSiguiente" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003729" startTime="2026-07-14T11:41:06.7530567-05:00" endTime="2026-07-14T11:41:06.7530567-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="30f14f93-a7c0-4ef6-b729-d6a77b04f95c" />
+    <UnitTestResult executionId="953c5c3d-15be-44d6-a59f-004f6f8154e1" testId="a854b757-039c-411e-198e-38bb13e993f3" testName="MigracionExistenteEsIdempotenteYTieneRollback" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003351" startTime="2026-07-14T11:41:06.7530567-05:00" endTime="2026-07-14T11:41:06.7697672-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="953c5c3d-15be-44d6-a59f-004f6f8154e1" />
+    <UnitTestResult executionId="a697cbf0-8904-4371-b309-ce183382bc22" testId="01997a9f-3a23-e5e9-deb9-864e87379393" testName="Inspector_ValidaRelacionAsignacionYDescargaProtegida" computerName="DESKTOP-S4GE44J" duration="00:00:00.0016065" startTime="2026-07-14T11:41:06.7530567-05:00" endTime="2026-07-14T11:41:06.7530567-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a697cbf0-8904-4371-b309-ce183382bc22" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MigracionExistenteEsIdempotenteYTieneRollback" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="a854b757-039c-411e-198e-38bb13e993f3">
+      <Execution id="953c5c3d-15be-44d6-a59f-004f6f8154e1" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateFSubsanacionDocumentalTests" name="MigracionExistenteEsIdempotenteYTieneRollback" />
+    </UnitTest>
+    <UnitTest name="TransicionesNc_SonOptimistasYDevolucionCreaVersionSiguiente" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e9ef9185-b157-384b-98ea-ca073bd9d557">
+      <Execution id="30f14f93-a7c0-4ef6-b729-d6a77b04f95c" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateFSubsanacionDocumentalTests" name="TransicionesNc_SonOptimistasYDevolucionCreaVersionSiguiente" />
+    </UnitTest>
+    <UnitTest name="Rt_ValidaPropiedadEstadoTamanoFirmaPdfYAlmacenaFueraDePublico" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="84fc64fa-bc10-9d15-f934-3e4856c7d3ea">
+      <Execution id="c77f2d3f-8350-4ca8-81d2-4948b075fd21" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateFSubsanacionDocumentalTests" name="Rt_ValidaPropiedadEstadoTamanoFirmaPdfYAlmacenaFueraDePublico" />
+    </UnitTest>
+    <UnitTest name="Inspector_ValidaRelacionAsignacionYDescargaProtegida" storage="c:\proyectos\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="01997a9f-3a23-e5e9-deb9-864e87379393">
+      <Execution id="a697cbf0-8904-4371-b309-ce183382bc22" />
+      <TestMethod codeBase="C:\proyectos\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.GateFSubsanacionDocumentalTests" name="Inspector_ValidaRelacionAsignacionYDescargaProtegida" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="84fc64fa-bc10-9d15-f934-3e4856c7d3ea" executionId="c77f2d3f-8350-4ca8-81d2-4948b075fd21" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e9ef9185-b157-384b-98ea-ca073bd9d557" executionId="30f14f93-a7c0-4ef6-b729-d6a77b04f95c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a854b757-039c-411e-198e-38bb13e993f3" executionId="953c5c3d-15be-44d6-a59f-004f6f8154e1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="01997a9f-3a23-e5e9-deb9-864e87379393" executionId="a697cbf0-8904-4371-b309-ce183382bc22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="4" executed="4" passed="4" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 
@@ -17,6 +18,7 @@ namespace CapaNegocio.Services
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly HistorialEstadoDAO _historialEstadoDao = new HistorialEstadoDAO();
+        private readonly NoConformidadDAO _noConformidadDao = new NoConformidadDAO();
 
         public AocrFinalizacionResultado IntentarFinalizarEmision(int solicitudId, int usuarioId, Func<string, bool> rutaExiste)
         {
@@ -49,12 +51,25 @@ namespace CapaNegocio.Services
                 {
                     firmaCondiciones = _firmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
                 }
-                var aocrFirmada = DocumentoFirmadoExiste(firmaAocr != null ? firmaAocr.RutaDocumento : null, rutaExiste);
-                var condicionesFirmadas = DocumentoFirmadoExiste(firmaCondiciones != null ? firmaCondiciones.RutaDocumento : null, rutaExiste);
+                var aocrFirmada = DocumentoFirmadoValido(firmaAocr, solicitudId, rutaExiste);
+                var condicionesFirmadas = DocumentoFirmadoValido(firmaCondiciones, solicitudId, rutaExiste);
 
                 if (!aocrFirmada || !condicionesFirmadas)
                 {
                     resultado.Motivo = "Documentos firmados incompletos. AocrFirmada=" + aocrFirmada + "; CondicionesFirmadas=" + condicionesFirmadas;
+                    LogPendiente(solicitudId, resultado.Motivo);
+                    return resultado;
+                }
+
+                var ncVigentes = (_noConformidadDao.ListarPorSolicitud(solicitudId) ?? new System.Collections.Generic.List<CapaModelo.NoConformidad>())
+                    .GroupBy(nc => !string.IsNullOrWhiteSpace(nc.NumeroNoConformidad)
+                        ? nc.NumeroNoConformidad.Trim().ToUpperInvariant()
+                        : "INFORME:" + nc.CodigoInforme)
+                    .Select(g => g.OrderByDescending(nc => nc.Version).ThenByDescending(nc => nc.CodigoNoConformidad).First())
+                    .ToList();
+                if (ncVigentes.Any(NcBloqueaCierre))
+                {
+                    resultado.Motivo = "Existen no conformidades pendientes que impiden cerrar el expediente.";
                     LogPendiente(solicitudId, resultado.Motivo);
                     return resultado;
                 }
@@ -100,11 +115,24 @@ namespace CapaNegocio.Services
             }
         }
 
-        private static bool DocumentoFirmadoExiste(string ruta, Func<string, bool> rutaExiste)
+        private static bool DocumentoFirmadoValido(CapaModelo.AocrFirmaDocumento firma, int solicitudId, Func<string, bool> rutaExiste)
         {
-            return !string.IsNullOrWhiteSpace(ruta)
+            return firma != null
+                && firma.CodigoSolicitud == solicitudId
+                && firma.FechaFirma > DateTime.MinValue
+                && !string.IsNullOrWhiteSpace(firma.HashDocumento)
+                && firma.TamanioPdfFirmado.GetValueOrDefault() > 0
+                && !string.IsNullOrWhiteSpace(firma.FirmadoPorRol)
+                && !string.IsNullOrWhiteSpace(firma.RutaDocumento)
                 && rutaExiste != null
-                && rutaExiste(ruta);
+                && rutaExiste(firma.RutaDocumento);
+        }
+
+        private static bool NcBloqueaCierre(CapaModelo.NoConformidad nc)
+        {
+            if (nc == null) return false;
+            var estado = (nc.Estado ?? string.Empty).Trim().ToUpperInvariant();
+            return estado != "CERRADA" && estado != "CERRADO" && estado != "ANULADA";
         }
 
         private static void LogOk(int solicitudId, string estadoNuevo, bool aocrFirmada, bool condicionesFirmadas)
