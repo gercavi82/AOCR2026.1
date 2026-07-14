@@ -1,68 +1,15 @@
 @model CapaModelo.NoConformidad
 @{
-    ViewBag.Title = "Subsanar No Conformidad";
+    ViewBag.Title = "Subsanación documental";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    var numeroSolicitud = Convert.ToString(ViewBag.NumeroSolicitud);
 }
 
 <div class="container mt-4">
-    <div class="card border-info shadow-sm mb-4">
-        <div class="card-header bg-info text-white">
-            <h4 class="mb-0"><i class="fas fa-file-upload"></i> Subsanación Documental de No Conformidad</h4>
-        </div>
-        <div class="card-body">
-            <h5 class="card-title">Solicitud: @(string.IsNullOrWhiteSpace(numeroSolicitud) ? "N/D" : numeroSolicitud)</h5>
-            <p class="card-text">
-                Por favor, adjunte un único documento PDF que contenga toda la evidencia documental necesaria para resolver los hallazgos observados durante la inspección técnica (Ruta: SIN INSPECCIÓN).
-            </p>
-            
-            <div class="alert alert-warning">
-                <strong><i class="fas fa-exclamation-triangle"></i> Importante:</strong>
-                <ul>
-                    <li>El archivo debe estar en formato PDF.</li>
-                    <li>Asegúrese de consolidar toda la evidencia en este documento.</li>
-                </ul>
-            </div>
-
-            @using (Html.BeginForm("SubsanarNcPost", "RT", FormMethod.Post, new { enctype = "multipart/form-data", id = "formSubsanacion" }))
-            {
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="codigoNoConformidad" value="@Model.CodigoNoConformidad" />
-
-                <div class="form-group mb-4">
-                    <label for="archivoSubsanacion" class="form-label font-weight-bold">Documento de Subsanación (PDF)</label>
-                    <input type="file" class="form-control" id="archivoSubsanacion" name="archivoSubsanacion" accept="application/pdf,.pdf" required />
-                    <small class="text-muted">Tamaño máximo: 10 MB.</small>
-                </div>
-
-                <div class="d-flex justify-content-end mt-4">
-                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-secondary me-2">Cancelar</a>
-                    <button type="submit" class="btn btn-primary" id="btnEnviarSubsanacion">Enviar Subsanación</button>
-                </div>
-            }
-        </div>
+    <div class="alert alert-warning shadow-sm">
+        <h4><i class="fas fa-exclamation-triangle"></i> Formulario retirado</h4>
+        <p>La carga de un PDF general ya no está habilitada. Debe cargar una nueva versión para cada documento observado.</p>
+        <a class="btn btn-warning" href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = Model.CodigoSolicitud })">
+            Ir a subsanación individual
+        </a>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        $(document).ready(function () {
-            $('#formSubsanacion').on('submit', function (e) {
-                var fileInput = $('#archivoSubsanacion')[0];
-                if (fileInput.files.length === 0) {
-                    alert('Debe seleccionar un archivo PDF.');
-                    e.preventDefault();
-                    return false;
-                }
-                var fileName = fileInput.files[0].name;
-                var ext = fileName.split('.').pop().toLowerCase();
-                if (ext !== 'pdf') {
-                    alert('El archivo debe ser un documento PDF válido.');
-                    e.preventDefault();
-                    return false;
-                }
-                $('#btnEnviarSubsanacion').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
-            });
-        });
-    </script>
-}

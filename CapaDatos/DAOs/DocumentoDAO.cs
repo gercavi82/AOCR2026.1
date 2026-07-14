@@ -66,7 +66,8 @@ namespace CapaDatos.DAOs
                         if (solicitudAnterior != nuevaVersion.CodigoSolicitud)
                             throw new InvalidOperationException("El documento no pertenece a la solicitud indicada.");
                         if (string.Equals(estadoAnterior, "ACEPTADO", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoAnterior, "APROBADO", StringComparison.OrdinalIgnoreCase))
+                            string.Equals(estadoAnterior, "APROBADO", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoAnterior, "ACEPTADO_SUBSANACION", StringComparison.OrdinalIgnoreCase))
                             throw new InvalidOperationException("Un documento aceptado no puede ser reemplazado.");
 
                         using (var ncCmd = new NpgsqlCommand(@"

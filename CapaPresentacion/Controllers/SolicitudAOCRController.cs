@@ -3580,7 +3580,7 @@ namespace CapaPresentacion.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(solicitud.Email))
                 {
-                    EmailHelper.EnviarEmail(
+                    EncolarCorreoGate9(
                         solicitud.Email,
                         "Observación a su Solicitud AOCR",
                         $"Estimado operador,<br><br>Su solicitud <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>observada</b>.<br><br><b>Observación:</b> {observacion}<br><br>Por favor revise y actualice su información.<br><br>Saludos."
@@ -4652,6 +4652,14 @@ namespace CapaPresentacion.Controllers
         // =========================================================
         // GET: Subsanar — Vista enfocada de subsanación
         // =========================================================
+        private static bool EsEstadoNcHabilitadoParaCargaIndividual(string estado)
+        {
+            var normalizado = (estado ?? string.Empty).Trim().ToUpperInvariant();
+            return normalizado == "FIRMADA_COORDINADOR"
+                || normalizado == "EN_SUBSANACION"
+                || normalizado == "SUBSANACION_DEVUELTA";
+        }
+
         public ActionResult Subsanar(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -4668,11 +4676,21 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Login", "Account");
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
-            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            var ncSubsanable = new NoConformidadDAO().ListarPorSolicitud(id)
+                .Where(nc => nc != null && string.Equals(nc.TipoRuta, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(nc => nc.Version).ThenByDescending(nc => nc.CodigoNoConformidad)
+                .FirstOrDefault();
+            var estadoNcSubsanable = ncSubsanable != null && EsEstadoNcHabilitadoParaCargaIndividual(ncSubsanable.Estado);
+            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase) && !estadoNcSubsanable)
             {
                 TempData["NotificacionTipo"] = "warning";
                 TempData["NotificacionMensaje"] = "La solicitud no se encuentra en estado Observada.";
                 return RedirectToAction("Detalle", new { id });
+            }
+
+            if (estadoNcSubsanable)
+            {
+                estadoActual = EstadoSolicitud.Observada;
             }
 
             if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
@@ -4758,7 +4776,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
-            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            var ncActual = new NoConformidadDAO().ListarPorSolicitud(codigoSolicitud)
+                .Where(nc => nc != null && string.Equals(nc.TipoRuta, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(nc => nc.Version).ThenByDescending(nc => nc.CodigoNoConformidad)
+                .FirstOrDefault();
+            var estadoNcSubsanable = ncActual != null && EsEstadoNcHabilitadoParaCargaIndividual(ncActual.Estado);
+            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase) && !estadoNcSubsanable)
             {
                 TempData["NotificacionTipo"] = "warning";
                 TempData["NotificacionMensaje"] = "La solicitud ya no se encuentra en estado Observada.";
@@ -4775,6 +4798,13 @@ namespace CapaPresentacion.Controllers
                 .OrderByDescending(nc => nc.Version)
                 .ThenByDescending(nc => nc.CodigoNoConformidad)
                 .FirstOrDefault();
+
+            if (estadoNcSubsanable)
+            {
+                // El servicio documental utiliza OBSERVADA como estado efectivo de carga;
+                // la máquina de NC conserva el estado institucional real.
+                estadoActual = EstadoSolicitud.Observada;
+            }
 
             if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
             {
@@ -5620,6 +5650,10 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("No existe un PDF firmado de Condiciones y Limitaciones para esta solicitud.");
             }
 
+            return ServirDocumentoSeguroInstitucional(firma.CodigoFirma, id, firma.CodigoSolicitud,
+                firma.RutaDocumento, ConstruirNombrePdfCondicionesLimitaciones(solicitud, firma.FechaFirma), vistaPrevia);
+
+#pragma warning disable 162
             var rutaFisica = ResolverRutaDocumentoAocrFirmado(firma.RutaDocumento);
             if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
             {
@@ -5629,7 +5663,9 @@ namespace CapaPresentacion.Controllers
             var nombreArchivo = ConstruirNombrePdfCondicionesLimitaciones(solicitud, firma.FechaFirma);
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
-            return File(rutaFisica, "application/pdf");
+            return ServirDocumentoSeguroInstitucional(firma.CodigoFirma, id, firma.CodigoSolicitud,
+                firma.RutaDocumento, nombreArchivo, vistaPrevia);
+#pragma warning restore 162
         }
 
         // ==========================================================================
@@ -5723,7 +5759,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 // Guardar archivo físico
-                string carpetaVirtual = "~/Uploads/AOCR";
+                string carpetaVirtual = "~/App_Data/Uploads/AOCR/Certificados";
                 string carpetaFisica = Server.MapPath(carpetaVirtual);
                 if (!Directory.Exists(carpetaFisica))
                 {
@@ -5808,6 +5844,12 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            var solicitudSegura = _solicitudDAO.ObtenerPorId(id);
+            if (solicitudSegura == null || documento.CodigoSolicitud != id) return new HttpStatusCodeResult(403);
+            return ServirDocumentoSeguroInstitucional(documento.CodigoDocumento, id, documento.CodigoSolicitud,
+                documento.RutaArchivo, ConstruirNombrePdfCertificadoAocr(solicitudSegura), vistaPrevia);
+
+#pragma warning disable 162
             string ruta = documento.RutaArchivo;
             if (!Path.IsPathRooted(ruta))
             {
@@ -5828,6 +5870,7 @@ namespace CapaPresentacion.Controllers
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreDescarga);
             return File(bytes, "application/pdf");
+#pragma warning restore 162
         }
 
         [Authorize]
@@ -5862,6 +5905,7 @@ namespace CapaPresentacion.Controllers
             var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(id, DocumentoTipoReconocimiento);
             string rutaDocumento = firma != null ? firma.RutaDocumento : null;
             DateTime? fechaDocumento = firma != null ? (DateTime?)firma.FechaFirma : null;
+            var documentoInstitucionalId = firma != null ? firma.CodigoFirma : 0;
 
             if (string.IsNullOrWhiteSpace(rutaDocumento))
             {
@@ -5870,6 +5914,7 @@ namespace CapaPresentacion.Controllers
                 {
                     rutaDocumento = certificado.RutaDocumento;
                     fechaDocumento = certificado.UpdatedAt ?? certificado.FechaEmision;
+                    documentoInstitucionalId = certificado.CodigoCertificado;
                 }
             }
 
@@ -5878,6 +5923,10 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("No existe un PDF AOCR firmado para esta solicitud.");
             }
 
+            return ServirDocumentoSeguroInstitucional(documentoInstitucionalId, id, id, rutaDocumento,
+                ConstruirNombrePdfCertificadoAocr(solicitud, fechaDocumento), vistaPrevia);
+
+#pragma warning disable 162
             var rutaFisica = ResolverRutaDocumentoAocrFirmado(rutaDocumento);
             if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
             {
@@ -5887,7 +5936,27 @@ namespace CapaPresentacion.Controllers
             var nombreArchivo = ConstruirNombrePdfCertificadoAocr(solicitud, fechaDocumento);
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
-            return File(rutaFisica, "application/pdf");
+            return ServirDocumentoSeguroInstitucional(documentoInstitucionalId, id, id,
+                rutaDocumento, nombreArchivo, vistaPrevia);
+#pragma warning restore 162
+        }
+
+        private ActionResult ServirDocumentoSeguroInstitucional(int documentoId, int solicitudEsperadaId,
+            int solicitudDocumentoId, string rutaPersistida, string nombreDescarga, bool vistaPrevia)
+        {
+            var usuarioId = ObtenerUsuarioActualId();
+            var servicio = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
+            var archivo = servicio.Resolver(documentoId, solicitudEsperadaId, solicitudDocumentoId,
+                rutaPersistida, nombreDescarga,
+                ruta => Path.IsPathRooted(ruta) ? ruta : Server.MapPath(ruta.StartsWith("~") ? ruta : "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta)));
+            if (!archivo.EsValido)
+                return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
+                    ? (ActionResult)HttpNotFound(archivo.MensajePublico)
+                    : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, archivo.NombreDescarga);
+            return File(archivo.RutaFisica, archivo.Mime);
         }
 
         private string ConstruirNombrePdfAceptacionDocumental(SolicitudAOCR solicitud, DateTime? fecha = null)
@@ -7503,8 +7572,29 @@ namespace CapaPresentacion.Controllers
 
             foreach (var destinatario in destinatarios)
             {
-                EmailHelper.EnviarEmail(destinatario, asunto, cuerpo);
+                EncolarCorreoGate9(destinatario, asunto, cuerpo, solicitud.CodigoSolicitud, "SUBSANACION_DEVUELTA_RT");
             }
+        }
+
+        private static void EncolarCorreoGate9(string destinatario, string asunto, string cuerpo,
+            int solicitudId = 0, string tipoEvento = "SOLICITUD_OBSERVADA")
+        {
+            var correo = (destinatario ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(correo)) return;
+            if (solicitudId <= 0)
+            {
+                var matchSolicitud = Regex.Match(cuerpo ?? string.Empty, @"#(?<id>\d+)");
+                int.TryParse(matchSolicitud.Groups["id"].Value, out solicitudId);
+            }
+            new EmailQueueService().EncolarAsync(new EmailQueueItem
+            {
+                Para = correo, Asunto = asunto, Cuerpo = cuerpo, Estado = "PENDIENTE",
+                SolicitudId = solicitudId > 0 ? (int?)solicitudId : null,
+                TipoNotificacion = tipoEvento,
+                EventKey = Gate8Eventos.Key(tipoEvento, solicitudId, correo.ToUpperInvariant()),
+                CorrelationId = solicitudId > 0 ? Gate8Eventos.Correlation(null, solicitudId) : Guid.NewGuid().ToString("N"),
+                EsHtml = true, MaxIntentos = 5
+            }).GetAwaiter().GetResult();
         }
 
         private static string NormalizarDecisionRevisionDocumental(string decision)

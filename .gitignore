@@ -5,10 +5,21 @@
 .venv/
 **/bin/
 **/obj/
+bin/
+obj/
 packages/
+TestResults/
+*.trx
+*.dll
+*.pdb
+*.cache
+*.exe
 *.log
 *.vsidx
 **/App_Data/Logs/
+**/App_Data/AOCR/Comprobantes/
+**/App_Data/AOCR/SolicitudesInspeccion/
+**/App_Data/AOCR/SolicitudesInspeccionFirmadas/
 docs/export/node_modules/
 
 .fake

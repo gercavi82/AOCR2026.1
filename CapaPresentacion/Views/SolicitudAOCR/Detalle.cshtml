@@ -2042,7 +2042,7 @@
                     <p class="text-muted mb-0">La inspección anterior identificó hallazgos que pueden resolverse enviando documentación adicional. Por favor, cargue su respuesta.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="@Url.Action("SubsanarNc", "RT", new { codigoSolicitud = Model.CodigoSolicitud })" class="btn btn-warning aocr-action-btn">
+                    <a href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-warning aocr-action-btn">
                         <i class="fas fa-file-upload"></i> Subsanar No Conformidad
                     </a>
                 </div>
@@ -2398,7 +2398,7 @@
                                     <td>
                                         @if (!string.IsNullOrWhiteSpace(ds.RutaArchivo))
                                         {
-                                            <a href="@ds.RutaArchivo" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir">
+                                            <a href="@Url.Action("Descargar", "Documento", new { id = ds.CodigoDocumento, vistaPrevia = true })" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir">
                                                 <i class="fas fa-external-link-alt"></i>
                                             </a>
                                         }

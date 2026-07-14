@@ -83,12 +83,12 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.Abstractions.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.Options.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\Microsoft.Extensions.DependencyInjection.xml
+C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.TestPlatform.AdapterUtilities.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.TestPlatform.CoreUtilities.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.VisualStudio.TestPlatform.MSTestAdapter.PlatformServices.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
-C:\proyectos\AOCR\AOCR.Tests\bin\Debug\es\Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\Microsoft.VisualStudio.TestPlatform.MSTestAdapter.PlatformServices.dll
 C:\proyectos\AOCR\AOCR.Tests\bin\Debug\Microsoft.TestPlatform.AdapterUtilities.dll

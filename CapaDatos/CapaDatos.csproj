@@ -332,6 +332,7 @@
     <Compile Include="Entidades\ControlFR3Detalle.cs" />
     <Compile Include="Entidades\EventoTrazabilidad.cs" />
     <Compile Include="DAOs\TrazabilidadDAO.cs" />
+    <Compile Include="DAOs\Gate8EventoDAO.cs" />
     <Compile Include="Constants\EstadoConstants.cs" />
     <Compile Include="Constants\AocrEstadosProceso.cs" />
     <Compile Include="Constants\EstadoDocumentoInstitucional.cs" />

@@ -498,12 +498,6 @@ namespace CapaPresentacion.Controllers
             {
                 ruta = contexto.Certificado.RutaDocumento;
             }
-            var rutaFisica = StorageService.ResolverRutaFisica(ruta);
-            if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
-            {
-                return new HttpStatusCodeResult(404, firmado ? "No existe AOCR firmado para descargar." : "No existe PDF oficial AOCR generado.");
-            }
-
             var nombreBase = (contexto.Solicitud.NumeroSolicitud ?? ("AOCR-" + solicitudId)).Replace("/", "-").Replace("\\", "-");
             var sufijo = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) ? "-condiciones" : "-aocr";
             var nombre = firmado ? nombreBase + sufijo + "-firmado.pdf" : nombreBase + sufijo + "-oficial.pdf";
@@ -517,7 +511,18 @@ namespace CapaPresentacion.Controllers
                 Response.AppendHeader("Content-Disposition", "inline; filename=\"" + nombre + "\"");
             }
 
-            return File(rutaFisica, "application/pdf");
+            var documentoId = firmado && firma != null ? firma.CodigoFirma
+                : (documentoGenerado != null ? documentoGenerado.CodigoDocumento
+                    : (contexto.Certificado != null ? contexto.Certificado.CodigoCertificado : solicitudId));
+            var seguro = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+                evento => Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + (User != null ? User.Identity.Name : string.Empty)));
+            var archivo = seguro.Resolver(documentoId, solicitudId, contexto.Solicitud.CodigoSolicitud, ruta, nombre,
+                valor => StorageService.ResolverRutaFisica(valor));
+            if (!archivo.EsValido)
+                return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
+                    ? (ActionResult)HttpNotFound(archivo.MensajePublico)
+                    : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            return File(archivo.RutaFisica, archivo.Mime);
         }
 
         private void RegistrarFirma(FirmaAocrContexto contexto, string tipoDocumento, string rutaFirmada, ResultadoFirmaDigital resultadoFirma, string contenidoQr, string nombreFirmante, long bytesFirmado)

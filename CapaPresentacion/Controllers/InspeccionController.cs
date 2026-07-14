@@ -1849,7 +1849,9 @@ namespace CapaPresentacion.Controllers
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico));
 
-            return File(fullPath, "application/pdf");
+            return ServirArchivoInstitucionalSeguro(informeTecnico != null ? informeTecnico.CodigoInforme : id,
+                inspeccion.CodigoSolicitud, rutaRelativa, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico),
+                descargar, baseDir);
         }
 
         private ActionResult ServirInformeFirmadoInspectorDireccion(int codigoInforme, bool descargar)
@@ -1930,7 +1932,9 @@ namespace CapaPresentacion.Controllers
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informe));
-            return File(disponibilidad.RutaFisica, "application/pdf");
+            return ServirArchivoInstitucionalSeguro(informe.CodigoInforme, inspeccion.CodigoSolicitud,
+                disponibilidad.RutaFisica, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informe),
+                descargar, Server.MapPath(CARPETA_VIRTUAL_INFORMES));
         }
 
         private ActionResult ServirListaVerificacionOperacionalEaePdf(int id, bool descargar)
@@ -2018,7 +2022,9 @@ namespace CapaPresentacion.Controllers
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista));
-            return File(fullPath, "application/pdf");
+            return ServirArchivoInstitucionalSeguro(lista != null ? lista.CodigoListaVerificacion : id,
+                inspeccion.CodigoSolicitud, rutaRelativa, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista),
+                descargar, baseDir);
         }
 
         private ActionResult ServirAdjuntoInformeTecnico(int id, string archivo, bool descargar)
@@ -2064,19 +2070,9 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("El archivo adjunto ya no existe en el servidor.");
             }
 
-            var contentType = !string.IsNullOrWhiteSpace(adjunto.ContentType)
-                ? adjunto.ContentType
-                : MimeMapping.GetMimeMapping(adjunto.NombreOriginal ?? nombreFisico);
             var nombreDescarga = string.IsNullOrWhiteSpace(adjunto.NombreOriginal) ? nombreFisico : adjunto.NombreOriginal;
-
-            Response.Headers["X-Content-Type-Options"] = "nosniff";
-            if (!descargar)
-            {
-                Response.Headers["Content-Disposition"] = "inline; filename=\"" + nombreDescarga.Replace("\"", string.Empty) + "\"";
-                return File(fullPath, contentType);
-            }
-
-            return File(fullPath, contentType, nombreDescarga);
+            return ServirArchivoInstitucionalSeguro(informe != null ? informe.CodigoInforme : id,
+                inspeccion.CodigoSolicitud, fullPath, nombreDescarga, descargar, basePath);
         }
 
         private ActionResult GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(int codigoInspeccion, bool descargar)
@@ -2285,8 +2281,24 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("El archivo solicitado no existe.");
             }
 
-            var contentType = string.IsNullOrWhiteSpace(documento.ContentType) ? "application/octet-stream" : documento.ContentType;
-            return File(fullPath, contentType, documento.NombreArchivoOriginal ?? documento.NombreArchivoStorage ?? ("Documento_" + documentoId));
+            return ServirArchivoInstitucionalSeguro(documentoId, inspeccion.CodigoSolicitud, rutaRelativa,
+                documento.NombreArchivoOriginal ?? documento.NombreArchivoStorage ?? ("Documento_" + documentoId), true, baseDir);
+        }
+
+        private ActionResult ServirArchivoInstitucionalSeguro(int documentoId, int solicitudId, string ruta,
+            string nombreDescarga, bool descargar, params string[] raicesPermitidas)
+        {
+            var servicio = new DocumentoSeguroService(raicesPermitidas,
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + ObtenerCodigoUsuario()));
+            var archivo = servicio.Resolver(documentoId, solicitudId, solicitudId, ruta, nombreDescarga,
+                valor => Server.MapPath(valor.StartsWith("~") ? valor : "~" + (valor.StartsWith("/") ? valor : "/" + valor)));
+            if (!archivo.EsValido)
+                return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
+                    ? (ActionResult)HttpNotFound(archivo.MensajePublico)
+                    : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, archivo.NombreDescarga);
+            return File(archivo.RutaFisica, archivo.Mime);
         }
 
         [HttpPost]
@@ -4077,13 +4089,50 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        public ActionResult DescargarNcInspector(int codigoNoConformidad)
+        {
+            return DescargarNcSegura(codigoNoConformidad, false);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        public ActionResult DescargarNcCoordinador(int codigoNoConformidad)
+        {
+            return DescargarNcSegura(codigoNoConformidad, true);
+        }
+
+        private ActionResult DescargarNcSegura(int codigoNoConformidad, bool preferirFirmaCoordinador)
+        {
+            var nc = new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);
+            if (nc == null) return HttpNotFound();
+            var inspeccion = _inspeccionDAO.ObtenerPorId(nc.CodigoInspeccion);
+            if (inspeccion == null || inspeccion.CodigoSolicitud != nc.CodigoSolicitud) return new HttpStatusCodeResult(403);
+            if (!PuedeAccederInspeccion(inspeccion)) return new HttpStatusCodeResult(403);
+            var ruta = preferirFirmaCoordinador
+                ? FirstNonEmpty(nc.RutaPdfFirmadoCoordinador, nc.RutaPdfFirmadoInspector, nc.RutaPdf)
+                : FirstNonEmpty(nc.RutaPdfFirmadoInspector, nc.RutaPdf);
+            var servicio = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + ObtenerCodigoUsuario()));
+            var archivo = servicio.Resolver(nc.CodigoNoConformidad, nc.CodigoSolicitud, inspeccion.CodigoSolicitud,
+                ruta, "No_Conformidad_" + nc.CodigoNoConformidad + ".pdf", Server.MapPath);
+            if (!archivo.EsValido) return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
+                ? (ActionResult)HttpNotFound(archivo.MensajePublico) : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            return File(archivo.RutaFisica, archivo.Mime, archivo.NombreDescarga);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         public ActionResult DescargarSubsanacionNc(int codigoNoConformidad,int codigoInspeccion)
         {
             var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);var inspeccion=_inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if(nc==null||inspeccion==null||nc.CodigoInspeccion!=codigoInspeccion)return HttpNotFound();
             if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403);
-            if(string.IsNullOrWhiteSpace(nc.RutaPdfSubsanacionRt))return HttpNotFound();var path=Server.MapPath(nc.RutaPdfSubsanacionRt);if(!System.IO.File.Exists(path))return HttpNotFound();
-            return File(path,"application/pdf","Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf");
+            var seguro=new DocumentoSeguroService(new[]{Server.MapPath("~/App_Data")},
+                evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";Inspector="+ObtenerCodigoUsuario()));
+            var archivo=seguro.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,inspeccion.CodigoSolicitud,
+                nc.RutaPdfSubsanacionRt,"Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
+            if(!archivo.EsValido)return archivo.Error==DocumentoSeguroError.NoEncontrado||archivo.Error==DocumentoSeguroError.Vacio? (ActionResult)HttpNotFound(archivo.MensajePublico):new HttpStatusCodeResult(403,archivo.MensajePublico);
+            return File(archivo.RutaFisica,archivo.Mime,archivo.NombreDescarga);
         }
 
         [HttpPost]

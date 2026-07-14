@@ -424,6 +424,24 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "No tiene permisos para acceder a este documento.");
                 }
 
+                var raicesSeguras = new List<string> { Server.MapPath("~/App_Data") };
+                if (!string.IsNullOrWhiteSpace(_rutaDocumentos)) raicesSeguras.Add(_rutaDocumentos);
+                var servicioSeguro = new DocumentoSeguroService(raicesSeguras,
+                    evento => Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
+                var documentoSeguro = servicioSeguro.Resolver(doc.CodigoDocumento, solicitud.CodigoSolicitud, doc.CodigoSolicitud,
+                    doc.RutaArchivo ?? doc.RutaGuardada, doc.NombreArchivoVisible ?? doc.NombreArchivo,
+                    ruta => ruta.StartsWith("~") ? Server.MapPath(ruta) : Server.MapPath("~" + (ruta.StartsWith("/") ? ruta : "/" + ruta)));
+                if (!documentoSeguro.EsValido)
+                    return documentoSeguro.Error == DocumentoSeguroError.NoEncontrado || documentoSeguro.Error == DocumentoSeguroError.Vacio
+                        ? (ActionResult)HttpNotFound(documentoSeguro.MensajePublico)
+                        : new HttpStatusCodeResult(HttpStatusCode.Forbidden, documentoSeguro.MensajePublico);
+                var bytesSeguros = System.IO.File.ReadAllBytes(documentoSeguro.RutaFisica);
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                if (vistaPrevia && (documentoSeguro.Mime == "application/pdf" || documentoSeguro.Mime.StartsWith("image/")))
+                    return File(bytesSeguros, documentoSeguro.Mime);
+                return File(bytesSeguros, documentoSeguro.Mime, documentoSeguro.NombreDescarga);
+
+#pragma warning disable 162
                 var rutaFisica = ResolverRutaFisicaDocumento(doc);
 
                 if (string.IsNullOrWhiteSpace(rutaFisica) || !EsRutaDocumentoPermitida(rutaFisica) || !System.IO.File.Exists(rutaFisica))
@@ -442,6 +460,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 return File(bytes, string.IsNullOrWhiteSpace(mimeType) ? "application/octet-stream" : mimeType, doc.NombreArchivo);
+#pragma warning restore 162
             }
             catch
             {

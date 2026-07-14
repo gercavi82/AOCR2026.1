@@ -1200,7 +1200,8 @@ namespace CapaPresentacion.Controllers
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
                         RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFisicaCertificado);
-                        return File(rutaFisicaCertificado, "application/pdf");
+                        return ServirDocumentoGate7(item.Certificado.CodigoCertificado, solicitudId,
+                            rutaExistenteCertificado, nombreArchivoExistente, descargar);
                     }
                 }
 
@@ -1214,7 +1215,8 @@ namespace CapaPresentacion.Controllers
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
                         RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFisica);
-                        return File(rutaFisica, "application/pdf");
+                        return ServirDocumentoGate7(item.Certificado.CodigoCertificado, solicitudId,
+                            rutaExistente, nombreArchivoExistente, descargar);
                     }
                 }
 
@@ -1228,7 +1230,8 @@ namespace CapaPresentacion.Controllers
                         Response.Headers["X-Content-Type-Options"] = "nosniff";
                         PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoFirmado);
                         RegistrarLogDocumentoValidacionOk(solicitudId, tipoNormalizado, rutaFirmada);
-                        return File(rutaFirmada, "application/pdf");
+                        return ServirDocumentoGate7(documentoFirmado.CodigoFirma, solicitudId,
+                            documentoFirmado.RutaDocumento, nombreArchivoFirmado, descargar);
                     }
                 }
 
@@ -2788,7 +2791,24 @@ namespace CapaPresentacion.Controllers
                 : ConstruirNombrePdfDocumentoValidacion(solicitud, "RECONOCIMIENTO", fechaDocumento);
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombre);
-            return File(rutaFisica, "application/pdf");
+            var documentoId = firmado
+                ? (_aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "RECONOCIMIENTO")?.CodigoFirma ?? solicitudId)
+                : ((item != null ? item.Certificado : _certificadoDao.ObtenerPorSolicitud(solicitudId))?.CodigoCertificado ?? solicitudId);
+            return ServirDocumentoGate7(documentoId, solicitudId, rutaRelativa, nombre, descargar);
+        }
+
+        private ActionResult ServirDocumentoGate7(int documentoId, int solicitudId, string ruta, string nombre, bool descargar)
+        {
+            var seguro = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + (User != null ? User.Identity.Name : string.Empty)));
+            var archivo = seguro.Resolver(documentoId, solicitudId, solicitudId, ruta, nombre, ResolverRutaDocumento);
+            if (!archivo.EsValido)
+                return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
+                    ? (ActionResult)HttpNotFound(archivo.MensajePublico)
+                    : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, archivo.NombreDescarga);
+            return File(archivo.RutaFisica, archivo.Mime);
         }
 
         private FirmarAocrInstitucionalResult FirmarAocrInstitucionalSeguro(FirmarAocrInstitucionalRequest request)

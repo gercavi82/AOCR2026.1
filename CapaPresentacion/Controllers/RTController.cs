@@ -383,6 +383,7 @@ namespace CapaPresentacion.Controllers
         
         [HttpGet]
         [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS + "," + ROL_ADMIN)]
+        [Obsolete("Use SolicitudAOCR/Subsanar. Compatibilidad de navegación únicamente.")]
         public ActionResult SubsanarNc(int codigoSolicitud)
         {
             int usuarioId;
@@ -393,6 +394,12 @@ namespace CapaPresentacion.Controllers
             if (solicitud == null) return HttpNotFound();
             if (!EsPropietarioSolicitud(solicitud,usuarioId))return new HttpStatusCodeResult(403,"No está autorizado para subsanar esta solicitud.");
 
+            System.Diagnostics.Trace.TraceWarning("[GATE7A][LEGACY_REDIRECT] Endpoint=RT/SubsanarNc; SolicitudId={0}; UsuarioId={1}", codigoSolicitud, usuarioId);
+            TempData["Warning"] = "La carga general fue retirada. Subsane individualmente cada documento observado.";
+            return RedirectToAction("Subsanar", "SolicitudAOCR", new { id = codigoSolicitud });
+
+#pragma warning disable 162
+            // Código histórico conservado temporalmente solo como referencia de migración.
             // Verificar si hay NC SIN_INSPECCION
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
             var ncs = ncDao.ListarPorSolicitud(codigoSolicitud);
@@ -412,11 +419,13 @@ namespace CapaPresentacion.Controllers
 
             ViewBag.NumeroSolicitud = solicitud.NumeroSolicitud;
             return View(ultimaNc);
+#pragma warning restore 162
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS + "," + ROL_ADMIN)]
+        [Obsolete("La carga general está deshabilitada. Use SolicitudAOCR/EnviarSubsanacionAlInspector.")]
         public ActionResult SubsanarNcPost(int codigoNoConformidad, System.Web.HttpPostedFileBase archivoSubsanacion)
         {
             int usuarioId;
@@ -428,6 +437,11 @@ namespace CapaPresentacion.Controllers
             if (nc == null) return HttpNotFound();
             var solicitud=_solicitudDAO.ObtenerPorId(nc.CodigoSolicitud);
             if(!EsPropietarioSolicitud(solicitud,usuarioId))return new HttpStatusCodeResult(403,"No está autorizado para subsanar esta solicitud.");
+            System.Diagnostics.Trace.TraceWarning("[GATE7A][LEGACY_WRITE_BLOCKED] Endpoint=RT/SubsanarNcPost; NC={0}; SolicitudId={1}; UsuarioId={2}; ArchivoIgnorado={3}", codigoNoConformidad, nc.CodigoSolicitud, usuarioId, archivoSubsanacion != null);
+            TempData["Warning"] = "La carga general está obsoleta y fue rechazada. Use la subsanación individual por documento.";
+            return RedirectToAction("Subsanar", "SolicitudAOCR", new { id = nc.CodigoSolicitud });
+
+#pragma warning disable 162
             if(!string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase)
                 || (!string.Equals(nc.Estado,"FIRMADA_COORDINADOR",StringComparison.OrdinalIgnoreCase)&&!string.Equals(nc.Estado,"EN_SUBSANACION",StringComparison.OrdinalIgnoreCase)))
                 return new HttpStatusCodeResult(409,"La No Conformidad no admite subsanación en su estado actual.");
@@ -482,6 +496,26 @@ namespace CapaPresentacion.Controllers
 
             TempData["Success"] = "La subsanación ha sido enviada exitosamente para revisión del Inspector.";
             return RedirectToAction("Detalle", "SolicitudAOCR", new { id = nc.CodigoSolicitud });
+#pragma warning restore 162
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS + "," + ROL_ADMIN)]
+        public ActionResult DescargarNcRt(int codigoNoConformidad)
+        {
+            int usuarioId;if(!TryObtenerUsuarioActualId(out usuarioId))return new HttpStatusCodeResult(401);
+            var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);if(nc==null)return HttpNotFound();
+            var solicitud=_solicitudDAO.ObtenerPorId(nc.CodigoSolicitud);
+            if(!EsPropietarioSolicitud(solicitud,usuarioId))return new HttpStatusCodeResult(403);
+            var estado=(nc.Estado??string.Empty).Trim().ToUpperInvariant();
+            if(estado!="NOTIFICADA_RT"&&estado!="EN_SUBSANACION"&&estado!="SUBSANADA_RT"&&estado!="SUBSANACION_DEVUELTA"&&estado!="EN_REVISION_INSPECTOR"&&estado!="SUBSANACION_ACEPTADA"&&estado!="CERRADA")return new HttpStatusCodeResult(409);
+            var ruta=nc.RutaPdfFirmadoCoordinador??nc.RutaPdfFirmadoInspector??nc.RutaPdf;
+            var servicio=new CapaNegocio.Services.DocumentoSeguroService(new[]{Server.MapPath("~/App_Data")},
+                evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";UsuarioId="+usuarioId));
+            var archivo=servicio.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,solicitud.CodigoSolicitud,ruta,
+                "No_Conformidad_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
+            if(!archivo.EsValido)return archivo.Error==CapaNegocio.Services.DocumentoSeguroError.NoEncontrado||archivo.Error==CapaNegocio.Services.DocumentoSeguroError.Vacio?(ActionResult)HttpNotFound(archivo.MensajePublico):new HttpStatusCodeResult(403,archivo.MensajePublico);
+            return File(archivo.RutaFisica,archivo.Mime,archivo.NombreDescarga);
         }
 
         [HttpGet]
@@ -491,8 +525,13 @@ namespace CapaPresentacion.Controllers
             int usuarioId;if(!TryObtenerUsuarioActualId(out usuarioId))return new HttpStatusCodeResult(401);
             var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);if(nc==null)return HttpNotFound();
             if(!EsPropietarioSolicitud(_solicitudDAO.ObtenerPorId(nc.CodigoSolicitud),usuarioId))return new HttpStatusCodeResult(403);
-            if(string.IsNullOrWhiteSpace(nc.RutaPdfSubsanacionRt))return HttpNotFound();var path=Server.MapPath(nc.RutaPdfSubsanacionRt);if(!System.IO.File.Exists(path))return HttpNotFound();
-            return File(path,"application/pdf","Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf");
+            var seguro=new CapaNegocio.Services.DocumentoSeguroService(
+                new[]{Path.GetFullPath(Server.MapPath("~/App_Data/SubsanacionesNC"))},
+                evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";UsuarioId="+usuarioId));
+            var archivo=seguro.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,nc.CodigoSolicitud,
+                nc.RutaPdfSubsanacionRt,"Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
+            if(!archivo.EsValido)return archivo.Error==CapaNegocio.Services.DocumentoSeguroError.NoEncontrado||archivo.Error==CapaNegocio.Services.DocumentoSeguroError.Vacio? (ActionResult)HttpNotFound(archivo.MensajePublico):new HttpStatusCodeResult(403,archivo.MensajePublico);
+            return File(archivo.RutaFisica,archivo.Mime,archivo.NombreDescarga);
         }
     }
 }

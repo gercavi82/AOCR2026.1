@@ -257,6 +257,8 @@
     <Compile Include="Services\GeneracionAOCRService.cs" />
     <Compile Include="Services\ReevaluacionInspeccionService.cs" />
     <Compile Include="Services\AocrCierrePorTipoTramiteService.cs" />
+    <Compile Include="Services\DocumentoSeguroService.cs" />
+    <Compile Include="Services\Gate8WorkflowEventService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

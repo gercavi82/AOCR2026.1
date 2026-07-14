@@ -51,12 +51,14 @@ namespace CapaNegocio.Services
         {
             NotificarEventoSimple(solicitudId, "AOCR_FIRMADO", "Sistema AOCR - Documento AOCR firmado",
                 "El documento RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS fue firmado correctamente.");
+            RegistrarEventoGate8("DOCUMENTOS_FIRMADOS", solicitudId, "RECONOCIMIENTO");
         }
 
         public void NotificarCondicionesFirmadas(int solicitudId)
         {
             NotificarEventoSimple(solicitudId, "CONDICIONES_FIRMADAS", "Sistema AOCR - Documento Condiciones y Limitaciones firmado",
                 "El documento CONDICIONES Y LIMITACIONES fue firmado correctamente.");
+            RegistrarEventoGate8("DOCUMENTOS_FIRMADOS", solicitudId, "CONDICIONES_LIMITACIONES");
         }
 
         public bool NotificarProcesoAocrFinalizado(int solicitudId)
@@ -161,6 +163,7 @@ namespace CapaNegocio.Services
                 NotificarInternoSeguro(solicitud.CodigoUsuario, "Proceso AOCR finalizado",
                     "Los documentos finales firmados se encuentran disponibles para descarga.", solicitudId);
                 NotificarInspectorFinal(solicitud, planCierre);
+                RegistrarEventoGate8("DOCUMENTOS_LIBERADOS_RT", solicitudId, planCierre.Modulo);
                 Trace.TraceInformation("[AOCR_FINAL][BANDEJA_RT_OK] SolicitudId=" + solicitudId + ";");
                 return true;
             }
@@ -352,6 +355,23 @@ namespace CapaNegocio.Services
                     solicitud.CodigoSolicitud);
             }
             catch { }
+        }
+
+        private static void RegistrarEventoGate8(string evento, int solicitudId, string versionDocumento)
+        {
+            try
+            {
+                var correlationId = HttpContext.Current != null ? HttpContext.Current.Items["CorrelationId"] as string : null;
+                correlationId = Gate8Eventos.Correlation(correlationId, solicitudId);
+                var key = Gate8Eventos.Key(evento, solicitudId, versionDocumento);
+                new Gate8WorkflowEventService().PublicarPostCommit(new Gate8EventoRequest
+                {
+                    Registro = new Gate8EventoRegistro { Evento = evento, EventKey = key, CorrelationId = correlationId,
+                        Modulo = "GATE_8", Accion = evento, Entidad = "aocr_tbsolicitud", EntidadId = solicitudId,
+                        SolicitudId = solicitudId, Observacion = versionDocumento, Resultado = "REGISTRADO" }
+                });
+            }
+            catch { /* La notificacion y auditoria nunca revierten el cierre principal. */ }
         }
 
         private static string ConstruirCuerpoFinal(SolicitudAOCR solicitud, string nombre, AocrCierrePorTipoTramitePlan plan)

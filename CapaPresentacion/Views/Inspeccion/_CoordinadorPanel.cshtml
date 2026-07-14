@@ -171,7 +171,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
             <p>El informe contiene una No Conformidad. La ruta seleccionada es: <strong>@(nc.TipoRuta == "CON_INSPECCION" ? "Nueva Inspección In-situ" : "Subsanación Documental")</strong>.</p>
             
             <div class="it-btn-row" style="margin-bottom: 12px;">
-                <a class="it-btn ghost" href="@nc.RutaPdfFirmadoInspector" target="_blank" rel="noopener">
+                <a class="it-btn ghost" href="@Url.Action("DescargarNcCoordinador", "Inspeccion", new { codigoNoConformidad = nc.CodigoNoConformidad })" target="_blank" rel="noopener">
                     <i class="fas fa-file-pdf"></i> Ver PDF de No Conformidad (Firma Inspector)
                 </a>
             </div>
@@ -258,7 +258,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
                     <div>La No Conformidad ha sido firmada por Coordinación. Flujo DIRDAC completado para este documento.</div>
                 </div>
                 <div class="it-btn-row" style="margin-top: 12px;">
-                    <a class="it-btn success" href="@nc.RutaPdfFirmadoCoordinador" target="_blank" rel="noopener">
+                    <a class="it-btn success" href="@Url.Action("DescargarNcCoordinador", "Inspeccion", new { codigoNoConformidad = nc.CodigoNoConformidad })" target="_blank" rel="noopener">
                         <i class="fas fa-file-pdf"></i> Descargar NC Firmada (Final)
                     </a>
                 </div>

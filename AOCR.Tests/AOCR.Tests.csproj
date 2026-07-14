@@ -95,6 +95,9 @@
     <Compile Include="Integration\Gate4NuevaSolicitudPorNcIntegrationTests.cs" />
     <Compile Include="Integration\Gate5ReevaluacionIntegrationTests.cs" />
     <Compile Include="Unit\AocrCierrePorTipoTramiteServiceTests.cs" />
+    <Compile Include="Unit\Gate7ADepuracionSubsanacionTests.cs" />
+    <Compile Include="Unit\DocumentoSeguroServiceTests.cs" />
+    <Compile Include="Unit\Gate8NotificacionesAuditoriaTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,56 @@
+name: AOCR validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [firma-dirdac-tec]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-focal-tests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+      - name: Restore
+        run: nuget restore AOCR.sln -NonInteractive
+      - name: Build Release and precompile Razor
+        run: msbuild AOCR.sln /t:Rebuild /p:Configuration=Release /m /v:minimal
+      - name: Tests without external secrets
+        shell: pwsh
+        run: |
+          $vstest = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -find Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe | Select-Object -First 1
+          & $vstest AOCR.Tests\bin\Release\AOCR.Tests.dll `/Tests:AOCR.Tests.Unit.DocumentoSeguroServiceTests,AOCR.Tests.Unit.Gate7ADepuracionSubsanacionTests,AOCR.Tests.Unit.Gate8NotificacionesAuditoriaTests `/Logger:"trx;LogFileName=ci-focal.trx" `/ResultsDirectory:TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trx-focal
+          path: TestResults/*.trx
+
+  postgresql-integration:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2022
+    env:
+      AOCR_PG_CONNECTION: ${{ secrets.AOCR_PG_CONNECTION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - uses: NuGet/setup-nuget@v2
+      - name: Require integration secret
+        shell: pwsh
+        run: if ([string]::IsNullOrWhiteSpace($env:AOCR_PG_CONNECTION)) { throw 'AOCR_PG_CONNECTION secret is required for integration job.' }
+      - run: nuget restore AOCR.sln -NonInteractive
+      - run: msbuild AOCR.Tests\AOCR.Tests.csproj /t:Rebuild /p:Configuration=Release /m /v:minimal
+      - name: PostgreSQL integration tests
+        shell: pwsh
+        run: |
+          $vstest = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -find Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe | Select-Object -First 1
+          & $vstest AOCR.Tests\bin\Release\AOCR.Tests.dll `/Tests:AOCR.Tests.Integration.Gate1NoConformidadRelacionesIntegrationTests,AOCR.Tests.Integration.Gate2SubsanacionIndividualNcIntegrationTests,AOCR.Tests.Integration.Gate3RevisionSubsanacionInspectorIntegrationTests,AOCR.Tests.Integration.Gate4NuevaSolicitudPorNcIntegrationTests,AOCR.Tests.Integration.Gate5ReevaluacionIntegrationTests `/Logger:"trx;LogFileName=ci-postgresql.trx" `/ResultsDirectory:TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trx-postgresql
+          path: TestResults/*.trx

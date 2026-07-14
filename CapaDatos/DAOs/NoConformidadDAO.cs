@@ -225,14 +225,19 @@ WHERE codigo_no_conformidad=@id;",
 
         public bool RegistrarSubsanacionRt(int codigoNoConformidad,string ruta,DateTime fecha)
         {
+            throw new NotSupportedException("GATE 7A: la carga general de subsanación está deshabilitada; use versionado individual por documento.");
+#pragma warning disable 162
             if(codigoNoConformidad<=0||string.IsNullOrWhiteSpace(ruta))return false;
             var sql=$@"UPDATE {TABLA} SET ruta_pdf_subsanacion_rt=@ruta,fecha_subsanacion_rt=@fecha,estado='SUBSANADA_RT',observacion_devolucion=NULL,updated_at=NOW()
 WHERE codigo_no_conformidad=@id AND UPPER(tipo_ruta)='SIN_INSPECCION' AND estado IN ('FIRMADA_COORDINADOR','EN_SUBSANACION');";
             using(var cn=new NpgsqlConnection(CS))using(var cmd=new NpgsqlCommand(sql,cn)){cmd.Parameters.AddWithValue("@ruta",ruta);cmd.Parameters.AddWithValue("@fecha",fecha);cmd.Parameters.AddWithValue("@id",codigoNoConformidad);cn.Open();return cmd.ExecuteNonQuery()==1;}
+#pragma warning restore 162
         }
 
         public bool ReabrirSubsanacionRt(int codigoNoConformidad)
         {
+            throw new NotSupportedException("GATE 7A: no se reabre el PDF general; la devolución genera versiones individuales N+1.");
+#pragma warning disable 162
             var sql = $@"UPDATE {TABLA}
 SET ruta_pdf_subsanacion_rt=NULL, fecha_subsanacion_rt=NULL, estado='EN_SUBSANACION', updated_at=NOW()
 WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='SIN_INSPECCION';";
@@ -243,12 +248,16 @@ WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='
                 cn.Open();
                 return cmd.ExecuteNonQuery() == 1;
             }
+#pragma warning restore 162
         }
 
         public bool CerrarSubsanacion(int codigoNoConformidad)
         {
+            throw new NotSupportedException("GATE 7A: el cierre se realiza al aceptar todas las versiones individuales.");
+#pragma warning disable 162
             var sql=$@"UPDATE {TABLA} SET estado='CERRADA',updated_at=NOW() WHERE codigo_no_conformidad=@id AND estado='SUBSANADA_RT' AND UPPER(tipo_ruta)='SIN_INSPECCION';";
             using(var cn=new NpgsqlConnection(CS))using(var cmd=new NpgsqlCommand(sql,cn)){cmd.Parameters.AddWithValue("@id",codigoNoConformidad);cn.Open();return cmd.ExecuteNonQuery()==1;}
+#pragma warning restore 162
         }
 
         public bool RegistrarDecisionDocumentoSubsanado(int codigoNoConformidad, int codigoDocumentoNuevaVersion,
