@@ -622,7 +622,34 @@ namespace CapaPresentacion.Controllers
                 model.Orden.NombreContribuyente = companiaActiva.Nombre;
 
                 var codigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null;
+                SolicitudAOCR solicitudAutoPendiente = null;
                 var numeroSolicitudGop = ObtenerNumeroSolicitudGop(codigoSolicitud);
+
+                // En el flujo que inicia desde la Orden de Recaudación todavía no existe
+                // codigo_solicitud. Preparar primero la solicitud permite que ambos documentos
+                // nazcan con el mismo año y correlativo del expediente.
+                if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                {
+                    solicitudAutoPendiente = ConstruirSolicitudAuto(
+                        idUsuario,
+                        usuarioActual,
+                        companiaActiva.Nombre,
+                        model.Orden?.RucCedula,
+                        model.Orden?.Correo,
+                        model.Orden?.Telefono,
+                        ResolverLugarEmisionDesdeDb(codigoSolicitud, idUsuario));
+
+                    numeroSolicitudGop = solicitudAutoPendiente != null
+                        ? solicitudAutoPendiente.NumeroSolicitud
+                        : null;
+
+                    if (string.IsNullOrWhiteSpace(numeroSolicitudGop))
+                    {
+                        ModelState.AddModelError("", "No se pudo reservar la nomenclatura institucional del expediente.");
+                        PrepararNuevaOrdenViewModel(model, requiereSolicitudInspeccion);
+                        return View(model);
+                    }
+                }
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
                 var numeroOrden = await GenerarNumeroOrdenAsync(numeroSolicitudGop, codigoSolicitud);
@@ -698,16 +725,7 @@ namespace CapaPresentacion.Controllers
 
                     if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
                     {
-                        var solicitudAuto = ConstruirSolicitudAuto(
-                            idUsuario,
-                            usuarioActual,
-                            companiaActiva.Nombre,
-                            model.Orden?.RucCedula,
-                            model.Orden?.Correo,
-                            model.Orden?.Telefono,
-                            lugarEmisionDb);
-
-                        var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAuto);
+                        var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAutoPendiente);
                         if (codigoSolicitudGenerado <= 0)
                         {
                             TempData["Error"] = "La orden se creó, pero no se pudo generar y vincular la solicitud asociada.";

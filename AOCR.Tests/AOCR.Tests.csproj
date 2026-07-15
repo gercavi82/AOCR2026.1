@@ -98,6 +98,7 @@
     <Compile Include="Unit\Gate7ADepuracionSubsanacionTests.cs" />
     <Compile Include="Unit\DocumentoSeguroServiceTests.cs" />
     <Compile Include="Unit\Gate8NotificacionesAuditoriaTests.cs" />
+    <Compile Include="Unit\OrdenRecaudacionNomenclaturaTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
   </ItemGroup>
   <ItemGroup>

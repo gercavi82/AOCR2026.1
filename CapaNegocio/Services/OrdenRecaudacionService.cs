@@ -154,9 +154,22 @@ namespace CapaNegocio.Services
 
                 _logger.LogWarning(string.Format(
                     CultureInfo.InvariantCulture,
-                    "[ORDEN_NUM][GOP_LINK_CONFLICT] NumeroOrden={0}; CodigoSolicitud={1}. Se usara secuencia institucional para evitar duplicado.",
+                    "[ORDEN_NUM][GOP_LINK_CONFLICT] NumeroOrden={0}; CodigoSolicitud={1}. No se generara un correlativo diferente porque rompería la trazabilidad del expediente.",
                     vinculada,
                     codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : string.Empty));
+
+                throw new InvalidOperationException(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "La nomenclatura institucional {0} ya está asociada a otra solicitud. No se creó una orden con un correlativo diferente.",
+                    vinculada));
+            }
+
+            if (!string.IsNullOrWhiteSpace(numeroSolicitudGop))
+            {
+                throw new InvalidOperationException(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "No se pudo derivar la nomenclatura de la orden desde la solicitud {0}. No se creó una orden con un correlativo diferente.",
+                    numeroSolicitudGop.Trim()));
             }
 
             return GenerarNumeroOrdenInstitucional(anio);
@@ -170,7 +183,9 @@ namespace CapaNegocio.Services
             }
 
             var texto = numeroSolicitudGop.Trim().ToUpperInvariant();
-            var matchAnio = Regex.Match(texto, @"(?:^|-)(20\d{2})(?:-|$)");
+            // Se aceptan separadores legacy '-' y '_', pero la salida siempre usa
+            // la nomenclatura institucional canónica con guiones y tres dígitos.
+            var matchAnio = Regex.Match(texto, @"(?:^|[-_])(20\d{2})(?:[-_]|$)");
             var matchAocr = Regex.Match(texto, @"AOCR\s*0*(\d+)", RegexOptions.IgnoreCase);
             if (!matchAocr.Success)
             {
