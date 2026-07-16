@@ -1,7 +1,0 @@
-Herramienta de compilaci¢n de Microsoft (R) ASP.NET versi¢n 4.8.9221.0
-Utilidad para precompilar una aplicaci¢n ASP.NET
-(C) Microsoft Corporation. Todos los derechos reservados.
-
-(0): warning CS1685: El tipo predefinido 'System.ObsoleteAttribute' est  definido en varios ensamblados del alias global; se utiliza la definici¢n de 'c:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.2\mscorlib.dll'
-(0): warning CS1685: El tipo predefinido 'System.ObsoleteAttribute' est  definido en varios ensamblados del alias global; se utiliza la definici¢n de 'c:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.2\mscorlib.dll'
-c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\obj\release\aspnetcompilemerge\source\web.config(137): error ASPCONFIG: Es incorrecto utilizar una secci¢n registrada como allowDefinition='MachineToApplication' mas all  del nivel de aplicaci¢n. Este error puede tener como origen un directorio virtual que no est‚ configurado como aplicaci¢n en IIS.
