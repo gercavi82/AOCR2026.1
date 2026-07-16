@@ -1,0 +1,178 @@
+@* ============================================================
+   Partial: Panel DIRDAC / Dirección - Jefatura
+   ============================================================ *@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    var vm = Model ?? new CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm();
+    var informeTecnico = vm.InformeTecnico;
+    var codigoInspeccion = vm.CodigoInspeccion;
+    var esRolDireccionOJefatura = vm.EsRolDireccionOJefatura || vm.EsDirdac;
+    var puedeEnviarADirdac = vm.PuedeEnviarADirdac;
+    var puedeReintentarNotificacionDirdac = vm.PuedeReintentarNotificacionDirdac;
+    var puedeTomarDecisionInstitucionalFinal = vm.PuedeTomarDecisionInstitucionalFinal || vm.PuedeFirmarDirdac;
+    var informeEnviadoADirdac = vm.InformeEnviadoADirdac;
+    var informeAprobadoDireccion = vm.InformeAprobadoDireccion;
+    var informeDevueltoDireccion = vm.InformeDevueltoDireccion;
+    var estadoInformeTecnico = vm.EstadoInformeTecnico ?? "BORRADOR";
+    var rutaInformeVisual = vm.RutaInformeVisual;
+    var tieneInforme = !string.IsNullOrWhiteSpace(rutaInformeVisual);
+    var urlVerPdf = codigoInspeccion > 0
+        ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })
+        : "#";
+}
+
+@if (codigoInspeccion <= 0)
+{
+    <div class="it-alert warn">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>No hay contexto de inspección disponible para revisión DIRDAC.</div>
+    </div>
+}
+else if (esRolDireccionOJefatura && informeTecnico != null)
+{
+    @Html.Partial("_InformeFirmaStyles")
+
+    <div class="it-hero" style="background: linear-gradient(135deg, #4a2a8a 0%, #6f42c1 55%, #8a5fd8 100%); box-shadow: 0 8px 24px rgba(111,66,193,.24);">
+        <div class="it-hero-row">
+            <div>
+                <h3><i class="fas fa-university"></i> DIRDAC / Dirección - Jefatura</h3>
+                <p class="sub">Revisión institucional del informe técnico. Aprobar con decisión final o devolver con observación.</p>
+            </div>
+            <div>
+                @if (informeAprobadoDireccion)
+                { <span class="it-pill ok"><i class="fas fa-check-circle"></i> Revisado</span> }
+                else if (informeDevueltoDireccion)
+                { <span class="it-pill danger"><i class="fas fa-undo"></i> Devuelto</span> }
+                else if (informeEnviadoADirdac)
+                { <span class="it-pill warn"><i class="fas fa-hourglass-half"></i> Pendiente</span> }
+                else
+                { <span class="it-pill"><i class="fas fa-circle-notch"></i> Sin enviar</span> }
+            </div>
+        </div>
+    </div>
+
+    if (informeAprobadoDireccion)
+    {
+        <div class="it-alert success">
+            <i class="fas fa-check-circle"></i>
+            <div><strong>Revisión institucional completada.</strong> DIRDAC / Dirección - Jefatura registró la decisión final del informe y habilitó la notificación al RT.</div>
+        </div>
+
+        if (esRolDireccionOJefatura && !informeTecnico.NotificadoRt)
+        {
+            <div class="it-alert warn">
+                <i class="fas fa-envelope-open-text"></i>
+                <div>
+                    <strong>Notificación RT pendiente de confirmación.</strong> Puede reenviar manualmente el correo final sin generar duplicados.
+                    @using (Html.BeginForm("ReenviarNotificacionRt", "Inspeccion", FormMethod.Post, new { style = "display:inline-block; margin-left:12px;" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@codigoInspeccion" />
+                        <button type="submit" class="it-btn ghost"><i class="fas fa-redo"></i> Reenviar notificación RT</button>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else if (informeDevueltoDireccion)
+    {
+        <div class="it-alert danger">
+            <i class="fas fa-undo"></i>
+            <div><strong>Informe devuelto al inspector.</strong> Fue devuelto con observaciones para corrección y reenvío.</div>
+        </div>
+    }
+    else if (puedeTomarDecisionInstitucionalFinal && !informeEnviadoADirdac)
+    {
+        <div class="it-alert info">
+            <i class="fas fa-file-signature"></i>
+            <div><strong>Listo para decisión institucional final.</strong> El informe técnico ya fue firmado por el inspector y puede ser aprobado o devuelto por DIRDAC / Dirección - Jefatura.</div>
+        </div>
+    }
+    else if (informeEnviadoADirdac)
+    {
+        <div class="it-alert warn">
+            <i class="fas fa-hourglass-half"></i>
+            <div><strong>Pendiente de revisión institucional.</strong> El informe técnico se encuentra en bandeja de DIRDAC / Dirección - Jefatura.</div>
+        </div>
+    }
+    else
+    {
+        <div class="it-alert neutral">
+            <i class="fas fa-info-circle"></i>
+            <div>El informe técnico aún no ha llegado a la etapa de revisión DIRDAC.</div>
+        </div>
+    }
+
+    <div class="it-meta">
+        <div class="it-meta-item"><span class="k">Versión informe</span><span class="v">@informeTecnico.Version</span></div>
+        <div class="it-meta-item"><span class="k">Estado</span><span class="v">@estadoInformeTecnico</span></div>
+        <div class="it-meta-item">
+            <span class="k">Envío a DIRDAC</span>
+            <span class="v">@(informeTecnico.FechaEnvioDirdac.HasValue ? informeTecnico.FechaEnvioDirdac.Value.ToString("dd/MM/yyyy HH:mm") : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Usuario envío</span>
+            <span class="v">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? informeTecnico.UsuarioEnvioDirdac : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Revisado por</span>
+            <span class="v">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma2) ? informeTecnico.UsuarioFirma2 : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Fecha revisión</span>
+            <span class="v">@(informeTecnico.FechaFirma2.HasValue ? informeTecnico.FechaFirma2.Value.ToString("dd/MM/yyyy HH:mm") : "—")</span>
+        </div>
+    </div>
+
+    if (tieneInforme)
+    {
+        <div class="it-btn-row" style="margin-bottom: 12px;">
+            <a class="it-btn ghost" href="@urlVerPdf" target="_blank" rel="noopener">
+                <i class="fas fa-file-pdf"></i> Ver PDF del informe
+            </a>
+        </div>
+    }
+
+    if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
+    {
+        <div class="it-panel dirdac">
+            @if (puedeReintentarNotificacionDirdac)
+            {
+                <h4><i class="fas fa-envelope-open-text"></i> Reintentar notificación a DIRDAC</h4>
+                <p class="hint">El informe ya fue remitido a la bandeja DIRDAC, pero la notificación formal no quedó confirmada. Puede reenviarla sin duplicar el flujo.</p>
+            }
+            else
+            {
+                <h4><i class="fas fa-paper-plane"></i> Enviar informe a DIRDAC</h4>
+                <p class="hint">Registre el envío del informe técnico a la bandeja de DIRDAC / Dirección - Jefatura para habilitar la revisión institucional.</p>
+            }
+
+            @using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@codigoInspeccion" />
+                <button type="submit" class="it-btn primary full">
+                    <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
+                    @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")
+                </button>
+            }
+        </div>
+    }
+
+    if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && informeDevueltoDireccion)
+    {
+        <div class="it-obs">
+            <h6><i class="fas fa-comment-dots"></i> Última observación de devolución</h6>
+            <p>@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(informeTecnico.ObservacionDevolucion)</p>
+            @if (informeTecnico.FechaDevolucion.HasValue)
+            {
+                <small>
+                    @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
+                    @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " · " + informeTecnico.UsuarioDevolucion : "")
+                </small>
+            }
+        </div>
+    }
+}

@@ -1,0 +1,2713 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.SolicitudAOCRViewModel>
+@using CapaModelo
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Web
+@using Newtonsoft.Json
+@using CapaPresentacion.Helpers
+@{
+    Layout = null;
+
+    // Devuelve el texto plano de un valor que pudo quedar persistido con
+    // entidades HTML (&quot;, &#237;, etc.) por codificaciones repetidas.
+    Func<string, string> AocrTextoPlano = valor => FormularioEmisionTextHelper.NormalizarTextoPlano(valor);
+
+    var sol = Model != null ? Model.Solicitud : null;
+    var esModificacion = sol != null && sol.TipoSolicitud.HasValue && sol.TipoSolicitud.Value == 3;
+    var codigoSolicitud = sol != null ? sol.CodigoSolicitud : 0;
+    var usuario = Model != null ? Model.Usuario : null;
+    var nombreRepresentanteTecnico = Model != null ? (Model.NombreRepresentanteTecnico ?? "") : "";
+    if (string.IsNullOrWhiteSpace(nombreRepresentanteTecnico) && sol != null)
+    {
+        nombreRepresentanteTecnico = sol.RepresentanteLegal ?? "";
+    }
+    var identificacionUsuario = Model != null ? (Model.IdentificacionUsuario ?? "") : "";
+    var companiaActivaCodigo = Model != null ? (Model.CompaniaActivaCodigo ?? "") : "";
+    var companiaActivaNombre = Model != null ? (Model.CompaniaActivaNombre ?? "") : "";
+    var companiaSeleccionadaRaw = !string.IsNullOrWhiteSpace(companiaActivaCodigo)
+        ? companiaActivaCodigo
+        : (((sol != null ? sol.CompaniasSeleccionadas : "") ?? "")
+            .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => (v ?? string.Empty).Trim())
+            .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "");
+    var companiaActivaTexto = !string.IsNullOrWhiteSpace(companiaActivaNombre)
+        ? companiaActivaNombre
+        : companiaActivaCodigo;
+    var codigoOaciInicial = !string.IsNullOrWhiteSpace(sol != null ? sol.CodigoOaci : null)
+        ? sol.CodigoOaci
+        : companiaSeleccionadaRaw;
+    var correoRepresentanteTecnico = !string.IsNullOrWhiteSpace(sol != null ? sol.CorreoRepresentanteTecnico : null)
+        ? sol.CorreoRepresentanteTecnico
+        : (usuario != null ? usuario.Email : (sol != null ? sol.Email : ""));
+    var aprobacionesEspecialesSet = new HashSet<string>(
+        ((sol != null ? sol.AprobacionesEspeciales : "") ?? "")
+            .Split(new[] { ',', ';', '|'}, StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    var aeropuertosEcuadorSet = new HashSet<string>(
+        ((sol != null ? sol.AeropuertosEcuador : "") ?? "")
+            .Split(new[] { ',', ';', '|'}, StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    // Se compara por token (separados por '|') para evitar que "Ops No Regulares"
+    // marque también "Operaciones Regulares" al recargar el formulario.
+    var tiposOperacionTokens = new HashSet<string>(
+        (((sol != null ? sol.TipoOperacion : "") ?? "")
+            .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    var marcaOpsRegulares = tiposOperacionTokens.Contains("OPS REGULARES");
+    var marcaOpsNoRegulares = tiposOperacionTokens.Contains("OPS NO REGULARES");
+    var marcaPasajeros = tiposOperacionTokens.Any(t => t.Contains("PASAJEROS"));
+    var marcaCarga = tiposOperacionTokens.Contains("CARGA");
+    var tipoSolicitudActual = sol != null && sol.TipoSolicitud.HasValue ? sol.TipoSolicitud.Value : 1;
+    var modoSubsanacionObservada = Model != null && Model.EsModoSubsanacionObservada;
+    var documentosPendientesInputIdsJson = JsonConvert.SerializeObject(Model != null ? (Model.DocumentosPendientesSubsanacionInputIds ?? new List<string>()) : new List<string>());
+    var documentosPendientesEtiquetasTexto = string.Join(", ", Model != null ? (Model.DocumentosPendientesSubsanacionEtiquetas ?? new List<string>()) : new List<string>());
+    var documentosPendientesNoGestionablesTexto = string.Join(", ", Model != null ? (Model.DocumentosPendientesSubsanacionNoGestionables ?? new List<string>()) : new List<string>());
+    var restringirAnexosPorSubsanacion = modoSubsanacionObservada
+        && Model != null
+        && Model.DocumentosPendientesSubsanacionInputIds != null
+        && Model.DocumentosPendientesSubsanacionInputIds.Any();
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<style>
+    .aocr-wizard {
+        background-color: #f4f7fa;
+        border-radius: 12px;
+        padding-top: 0.75rem;
+    }
+
+    .aocr-wizard .wizard-sidebar {
+        border: 0;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        position: sticky;
+        top: 10px;
+    }
+
+    .aocr-wizard .list-group {
+        gap: 6px;
+    }
+
+    .aocr-wizard .wizard-step {
+        border: 0;
+        border-radius: 10px !important;
+        color: #4b5563;
+        font-weight: 600;
+        padding: 0.8rem 0.9rem;
+        transition: all .25s ease;
+    }
+
+    .aocr-wizard .wizard-step i {
+        width: 20px;
+        margin-right: 8px;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    .aocr-wizard .wizard-step:hover {
+        background: #eaf2ff;
+        color: #1b4f72;
+    }
+
+    .aocr-wizard .wizard-step.active {
+        background: linear-gradient(135deg, #0c7c86 0%, #1b4f72 100%);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(12, 124, 134, 0.22);
+    }
+
+    .aocr-wizard .wizard-step.active i {
+        color: #fff;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert,
+    .aocr-wizard .modo-subsanacion-alert strong,
+    .aocr-wizard .modo-subsanacion-alert span {
+        color: #1f2937 !important;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert {
+        border-radius: 6px;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert.alert-warning {
+        background-color: #ffc107;
+        border-color: #e0a800;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert.alert-info {
+        background-color: #e8f4fb;
+        border-color: #8cc6df;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert a,
+    .aocr-wizard .modo-subsanacion-alert .alert-link {
+        color: #0645ad !important;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+
+    .aocr-wizard .card-custom {
+        border: 0;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        background-color: #fff;
+        margin-bottom: 1rem;
+    }
+
+    .aocr-wizard .card-header-custom {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem 1.25rem;
+    }
+
+    .aocr-wizard .card-body-custom {
+        padding: 1.25rem;
+    }
+
+    .aocr-wizard h5.font-weight-bold {
+        color: #1f2937;
+        border-left: 4px solid #1b4f72;
+        padding-left: 10px;
+    }
+
+    .aocr-wizard .form-control {
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background-color: #ffffff;
+        color: #111827 !important;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    .aocr-wizard .form-control::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #6b7280;
+    }
+
+    .aocr-wizard .form-control[readonly],
+    .aocr-wizard .form-control:disabled,
+    .aocr-wizard input[readonly],
+    .aocr-wizard input:disabled,
+    .aocr-wizard textarea[readonly],
+    .aocr-wizard textarea:disabled,
+    .aocr-wizard select[readonly],
+    .aocr-wizard select:disabled {
+        background-color: #eef2f6 !important;
+        color: #1f2937 !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #1f2937;
+    }
+
+    .aocr-wizard .input-group-text {
+        background-color: #eef2f6;
+        border-color: #d1d5db;
+        color: #1f2937 !important;
+        -webkit-text-fill-color: #1f2937;
+    }
+
+    .aocr-wizard label {
+        color: #111827 !important;
+    }
+
+    .aocr-wizard .form-control:focus {
+        border-color: #1b4f72;
+        box-shadow: 0 0 0 0.2rem rgba(27, 79, 114, 0.15);
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    .aocr-wizard .anexo-item {
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+        transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .aocr-wizard .anexo-item:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+    }
+
+    .aocr-wizard .anexo-item .badge {
+        background-color: #1b4f72;
+        border-radius: 6px;
+    }
+
+    .aocr-wizard .upload-dropzone {
+        background: #f8fbff;
+        border: 2px dashed #9ec5fe;
+        border-radius: 10px;
+        padding: 18px 14px;
+        text-align: center;
+        cursor: pointer;
+        transition: all .2s ease;
+        margin-bottom: 8px;
+    }
+
+    .aocr-wizard .upload-dropzone:hover {
+        border-color: #2563eb;
+        background: #eef5ff;
+    }
+
+    .aocr-wizard .upload-dropzone.drag-active {
+        border-color: #0c7c86;
+        background: #e9fbff;
+        box-shadow: 0 0 0 0.15rem rgba(12, 124, 134, 0.2);
+    }
+
+    .aocr-wizard .upload-dropzone .upload-select-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .aocr-wizard .upload-dropzone .upload-help {
+        color: #4b5563;
+        margin-bottom: 0;
+        font-size: .92rem;
+    }
+
+    .aocr-wizard .upload-file-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #ffffff;
+        max-height: 130px;
+        overflow-y: auto;
+    }
+
+    .aocr-wizard .upload-file-list li {
+        padding: 6px 10px;
+        border-bottom: 1px solid #eef2f7;
+        color: #1f2937;
+        font-size: .88rem;
+    }
+
+    .aocr-wizard .upload-file-list li:last-child {
+        border-bottom: 0;
+    }
+
+    .aocr-wizard .aocr-actions-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 14px 0 4px 0;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .aocr-wizard .mr-2 {
+        margin-right: .5rem !important;
+    }
+
+    .aocr-wizard .ml-1 {
+        margin-left: .25rem !important;
+    }
+
+    @@media (max-width: 991.98px) {
+        .aocr-wizard .wizard-sidebar {
+            position: static;
+        }
+
+        .aocr-wizard .aocr-actions-bar {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    }
+</style>
+
+<div id="formularioEmisionAOCR" class="container-fluid py-4 aocr-wizard">
+    <div id="aocr-formulario-emision-config" class="d-none"
+         data-url-guardar-progreso="@Url.Action("GuardarProgreso", "SolicitudAOCR")"
+         data-url-guardar-flota="@Url.Action("GuardarFlota", "SolicitudAOCR")"
+         data-url-formulario-completo="@Url.Action("FormularioCompleto", "SolicitudAOCR")"
+         data-url-seleccionar-compania="@Url.Action("SeleccionarCompania", "Account")"
+         data-url-login="@Url.Action("Login", "Account")"></div>
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm wizard-sidebar">
+                <div class="card-body p-2">
+                    <div class="list-group" id="list-tab" role="tablist">
+                        <a class="list-group-item list-group-item-action wizard-step active" id="list-explotador-list" data-bs-toggle="list" href="#explotador" role="tab" aria-controls="explotador">
+                            <i class="fas fa-user-tie"></i> 1. Explotador-Solicitante
+                        </a>
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-aeronaves-list" data-bs-toggle="list" href="#aeronaves" role="tab" aria-controls="aeronaves">
+                            <i class="fas fa-plane"></i> 2. Informacion de Aeronaves
+                        </a>
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-operaciones-list" data-bs-toggle="list" href="#operaciones" role="tab" aria-controls="operaciones">
+                            <i class="fas fa-globe-americas"></i> 3. Operaciones EAE
+                        </a>
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-anexos-list" data-bs-toggle="list" href="#anexos" role="tab" aria-controls="anexos">
+                            <i class="fas fa-paperclip"></i> 4. Comprobante / Anexos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="tab-content" id="nav-tabContent">
+
+                <div class="tab-pane fade show active" id="explotador" role="tabpanel" aria-labelledby="list-explotador-list">
+
+                    <div class="card card-custom">
+                        <div class="card-header-custom">
+                            <h5 class="mb-0 font-weight-bold">Datos del Explotador-Solicitante</h5>
+                        </div>
+                        <div class="card-body card-body-custom">
+                            <div id="contenidoModal">
+                                <div style="max-height: 65vh; overflow-y: auto; padding: 5px;">
+                                    <form id="formExplotador">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" id="codigoSolicitud" name="Solicitud.CodigoSolicitud" value="@codigoSolicitud" />
+                                        <input type="hidden" id="tipoSolicitudActual" name="Solicitud.TipoSolicitud" value="@tipoSolicitudActual" />
+                                        <input type="hidden" id="nombreOperador" value="@AocrTextoPlano(sol != null ? sol.NombreOperador : "")" />
+                                        <input type="hidden" id="telefonoOperador" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" />
+                                        <input type="hidden" id="rucOperador" value="@AocrTextoPlano(sol != null ? sol.Ruc : "")" />
+                                        <input type="hidden" id="razonSocial" value="@AocrTextoPlano(sol != null ? sol.RazonSocial : "")" />
+                                        <input type="hidden" id="tipoOperacion" value="@AocrTextoPlano(sol != null ? sol.TipoOperacion : "")" />
+                                        <input type="hidden" id="descripcionOperacion" value="@AocrTextoPlano(sol != null ? sol.DescripcionOperacion : "")" />
+                                        <input type="hidden" id="observacionesGenerales" value="@AocrTextoPlano(sol != null ? sol.ObservacionesGenerales : "")" />
+                                        <input type="hidden" id="esSolicitudModificacion" value="@(esModificacion ? "1" : "0")" />
+                                        <input type="hidden" id="companiasSeleccionadasRaw" value="@AocrTextoPlano(companiaSeleccionadaRaw)" />
+
+                                        <div class="bg-light p-3 rounded mb-4 border">
+                                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-user-shield"></i> Representante Técnico</h6>
+
+                                            <div class="form-row">
+                                                <div class="form-group col-md-6">
+                                                    <label for="nombreRepresentante">Nombre del Representante Técnico</label>
+                                                    <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante técnico" value="@AocrTextoPlano(nombreRepresentanteTecnico)" >
+                                                </div>
+                                                <div class="form-group col-md-6">
+                                                    <label for="rucRepresentante">Cédula / RUC</label>
+                                                    <input type="text" class="form-control" id="rucRepresentante" placeholder="Cédula o RUC del usuario" value="@AocrTextoPlano(identificacionUsuario)" readonly>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="direccionEcuador">Direccion en Ecuador</label>
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text"><i class="fas fa-home"></i></span>
+                                                    </div>
+                                                    <input type="text" class="form-control" id="direccionEcuador" placeholder="Ingrese direccion en Ecuador" value="@AocrTextoPlano(sol != null ? sol.Direccion : "")" >
+                                                </div>
+                                            </div>
+
+                                            <div class="form-row">
+                                                <div class="form-group col-md-6">
+                                                    <label for="telefonoEcuador">Telefono en Ecuador</label>
+                                                    <input type="text" class="form-control" id="telefonoEcuador" placeholder="Ingrese telefono en Ecuador" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
+                                                </div>
+                                                <div class="form-group col-md-6">
+                                                    <label for="emailEcuador">Correo del Representante Técnico</label>
+                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@AocrTextoPlano(correoRepresentanteTecnico)" >
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card shadow-sm mb-4">
+                                            <div class="card-body">
+                                                <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-building"></i> Compañía activa del trámite</h6>
+
+                                                <div class="form-group mb-3">
+                                                    <label for="companiaActivaVista">Compañía seleccionada</label>
+                                                    <input type="text"
+                                                           class="form-control"
+                                                           id="companiaActivaVista"
+                                                           value="@AocrTextoPlano(companiaActivaTexto)"
+                                                           readonly />
+                                                </div>
+
+                                                <div class="form-group mb-0">
+                                                    <label for="companiaActivaCodigoVista">Código de compañía (OACI)</label>
+                                                    <input type="text"
+                                                           class="form-control"
+                                                           id="companiaActivaCodigoVista"
+                                                           value="@AocrTextoPlano(codigoOaciInicial)"
+                                                           readonly />
+                                                </div>
+                                                <input type="hidden"
+                                                       id="codigoOaci"
+                                                       value="@AocrTextoPlano(codigoOaciInicial)" />
+                                            </div>
+                                        </div>
+
+                                        <div class="bg-light p-3 rounded border">
+                                            <h6 class="text-primary font-weight-bold mb-3">Base Principal de Operaciones</h6>
+                                            <div class="form-group">
+                                                <label for="razonSocialCompania">Razon social de la compania *</label>
+                                                <input type="text" class="form-control" id="razonSocialCompania" placeholder="Ingrese razon social de la compania" value="@AocrTextoPlano(sol != null ? sol.RazonSocial : "")" >
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="nombreCompania">Nombre comercial de la compania *</label>
+                                                <input type="text" class="form-control" id="nombreCompania" placeholder="Ingrese nombre comercial de la compania" value="@AocrTextoPlano(sol != null ? (sol.NombreComercial ?? sol.NombreOperador) : companiaActivaTexto)" >
+                                                <small class="form-text text-muted mt-2">
+                                                    Los datos de la compania no son correctos?
+                                                    <a href="#" id="btnInformacionCompania" class="text-danger font-weight-bold ml-1"><i class="fas fa-exclamation-triangle"></i> Reportar aqui</a>
+                                                </small>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="direccionCompania">Direccion de la Compania</label>
+                                                <input type="text" class="form-control" id="direccionCompania" placeholder="Ingrese direccion de la compania" value="@AocrTextoPlano(sol != null ? sol.Direccion : "")" >
+                                            </div>
+
+                                            <div class="form-row">
+                                                <div class="form-group col-md-6">
+                                                    <label for="telefonoCompania">Telefono</label>
+                                                    <input type="text" class="form-control" id="telefonoCompania" placeholder="Ingrese telefono" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
+                                                </div>
+                                                <div class="form-group col-md-6">
+                                                    <label for="correoCompania">Correo Electronico</label>
+                                                    <input type="email" class="form-control" id="correoCompania" placeholder="Ingrese correo" value="@AocrTextoPlano(sol != null ? sol.Email : "")" >
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </form>
+                                </div>
+                                <div class="text-right mt-3">
+                                    <button type="button" id="btnGuardarExplotador" class="btn btn-primary shadow">
+                                        <i class="fas fa-save"></i> Guardar datos del representante
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="aeronaves" role="tabpanel" aria-labelledby="list-aeronaves-list">
+                    <div class="card card-custom">
+                        <div class="card-header-custom d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 font-weight-bold">Informacion de las Aeronaves</h5>
+                        </div>
+                        <div class="card-body card-body-custom">
+                            <div style="max-height: 65vh; overflow-y: auto; padding-right: 5px;">
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    La informacion de aeronaves debe registrarse completa y esta sujeta a confirmacion de matriculas por la autoridad.
+                                </div>
+
+                                <div class="mb-4 p-3 bg-light rounded border">
+                                    <h6 class="text-muted mb-3"><small>Gestion de Flota</small></h6>
+                                    <div class="d-flex flex-wrap align-items-center">
+                                        <button class="btn btn-success shadow-sm mr-2 mb-2" id="btnAgregarAeronave">
+                                            <i class="fas fa-plus-circle"></i> Agregar Manualmente
+                                        </button>
+
+                                        <button class="btn btn-primary shadow-sm mr-2 mb-2" id="btnCargarArchivo">
+                                            <i class="fas fa-file-upload"></i> Cargar CSV
+                                        </button>
+
+                                        <div class="btn-group mb-2 mr-2">
+                                            <a href="@Url.Content("~/Content/documents/Formato_Aeronaves.xlsx")" download class="btn btn-outline-secondary">
+                                                <i class="fas fa-download"></i> Descargar Formato
+                                            </a>
+                                            <button class="btn btn-outline-secondary" onclick="window.open('@Url.Content("~/Content/documents/Formato_Aeronaves.xlsx")', '_blank')" title="Ver instrucciones">
+                                                <i class="fas fa-question-circle"></i>
+                                            </button>
+                                        </div>
+
+                                        <input type="file" id="inputArchivo" accept=".csv" style="display: none;">
+                                    </div>
+                                    <small class="text-muted mt-2 d-block">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Solo se permite formato <strong>.csv</strong> (separado por <code>;</code>).
+                                    </small>
+                                </div>
+
+                                <div class="table-responsive shadow-sm rounded mb-3">
+                                    <table class="table table-bordered table-hover mb-0" id="tablaAeronaves" style="font-size: 14px;">
+                                        <thead class="bg-dark text-white text-center">
+                                            <tr>
+                                                <th>Fabricante</th>
+                                                <th>Modelo</th>
+                                                <th>Serie</th>
+                                                <th>Matricula</th>
+                                                <th>Config.</th>
+                                                <th>Etapa Ruido</th>
+                                                <th>Peso</th>
+                                                <th>OACI</th>
+                                                <th><i class="fas fa-cogs"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
+                                <div class="form-group mt-3">
+                                    <label for="contadorAeronaves" class="font-weight-bold text-secondary">Resumen de Flota</label>
+                                    <textarea class="form-control" id="contadorAeronaves" rows="3" readonly disabled style="background-color: #e9ecef; border:none; color: #495057;"></textarea>
+                                </div>
+
+                                <div class="bg-light p-3 rounded border mb-3">
+                                    <label class="font-weight-bold d-block mb-2">Aprobaciones especiales aplicables en operaciones en Ecuador</label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionRVSM" value="RVSM" @(aprobacionesEspecialesSet.Contains("RVSM") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionRVSM">RVSM</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionPBN" value="PBN" @(aprobacionesEspecialesSet.Contains("PBN") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionPBN">PBN</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionMNPS" value="MNPS" @(aprobacionesEspecialesSet.Contains("MNPS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionMNPS">MNPS</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionCATIIIII" value="CAT II-III" @(aprobacionesEspecialesSet.Contains("CAT II-III") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionCATIIIII">CAT II-III</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionETOPS" value="ETOPS" @(aprobacionesEspecialesSet.Contains("ETOPS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionETOPS">ETOPS</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionMERPEL" value="MERPEL" @(aprobacionesEspecialesSet.Contains("MERPEL") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionMERPEL">MERPEL</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionOTROS" value="OTROS" @(aprobacionesEspecialesSet.Contains("OTROS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionOTROS">OTROS</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group mb-0 mt-2" id="aprobacionOtrosContenedor" style="display:none;">
+                                        <label for="aprobacionOtrosDetalle">Detalle otros</label>
+                                        <input type="text" class="form-control" id="aprobacionOtrosDetalle" maxlength="250" value="@AocrTextoPlano(sol != null ? sol.AprobacionesEspecialesOtros : "")" placeholder="Detalle de aprobaciones especiales adicionales" />
+                                    </div>
+                                </div>
+
+                                <div class="text-right mt-4">
+                                    <button type="button" class="btn btn-lg btn-primary shadow" id="btnGuardarListadoAeronaves">
+                                        <i class="fas fa-save"></i> Guardar Flota
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="operaciones" role="tabpanel" aria-labelledby="list-operaciones-list">
+                    <div class="card card-custom">
+                        <div class="card-header-custom">
+                            <h5 class="mb-0 font-weight-bold">Operaciones en el Ecuador</h5>
+                        </div>
+                        <div class="card-body card-body-custom">
+
+                            <div class="form-group row">
+                                <label for="fechaInicioOperaciones" class="col-sm-4 col-form-label font-weight-bold">Fecha propuesta inicio:</label>
+                                <div class="col-sm-8">
+                                    <input type="date" class="form-control" id="fechaInicioOperaciones">
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="numeroAOC" class="col-sm-4 col-form-label font-weight-bold">Número de AOC:</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control" id="numeroAOC" maxlength="100"
+                                           value="@AocrTextoPlano(sol != null ? sol.NumeroAOC : "")"
+                                           placeholder="Ingrese el número de AOC de la compañía">
+                                    <small class="form-text text-muted">Número del Certificate of Air Operator (AOC) vigente.</small>
+                                </div>
+                            </div>
+
+                            <div class="card mb-3 border-info">
+                                <div class="card-header bg-white text-info font-weight-bold">
+                                    <i class="fas fa-list-ul"></i> Tipos de Operacion
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input" type="checkbox" id="opsRegulares" @(marcaOpsRegulares ? "checked" : "")>
+                                                <label class="custom-control-label" for="opsRegulares">Operaciones Regulares</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input" type="checkbox" id="opsNoRegulares" @(marcaOpsNoRegulares ? "checked" : "")>
+                                                <label class="custom-control-label" for="opsNoRegulares">Operaciones No Regulares</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input" type="checkbox" id="pasajeros" @(marcaPasajeros ? "checked" : "")>
+                                                <label class="custom-control-label" for="pasajeros">Pasajeros/Carga/Correo</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input" type="checkbox" id="carga" @(marcaCarga ? "checked" : "")>
+                                                <label class="custom-control-label" for="carga">Carga solamente</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="resumenOperaciones" class="font-weight-bold">Resumen descriptivo de operaciones en los aeropuertos del Ecuador (aprobaciones especiales y procedimientos en tierra)</label>
+                                <textarea class="form-control" id="resumenOperaciones" rows="5" maxlength="2000"
+                                    placeholder="Indique: 1) Qué compañías de servicios de escala brindarán asistencia en tierra a sus aeronaves en los aeropuertos de Ecuador. 2) Si en su operación hacia y desde Ecuador operarán con aprobaciones especiales (RVSM, RNAV, ETOPS, etc.).">@AocrTextoPlano(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
+                                <div class="alert alert-light border-left border-info mt-2 py-2 px-3" style="font-size:0.85em;">
+                                    <i class="fas fa-info-circle text-info mr-1"></i>
+                                    <strong>Guía:</strong> Incluya: las compañías de servicios de escala (handling) que brindarán asistencia en tierra a sus aeronaves en cada aeropuerto del Ecuador; y si aplican aprobaciones especiales como <em>RVSM, RNAV, ETOPS, MNPS, CAT II/III</em>, etc.
+                                </div>
+                                <small class="form-text text-muted">Máximo 2000 caracteres.</small>
+                            </div>
+
+                            <hr>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="font-weight-bold">Aeropuertos dentro del Ecuador</h6>
+                                    <div class="card p-3 bg-light border-0">
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="quito" value="Quito" @(aeropuertosEcuadorSet.Contains("QUITO") ? "checked" : "")>
+                                            <label class="custom-control-label" for="quito">Quito (UIO)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="guayaquil" value="Guayaquil" @(aeropuertosEcuadorSet.Contains("GUAYAQUIL") ? "checked" : "")>
+                                            <label class="custom-control-label" for="guayaquil">Guayaquil (GYE)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="manta" value="Manta" @(aeropuertosEcuadorSet.Contains("MANTA") ? "checked" : "")>
+                                            <label class="custom-control-label" for="manta">Manta (MEC)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="latacunga" value="Latacunga" @(aeropuertosEcuadorSet.Contains("LATACUNGA") ? "checked" : "")>
+                                            <label class="custom-control-label" for="latacunga">Latacunga (LTX)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="aeropuertoOtros" value="Otros" @(aeropuertosEcuadorSet.Contains("OTROS") ? "checked" : "")>
+                                            <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
+                                        </div>
+                                        <div class="mt-2" id="aeropuertoOtrosContenedor" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="text-right mt-3">
+                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow">
+                                    <i class="fas fa-save"></i> Guardar Operaciones
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="comprobante" role="tabpanel" aria-labelledby="list-comprobante-list" style="display:none !important;"><!-- contenido movido a #anexos --></div>
+
+                <div class="tab-pane fade" id="anexos" role="tabpanel" aria-labelledby="list-anexos-list">
+                    <div class="card card-custom">
+                        <div class="card-header-custom">
+                            <h5 class="mb-0 font-weight-bold">Documentación y Anexos</h5>
+                        </div>
+                        <div class="card-body card-body-custom">
+                            <div style="max-height: 65vh; overflow-y: auto; padding: 10px;">
+                                <form id="formAnexos">
+                                    @if (modoSubsanacionObservada)
+                                    {
+                                        var claseAlertaSubsanacion = restringirAnexosPorSubsanacion
+                                            ? "alert alert-warning border-warning"
+                                            : "alert alert-info border-info";
+                                        <div class="@claseAlertaSubsanacion modo-subsanacion-alert">
+                                            <div>
+                                                <strong>@(restringirAnexosPorSubsanacion ? "Modo subsanación documental." : "Subsanación documental pendiente.")</strong>
+                                                @(restringirAnexosPorSubsanacion
+                                                    ? "Solo se habilitan los documentos observados para nueva carga."
+                                                    : "Puede continuar cargando información y anexos en este formulario; los pendientes listados se corrigen en otra pantalla.")
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(documentosPendientesEtiquetasTexto))
+                                            {
+                                                <div class="mt-1"><strong>Pendientes:</strong> <span>@documentosPendientesEtiquetasTexto</span></div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(documentosPendientesNoGestionablesTexto))
+                                            {
+                                                <div class="mt-2">
+                                                    <strong>Estos documentos no se corrigen en este formulario:</strong> <span>@documentosPendientesNoGestionablesTexto.</span>
+                                                    @if (codigoSolicitud > 0)
+                                                    {
+                                                        <a href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = codigoSolicitud })" class="alert-link">Abrir la pantalla de subsanación</a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+
+
+                                    <div class="anexo-item border border-primary rounded p-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="font-weight-bold text-primary h6 mb-0">
+                                                <i class="fas fa-receipt mr-1"></i> Factura *
+                                            </label>
+                                            <span class="badge badge-primary">Obligatorio</span>
+                                        </div>
+                                        <div class="alert alert-info border-info py-1 px-2 mb-2" role="alert" style="font-size:0.85em;">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Tamano maximo <strong>2 MB</strong>. Formatos: PDF, JPG, PNG.
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2" id="archivoFacturaPago" accept=".pdf" onchange="validarArchivo('archivoFacturaPago'); mostrarVistaPreviaArchivo('archivoFacturaPago', 'vistaPreviaFacturaPago')">
+                                        <div class="mt-1 mb-2" id="vistaPreviaFacturaPago" style="display:none;">
+                                            <a href="#" class="btn btn-sm btn-outline-info"><i class="fas fa-eye"></i> Visualizar archivo</a>
+                                        </div>
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkFacturaPago" onchange="toggleCaptura('archivoFacturaPago', 'capturaFacturaPago', this)">
+                                            <label class="custom-control-label text-danger" for="chkFacturaPago"><small>El archivo supera el tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaFacturaPago" style="display:none;" class="mb-2 p-2 border border-danger rounded bg-white">
+                                            <label><small>Subir captura de pantalla (JPG/PNG)</small></label>
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <label class="font-weight-bold d-block mt-1">Descripcion / Enlace:</label>
+                                        <textarea class="form-control" id="conceptoFacturaPago" rows="2" placeholder="Ingrese enlace o descripcion..." onblur="validarConcepto('conceptoFacturaPago')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoFacturaPago" style="display:none;">! Debe ingresar un enlace o descripcion valida.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">1</span> Copia de AOC valida *</label>
+                                            <i class="fas fa-file-pdf text-danger fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoAOC" accept=".pdf" required onchange="validarArchivo('archivoAOC')">
+
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkAOC" onchange="toggleCaptura('archivoAOC', 'capturaAOC', this)">
+                                            <label class="custom-control-label text-muted" for="chkAOC"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaAOC" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoAOC" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoAOC')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoAOC" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">2</span> OpSpecs (Especificaciones) *</label>
+                                            <i class="fas fa-file-pdf text-danger fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoOpSpecs" accept=".pdf" required onchange="validarArchivo('archivoOpSpecs')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkOpSpecs" onchange="toggleCaptura('archivoOpSpecs', 'capturaOpSpecs', this)">
+                                            <label class="custom-control-label text-muted" for="chkOpSpecs"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaOpSpecs" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoOpSpecs" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoOpSpecs')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoOpSpecs" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">3</span> Manual de Operaciones *</label>
+                                            <i class="fas fa-book text-info fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoManualOperaciones" accept=".pdf" required onchange="validarArchivo('archivoManualOperaciones')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkManualOperaciones" onchange="toggleCaptura('archivoManualOperaciones', 'capturaManualOperaciones', this)">
+                                            <label class="custom-control-label text-muted" for="chkManualOperaciones"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaManualOperaciones" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoManualOperaciones" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoManualOperaciones')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoManualOperaciones" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">4</span> Permiso Operacion C.N.A.C *</label>
+                                            <i class="fas fa-certificate text-warning fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoPermisoOperacion" accept=".pdf" required onchange="validarArchivo('archivoPermisoOperacion')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkPermisoOperacion" onchange="toggleCaptura('archivoPermisoOperacion', 'capturaPermisoOperacion', this)">
+                                            <label class="custom-control-label text-muted" for="chkPermisoOperacion"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaPermisoOperacion" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoPermisoOperacion" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoPermisoOperacion')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoPermisoOperacion" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge @(esModificacion ? "badge-secondary" : "badge-primary") mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E @(esModificacion ? "(opcional)" : "*")</label>
+                                            <i class="fas fa-volume-up text-secondary fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="d-none" id="archivoCertificadoRuido" name="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple @(esModificacion ? null : Html.Raw("required=\"required\"")) onchange="validarArchivo('archivoCertificadoRuido')">
+                                        <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoRuido" onclick="abrirSelectorArchivos('archivoCertificadoRuido')">
+                                            <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoRuido');">
+                                                <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
+                                            </button>
+                                            <p class="upload-help">o arrastre y suelte aqui</p>
+                                            <small class="text-muted d-block mt-1" id="infoArchivoCertificadoRuido"></small>
+                                        </div>
+                                        <ul class="upload-file-list mb-2" id="listaArchivoCertificadoRuido">
+                                            <li class="text-muted">Sin archivos seleccionados.</li>
+                                        </ul>
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkCertificadoRuido" onchange="toggleCaptura('archivoCertificadoRuido', 'capturaCertificadoRuido', this)">
+                                            <label class="custom-control-label text-muted" for="chkCertificadoRuido"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaCertificadoRuido" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoRuido" rows="1" placeholder="Enlace o descripcion..." @(esModificacion ? null : Html.Raw("required=\"required\"")) onblur="validarConcepto('conceptoCertificadoRuido')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoCertificadoRuido" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-secondary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD (opcional)</label>
+                                            <i class="fas fa-file-contract text-secondary fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="d-none" id="archivoCertificadoAeronavegabilidad" name="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
+                                        <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoAeronavegabilidad" onclick="abrirSelectorArchivos('archivoCertificadoAeronavegabilidad')">
+                                            <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoAeronavegabilidad');">
+                                                <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
+                                            </button>
+                                            <p class="upload-help">o arrastre y suelte aqui</p>
+                                            <small class="text-muted d-block mt-1" id="infoArchivoCertificadoAeronavegabilidad"></small>
+                                        </div>
+                                        <ul class="upload-file-list mb-2" id="listaArchivoCertificadoAeronavegabilidad">
+                                            <li class="text-muted">Sin archivos seleccionados.</li>
+                                        </ul>
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkCertificadoAeronavegabilidad" onchange="toggleCaptura('archivoCertificadoAeronavegabilidad', 'capturaCertificadoAeronavegabilidad', this)">
+                                            <label class="custom-control-label text-muted" for="chkCertificadoAeronavegabilidad"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaCertificadoAeronavegabilidad" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoAeronavegabilidad" rows="1" placeholder="Enlace o descripcion..." onblur="validarConcepto('conceptoCertificadoAeronavegabilidad')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoCertificadoAeronavegabilidad" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">7</span> Copia certificada del poder otorgado al representante legal en el Ecuador *</label>
+                                            <i class="fas fa-user-tie text-dark fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoPoderRepresentante" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoPoderRepresentante')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkPoderRepresentante" onchange="toggleCaptura('archivoPoderRepresentante', 'capturaPoderRepresentante', this)">
+                                            <label class="custom-control-label text-muted" for="chkPoderRepresentante"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaPoderRepresentante" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoPoderRepresentante" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoPoderRepresentante')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoPoderRepresentante" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item border-secondary">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"> Otros / Adicionales</label>
+                                            <i class="fas fa-folder-plus text-primary fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoOtro" accept=".pdf,.jpg,.jpeg,.png" onchange="validarArchivo('archivoOtro')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkOtro" onchange="toggleCaptura('archivoOtro', 'capturaOtro', this)">
+                                            <label class="custom-control-label text-muted" for="chkOtro"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaOtro" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoOtro" rows="1" placeholder="Enlace o descripcion..." onblur="validarConcepto('conceptoOtro')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoOtro" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                                <div class="tab-pane fade" id="carta12901" role="tabpanel" aria-labelledby="list-carta12901-list">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card card-custom mb-3">
+                                <div class="card-header-custom"><h5 class="mb-0 font-weight-bold">Carta (FORM 129-01)</h5></div>
+                                <div class="card-body card-body-custom">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="cartaFecha">Fecha *</label>
+                                            <input type="date" class="form-control" id="cartaFecha" />
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label for="cartaOficio">Oficio Nro *</label>
+                                            <input type="text" class="form-control" id="cartaOficio" placeholder="Ej: DGAC-AOCR-2026-001" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cartaDirector">Director DGAC *</label>
+                                        <input type="text" class="form-control" id="cartaDirector" placeholder="Nombre completo" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cartaAace">Autoridad AACE *</label>
+                                        <input type="text" class="form-control" id="cartaAace" placeholder="Autoridad Aeronautica del EAE" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cartaOpspecDetalle">OpSpecs (numero / revision) *</label>
+                                        <input type="text" class="form-control" id="cartaOpspecDetalle" placeholder="Ej: OpSpecs 001 - Rev.05 (2025-12-15)" />
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="cartaAcuerdo">No. Acuerdo Permiso *</label>
+                                            <input type="text" class="form-control" id="cartaAcuerdo" placeholder="Ej: CNA-2025-017" />
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label for="cartaAcuerdoFecha">Fecha Acuerdo *</label>
+                                            <input type="date" class="form-control" id="cartaAcuerdoFecha" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cartaRepresentante">Representante Legal / Apoderado *</label>
+                                        <input type="text" class="form-control" id="cartaRepresentante" placeholder="Nombre del representante en Ecuador" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card card-custom mb-3">
+                                <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 font-weight-bold">Vista previa</h5>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCopiarCarta"><i class="fas fa-copy"></i> Copiar</button>
+                                </div>
+                                <div class="card-body card-body-custom">
+                                    <textarea id="cartaPreview" class="form-control" rows="16" readonly style="background:#fbfbfb;"></textarea>
+                                    <input type="hidden" id="carta12901Texto" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="checklist12904" role="tabpanel" aria-labelledby="list-checklist12904-list">
+                    <div class="card card-custom">
+                        <div class="card-header-custom"><h5 class="mb-0 font-weight-bold">Checklist (FORM 129-04)</h5></div>
+                        <div class="card-body card-body-custom">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead class="thead-light">
+                                        <tr><th style="width:45%">Item</th><th style="width:15%">Estado</th><th>Observacion</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td><b>Comprobante / Factura de pago</b></td><td><span class="badge badge-secondary" id="chkFacturaEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td><b>Formulario 129-01 (Carta)</b></td><td><span class="badge badge-secondary" id="chk12901Estado">Pendiente</span></td><td></td></tr>
+                                        <tr><td><b>Formulario 129-02 (Informacion)</b></td><td><span class="badge badge-secondary" id="chk12902Estado">Pendiente</span></td><td></td></tr>
+                                        <tr><td><b>Formulario 129-03 (Listado aeronaves)</b></td><td><span class="badge badge-secondary" id="chk12903Estado">Pendiente</span></td><td></td></tr>
+                                        <tr><td colspan="3" class="bg-light"><b>Anexos obligatorios</b></td></tr>
+                                        <tr><td>AOC valido</td><td><span class="badge badge-secondary" id="chkAOCEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>OpSpecs / Especificaciones</td><td><span class="badge badge-secondary" id="chkOpSpecsEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Manual de Operaciones</td><td><span class="badge badge-secondary" id="chkManualEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Permiso CNAC</td><td><span class="badge badge-secondary" id="chkPermisoEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Certificado de ruido de aeronaves</td><td><span class="badge badge-secondary" id="chkRuidoEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Certificado de aeronavegabilidad</td><td><span class="badge badge-secondary" id="chkAeronavegabilidadEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Poder representante legal en Ecuador</td><td><span class="badge badge-secondary" id="chkPoderRepresentanteEstado">Pendiente</span></td><td></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aocr-actions-bar">
+                    <button class="btn btn-outline-secondary mr-2" type="button" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button class="btn btn-primary btn-lg shadow" type="button" onclick="guardarFormulario()">
+                        <i class="fas fa-save"></i> Guardar Solicitud
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalInformacionCompania" tabindex="-1" role="dialog" aria-labelledby="modalInformacionCompaniaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalInformacionCompaniaLabel"><i class="fas fa-building"></i> Nueva Compania / Operador</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle"></i> La Direccion General de Aviacion Civil le informa que su Compania no consta en nuestra base de datos.
+                </div>
+                <p>
+                    A fin de hacer su respectivo ingreso favor enviar su informacion de compania a:
+                </p>
+                <p class="text-center bg-light p-2 rounded"><b>uio.sobrevuelos@aviacioncivil.gob.ec</b> <br> <b>soporte.sobrevuelos@aviacioncivil.gob.ec</b></p>
+
+                <p><strong>Debe adjuntar los siguientes datos:</strong></p>
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Nombre de la Compania</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Nombre Comercial</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Nombre y cargo del representante legal</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Codigo OACI (si aplica)</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Pais de Origen</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Ciudad donde se domicilia</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Direccion</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Telefono</li>
+                    <li class="list-group-item py-1"><i class="fas fa-check text-success mr-2"></i> Correo electronico</li>
+                </ul>
+                <p class="small text-muted">Recibira respuesta una vez su solicitud haya sido procesada.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="$('#modalInformacionCompania').modal('hide')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAgregarAeronave" tabindex="-1" role="dialog" aria-labelledby="modalAgregarAeronaveLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalAgregarAeronaveLabel"><i class="fas fa-plane-arrival"></i> Agregar Nueva Aeronave</h5>
+            </div>
+            <div class="modal-body">
+                <form id="formAgregarAeronave">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="fabricante">Fabricante *</label>
+                            <input type="text" class="form-control" id="fabricante" placeholder="Ej: Boeing, Airbus">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="modelo">Modelo *</label>
+                            <input type="text" class="form-control" id="modelo" placeholder="Ej: 737, A320">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="serie">Serie *</label>
+                            <input type="text" class="form-control" id="serie" placeholder="Ingrese numero de serie">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="matricula">Matricula *</label>
+                            <input type="text" class="form-control" id="matricula" placeholder="Ingrese matricula">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="designadorOASI">Designador OACI *</label>
+                            <input type="text" class="form-control text-uppercase" id="designadorOASI" maxlength="6" placeholder="Ej: AB1234">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="configuracion">Configuracion *</label>
+                            <input type="text" class="form-control" id="configuracion" placeholder="Ej: Pasajeros, Carga">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="etapaRuido">Etapa de Ruido *</label>
+                            <input type="text" class="form-control" id="etapaRuido" placeholder="Ingrese etapa">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="peso">Peso (kg) *</label>
+                            <input type="number" class="form-control" id="peso" placeholder="Ej: 75000">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="$('#modalAgregarAeronave').modal('hide')">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnGuardarAeronave">Guardar Aeronave</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Carga condicional de librerías para renderizado standalone (sin layout) *@
+<script>if(typeof jQuery==='undefined'){document.write('<script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery-3.6.4.min.js")"><\/script>');}</script>
+<script>if(typeof jQuery==='undefined'){document.write('<script src="https://code.jquery.com/jquery-3.6.4.min.js"><\/script>');}</script>
+@* Este parcial se inyecta por AJAX dentro del layout autenticado.
+    Usar document.write aqui destruye el documento actual cuando Bootstrap o Swal aun no terminan de cargar. *@
+
+<script>
+    const modoSubsanacionObservada = @Html.Raw(modoSubsanacionObservada ? "true" : "false");
+    const restringirAnexosPorSubsanacion = @Html.Raw(restringirAnexosPorSubsanacion ? "true" : "false");
+    const documentosPendientesSubsanacionInputIds = @Html.Raw(documentosPendientesInputIdsJson);
+
+    function obtenerInputsArchivosFormulario() {
+        return [
+            'archivoAOC',
+            'archivoOpSpecs',
+            'archivoManualOperaciones',
+            'archivoPermisoOperacion',
+            'archivoCertificadoRuido',
+            'archivoCertificadoAeronavegabilidad',
+            'archivoPoderRepresentante',
+            'archivoFacturaPago',
+            'archivoOtro'
+        ];
+    }
+
+    function inputHabilitadoEnModoSubsanacion(inputId) {
+        return !restringirAnexosPorSubsanacion || documentosPendientesSubsanacionInputIds.indexOf(inputId) >= 0;
+    }
+
+    function obtenerInputsArchivosActivos() {
+        return obtenerInputsArchivosFormulario().filter(function (inputId) {
+            return inputHabilitadoEnModoSubsanacion(inputId);
+        });
+    }
+
+    function aplicarModoSubsanacionObservada() {
+        if (!restringirAnexosPorSubsanacion) {
+            return;
+        }
+
+        obtenerInputsArchivosFormulario().forEach(function (inputId) {
+            var input = document.getElementById(inputId);
+            if (!input) {
+                return;
+            }
+
+            var contenedor = $(input).closest('.anexo-item');
+            var habilitado = inputHabilitadoEnModoSubsanacion(inputId);
+
+            if (!habilitado) {
+                if (contenedor.length) {
+                    contenedor.hide();
+                    contenedor.find(':input').each(function () {
+                        this.disabled = true;
+                        this.required = false;
+                    });
+                }
+                else {
+                    input.disabled = true;
+                    input.required = false;
+                }
+
+                return;
+            }
+
+            if (contenedor.length) {
+                contenedor.addClass('border-warning');
+            }
+        });
+    }
+
+    $(document).ready(function () {
+
+        // Funcion para actualizar el contador de aeronaves
+        function actualizarContador() {
+            let resumen = {};
+            $('#tablaAeronaves tbody tr').each(function () {
+                let fabricante = $(this).find('td').eq(0).text().trim();
+                let modelo = $(this).find('td').eq(1).text().trim();
+                let key = fabricante + ' - ' + modelo;
+
+                if (resumen[key]) {
+                    resumen[key]++;
+                } else {
+                    resumen[key] = 1;
+                }
+            });
+
+            let resumenTexto = '';
+            for (let key in resumen) {
+                resumenTexto += `${key}: ${resumen[key]} aeronave(s)\n`;
+            }
+
+            $('#contadorAeronaves').val(resumenTexto.trim());
+        }
+
+        // Inicializar contador vacio
+        $('#contadorAeronaves').val('');
+
+        // Abrir modal Informacion Compania
+        $('#btnInformacionCompania').click(function (e) {
+            e.preventDefault();
+            $('#modalInformacionCompania').modal('show');
+        });
+
+        // Abrir modal Agregar Aeronave
+        $('#btnAgregarAeronave').click(function () {
+            $('#formAgregarAeronave')[0].reset();
+            $('#modalAgregarAeronave').modal('show');
+        });
+
+        // Guardar Aeronave desde el Modal
+        $('#btnGuardarAeronave').click(function () {
+            var fabricante = $('#fabricante').val();
+            var modelo = $('#modelo').val();
+            var serie = $('#serie').val();
+            var matricula = $('#matricula').val();
+            var configuracion = $('#configuracion').val();
+            var etapaRuido = $('#etapaRuido').val();
+            var peso = $('#peso').val();
+            var desigOASI = $('#designadorOASI').val();
+
+            // Validacion basica
+            if (fabricante === '' || modelo === '' || serie === '' || matricula === '' || configuracion === '') {
+                Swal.fire({ title: 'Campos incompletos', text: 'Por favor complete todos los campos obligatorios.', icon: 'warning', confirmButtonText: 'OK' });
+                return;
+            }
+
+            // Agregar nueva fila a la tabla de forma segura usando creación de DOM/jQuery
+            var $tr = $('<tr>');
+            $tr.append($('<td>').text(fabricante));
+            $tr.append($('<td>').text(modelo));
+            $tr.append($('<td>').text(serie));
+            $tr.append($('<td>').text(matricula));
+            $tr.append($('<td>').text(configuracion));
+            $tr.append($('<td>').text(etapaRuido));
+            $tr.append($('<td>').text(peso));
+            $tr.append($('<td>').text(desigOASI));
+            var $tdAcc = $('<td>').addClass('text-center');
+            var $btn = $('<button>').attr('type','button').addClass('btn btn-outline-danger btn-sm btnEliminarAeronave').attr('title','Eliminar').append($('<i>').addClass('fas fa-trash-alt'));
+            $tdAcc.append($btn);
+            $tr.append($tdAcc);
+            $('#tablaAeronaves tbody').append($tr);
+
+            $('#modalAgregarAeronave').modal('hide');
+            actualizarContador(); // Actualizar contador al agregar
+        });
+
+        // Delegado para eliminar aeronaves
+        $('#tablaAeronaves tbody').on('click', '.btnEliminarAeronave', function () {
+            $(this).closest('tr').remove();
+            actualizarContador(); // Actualizar contador al eliminar
+        });
+
+        // Click en boton cargar archivo
+        $('#btnCargarArchivo').click(function () {
+            // Reset del input para permitir seleccionar el mismo archivo nuevamente
+            $('#inputArchivo').val('');
+            $('#inputArchivo').click();
+        });
+
+        // Cuando el usuario seleccione un archivo
+        $('#inputArchivo').change(function (e) {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+
+            if (!archivo.name.endsWith('.csv')) {
+                Swal.fire({
+                    title: 'Error de formato',
+                    text: 'Por favor seleccione un archivo .csv valido.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+
+            const lector = new FileReader();
+
+            lector.onload = function (e) {
+                try {
+                    const contenido = decodeCsvBuffer(e.target.result);
+                    let lineas = contenido.split(/\r\n|\n|\r/);
+                    if (lineas.length > 0) {
+                        lineas[0] = lineas[0].replace(/^\uFEFF/, '');
+                    }
+
+
+                    // Filtrar lineas vacias
+                    lineas = lineas.filter(line => line.trim().length > 0);
+
+                    // Limitar tamaño para evitar archivos excesivos (encabezado + 5000 filas)
+                    if (lineas.length > 5001) {
+                        Swal.fire({ title: 'Archivo demasiado grande', text: 'El archivo CSV supera el límite de 5000 filas. Divídalo en archivos más pequeños.', icon: 'warning', confirmButtonText: 'OK' });
+                        return;
+                    }
+
+                    if (lineas.length < 2) {
+                        Swal.fire({
+                            title: 'Archivo vacio',
+                            text: 'El archivo CSV no contiene datos. Se requiere encabezado + minimo 1 fila.',
+                            icon: 'warning',
+                            confirmButtonText: 'OK'
+                        });
+                        return;
+                    }
+
+                    // Detectar delimitador automaticamente
+                    const delimitador = detectarDelimitador(lineas[0]);
+                    console.log('Delimitador detectado:', delimitador);
+
+                    // Limpiar tabla antes de cargar nuevas filas
+                    $('#tablaAeronaves tbody').empty();
+                    let contadorAeronaves = 0;
+                    let errores = [];
+
+                    for (let i = 1; i < lineas.length; i++) {
+                        const lineaTrimmed = lineas[i].trim();
+                        if (!lineaTrimmed) continue;
+
+                        const fila = parseCsvLine(lineaTrimmed, delimitador);
+
+                        // Validar cantidad de columnas
+                        if (fila.length !== 8) {
+                            errores.push(`Fila ${i + 1}: ${fila.length} columnas (esperadas 8)`);
+                            continue;
+                        }
+
+                        // Validar que matricula no este vacia
+                        if (!fila[3].trim()) {
+                            errores.push(`Fila ${i + 1}: Matricula vacia`);
+                            continue;
+                        }
+
+                        // Crear fila de tabla usando DOM/jQuery seguro
+                        var $tr = $('<tr>');
+                        $tr.append($('<td>').text(fila[0].trim()));
+                        $tr.append($('<td>').text(fila[1].trim()));
+                        $tr.append($('<td>').text(fila[2].trim()));
+                        $tr.append($('<td>').text(fila[3].trim()));
+                        $tr.append($('<td>').text(fila[4].trim()));
+                        $tr.append($('<td>').text(fila[5].trim()));
+                        $tr.append($('<td>').text(fila[6].trim()));
+                        $tr.append($('<td>').text(fila[7].trim()));
+                        var $tdAcc = $('<td>').addClass('text-center');
+                        var $btn = $('<button>').attr('type','button').addClass('btn btn-outline-danger btn-sm btnEliminarAeronave').append($('<i>').addClass('fas fa-trash-alt'));
+                        $tdAcc.append($btn);
+                        $tr.append($tdAcc);
+
+                        $('#tablaAeronaves tbody').append($tr);
+                        contadorAeronaves++;
+                    }
+
+                    // Mostrar resultado
+                    if (contadorAeronaves === 0) {
+                        let mensajeError = 'No se cargaron aeronaves validas.\n\n';
+                        if (errores.length > 0) {
+                            mensajeError += 'Errores:\n' + errores.slice(0, 5).join('\n');
+                            if (errores.length > 5) {
+                                mensajeError += `\n... y ${errores.length - 5} errores mas`;
+                            }
+                        }
+                        Swal.fire({
+                            title: 'Error',
+                            text: mensajeError,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                        return;
+                    }
+
+                    // Exito
+                    let mensaje = `Se cargaron ${contadorAeronaves} aeronave(s)`;
+                    if (errores.length > 0) {
+                        mensaje += ` (${errores.length} fila(s) ignorada(s))`;
+                    }
+                    
+                    Swal.fire({
+                        title: 'Exito',
+                        text: mensaje,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+
+                    actualizarContador();
+                    console.log(`Aeronaves cargadas: ${contadorAeronaves}`);
+
+                } catch (error) {
+                    console.error('Error al procesar CSV:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Error al procesar el archivo: ' + error.message,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            };
+
+            lector.onerror = function(error) {
+                console.error('Error al leer archivo:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Error al leer el archivo. Por favor intente de nuevo.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            };
+
+            lector.readAsArrayBuffer(archivo);
+        });
+
+        $('#aprobacionOTROS').on('change', function () {
+            $('#aprobacionOtrosContenedor').toggle(this.checked);
+        });
+
+        $('#aeropuertoOtros').on('change', function () {
+            $('#aeropuertoOtrosContenedor').toggle(this.checked);
+        });
+
+        inicializarCompaniasSeleccionadas();
+        $('#aprobacionOtrosContenedor').toggle($('#aprobacionOTROS').is(':checked'));
+        $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
+        inicializarDropzoneCarga('archivoCertificadoRuido', 'dropzoneArchivoCertificadoRuido');
+        inicializarDropzoneCarga('archivoCertificadoAeronavegabilidad', 'dropzoneArchivoCertificadoAeronavegabilidad');
+        actualizarResumenArchivos('archivoCertificadoRuido');
+        actualizarResumenArchivos('archivoCertificadoAeronavegabilidad');
+        aplicarModoSubsanacionObservada();
+    });
+    function abrirSelectorArchivos(idInput) {
+        const input = document.getElementById(idInput);
+        if (!input || input.disabled) {
+            return;
+        }
+
+        input.click();
+    }
+
+    function formatearTamanoArchivo(bytes) {
+        if (!bytes || bytes <= 0) {
+            return '0 KB';
+        }
+
+        var kb = bytes / 1024;
+        if (kb < 1024) {
+            return kb.toFixed(1) + ' KB';
+        }
+
+        var mb = kb / 1024;
+        return mb.toFixed(2) + ' MB';
+    }
+
+    function actualizarResumenArchivos(idInput) {
+        var input = document.getElementById(idInput);
+        if (!input) {
+            return;
+        }
+
+        var archivos = Array.from(input.files || []);
+        var baseId = idInput.charAt(0).toUpperCase() + idInput.slice(1);
+        var infoEl = document.getElementById('info' + baseId);
+        var listaEl = document.getElementById('lista' + baseId);
+
+        if (infoEl) {
+            if (archivos.length === 0) {
+                infoEl.textContent = '';
+            } else {
+                infoEl.textContent = archivos.length === 1
+                    ? '1 archivo seleccionado'
+                    : archivos.length + ' archivos seleccionados';
+            }
+        }
+
+        if (!listaEl) {
+            return;
+        }
+
+        listaEl.innerHTML = '';
+
+        if (archivos.length === 0) {
+            var vacio = document.createElement('li');
+            vacio.className = 'text-muted';
+            vacio.textContent = 'Sin archivos seleccionados.';
+            listaEl.appendChild(vacio);
+            return;
+        }
+
+        archivos.forEach(function (archivo, index) {
+            var li = document.createElement('li');
+            li.textContent = (index + 1) + '. ' + archivo.name + ' (' + formatearTamanoArchivo(archivo.size) + ')';
+            listaEl.appendChild(li);
+        });
+    }
+
+    function asignarArchivosInput(idInput, archivos) {
+        var input = document.getElementById(idInput);
+        if (!input || input.disabled || !archivos || archivos.length === 0) {
+            return;
+        }
+
+        if (typeof DataTransfer === 'undefined') {
+            abrirSelectorArchivos(idInput);
+            return;
+        }
+
+        var dt = new DataTransfer();
+        for (var i = 0; i < archivos.length; i++) {
+            dt.items.add(archivos[i]);
+        }
+
+        input.files = dt.files;
+        validarArchivo(idInput);
+    }
+
+    function inicializarDropzoneCarga(idInput, idDropzone) {
+        var input = document.getElementById(idInput);
+        var dropzone = document.getElementById(idDropzone);
+
+        if (!input || !dropzone) {
+            return;
+        }
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!input.disabled) {
+                    dropzone.classList.add('drag-active');
+                }
+            });
+        });
+
+        ['dragleave', 'dragend', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('drag-active');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            if (input.disabled) {
+                return;
+            }
+
+            var archivos = e.dataTransfer ? e.dataTransfer.files : null;
+            if (!archivos || archivos.length === 0) {
+                return;
+            }
+
+            asignarArchivosInput(idInput, archivos);
+        });
+    }
+
+    //Funcion que activa o desactiva el campo de captura de pantalla
+    function validarArchivo(idInput) {
+        const input = document.getElementById(idInput);
+        if (!input) return false;
+        const archivos = Array.from(input.files || []);
+
+        if (archivos.length === 0) {
+            actualizarResumenArchivos(idInput);
+            return true;
+        }
+
+        const tamanoMaximo = 10 * 1024 * 1024; // 10 MB en bytes
+        const acceptAttr = (input.getAttribute('accept') || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+
+        for (var i = 0; i < archivos.length; i++) {
+            var archivo = archivos[i];
+            if (archivo.size > tamanoMaximo) {
+                Swal.fire({
+                    title: 'Archivo demasiado grande',
+                    text: '"' + archivo.name + '" supera los 10MB permitidos.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
+                input.value = '';
+                actualizarResumenArchivos(idInput);
+                return false;
+            }
+            if (acceptAttr.length > 0) {
+                const ext = '.' + (archivo.name.split('.').pop() || '').toLowerCase();
+                const allowed = acceptAttr.some(a => a === ext || a === '*' || a === '*/*');
+                if (!allowed) {
+                    Swal.fire({
+                        title: 'Formato no permitido',
+                        text: '"' + archivo.name + '": formato permitido: ' + acceptAttr.join(', '),
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    input.value = '';
+                    actualizarResumenArchivos(idInput);
+                    return false;
+                }
+            }
+        }
+
+        actualizarResumenArchivos(idInput);
+
+        return true;
+    }
+
+    function toggleCaptura(idArchivoPdf, idCapturaImagen, checkbox) {
+        const inputArchivo = document.getElementById(idArchivoPdf);
+        const divCaptura = document.getElementById(idCapturaImagen);
+
+        if (checkbox.checked) {
+            inputArchivo.value = ''; // Borra el archivo PDF
+            inputArchivo.disabled = true;
+            inputArchivo.required = false;
+            divCaptura.style.display = 'block';
+            actualizarResumenArchivos(idArchivoPdf);
+        } else {
+            inputArchivo.disabled = false;
+            inputArchivo.required = true;
+            divCaptura.style.display = 'none';
+        }
+    }
+
+    function validarConcepto(idTextarea) {
+        const textarea = document.getElementById(idTextarea);
+        const alerta = document.getElementById('alerta' + idTextarea.charAt(0).toUpperCase() + idTextarea.slice(1));
+
+        if (textarea.value.trim() === '') {
+            alerta.style.display = 'block';
+        } else {
+            alerta.style.display = 'none';
+        }
+    }
+
+    function detectarDelimitador(lineaCabecera) {
+        const conteos = [
+            { d: ';', n: (lineaCabecera.match(/;/g) || []).length },
+            { d: ',', n: (lineaCabecera.match(/,/g) || []).length },
+            { d: '\t', n: (lineaCabecera.match(/\t/g) || []).length },
+            { d: '|', n: (lineaCabecera.match(/\|/g) || []).length }
+        ];
+        conteos.sort((a, b) => b.n - a.n);
+        return conteos[0].n > 0 ? conteos[0].d : ';';
+    }
+
+    function decodeCsvBuffer(buffer) {
+        try {
+            if (window.TextDecoder) {
+                var utf8 = new TextDecoder('utf-8');
+                var text = utf8.decode(buffer);
+                if (text.indexOf('\uFFFD') === -1) {
+                    return text;
+                }
+                var win1252 = new TextDecoder('windows-1252');
+                return win1252.decode(buffer);
+            }
+        } catch (e) {
+            console.warn('TextDecoder no disponible:', e);
+        }
+        // Fallback simple (ASCII)
+        return String.fromCharCode.apply(null, new Uint8Array(buffer));
+    }
+
+    function parseCsvLine(line, delimiter) {
+        var result = [];
+        var current = '';
+        var inQuotes = false;
+        for (var i = 0; i < line.length; i++) {
+            var ch = line[i];
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch === delimiter && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        result.push(current);
+        return result;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    //funcion para mostrar archivo subido
+    function mostrarVistaPreviaArchivo(inputId, vistaPreviaId) {
+        const input = document.getElementById(inputId);
+        const vistaPrevia = document.getElementById(vistaPreviaId);
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const url = URL.createObjectURL(file);
+            const enlace = vistaPrevia.querySelector('a');
+
+            enlace.href = url;
+            enlace.textContent = 'Visualizar archivo: ' + file.name;
+            enlace.target = '_blank';
+            enlace.rel = 'noopener noreferrer';
+            vistaPrevia.style.display = 'block';
+
+            // Liberar objeto URL después de 60 segundos para evitar fugas de memoria
+            setTimeout(function() {
+                try { URL.revokeObjectURL(url); } catch (e) { }
+            }, 60000);
+        } else {
+            vistaPrevia.style.display = 'none';
+        }
+    }
+    // En Solicitud AOCR se maneja una sola compañía activa.
+    function inicializarCompaniasSeleccionadas() {
+        const hidden = document.getElementById('companiasSeleccionadasRaw');
+        if (!hidden) {
+            return;
+        }
+
+        const primero = (hidden.value || '')
+            .split(/[,\|;]/)
+            .map(function (v) { return (v || '').trim(); })
+            .filter(Boolean)[0] || '';
+
+        hidden.value = primero;
+    }
+</script>
+<script>
+  // ====== Inicializar variables globales ======
+  window.aeronavesSeleccionadas = window.aeronavesSeleccionadas || [];
+
+  // ====== Generador Carta 129-01 ======
+  function buildCarta12901(){
+    const expl = $('#nombreCompania').val() || '________________';
+    const fecha = $('#cartaFecha').val() || '____-__-__';
+    const oficio = $('#cartaOficio').val() || '____';
+    const director = $('#cartaDirector').val() || 'Director DGAC';
+    const aace = $('#cartaAace').val() || 'Autoridad Aeronautica';
+    const opspec = $('#cartaOpspecDetalle').val() || 'OpSpecs ___';
+    const acuerdo = $('#cartaAcuerdo').val() || '______';
+    const acuerdoF = $('#cartaAcuerdoFecha').val() || '____-__-__';
+    const rep = $('#cartaRepresentante').val() || $('#nombreRepresentante').val() || 'Representante Legal';
+
+    const txt = `Quito, ${fecha}\n\nOficio: ${oficio}\n\nIng. ${director}\nDIRECCION GENERAL DE AVIACION CIVIL\nPresente\n\nPor medio del presente solicito se autorice el otorgamiento del Reconocimiento del Certificado de Explotador de Servicios Aereos (AOCR) a ${expl}, de conformidad con el Permiso de Operacion emitido por el Consejo Nacional de Aviacion Civil (Acuerdo ${acuerdo} de fecha ${acuerdoF}) y las OpSpecs vigentes (${opspec}) emitidas por ${aace}.\n\n${expl} designa como Representante Legal y/o Apoderado General en el Ecuador a ${rep}.\n\nAtentamente,\n${rep}\n${expl}`;
+    $('#cartaPreview').val(txt);
+    $('#carta12901Texto').val(txt);
+  }
+
+  $(document).on('input change', '#cartaFecha,#cartaOficio,#cartaDirector,#cartaAace,#cartaOpspecDetalle,#cartaAcuerdo,#cartaAcuerdoFecha,#cartaRepresentante,#nombreCompania', buildCarta12901);
+  $(document).on('click','#btnCopiarCarta',function(){
+      const t=$('#cartaPreview').val()||'';
+      if(!t.trim()) return;
+      if(navigator.clipboard){navigator.clipboard.writeText(t);}else{const ta=document.getElementById('cartaPreview');ta.select();document.execCommand('copy');}
+  });
+
+  // ====== Checklist 129-04 ======
+  function setBadge(id, ok){
+    const el=$('#'+id);
+    if (el.length === 0) return;
+    el.removeClass('badge-secondary badge-success').addClass(ok?'badge-success':'badge-secondary').text(ok?'Completo':'Pendiente');
+  }
+
+  function obtenerAprobacionesEspecialesSeleccionadas() {
+    const valores = [];
+    $('.aprobacion-especial:checked').each(function () {
+      const valor = ($(this).val() || '').trim();
+      if (valor) valores.push(valor);
+    });
+    return valores;
+  }
+
+  function obtenerAeropuertosEcuadorSeleccionados() {
+    const valores = [];
+    $('.aeropuerto-ecuador:checked').each(function () {
+      const valor = ($(this).val() || '').trim();
+      if (valor) valores.push(valor);
+    });
+    return valores;
+  }
+
+  function obtenerAeronavesDesdeTabla() {
+    var aeronaves = [];
+    $('#tablaAeronaves tbody tr').each(function() {
+      var $tr = $(this);
+      var aeronave = {
+        Marca: $tr.find('td').eq(0).text().trim(),
+        Modelo: $tr.find('td').eq(1).text().trim(),
+        Serie: $tr.find('td').eq(2).text().trim(),
+        Matricula: $tr.find('td').eq(3).text().trim(),
+        Configuracion: $tr.find('td').eq(4).text().trim(),
+        EtapaRuido: $tr.find('td').eq(5).text().trim()
+      };
+
+      if (aeronave.Matricula) {
+        aeronaves.push(aeronave);
+      }
+    });
+    return aeronaves;
+  }
+
+  function construirMetadatosDocumentos() {
+        const esModificacion = (document.getElementById('esSolicitudModificacion') || {}).value === '1';
+    return [
+      { InputId: 'archivoAOC', TipoDocumento: 'COPIA_AOC_VALIDA', Concepto: $('#conceptoAOC').val() || '', Obligatorio: true },
+      { InputId: 'archivoOpSpecs', TipoDocumento: 'OPSPECS_ESPECIFICACIONES_OPERACIONALES', Concepto: $('#conceptoOpSpecs').val() || '', Obligatorio: true },
+      { InputId: 'archivoManualOperaciones', TipoDocumento: 'MANUAL_OPERACIONES', Concepto: $('#conceptoManualOperaciones').val() || '', Obligatorio: true },
+      { InputId: 'archivoPermisoOperacion', TipoDocumento: 'PERMISO_OPERACION_CNAC', Concepto: $('#conceptoPermisoOperacion').val() || '', Obligatorio: true },
+            { InputId: 'archivoCertificadoRuido', TipoDocumento: 'CERTIFICADO_RUIDO_AERONAVES_EAE', Concepto: $('#conceptoCertificadoRuido').val() || '', Obligatorio: !esModificacion },
+            { InputId: 'archivoCertificadoAeronavegabilidad', TipoDocumento: 'CERTIFICADO_AERONAVEGABILIDAD', Concepto: $('#conceptoCertificadoAeronavegabilidad').val() || '', Obligatorio: false },
+      { InputId: 'archivoPoderRepresentante', TipoDocumento: 'COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR', Concepto: $('#conceptoPoderRepresentante').val() || '', Obligatorio: true },
+      { InputId: 'archivoFacturaPago', TipoDocumento: 'COMPROBANTE_PAGO', Concepto: $('#conceptoFacturaPago').val() || '', Obligatorio: true },
+      { InputId: 'archivoOtro', TipoDocumento: 'OTRO', Concepto: $('#conceptoOtro').val() || '', Obligatorio: false }
+    ];
+  }
+
+  function validarDocumentosObligatorios() {
+    const obligatorios = [
+            { id: 'archivoFacturaPago', nombre: 'Factura' },
+      { id: 'archivoAOC', nombre: 'Copia de AOC valida' },
+      { id: 'archivoOpSpecs', nombre: 'OpSpecs' },
+      { id: 'archivoManualOperaciones', nombre: 'Manual de Operaciones' },
+      { id: 'archivoPermisoOperacion', nombre: 'Permiso Operacion C.N.A.C' },
+      { id: 'archivoPoderRepresentante', nombre: 'Copia certificada del poder del representante legal en Ecuador' }
+    ];
+
+        if (((document.getElementById('esSolicitudModificacion') || {}).value) !== '1') {
+            obligatorios.push({ id: 'archivoCertificadoRuido', nombre: 'Certificado de Ruido de Aeronaves' });
+        }
+
+        const obligatoriosActivos = obligatorios.filter(function (item) {
+            return inputHabilitadoEnModoSubsanacion(item.id);
+        });
+
+        const faltantes = obligatoriosActivos.filter(function (item) {
+      const input = document.getElementById(item.id);
+      return !input || !input.files || input.files.length === 0;
+    });
+
+    if (faltantes.length > 0) {
+      Swal.fire({
+        title: 'Documentos obligatorios pendientes',
+        text: 'Faltan: ' + faltantes.map(function (f) { return f.nombre; }).join(', '),
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  function updateChecklist(){
+    setBadge('chkFacturaEstado', ($('#archivoFacturaPago').prop('files')||[]).length>0);
+    setBadge('chk12901Estado', !!($('#carta12901Texto').val()||'').trim());
+    const ok12902 = ($('#nombreRepresentante').val()||'').trim() && ($('#direccionEcuador').val()||'').trim();
+    setBadge('chk12902Estado', !!ok12902);
+    setBadge('chk12903Estado', $('#tablaAeronaves tbody tr').length>0);
+    setBadge('chkAOCEstado', ($('#archivoAOC').prop('files')||[]).length>0);
+    setBadge('chkOpSpecsEstado', ($('#archivoOpSpecs').prop('files')||[]).length>0);
+    setBadge('chkManualEstado', ($('#archivoManualOperaciones').prop('files')||[]).length>0);
+    setBadge('chkPermisoEstado', ($('#archivoPermisoOperacion').prop('files')||[]).length>0);
+    setBadge('chkRuidoEstado', ($('#archivoCertificadoRuido').prop('files')||[]).length>0);
+    setBadge('chkAeronavegabilidadEstado', ($('#archivoCertificadoAeronavegabilidad').prop('files')||[]).length>0);
+    setBadge('chkPoderRepresentanteEstado', ($('#archivoPoderRepresentante').prop('files')||[]).length>0);
+  }
+  $(document).on('change input', '#archivoFacturaPago,#nombreRepresentante,#direccionEcuador,#archivoAOC,#archivoOpSpecs,#archivoManualOperaciones,#archivoPermisoOperacion,#archivoCertificadoRuido,#archivoCertificadoAeronavegabilidad,#archivoPoderRepresentante', updateChecklist);
+
+  // ====== Mapear UI -> campos VM antes de guardar ======
+  function mapearCamposVM(){
+    // Actualizar hidden inputs
+    $('#nombreOperador').val($('#nombreCompania').val()||'');
+    $('#rucOperador').val($('#rucRepresentante').val()||$('#rucOperador').val());
+    $('#telefonoOperador').val($('#telefonoEcuador').val()||'');
+    $('#codigoOaci').val((($('#codigoOaci').val()||'').toUpperCase().replace(/[^A-Z0-9]/g,'')));
+    
+    // Manejar razon social
+    var razonSocialVal = $('#razonSocialCompania').val() || $('#razonSocial').val() || $('#nombreCompania').val() || '';
+    $('#razonSocial').val(razonSocialVal);
+
+    const aprobaciones = obtenerAprobacionesEspecialesSeleccionadas();
+    const aeropuertosEcuador = obtenerAeropuertosEcuadorSeleccionados();
+    
+    // Tipo de operacion
+    const tipos=[];
+    if($('#opsRegulares').is(':checked')) tipos.push('Ops Regulares');
+    if($('#opsNoRegulares').is(':checked')) tipos.push('Ops No Regulares');
+    if($('#pasajeros').is(':checked')) tipos.push('Pasajeros/Carga/Correo');
+    if($('#carga').is(':checked')) tipos.push('Carga');
+    $('#tipoOperacion').val(tipos.join(' | '));
+    
+    // Descripcion y observaciones
+    $('#descripcionOperacion').val($('#resumenOperaciones').val()||'');
+    $('#observacionesGenerales').val($('#conceptoFacturaPago').val()||'');
+    
+    // Retornar objeto con todos los valores
+    return {
+      NombreOperador: $('#nombreCompania').val() || '',
+      RepresentanteLegal: $('#nombreRepresentante').val() || '',
+      CedulaRepresentante: $('#rucRepresentante').val() || '',
+      CorreoRepresentanteTecnico: $('#emailEcuador').val() || '',
+      Direccion: $('#direccionEcuador').val() || '',
+      Telefono: $('#telefonoEcuador').val() || $('#telefonoCompania').val() || '',
+      Email: $('#emailEcuador').val() || $('#correoCompania').val() || '',
+      Ruc: $('#rucRepresentante').val() || $('#rucOperador').val() || '',
+      RazonSocial: razonSocialVal,
+      NombreComercial: $('#nombreCompania').val() || '',
+      TipoOperacion: tipos.join(' | '),
+      DescripcionOperacion: $('#resumenOperaciones').val() || '',
+      ResumenOperacionesEae: $('#resumenOperaciones').val() || '',
+      ObservacionesGenerales: $('#conceptoFacturaPago').val() || '',
+      AprobacionesEspeciales: aprobaciones.join(','),
+      AprobacionesEspecialesOtros: $('#aprobacionOtrosDetalle').val() || '',
+      AeropuertosEcuador: aeropuertosEcuador.join(','),
+      AeropuertosEcuadorOtros: $('#aeropuertoOtrosDetalle').val() || '',
+            CompaniasSeleccionadas: $('#companiasSeleccionadasRaw').val() || '',
+            CodigoOaci: $('#codigoOaci').val() || '',
+            NumeroAOC: $('#numeroAOC').val() || ''
+    };
+  }
+
+    function esTelefonoNumericoValido(valor) {
+        const t = (valor || '').trim();
+        return /^[0-9]{6,15}$/.test(t);
+    }
+
+    function permitirSoloNumerosInput(selector) {
+        $(document).on('input', selector, function () {
+            this.value = (this.value || '').replace(/\D/g, '').slice(0, 15);
+        });
+    }
+
+  $(document).ready(function(){
+    buildCarta12901();
+    updateChecklist();
+    
+    // CORRECCIÓN: Reemplazar operador ?. con verificación C# 5
+    var codigoSolicitud = 0;
+    @{
+        var modeloSolicitudCodigo = Model != null && Model.Solicitud != null ? Model.Solicitud.CodigoSolicitud : 0;
+    }
+    
+    if (@modeloSolicitudCodigo > 0) {
+        codigoSolicitud = @modeloSolicitudCodigo;
+    }
+
+    $('#aprobacionOtrosContenedor').toggle($('#aprobacionOTROS').is(':checked'));
+    $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
+        permitirSoloNumerosInput('#telefonoEcuador, #telefonoCompania');
+        $('#codigoOaci').on('input', function(){
+            this.value = (this.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        });
+    if (window.AOCR && AOCR.resetAocrUiGuardado) {
+      AOCR.resetAocrUiGuardado('form-init');
+    }
+  });
+</script>
+
+<script>
+  // ============================================================
+  function extraerMensajeRespuestaAocr(respuesta, xhr) {
+    if (respuesta) {
+      return respuesta.message || respuesta.mensaje || null;
+    }
+    if (xhr && xhr.responseJSON) {
+      return xhr.responseJSON.message || xhr.responseJSON.mensaje || null;
+    }
+    if (xhr && xhr.responseText) {
+      try {
+        var parsed = JSON.parse(xhr.responseText);
+        return parsed.message || parsed.mensaje || null;
+      } catch (e) { }
+    }
+    return null;
+  }
+
+  // ============================================================
+  // Loader / bloqueo — delega en AOCR.showAocrLoader (sin Swal modal)
+  // ============================================================
+  function mostrarOverlayGuardadoAocr(titulo) {
+    if (window.AOCR && AOCR.showAocrLoader) {
+      AOCR.lockAocrForm('#formularioEmisionAOCR');
+      AOCR.showAocrLoader(titulo || 'Guardando...');
+    }
+  }
+
+  function cerrarOverlayGuardadoAocr(origen) {
+    if (window.AOCR && AOCR.resetAocrUiGuardado) {
+      AOCR.resetAocrUiGuardado(origen || 'guardado');
+    }
+  }
+
+  function mostrarNotificacionGuardadoAocr(tipo, titulo, texto) {
+    if (typeof Swal === 'undefined') {
+      return;
+    }
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: tipo || 'success',
+      title: titulo || 'Guardado',
+      text: texto || '',
+      showConfirmButton: false,
+      timer: 2500,
+      timerProgressBar: true,
+      didOpen: function (toast) {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
+  }
+
+  function finalizarGuardadoPestanaAocr(origen, exito, mensaje, snapshot, seccion) {
+    if (exito) {
+      if (snapshot) {
+        try {
+          aplicarDatosPersistidosAocr(snapshot, seccion);
+        } catch (e) {
+          console.warn('[AOCR_GUARDAR][pestana] No se pudo refrescar la UI con datos persistidos:', e);
+        }
+      }
+      mostrarNotificacionGuardadoAocr('success', 'Guardado', mensaje || 'Sección guardada correctamente.');
+    } else {
+      mostrarNotificacionGuardadoAocr('error', 'Error', mensaje || 'No se pudo guardar la información.');
+    }
+  }
+
+  function decodificarTextoPlanoAocr(texto) {
+    if (!texto) { return ''; }
+    var actual = String(texto);
+    var textarea = document.createElement('textarea');
+    for (var i = 0; i < 6; i++) {
+      textarea.innerHTML = actual;
+      var decodificado = textarea.value;
+      if (decodificado === actual) { break; }
+      actual = decodificado;
+    }
+    return actual;
+  }
+
+  function aplicarTipoOperacionPersistido(tipoOperacion) {
+    var tokens = (tipoOperacion || '').split('|').map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('#opsRegulares').prop('checked', tokens.indexOf('OPS REGULARES') !== -1);
+    $('#opsNoRegulares').prop('checked', tokens.indexOf('OPS NO REGULARES') !== -1);
+    $('#pasajeros').prop('checked', tokens.some(function (t) { return t.indexOf('PASAJEROS') !== -1; }));
+    $('#carga').prop('checked', tokens.indexOf('CARGA') !== -1);
+    var tipos = [];
+    if ($('#opsRegulares').is(':checked')) { tipos.push('Ops Regulares'); }
+    if ($('#opsNoRegulares').is(':checked')) { tipos.push('Ops No Regulares'); }
+    if ($('#pasajeros').is(':checked')) { tipos.push('Pasajeros/Carga/Correo'); }
+    if ($('#carga').is(':checked')) { tipos.push('Carga'); }
+    $('#tipoOperacion').val(tipos.join(' | '));
+  }
+
+  function aplicarAprobacionesPersistidas(valorCsv) {
+    var tokens = (valorCsv || '').split(/[,;|]/).map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('.aprobacion-especial').each(function () {
+      var val = (($(this).val() || '').trim().toUpperCase());
+      $(this).prop('checked', tokens.indexOf(val) !== -1);
+    });
+    if ($('#aprobacionOTROS').is(':checked')) {
+      $('#aprobacionOtrosContenedor').show();
+    } else {
+      $('#aprobacionOtrosContenedor').hide();
+    }
+  }
+
+  function aplicarAeropuertosPersistidos(valorCsv, detalleOtros) {
+    var tokens = (valorCsv || '').split(/[,;|]/).map(function (v) {
+      return (v || '').trim().toUpperCase();
+    }).filter(Boolean);
+    $('.aeropuerto-ecuador').each(function () {
+      var val = (($(this).val() || '').trim().toUpperCase());
+      $(this).prop('checked', tokens.indexOf(val) !== -1);
+    });
+    if ($('#aeropuertoOtros').is(':checked')) {
+      $('#aeropuertoOtrosContenedor').show();
+      $('#aeropuertoOtrosDetalle').val(decodificarTextoPlanoAocr(detalleOtros || ''));
+    } else {
+      $('#aeropuertoOtrosContenedor').hide();
+    }
+  }
+
+  function aplicarDatosPersistidosAocr(solicitud, seccion) {
+    if (!solicitud) { return; }
+    var sec = (seccion || '').toLowerCase();
+    console.log('[AOCR_GUARDAR] aplicando datos persistidos en formulario. Seccion=' + sec, solicitud);
+
+    if (sec === 'explotador') {
+      if (solicitud.RepresentanteLegal != null) { $('#nombreRepresentante').val(decodificarTextoPlanoAocr(solicitud.RepresentanteLegal)); }
+      if (solicitud.CedulaRepresentante != null) { $('#rucRepresentante').val(decodificarTextoPlanoAocr(solicitud.CedulaRepresentante)); }
+      if (solicitud.CorreoRepresentanteTecnico != null) { $('#emailEcuador').val(decodificarTextoPlanoAocr(solicitud.CorreoRepresentanteTecnico)); }
+      if (solicitud.Direccion != null) { $('#direccionEcuador').val(decodificarTextoPlanoAocr(solicitud.Direccion)); }
+      if (solicitud.Telefono != null) { $('#telefonoEcuador').val(decodificarTextoPlanoAocr(solicitud.Telefono)); }
+    }
+
+    if (sec === 'operaciones') {
+      if (solicitud.NumeroAOC != null) { $('#numeroAOC').val(decodificarTextoPlanoAocr(solicitud.NumeroAOC)); }
+      if (solicitud.TipoOperacion != null) { aplicarTipoOperacionPersistido(solicitud.TipoOperacion); }
+      var resumen = decodificarTextoPlanoAocr(solicitud.ResumenOperacionesEae || solicitud.DescripcionOperacion || '');
+      $('#resumenOperaciones').val(resumen);
+      $('#descripcionOperacion').val(resumen);
+      if (solicitud.AeropuertosEcuador != null) {
+        aplicarAeropuertosPersistidos(solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros);
+      }
+    }
+  }
+
+  function asegurarUiDesbloqueadaAocr(origen) {
+    cerrarOverlayGuardadoAocr(origen);
+  }
+
+  // Detecta cuando el backend devolvió HTML (login, selección de compañía,
+  // página de error) en lugar de JSON.
+  function respuestaPareceHtmlAocr(xhr) {
+    var texto = (xhr && xhr.responseText ? xhr.responseText : '').trim().toLowerCase();
+    return texto.indexOf('<!doctype') === 0 || texto.indexOf('<html') === 0;
+  }
+
+  function extraerPayloadJsonAocr(xhr) {
+    if (xhr && xhr.responseJSON && typeof xhr.responseJSON === 'object') { return xhr.responseJSON; }
+    if (xhr && xhr.responseText) {
+      try { return JSON.parse(xhr.responseText); } catch (e) { }
+    }
+    return null;
+  }
+
+  // Maneja de forma uniforme las respuestas de sesión expirada / compañía
+  // activa perdida / respuesta HTML inesperada. Devuelve true si manejó el caso.
+  function manejarSesionOCompaniaAocr(xhr, origen) {
+    var payload = extraerPayloadJsonAocr(xhr);
+
+    if (payload && payload.requiresCompanySelection) {
+      var urlCompania = payload.redirectUrl || '@Url.Action("SeleccionarCompania", "Account")';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Compañía activa requerida',
+        text: payload.message || 'Debe seleccionar una compañía activa antes de continuar. Será redirigido para seleccionarla.',
+        confirmButtonText: 'Seleccionar compañía',
+        allowOutsideClick: false,
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function () { window.location.href = urlCompania; });
+      return true;
+    }
+
+    if ((payload && payload.requiresLogin) || (xhr && xhr.status === 401)) {
+      var urlLogin = (payload && payload.redirectUrl) || '@Url.Action("Login", "Account")';
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sesión expirada',
+        text: (payload && payload.message) || 'Su sesión expiró. Debe iniciar sesión nuevamente.',
+        confirmButtonText: 'Ir a iniciar sesión',
+        allowOutsideClick: false,
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function () { window.location.href = urlLogin; });
+      return true;
+    }
+
+    if (respuestaPareceHtmlAocr(xhr)) {
+      console.error('[AOCR_GUARDAR][' + origen + '] El servidor devolvió HTML en lugar de JSON. Primeros 300 caracteres:',
+        (xhr.responseText || '').substring(0, 300));
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sesión o compañía no disponible',
+        text: 'El servidor respondió con una redirección (sesión o compañía activa perdida). Recargue la página para continuar.',
+        confirmButtonText: 'Recargar página',
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        didClose: function () { asegurarUiDesbloqueadaAocr(origen); }
+      }).then(function (resultado) {
+        if (resultado && resultado.isConfirmed) { window.location.reload(); }
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  // Mantiene la URL del navegador apuntando a la solicitud realmente guardada,
+  // para que al recargar (F5) el GET cargue los mismos datos persistidos.
+  function sincronizarUrlConSolicitud(solicitudId) {
+    if (!solicitudId || solicitudId <= 0 || !window.history || !window.history.replaceState) {
+      return;
+    }
+    try {
+      var tipoSolicitud = parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1;
+      var nuevaUrl = '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")' +
+        '?tipoSolicitud=' + tipoSolicitud + '&oid=' + solicitudId;
+      if (window.location.pathname.toLowerCase().indexOf('formularioemisionaocr') !== -1) {
+        window.history.replaceState(null, '', nuevaUrl);
+      }
+    } catch (e) { /* no bloquear el flujo de guardado por errores de history */ }
+  }
+
+  // Payloads para AocrFormularioEmision.js
+  function buildGuardarProgresoPayload(seccion) {
+    var datosMapeados = mapearCamposVM();
+    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+    var camposBase = {
+      CodigoSolicitud: codigoSolicitud,
+      NombreOperador: datosMapeados.NombreOperador || '',
+      RazonSocial: datosMapeados.RazonSocial || '',
+      NombreComercial: datosMapeados.NombreComercial || '',
+      CodigoOaci: datosMapeados.CodigoOaci || '',
+      CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
+      Estado: 'BORRADOR',
+      TipoSolicitud: parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1
+    };
+    if (seccion === 'explotador') {
+      camposBase.RepresentanteLegal = datosMapeados.RepresentanteLegal || '';
+      camposBase.CedulaRepresentante = datosMapeados.CedulaRepresentante || '';
+      camposBase.CorreoRepresentanteTecnico = datosMapeados.CorreoRepresentanteTecnico || '';
+      camposBase.Direccion = datosMapeados.Direccion || '';
+      camposBase.Telefono = datosMapeados.Telefono || '';
+      camposBase.Email = datosMapeados.Email || '';
+      camposBase.Ruc = datosMapeados.Ruc || '';
+    } else if (seccion === 'operaciones') {
+      var resumenOperaciones = datosMapeados.ResumenOperacionesEae || datosMapeados.DescripcionOperacion || '';
+      camposBase.TipoOperacion = datosMapeados.TipoOperacion || '';
+      camposBase.DescripcionOperacion = resumenOperaciones;
+      camposBase.ResumenOperacionesEae = resumenOperaciones;
+      camposBase.NumeroAOC = datosMapeados.NumeroAOC || '';
+      camposBase.AeropuertosEcuador = datosMapeados.AeropuertosEcuador || '';
+      camposBase.AeropuertosEcuadorOtros = datosMapeados.AeropuertosEcuadorOtros || '';
+    }
+    return { seccion: seccion, solicitud: camposBase };
+  }
+
+  function buildGuardarFlotaPayload() {
+    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+    var aeronaves = obtenerAeronavesDesdeTabla();
+    if (codigoSolicitud <= 0) {
+      return { error: 'Primero debe guardar la solicitud para obtener un código válido.' };
+    }
+    if (aeronaves.length === 0) {
+      return { error: 'Debe ingresar al menos una aeronave válida antes de guardar.' };
+    }
+    return { payload: { CodigoSolicitud: codigoSolicitud, Aeronaves: aeronaves } };
+  }
+
+  function refrescarFlotaEnTabla(aeronaves) {
+    var $tbody = $('#tablaAeronaves tbody');
+    $tbody.empty();
+    if (!aeronaves || !aeronaves.length) {
+      if (typeof actualizarContador === 'function') { actualizarContador(); }
+      if (typeof updateChecklist === 'function') { updateChecklist(); }
+      return;
+    }
+    aeronaves.forEach(function (a) {
+      var marca = (a.Marca || a.marca || '').trim();
+      var modelo = (a.Modelo || a.modelo || '').trim();
+      var serie = (a.Serie || a.serie || '').trim();
+      var matricula = (a.Matricula || a.matricula || '').trim();
+      var configuracion = (a.Configuracion || a.configuracion || '').trim();
+      var etapaRuido = (a.EtapaRuido || a.etapaRuido || '').trim();
+      if (!matricula) { return; }
+      var $tr = $('<tr>');
+      $tr.append($('<td>').text(marca));
+      $tr.append($('<td>').text(modelo));
+      $tr.append($('<td>').text(serie));
+      $tr.append($('<td>').text(matricula));
+      $tr.append($('<td>').text(configuracion));
+      $tr.append($('<td>').text(etapaRuido));
+      var $tdAcc = $('<td>').addClass('text-center');
+      $tdAcc.append($('<button>').attr('type', 'button').addClass('btn btn-outline-danger btn-sm btnEliminarAeronave')
+        .append($('<i>').addClass('fas fa-trash-alt')));
+      $tr.append($tdAcc);
+      $tbody.append($tr);
+    });
+    if (typeof actualizarContador === 'function') { actualizarContador(); }
+    if (typeof updateChecklist === 'function') { updateChecklist(); }
+  }
+
+  function guardarPestana(seccion) {
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarProgreso(seccion);
+    }
+  }
+
+  function guardarFlota() {
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarFlota();
+    }
+  }
+
+  function guardarFormulario(){
+    if (window.AocrFormularioEmision) {
+      return AocrFormularioEmision.guardarSolicitud();
+    }
+    guardarFormularioCore();
+  }
+
+  function guardarFormularioCore(moduloFe){
+    var aeronaves = obtenerAeronavesDesdeTabla();
+
+        if (!esTelefonoNumericoValido($('#telefonoEcuador').val() || $('#telefonoCompania').val())) {
+            Swal.fire({
+                title: 'Validacion',
+                text: 'El telefono debe contener solo numeros y tener entre 6 y 15 digitos.',
+                icon: 'warning',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+    
+    // Validacion: debe haber al menos una aeronave
+    if (aeronaves.length === 0) {
+      Swal.fire({
+        title: 'Validacion',
+        text: 'Por favor, agregue al menos una aeronave. Puede cargar un CSV o agregar manualmente.',
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+
+    if (!validarDocumentosObligatorios()) {
+      return;
+    }
+    
+    // Mapear campos de UI a valores
+    var datosMapeados = mapearCamposVM();
+    console.log('Datos mapeados:', datosMapeados);
+    
+    // Actualizar array global
+    window.aeronavesSeleccionadas = aeronaves;
+    
+    // Obtener codigo de solicitud (si existe)
+    var codigoSolicitud = 0;
+    var solInput = $('input[name="Solicitud.CodigoSolicitud"], #codigoSolicitud');
+    if (solInput.length > 0 && solInput.val()) {
+      codigoSolicitud = parseInt(solInput.val()) || 0;
+    } else if (@codigoSolicitud > 0) {
+      codigoSolicitud = @codigoSolicitud;
+    }
+    
+    // Construir viewmodel completo
+    const vm = {
+      Solicitud: {
+        CodigoSolicitud: codigoSolicitud,
+        NombreOperador: datosMapeados.NombreOperador || '',
+                CodigoOaci: datosMapeados.CodigoOaci || '',
+        RepresentanteLegal: datosMapeados.RepresentanteLegal || '',
+        CedulaRepresentante: datosMapeados.CedulaRepresentante || '',
+        CorreoRepresentanteTecnico: datosMapeados.CorreoRepresentanteTecnico || '',
+        Direccion: datosMapeados.Direccion || '',
+        Telefono: datosMapeados.Telefono || '',
+        Email: datosMapeados.Email || '',
+        Ruc: datosMapeados.Ruc || '',
+        RazonSocial: datosMapeados.RazonSocial || '',
+        NombreComercial: datosMapeados.NombreComercial || '',
+        TipoOperacion: datosMapeados.TipoOperacion || '',
+        DescripcionOperacion: datosMapeados.DescripcionOperacion || '',
+        ResumenOperacionesEae: datosMapeados.ResumenOperacionesEae || '',
+        NumeroAOC: datosMapeados.NumeroAOC || '',
+        AprobacionesEspeciales: datosMapeados.AprobacionesEspeciales || '',
+        AprobacionesEspecialesOtros: datosMapeados.AprobacionesEspecialesOtros || '',
+        AeropuertosEcuador: datosMapeados.AeropuertosEcuador || '',
+        AeropuertosEcuadorOtros: datosMapeados.AeropuertosEcuadorOtros || '',
+        CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
+        ObservacionesGenerales: datosMapeados.ObservacionesGenerales || '',
+        Estado: 'BORRADOR',
+        TipoSolicitud: parseInt($('#tipoSolicitudActual').val() || '1', 10) || 1
+      },
+      Banco: $('#banco').val() || '',
+      NumeroComprobante: $('#numeroComprobante').val() || '',
+      DocumentosCarga: construirMetadatosDocumentos(),
+      Aeronaves: aeronaves
+    };
+    
+    // Interceptar XHR para debugging (solo si window.AOCR_DEBUG === true)
+    if (window.AOCR_DEBUG) {
+        const originalXHR = window.XMLHttpRequest;
+        function createInterceptingXHR() {
+            const xhr = new originalXHR();
+            const originalSend = xhr.send;
+            xhr.send = function (data) {
+                console.log('=== XHR ENVIANDO ===', { data: data });
+                const originalOnReadyStateChange = this.onreadystatechange;
+                this.onreadystatechange = function () {
+                    if (this.readyState === 4) {
+                        console.log('=== XHR RESPUESTA CRUDA ===');
+                        console.log('Status:', this.status);
+                        console.log('Status Text:', this.statusText);
+                        try { console.log('Response Headers:', this.getAllResponseHeaders()); } catch (e) { }
+                        try { console.log('Response Text (primeros 1000 chars):', this.responseText ? this.responseText.substring(0, 1000) : ''); } catch (e) { }
+                        if (this.responseText && (this.responseText.indexOf('<!DOCTYPE') !== -1 || this.responseText.indexOf('<html') !== -1)) {
+                            console.error('SERVIDOR DEVOLVIENDO HTML EN LUGAR DE JSON!');
+                        }
+                    }
+                    if (originalOnReadyStateChange) originalOnReadyStateChange.apply(this, arguments);
+                };
+                return originalSend.apply(this, arguments);
+            };
+            return xhr;
+        }
+        window.XMLHttpRequest = createInterceptingXHR;
+    }
+    
+    // Log para debugging
+    console.log('Enviando datos:', vm);
+    console.log('Total de aeronaves:', aeronaves.length);
+    
+    // Obtener token antiforgery (se añade automáticamente en cabecera por $.ajaxSetup)
+
+    var vmJson = null;
+    try {
+        vmJson = JSON.stringify(vm);
+    } catch (e) {
+        console.error('Error serializando datos:', e);
+        Swal.fire('Error', 'No se pudo preparar los datos para el envio.', 'error');
+        return;
+    }
+
+    if (vmJson.length > 5 * 1024 * 1024) { // 5MB
+        Swal.fire('Error', 'Los datos a enviar son demasiado grandes. Reduzca la cantidad de aeronaves o archivos.', 'error');
+        return;
+    }
+
+    const token = $('input[name="__RequestVerificationToken"]').val() || '';
+    const formData = new FormData();
+    formData.append('__RequestVerificationToken', token);
+    formData.append('vmJson', vmJson);
+    // Fallback de binder para campos críticos (si vmJson no se parsea por cualquier motivo).
+    formData.append('Solicitud.CodigoSolicitud', String(vm.Solicitud.CodigoSolicitud || 0));
+    formData.append('Solicitud.RazonSocial', vm.Solicitud.RazonSocial || '');
+    formData.append('Solicitud.NombreComercial', vm.Solicitud.NombreComercial || '');
+    formData.append('Solicitud.NombreOperador', vm.Solicitud.NombreOperador || '');
+    formData.append('Solicitud.CompaniasSeleccionadas', vm.Solicitud.CompaniasSeleccionadas || '');
+
+        const inputsArchivos = obtenerInputsArchivosActivos();
+    const inputsMultiples = ['archivoCertificadoRuido', 'archivoCertificadoAeronavegabilidad'];
+    inputsArchivos.forEach(function (inputId) {
+      const input = document.getElementById(inputId);
+      if (input && input.files && input.files.length > 0) {
+        if (inputsMultiples.indexOf(inputId) !== -1) {
+          for (var f = 0; f < input.files.length; f++) {
+            formData.append(inputId, input.files[f]);
+          }
+        } else {
+          formData.append(inputId, input.files[0]);
+        }
+      }
+    });
+
+    if (window._aocrGuardadoFormularioEnCurso) {
+      console.log('[AOCR_GUARDAR][formulario] Guardado ya en curso; se ignora el doble click.');
+      return;
+    }
+    window._aocrGuardadoFormularioEnCurso = true;
+    console.log('[AOCR_GUARDAR][formulario] Inicio guardado completo de la solicitud.');
+    if (moduloFe && moduloFe.showLoader) {
+      moduloFe.showLoader('Guardando solicitud...');
+    } else {
+      mostrarOverlayGuardadoAocr('Guardando...');
+    }
+
+    $.ajax({
+      url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: 'json',
+      timeout: 30000,
+      aocrSkipAuthRedirect: true,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      beforeSend: function () {
+          $('#btnGuardarListadoAeronaves').prop('disabled', true);
+      },
+      success: function (r, textStatus, xhr) {
+        console.log('[AOCR_GUARDAR][formulario] Respuesta backend recibida. Status:', xhr.status, 'Payload:', r);
+
+        try {
+          if (typeof r === 'object' && r !== null) {
+            if (r.success === true) {
+              console.log('[AOCR_GUARDAR][formulario] success ejecutado correctamente.');
+              Swal.fire({
+                title: 'Exito',
+                text: r.mensaje || 'Solicitud guardada correctamente',
+                icon: 'success',
+                confirmButtonText: 'OK'
+              }).then(() => {
+                if (r.id && r.id > 0) {
+                  window.location.href = '@Url.Action("Detalle", "SolicitudAOCR")/' + r.id;
+                } else {
+                  window.location.href = '@Url.Action("MisSolicitudes", "SolicitudAOCR")';
+                }
+              });
+            } else if (r.requiresCompanySelection || r.requiresLogin) {
+              manejarSesionOCompaniaAocr({ responseJSON: r, status: xhr ? xhr.status : 0 }, 'formulario');
+            } else if (r.redirectUrl) {
+              Swal.fire({
+                title: 'Subsanacion documental',
+                text: r.message || r.mensaje || 'Debe continuar desde la pantalla de subsanacion documental.',
+                icon: 'info',
+                confirmButtonText: 'Continuar'
+              }).then(function () {
+                window.location.href = r.redirectUrl;
+              });
+            } else {
+              console.log('[AOCR_GUARDAR][formulario] Success es false:', r.mensaje);
+              Swal.fire({
+                title: 'Error',
+                text: r.mensaje || 'Error al guardar la solicitud',
+                icon: 'error',
+                didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+              });
+            }
+          } else {
+            console.error('[AOCR_GUARDAR][formulario] Respuesta no es JSON valido:', typeof r, r);
+            Swal.fire({
+              title: 'Error',
+              text: 'El servidor respondio con un formato invalido.',
+              icon: 'error',
+              didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+            });
+          }
+        } catch (e) {
+          console.error('[AOCR_GUARDAR][formulario] Excepción posterior al guardado:', e);
+          asegurarUiDesbloqueadaAocr('formulario');
+          Swal.fire({
+            icon: 'info',
+            title: 'Guardado',
+            text: 'La información se guardó, pero ocurrió un error al actualizar la pantalla. Puede continuar trabajando.',
+            didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+          });
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error('[AOCR_GUARDAR][formulario] error ejecutado:', { status: xhr.status, statusText: xhr.statusText, error: error });
+
+        if (manejarSesionOCompaniaAocr(xhr, 'formulario')) { return; }
+
+        let payload = null;
+        if (xhr && xhr.responseJSON && typeof xhr.responseJSON === 'object') {
+          payload = xhr.responseJSON;
+        } else if (xhr && xhr.responseText) {
+          try {
+            payload = JSON.parse(xhr.responseText);
+          } catch (e) {
+            payload = null;
+          }
+        }
+
+        let mensajeError = payload && payload.mensaje
+          ? payload.mensaje
+          : 'No se pudo guardar la solicitud.';
+
+        if (status === 'timeout') {
+          mensajeError = 'La solicitud tardo demasiado tiempo. Intente nuevamente.';
+        } else if (xhr.status === 0) {
+          mensajeError = 'Error de conexion. Verifique su conexion a internet.';
+        } else if (xhr.status === 401) {
+          if (!payload || !payload.mensaje) {
+            mensajeError = 'Su sesion ha expirado. Por favor, inicie sesion nuevamente.';
+          }
+          setTimeout(() => window.location.href = '@Url.Action("Login", "Account")', 2000);
+        } else if (xhr.status === 403) {
+          if (!payload || !payload.mensaje) {
+            mensajeError = 'No tiene permisos para realizar esta accion.';
+          }
+        } else if (xhr.status === 500) {
+          if (!payload || !payload.mensaje) {
+            mensajeError = 'Error interno del servidor. Intente mas tarde.';
+          }
+          console.error('Respuesta completa del servidor:', xhr.responseText);
+          if (xhr.responseText && (xhr.responseText.includes('<html') || xhr.responseText.includes('<!DOCTYPE'))) {
+            console.error('RESPUESTA HTML RECIBIDA - Primeros 1000 caracteres:', xhr.responseText.substring(0, 1000));
+          }
+        } else if (error === 'parsererror') {
+          mensajeError = 'El servidor respondio con un formato invalido. Contacte al administrador.';
+          console.error('Error de parseo JSON:', xhr.responseText ? xhr.responseText.substring(0, 500) : 'sin respuesta');
+        } else if (!payload || !payload.mensaje) {
+          mensajeError = 'Error: ' + (error || 'Desconocido');
+        }
+
+        if (payload && payload.sqlState) {
+          console.error('SQLSTATE backend:', payload.sqlState);
+        }
+
+        if (payload && payload.redirectUrl) {
+          Swal.fire({
+            title: 'Subsanacion documental',
+            text: payload.message || payload.mensaje || mensajeError,
+            icon: 'info',
+            confirmButtonText: 'Continuar'
+          }).then(function () {
+            window.location.href = payload.redirectUrl;
+          });
+          return;
+        }
+
+        Swal.fire({
+          title: 'Error',
+          text: mensajeError,
+          icon: 'error',
+          didClose: function () { asegurarUiDesbloqueadaAocr('formulario'); }
+        });
+      },
+      complete: function () {
+        window._aocrGuardadoFormularioEnCurso = false;
+        if (moduloFe && moduloFe.hideLoader) {
+          moduloFe.hideLoader('formulario-complete');
+        } else if (window.AOCR && AOCR.resetAocrUiGuardado) {
+          AOCR.resetAocrUiGuardado('formulario-complete');
+        }
+      }
+    });
+  }
+
+  window.AocrFormularioEmisionHooks = {
+    buildGuardarProgresoPayload: function (seccion) {
+      return { payload: buildGuardarProgresoPayload(seccion) };
+    },
+    buildGuardarFlotaPayload: buildGuardarFlotaPayload,
+    setCodigoSolicitud: function (id) { $('#codigoSolicitud').val(id); },
+    sincronizarUrl: sincronizarUrlConSolicitud,
+    aplicarDatosPersistidos: aplicarDatosPersistidosAocr,
+    refrescarFlotaEnTabla: refrescarFlotaEnTabla,
+    actualizarResumenFlota: function () {
+      if (typeof actualizarContador === 'function') { actualizarContador(); }
+      if (typeof updateChecklist === 'function') { updateChecklist(); }
+    },
+    ejecutarGuardarSolicitudCompleta: function (mod) {
+      guardarFormularioCore(mod);
+    }
+  };
+</script>
+<script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-formulario-emision.js")"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

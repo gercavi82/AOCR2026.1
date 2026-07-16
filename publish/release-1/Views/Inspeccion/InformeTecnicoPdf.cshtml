@@ -1,0 +1,315 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.InformeTecnicoPdfViewModel>
+@using System
+@using System.Collections.Generic
+@using System.Globalization
+@using System.Linq
+@using System.Web
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using CapaPresentacion.Helpers
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+
+    var inspeccion = Model != null ? Model.Inspeccion : null;
+    var solicitud = Model != null ? Model.Solicitud : null;
+    var informe = Model != null ? Model.Informe : null;
+    var esVistaPrevia = Model != null && Model.EsVistaPrevia;
+    var mostrarMarcaAguaBorrador = Model != null && Model.MostrarMarcaAguaBorrador;
+    var mostrarFirmas = Model == null || Model.MostrarFirmas;
+    var mostrarFirmaDirector = Model != null && Model.MostrarFirmaDirector;
+    var cultura = new CultureInfo("es-EC");
+
+    var textoNoAplica = "No aplica";
+    Func<string, string, string> textoDocumento = (value, fallback) => !string.IsNullOrWhiteSpace(value) ? value.Trim() : fallback;
+    Func<string, IList<string>> obtenerItemsOTextoNoAplica = value =>
+    {
+        var items = InformeTecnicoTemplateHelper.SplitLines(value).ToList();
+        return items.Any() ? items : new List<string> { textoNoAplica };
+    };
+
+    var inspectorPrincipalNombre = inspeccion != null ? (inspeccion.InspectorPrincipalNombre ?? string.Empty).Trim() : string.Empty;
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalNombre) && solicitud != null)
+    {
+        inspectorPrincipalNombre = (solicitud.TecnicoResponsableNombre ?? string.Empty).Trim();
+    }
+
+    var inspectorPrincipalCedula = inspeccion != null ? (inspeccion.InspectorPrincipalCedula ?? string.Empty).Trim() : string.Empty;
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && solicitud != null)
+    {
+        inspectorPrincipalCedula = (solicitud.TecnicoResponsableCedula ?? string.Empty).Trim();
+    }
+
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && inspeccion != null && inspeccion.CodigoInspector.HasValue)
+    {
+        inspectorPrincipalCedula = inspeccion.CodigoInspector.Value.ToString();
+    }
+
+    var inspector = !string.IsNullOrWhiteSpace(inspectorPrincipalNombre)
+        ? (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) || string.Equals(inspectorPrincipalNombre, inspectorPrincipalCedula, StringComparison.OrdinalIgnoreCase)
+            ? inspectorPrincipalNombre
+            : inspectorPrincipalNombre + " - " + inspectorPrincipalCedula)
+        : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : null);
+
+    var numeroSolicitudInspeccionRaw = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+        ? solicitud.NumeroSolicitud.Trim().ToUpperInvariant()
+        : string.Empty;
+    var coincidenciaSolicitudInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"AOCR\d+")
+        : System.Text.RegularExpressions.Match.Empty;
+    var referenciaSolicitudInspeccion = coincidenciaSolicitudInspeccion.Success
+        ? coincidenciaSolicitudInspeccion.Value
+        : (inspeccion != null && inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+    var coincidenciaAnioInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"20\d{2}")
+        : System.Text.RegularExpressions.Match.Empty;
+    var anioInspeccion = coincidenciaAnioInspeccion.Success
+        ? coincidenciaAnioInspeccion.Value
+        : ((inspeccion != null && inspeccion.FechaProgramada.HasValue)
+            ? inspeccion.FechaProgramada.Value.Year.ToString()
+            : DateTime.Now.Year.ToString());
+    var numeroInspeccion = string.Format("DGAC-INS-{0}-{1}", anioInspeccion, referenciaSolicitudInspeccion);
+    var operador = solicitud != null ? solicitud.NombreOperador : null;
+    var licenciaInspector = informe != null && !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
+        ? informe.NumeroLicenciaInspector
+        : (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+            ? inspeccion.InspectorPrincipalCedula
+            : (solicitud != null ? solicitud.TecnicoResponsableCedula : null));
+    var fechaProgramada = inspeccion != null ? inspeccion.FechaProgramada : null;
+    var resultadoTecnico = !string.IsNullOrWhiteSpace(informe != null ? informe.Resultado : null)
+        ? informe.Resultado
+        : (inspeccion != null ? inspeccion.Resultado : null);
+    var notas = informe != null ? informe.Notas : null;
+    var observaciones = informe != null ? informe.Observaciones : null;
+    var hallazgosTecnicos = informe != null ? informe.NoConformidades : null;
+    var conclusiones = informe != null ? informe.Conclusiones : null;
+    var recomendaciones = informe != null ? informe.Recomendaciones : null;
+    var fechasInspeccionManual = informe != null ? informe.FechasInspeccionManual : null;
+    var estacionesInspeccionManual = informe != null ? informe.EstacionesInspeccionManual : null;
+    var servicios = InformeTecnicoTemplateHelper.GetServicioRows(informe != null ? informe.ServiciosEstaciones : null);
+    var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informe != null ? informe.DocumentosAdjuntos : null);
+    var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informe != null ? informe.DocumentosAdjuntosArchivos : null);
+    var firmadoInspector = informe != null && informe.FirmadoInspector;
+    var firmanteInspector = informe != null && !string.IsNullOrWhiteSpace(informe.UsuarioFirma1) ? informe.UsuarioFirma1 : null;
+
+    var fechaInspeccionTexto = !string.IsNullOrWhiteSpace(fechasInspeccionManual)
+        ? fechasInspeccionManual.Trim()
+        : (fechaProgramada.HasValue ? fechaProgramada.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica);
+    var estacionesTextoArt110 = !string.IsNullOrWhiteSpace(estacionesInspeccionManual)
+        ? estacionesInspeccionManual.Trim()
+        : textoNoAplica;
+    var esResultadoSatisfactorio = InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultadoTecnico);
+    var esResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoTecnico);
+    var notasItems = obtenerItemsOTextoNoAplica(notas);
+    var observacionesItems = esResultadoSatisfactorio
+        ? obtenerItemsOTextoNoAplica(observaciones)
+        : new List<string> { textoNoAplica };
+    var hallazgosTecnicosItems = esResultadoInsatisfactorio
+        ? obtenerItemsOTextoNoAplica(hallazgosTecnicos)
+        : new List<string> { textoNoAplica };
+    var conclusionesItems = obtenerItemsOTextoNoAplica(conclusiones);
+    var recomendacionesItems = obtenerItemsOTextoNoAplica(recomendaciones);
+    var otrosAdjuntosItems = obtenerItemsOTextoNoAplica(informe != null ? informe.OtrosAdjuntos : null);
+    var documentosAdjuntosItems = documentosAdjuntosSeleccionados.Any()
+        ? documentosAdjuntosSeleccionados.Select(item =>
+        {
+            List<string> archivosAdjuntos;
+            return documentosAdjuntosArchivos.TryGetValue(item, out archivosAdjuntos) && archivosAdjuntos != null && archivosAdjuntos.Any(x => !string.IsNullOrWhiteSpace(x))
+                ? item + " (" + string.Join(", ", archivosAdjuntos.Where(x => !string.IsNullOrWhiteSpace(x))) + ")"
+                : item;
+        }).ToList()
+        : new List<string> { textoNoAplica };
+
+    var resultadoTecnicoLabel = InformeTecnicoTemplateHelper.GetResultadoLabel(resultadoTecnico);
+    var tipoResultadoInsatisfactorioLabel = informe != null ? InformeTecnicoTemplateHelper.GetTipoResultadoInsatisfactorioLabel(informe.TipoResultadoInsatisfactorio) : string.Empty;
+    var mostrarTipoResultadoInsatisfactorio = esResultadoInsatisfactorio && !string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorioLabel);
+    var nombreInspectorFirma = firmadoInspector && !string.IsNullOrWhiteSpace(firmanteInspector) ? firmanteInspector : inspector;
+    var nombreInspectorVisual = !string.IsNullOrWhiteSpace(nombreInspectorFirma) ? nombreInspectorFirma.Trim().ToUpperInvariant() : textoNoAplica.ToUpperInvariant();
+    var licenciaInspectorVisual = !string.IsNullOrWhiteSpace(licenciaInspector) ? "No. LICENCIA " + licenciaInspector.Trim() : textoNoAplica.ToUpperInvariant();
+    var firmadoDirdac = informe != null && informe.FirmadoDirdac;
+    var revisadoPor = informe != null && !string.IsNullOrWhiteSpace(informe.UsuarioFirma2) ? informe.UsuarioFirma2 : null;
+    var nombreDirdacVisual = !string.IsNullOrWhiteSpace(revisadoPor) ? revisadoPor.Trim().ToUpperInvariant() : "DIRECTOR / JEFATURA";
+}
+
+@section PdfHead {
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; }
+        .preview-watermark { position: fixed; top: 42%; left: 8%; right: 8%; z-index: 0; color: rgba(180, 120, 20, .12); font-size: 42pt; font-weight: bold; text-align: center; transform: rotate(-24deg); text-transform: uppercase; }
+        .report-flow { position: relative; z-index: 1; }
+        .report-sheet { border: 1px solid #222; padding: 20px 24px 24px; }
+        .report-header { text-align: center; margin-bottom: 18px; }
+        .report-header p, .report-header h1 { margin: 0; }
+        .report-annex { font-weight: bold; font-size: 10pt; text-transform: uppercase; }
+        .report-entity { margin-top: 6px; font-weight: bold; font-size: 11pt; text-transform: uppercase; }
+        .report-title { margin-top: 6px; font-weight: bold; font-size: 13pt; text-transform: uppercase; }
+        .report-order { margin-bottom: 14px; font-size: 10pt; }
+        .report-section-title { margin: 16px 0 8px; font-weight: bold; font-size: 10.5pt; text-transform: uppercase; }
+        .report-paragraph { margin: 0 0 10px; line-height: 1.75; text-align: justify; }
+        .report-paragraph.compact { margin-bottom: 6px; }
+        .fill-inline { display: inline-block; min-width: 160px; padding: 0 4px 2px; border-bottom: 1px solid #222; font-weight: bold; text-align: center; }
+        .fill-inline.wide { min-width: 240px; }
+        .coverage-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .coverage-table th, .coverage-table td { border: 1px solid #222; padding: 6px; vertical-align: middle; }
+        .coverage-table th { text-align: center; background: #f3f3f3; font-size: 8.6pt; }
+        .coverage-table td { font-size: 8.6pt; }
+        .coverage-table .service-name { width: 38%; font-weight: bold; }
+        .bullet-list, .dash-list { margin: 6px 0 0; padding-left: 0; list-style: none; }
+        .bullet-list li, .dash-list li { margin-bottom: 4px; line-height: 1.55; }
+        .result-list li.selected { font-weight: bold; text-decoration: underline; }
+        .documents-block { margin-top: 14px; }
+        .signature-block { margin-top: 26px; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+        .signature-slot { width: 420px; max-width: 100%; height: 122px; margin: 0 auto 10px; border: 1px solid #d3d3d3; background: #f9f9f9; position: relative; overflow: hidden; text-align: left; }
+        .signature-name, .signature-license, .signature-role, .signature-specialty { margin: 3px 0; font-weight: bold; text-transform: uppercase; }
+        .signature-role, .signature-specialty { font-size: 9pt; }
+        .firma-anchor, .hidden-anchor { font-size: 1px; line-height: 1px; color: transparent; display: block; overflow: hidden; }
+        .firma-anchor { position: absolute; left: 0; top: 0; width: 1px; height: 1px; text-align: left; white-space: nowrap; }
+        .hidden-anchor { height: 1px; }
+    </style>
+}
+
+@if (mostrarMarcaAguaBorrador)
+{
+    <div class="preview-watermark">BORRADOR / VISTA PREVIA</div>
+}
+
+<div class="report-flow">
+    <div class="report-sheet">
+        <div class="report-header">
+            <p class="report-annex">ANEXO 1</p>
+            <p class="report-entity">DIRECCION INSPECCION Y CERTIFICACION AERONAUTICA</p>
+            <h1 class="report-title">INFORME DE INSPECCION</h1>
+        </div>
+
+        <div class="report-order">
+            <strong>ORDEN DE INSPECCION:</strong>
+            <span class="fill-inline wide">@textoDocumento(numeroInspeccion, textoNoAplica)</span>
+        </div>
+
+        <div class="report-section-title">TRABAJOS REALIZADOS:</div>
+        <p class="report-paragraph">
+            En cumplimiento del Art. 110 del Código Aeronáutico, entre
+            <span class="fill-inline">@fechaInspeccionTexto</span>
+            se realizó la inspección a la(s) estación(es) de
+            <span class="fill-inline wide">@estacionesTextoArt110</span>
+            con el fin de verificar que la compañía
+            <span class="fill-inline wide">@textoDocumento(operador, textoNoAplica)</span>
+            cuenta con instalaciones, facilidades y personal técnico - operativo que brinda asistencia en tierra a sus operaciones comerciales, en la(s) cual(es) se verificó lo siguiente:
+        </p>
+
+        <p class="report-paragraph">La operación comercial de <span class="fill-inline wide">@textoDocumento(operador, textoNoAplica)</span> será asistida por:</p>
+
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="service-name"></th>
+                    <th>UIO</th>
+                    <th>GYE</th>
+                    <th>MEC</th>
+                    <th>LTX</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var fila in servicios)
+                {
+                    <tr>
+                        <td class="service-name">@fila.Label</td>
+                        <td>@(string.IsNullOrWhiteSpace(fila.Uio) ? string.Empty : fila.Uio)</td>
+                        <td>@(string.IsNullOrWhiteSpace(fila.Gye) ? string.Empty : fila.Gye)</td>
+                        <td>@(string.IsNullOrWhiteSpace(fila.Mec) ? string.Empty : fila.Mec)</td>
+                        <td>@(string.IsNullOrWhiteSpace(fila.Ltx) ? string.Empty : fila.Ltx)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="report-section-title">Notas:</div>
+        <ul class="bullet-list">
+            @foreach (var item in notasItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title">Resultado técnico final:</div>
+        <p class="report-paragraph compact"><strong>@resultadoTecnicoLabel</strong></p>
+        @if (mostrarTipoResultadoInsatisfactorio)
+        {
+            <p class="report-paragraph compact">Tipo de resultado insatisfactorio: <strong>@tipoResultadoInsatisfactorioLabel</strong></p>
+        }
+
+        <div class="report-section-title">Observaciones:</div>
+        <ul class="bullet-list">
+            @foreach (var item in observacionesItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title">Hallazgos técnicos:</div>
+        <ul class="bullet-list">
+            @foreach (var item in hallazgosTecnicosItems)
+        {
+                <li>@item</li>
+        }
+        </ul>
+
+        <div class="report-section-title">Conclusiones:</div>
+        <ul class="bullet-list">
+            @foreach (var item in conclusionesItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title">Recomendaciones:</div>
+        <ul class="bullet-list">
+            @foreach (var item in recomendacionesItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title documents-block">DOCUMENTOS ADJUNTOS:</div>
+        <ul class="bullet-list">
+            @foreach (var documento in documentosAdjuntosItems)
+            {
+                <li>@documento</li>
+            }
+            <li>
+                OTROS:
+                <ul class="dash-list">
+                    @foreach (var item in otrosAdjuntosItems)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            </li>
+        </ul>
+
+        <div class="signature-block">
+            <div class="signature-slot" data-firma-rol="INFORME_TECNICO_INSPECTOR">
+                @if (mostrarFirmas)
+                {
+                    <span class="firma-anchor">ANCLA_FIRMA_INSPECTOR_DGAC</span>
+                }
+            </div>
+            <div class="signature-name">@nombreInspectorVisual</div>
+            <div class="signature-license">@licenciaInspectorVisual</div>
+            <div class="signature-role">FIRMA DEL TÉCNICO / INSPECTOR RESPONSABLE</div>
+            <div class="signature-specialty">Nombre: @nombreInspectorVisual &nbsp; Cargo: TECNICO / INSPECTOR DGAC &nbsp; Fecha: @(informe != null && informe.FechaFirma1.HasValue ? informe.FechaFirma1.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica)</div>
+        </div>
+
+        @if (mostrarFirmas && mostrarFirmaDirector)
+        {
+            <div class="signature-block">
+                <div class="signature-slot" data-firma-rol="INFORME_TECNICO_DIRDAC">
+                    <span class="firma-anchor">ANCLA_FIRMA_DIRDAC_JEFATURA</span>
+                </div>
+                <div class="signature-name">@nombreDirdacVisual</div>
+                <div class="signature-license">@(firmadoDirdac && informe != null && informe.FechaFirma2.HasValue ? "REVISADO " + informe.FechaFirma2.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica.ToUpperInvariant())</div>
+                <div class="signature-role">FIRMA DEL DIRECTOR / JEFATURA</div>
+                <div class="signature-specialty">Nombre: @nombreDirdacVisual &nbsp; Cargo: DIRECCION / JEFATURA &nbsp; Fecha: @(firmadoDirdac && informe != null && informe.FechaFirma2.HasValue ? informe.FechaFirma2.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica)</div>
+            </div>
+        }
+    </div>
+</div>

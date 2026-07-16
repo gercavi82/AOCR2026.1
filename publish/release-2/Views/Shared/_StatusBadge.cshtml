@@ -1,0 +1,70 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@{
+    var estadoRaw = Convert.ToString(ViewData["Estado"] ?? string.Empty).Trim();
+    var estadoNorm = estadoRaw.ToUpperInvariant().Replace("-", "_").Replace(" ", "_");
+    var badgeClass = "status-en-revision";
+    var badgeText = string.IsNullOrWhiteSpace(estadoRaw) ? "Sin estado" : estadoRaw;
+    var iconClass = "fas fa-circle-notch";
+
+    if (string.IsNullOrWhiteSpace(estadoNorm) || estadoNorm.Contains("PENDIENTE") || estadoNorm.Contains("BANDEJA"))
+    {
+        badgeClass = estadoNorm.Contains("BANDEJA") ? "status-en-bandeja" : "status-pendiente";
+        badgeText = estadoNorm.Contains("BANDEJA") ? "En bandeja" : "Pendiente";
+        iconClass = "fas fa-hourglass-half";
+    }
+    else if (estadoNorm.Contains("APROBAD") || estadoNorm.Contains("VALIDAD") || estadoNorm.Contains("EMITID"))
+    {
+        badgeClass = "status-aprobado";
+        badgeText = estadoNorm.Contains("EMITID") ? "Emitido" : "Aprobado";
+        iconClass = "fas fa-circle-check";
+    }
+    else if (estadoNorm.Contains("OBSERVAD"))
+    {
+        badgeClass = "status-observado";
+        badgeText = "Observado";
+        iconClass = "fas fa-triangle-exclamation";
+    }
+    else if (estadoNorm.Contains("REVISION") || estadoNorm.Contains("VALIDACION") || estadoNorm.Contains("PROCESADA"))
+    {
+        badgeClass = "status-en-revision";
+        badgeText = "En revision";
+        iconClass = "fas fa-magnifying-glass";
+    }
+    else if (estadoNorm.Contains("SEGUIMIENTO"))
+    {
+        badgeClass = "status-en-seguimiento";
+        badgeText = "En seguimiento";
+        iconClass = "fas fa-route";
+    }
+    else if (estadoNorm.Contains("SUBSANAD"))
+    {
+        badgeClass = "status-subsanado";
+        badgeText = "Subsanado";
+        iconClass = "fas fa-file-pen";
+    }
+    else if (estadoNorm.Contains("RECHAZAD") || estadoNorm.Contains("ANULAD"))
+    {
+        badgeClass = estadoNorm.Contains("ANULAD") ? "status-anulado" : "status-rechazado";
+        badgeText = estadoNorm.Contains("ANULAD") ? "Anulado" : "Rechazado";
+        iconClass = "fas fa-circle-xmark";
+    }
+    else if (estadoNorm.Contains("LEGALIZ"))
+    {
+        badgeClass = "status-legalizado";
+        badgeText = "Legalizado";
+        iconClass = "fas fa-scale-balanced";
+    }
+    else if (estadoNorm.Contains("COMPLETAD"))
+    {
+        badgeClass = "status-completado";
+        badgeText = "Completado";
+        iconClass = "fas fa-flag-checkered";
+    }
+    else if (estadoNorm.Contains("FACTURAD"))
+    {
+        badgeClass = "status-facturada";
+        badgeText = "Facturada";
+        iconClass = "fas fa-file-invoice-dollar";
+    }
+}
+<span class="aocr-status-badge @badgeClass"><i class="@iconClass"></i><span>@badgeText</span></span>

@@ -26,6 +26,9 @@ namespace CapaPresentacion
 
         protected void Application_Start()
         {
+            // Inyectar configuración desde variables de entorno sobreescribiendo ConfigurationManager
+            CapaNegocio.Services.EnvironmentConfigInjector.Inject();
+
             var totalStopwatch = Stopwatch.StartNew();
             PerfLogger.LogInfo("[PERF][APP_START] Inicio Application_Start");
 

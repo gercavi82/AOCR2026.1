@@ -1,0 +1,2675 @@
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@using CapaDatos.Constants
+@using CapaPresentacion.Helpers
+@using CapaModelo
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Detalle de Solicitud AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    if (Model == null)
+    {
+        ViewData.Model = new SolicitudAOCR
+        {
+            Estado = EstadoSolicitud.Pendiente
+        };
+        TempData["Warning"] = "La solicitud se cargó con información parcial. Algunas secciones pueden mostrarse en modo lectura.";
+    }
+
+    var normalizeVisibleText = new Func<string, string>(VisibleTextHelper.Normalize);
+    var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
+    var estadoVisibleExpediente = (ViewBag.EstadoDocumentalVisible as string ?? Model.Estado ?? string.Empty);
+    var procesoCerradoOperativamente = (bool)(ViewBag.ProcesoCerradoOperativamente ?? false);
+    var documentosObligatoriosFaltantes = (ViewBag.DocumentosObligatoriosFaltantes as List<string>) ?? new List<string>();
+    var esSolicitudModificacion = Model.TipoSolicitud.GetValueOrDefault() == 3;
+    var modificacionConNuevoAeropuerto = esSolicitudModificacion
+        && (!string.IsNullOrWhiteSpace(Model.AeropuertosEcuador) || !string.IsNullOrWhiteSpace(Model.AeropuertosEcuadorOtros));
+    var puedeInspectorDocumental =
+        !procesoCerradoOperativamente &&
+        User.IsInRole("Inspector") &&
+        (estadoActual == EstadoSolicitud.Pendiente
+         || estadoActual == EstadoSolicitud.EnRevision
+         || estadoActual == EstadoSolicitud.DocumentacionPendiente
+         || estadoActual == EstadoSolicitud.Subsanada
+         || estadoActual == EstadoSolicitud.EnInspeccion);
+
+    var revisionesDocumentales = ViewBag.RevisionesDocumentales as Dictionary<int, Tuple<string, string>>
+        ?? new Dictionary<int, Tuple<string, string>>();
+    var puedeFinalizarRevisionDocumental = (bool)(ViewBag.PuedeFinalizarRevisionDocumental ?? false);
+    var inspeccionesSolicitud = ViewBag.InspeccionesSolicitud as IEnumerable<Inspeccion>
+        ?? Enumerable.Empty<Inspeccion>();
+    var inspeccionVinculada = inspeccionesSolicitud
+        .Where(i => i != null && i.CodigoInspeccion > 0)
+        .OrderByDescending(i => i.CodigoInspeccion)
+        .FirstOrDefault();
+    var estadoInspeccionVinculada = inspeccionVinculada != null
+        ? EstadosInspeccion.NormalizarEstado(inspeccionVinculada.Estado)
+        : string.Empty;
+    Func<string, string> textoEstadoInspeccion = estado =>
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        switch (EstadosInspeccion.NormalizarEstado(estado))
+        {
+            case EstadosInspeccion.SOLICITUD_INSPECCION_CREADA:
+                return "SOLICITUD CREADA";
+            case EstadosInspeccion.VERIFICACION_SOLICITUD:
+                return "VERIFICACION DE SOLICITUD";
+            case EstadosInspeccion.ACEPTADA:
+                return "ACEPTADA";
+            case EstadosInspeccion.OBSERVADA:
+                return "OBSERVADA";
+            case EstadosInspeccion.SUBSANADA:
+                return "SUBSANADA";
+            case EstadosInspeccion.PAGO_VALIDADO:
+                return "PAGO VALIDADO";
+            case EstadosInspeccion.EN_INSPECCION:
+                return "EN INSPECCION";
+            default:
+                return EstadosInspeccion.NormalizarEstado(estado).Replace("_", " ");
+        }
+    };
+    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
+    var esAdministradorVisualizacion = User.IsInRole("Administrador");
+    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
+    var puedeAbrirInspeccionVinculada = inspeccionVinculada != null &&
+        (esPropietario
+         || User.IsInRole("Inspector")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("Administrador"));
+    var urlDetalleSolicitudBase = Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud });
+    var urlVerDocumentacionSolicitud = Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "ver", origen = "solicitud-detalle" })
+        : string.Empty;
+    var mostrarAccesoRevisionDocumental = User.IsInRole("Inspector") || User.IsInRole("Administrador");
+    var puedeAbrirRevisionDocumentalDirecta =
+        mostrarAccesoRevisionDocumental &&
+        !procesoCerradoOperativamente &&
+        (puedeInspectorDocumental || User.IsInRole("Administrador"));
+    var urlRevisionDocumentalSolicitud = puedeAbrirRevisionDocumentalDirecta && Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "revision", origen = "solicitud-detalle" })
+        : string.Empty;
+    var tituloBloqueoRevisionDocumental = procesoCerradoOperativamente
+        ? "La revisión documental ya no está disponible porque el expediente cerró operativamente."
+        : "La revisión documental se habilita únicamente para Inspector o Administrador en etapas documentales previas a la inspección.";
+    var accesosDocumentalesSolicitudVm = new CapaPresentacion.Models.ViewModels.DocumentoWorkflowActionsVm
+    {
+        UrlVerDocumentacion = urlVerDocumentacionSolicitud,
+        UrlRevisionDocumental = urlRevisionDocumentalSolicitud,
+        MostrarRevisionDocumental = mostrarAccesoRevisionDocumental,
+        PuedeAbrirRevisionDocumental = puedeAbrirRevisionDocumentalDirecta,
+        TituloBloqueoRevisionDocumental = tituloBloqueoRevisionDocumental
+    };
+    var urlInspeccionVinculada = puedeAbrirInspeccionVinculada
+        ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion })
+        : string.Empty;
+    Func<string, string, string> resolverInspectorDetalle = (nombre, identificador) =>
+    {
+        var nombreLimpio = string.IsNullOrWhiteSpace(nombre) ? string.Empty : nombre.Trim();
+        var identificadorLimpio = string.IsNullOrWhiteSpace(identificador) ? string.Empty : identificador.Trim();
+
+        if (!string.IsNullOrWhiteSpace(nombreLimpio))
+        {
+            return nombreLimpio;
+        }
+
+        if (!string.IsNullOrWhiteSpace(identificadorLimpio))
+        {
+            return "Asignado (" + identificadorLimpio + ")";
+        }
+
+        return "Sin asignar";
+    };
+    var inspectorPrincipalNombre = !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre)
+        ? Model.TecnicoResponsableNombre
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorPrincipalNombre : null);
+    var inspectorPrincipalIdentificador = !string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula)
+        ? Model.TecnicoResponsableCedula
+        : (inspeccionVinculada != null && !string.IsNullOrWhiteSpace(inspeccionVinculada.InspectorPrincipalCedula)
+            ? inspeccionVinculada.InspectorPrincipalCedula
+            : (Model.CodigoTecnico.HasValue
+                ? Model.CodigoTecnico.Value.ToString()
+                : (inspeccionVinculada != null && inspeccionVinculada.CodigoInspector.HasValue
+                    ? inspeccionVinculada.CodigoInspector.Value.ToString()
+                    : null)));
+    var inspectorAsignadoDetalle = resolverInspectorDetalle(inspectorPrincipalNombre, inspectorPrincipalIdentificador);
+    var inspectorApoyoNombre = !string.IsNullOrWhiteSpace(Model.InspectorApoyoNombre)
+        ? Model.InspectorApoyoNombre
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorApoyoNombre : null);
+    var inspectorApoyoIdentificador = !string.IsNullOrWhiteSpace(Model.InspectorApoyoCedula)
+        ? Model.InspectorApoyoCedula
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorApoyoCedula : null);
+    var inspectorApoyoDetalle = resolverInspectorDetalle(inspectorApoyoNombre, inspectorApoyoIdentificador);
+
+    var puedeMarcarElaboracion =
+        !procesoCerradoOperativamente &&
+        (User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.EnInspeccion;
+
+    var puedeMarcarRevision =
+        !procesoCerradoOperativamente &&
+        (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AOCR_EnElaboracion;
+
+    var puedeValidarJefatura =
+        !procesoCerradoOperativamente &&
+        (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AOCR_EnRevision;
+
+    var puedeLegalizar =
+        !procesoCerradoOperativamente &&
+        (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.AOCR_Validado || estadoActual == EstadoSolicitud.Aprobada);
+
+    var puedeEmitirAocr =
+        !procesoCerradoOperativamente &&
+        (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AOCR_Legalizado;
+    var mensajeExito = (TempData["Exito"] ?? TempData["success"]) as string;
+    var mensajeError = (TempData["Error"] ?? TempData["error"]) as string;
+    var mensajeWarning = TempData["Warning"] as string;
+    var mensajeInfo = TempData["Info"] as string;
+    var tieneInspectorAsignado = Model.CodigoTecnico.HasValue
+        || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula)
+        || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre);
+    var flujoDetalle = ViewBag.Flujo as CapaPresentacion.Models.ViewModels.SolicitudAocrFlujoViewModel;
+    if (flujoDetalle != null)
+    {
+        if (flujoDetalle.TieneInspectorAsignado)
+        {
+            tieneInspectorAsignado = true;
+            if (string.IsNullOrWhiteSpace(inspectorPrincipalNombre))
+            {
+                inspectorPrincipalNombre = flujoDetalle.InspectorPrincipalNombre;
+                inspectorPrincipalIdentificador = flujoDetalle.InspectorPrincipalIdentificador;
+                inspectorAsignadoDetalle = resolverInspectorDetalle(inspectorPrincipalNombre, inspectorPrincipalIdentificador);
+            }
+        }
+    }
+    var puedeSubsanar = !procesoCerradoOperativamente && esPropietario && estadoActual == EstadoSolicitud.Observada;
+    var puedeFirmarAceptacionDocumental =
+        !procesoCerradoOperativamente &&
+        !esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AceptacionDocumental;
+    if (flujoDetalle != null && flujoDetalle.PuedeAceptarDocumentacion)
+    {
+        puedeFirmarAceptacionDocumental = true;
+    }
+    var puedeDescargarAceptacionDocumental =
+        !esSolicitudModificacion &&
+        (esPropietario || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.FirmadoCoordinador
+         || estadoActual == EstadoSolicitud.PendienteAsignacionRT
+         || estadoActual == EstadoSolicitud.EnInspeccion
+         || estadoActual == EstadoSolicitud.Finalizado);
+    var puedeResolverRutaModificacion =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.AceptacionDocumental
+         || estadoActual == EstadoSolicitud.FirmadoCoordinador);
+    var puedeRtSolicitarInspeccionNuevoAeropuerto =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        modificacionConNuevoAeropuerto &&
+        esPropietario &&
+        estadoActual == EstadoSolicitud.RequiereInspeccion;
+    var puedeRtSolicitarNuevaInspeccionNoConformidad = 
+        ViewBag.TieneNcFirmadaConInspeccion != null && (bool)ViewBag.TieneNcFirmadaConInspeccion &&
+        esPropietario &&
+        !procesoCerradoOperativamente;
+    var puedeRtSubsanarNc = 
+        ViewBag.TieneNcSinInspeccion != null && (bool)ViewBag.TieneNcSinInspeccion &&
+        esPropietario &&
+        !procesoCerradoOperativamente;
+    var puedePrepararCondicionesModificacion =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        (User.IsInRole("Inspector")
+         || User.IsInRole("CoordinacionLegal")
+         || User.IsInRole("CoordinadorLegal")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones
+         || estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal);
+    var puedeRevisarCondicionesModificacion =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones;
+    var puedeEnviarCondicionesDcav =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal;
+    var puedeFirmarCondicionesModificacion =
+        !procesoCerradoOperativamente &&
+        esSolicitudModificacion &&
+        (User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.EnviadoDcav;
+    var puedeDescargarCondicionesModificacion =
+        esSolicitudModificacion &&
+        (esPropietario
+         || User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.FirmadoDcav || estadoActual == EstadoSolicitud.Finalizado);
+    var puedeIniciarNuevaOrden = esPropietario || User.IsInRole("Solicitante");
+    var urlNuevaOrden = Url.Action("Index", "SolicitudAOCR", new { tipoSolicitud = 1, abrirModal = true });
+
+    var direccionCompleta = string.Join(", ", new[]
+    {
+        Model.Direccion,
+        (string.Concat(Model.Ciudad, " ", Model.Provincia)).Trim(),
+        Model.Pais
+    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    Func<string, string> estadoCss = estado =>
+    {
+        var normalized = EstadoSolicitud.Normalizar(estado);
+        if (normalized == EstadoSolicitud.Observada)
+        {
+            return "aocr-badge danger";
+        }
+
+        if (normalized == EstadoSolicitud.AOCR_Validado
+            || normalized == EstadoSolicitud.AceptacionDocumental
+            || normalized == EstadoSolicitud.FirmadoCoordinador
+            || normalized == EstadoSolicitud.FirmadoDcav
+            || normalized == EstadoSolicitud.Finalizado
+            || normalized == EstadoSolicitud.AOCR_Legalizado
+            || normalized == EstadoSolicitud.AOCR_EmitidoRecibido
+            || normalized == EstadoSolicitud.Aprobada)
+        {
+            return "aocr-badge success";
+        }
+
+        if (normalized == EstadoSolicitud.EnRevision
+            || normalized == EstadoSolicitud.Subsanada
+            || normalized == EstadoSolicitud.AOCR_EnRevision
+            || normalized == EstadoSolicitud.AOCR_EnElaboracion
+            || normalized == EstadoSolicitud.RequiereInspeccion
+            || normalized == EstadoSolicitud.GeneradoCondicionesLimitaciones
+            || normalized == EstadoSolicitud.EnRevisionCoordinadorFinal
+            || normalized == EstadoSolicitud.EnviadoDcav
+            || normalized == EstadoSolicitud.EnInspeccion)
+        {
+            return "aocr-badge info";
+        }
+
+        return "aocr-badge warning";
+    };
+}
+
+<style>
+    .aocr-detail-shell {
+        padding: clamp(1rem, 2vw, 1.5rem) 0 2rem;
+    }
+
+    .aocr-detail-card {
+        border: 0;
+        border-radius: 18px;
+        box-shadow: 0 18px 40px rgba(14, 30, 62, 0.08);
+        overflow: hidden;
+    }
+
+    .aocr-hero {
+        background: linear-gradient(135deg, #0f3d75 0%, #174f97 55%, #2f6dbc 100%);
+        color: #fff;
+    }
+
+    .aocr-hero .card-body {
+        padding: 1.75rem;
+    }
+
+    .aocr-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.8rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .aocr-hero-title {
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: 700;
+        margin: 1rem 0 0.5rem;
+    }
+
+    .aocr-hero-subtitle {
+        color: rgba(255, 255, 255, 0.84);
+        margin-bottom: 0;
+    }
+
+    .aocr-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 132px;
+        padding: 0.65rem 0.95rem;
+        border-radius: 999px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .aocr-badge.success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .aocr-badge.warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .aocr-badge.danger {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .aocr-badge.info {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .aocr-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+        margin-top: 1.25rem;
+    }
+
+    .aocr-summary-item {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+    }
+
+    .aocr-summary-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.72);
+        margin-bottom: 0.35rem;
+    }
+
+    .aocr-summary-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .aocr-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #16365f;
+        margin-bottom: 1rem;
+    }
+
+    .aocr-section-title i {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #e8f1fb;
+        color: #1e5aa8;
+    }
+
+    .aocr-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+
+    .aocr-info-item {
+        padding: 0.95rem 1rem;
+        border-radius: 14px;
+        background: #f8fbff;
+        border: 1px solid #e4edf7;
+    }
+
+    .aocr-info-label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #5f738c;
+        margin-bottom: 0.45rem;
+    }
+
+    .aocr-info-label i {
+        color: #1e5aa8;
+    }
+
+    .aocr-info-value {
+        color: #102a43;
+        font-weight: 600;
+        line-height: 1.45;
+    }
+
+    .aocr-action-card {
+        border: 1px solid #d8e4f2;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .aocr-action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+
+    .aocr-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.5rem 1.25rem;
+        white-space: nowrap;
+    }
+
+    .aocr-action-btn-full {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        width: 100%;
+        min-height: 52px;
+        border-radius: 14px;
+        font-weight: 600;
+    }
+
+    .aocr-action-btn-full.aocr-action-btn-full--stacked {
+        justify-content: flex-start;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.85rem 1rem;
+        text-align: left;
+    }
+
+    .aocr-action-btn-full__title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .aocr-action-btn-full__hint {
+        display: block;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        opacity: 0.82;
+        font-weight: 500;
+        margin-left: 1.8rem;
+    }
+
+    .aocr-review-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        height: 100%;
+    }
+
+    .aocr-review-actions .btn {
+        width: 100%;
+    }
+
+    .aocr-review-card {
+        border-left: 5px solid #1e5aa8;
+    }
+
+    .aocr-review-card.success {
+        border-left-color: #1f7a3b;
+    }
+
+    .aocr-review-card.warning {
+        border-left-color: #d97706;
+    }
+
+    .aocr-review-card.info {
+        border-left-color: #2563eb;
+    }
+
+    .aocr-review-card.legal {
+        border-left-color: #0f766e;
+    }
+
+    .aocr-review-card.emit {
+        border-left-color: #166534;
+    }
+
+    .aocr-linked-inspection-card {
+        border-left-width: 6px;
+        background: linear-gradient(135deg, #fffaf0 0%, #ffffff 55%, #f6f9ff 100%);
+        box-shadow: 0 18px 36px -28px rgba(30, 90, 168, 0.45);
+    }
+
+    .aocr-linked-inspection-layout {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.95fr);
+        align-items: stretch;
+    }
+
+    .aocr-linked-inspection-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.85rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .aocr-linked-inspection-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(217, 119, 6, 0.12);
+        color: #9a3412;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .aocr-linked-inspection-title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        color: #153e75;
+    }
+
+    .aocr-linked-inspection-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eff6ff 0%, #e0ecff 100%);
+        color: #2563eb;
+        font-size: 1.15rem;
+        box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+    }
+
+    .aocr-linked-inspection-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.95rem;
+        border-radius: 999px;
+        background: rgba(21, 94, 117, 0.1);
+        color: #155e75;
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .aocr-linked-inspection-copy {
+        color: #4a5d75;
+        line-height: 1.7;
+        margin-bottom: 1rem;
+    }
+
+    .aocr-linked-inspection-summary {
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .aocr-linked-inspection-meta {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 0.95rem 1rem;
+    }
+
+    .aocr-linked-inspection-meta-label {
+        display: block;
+        color: #6b7280;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
+    }
+
+    .aocr-linked-inspection-meta-value {
+        color: #153e75;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .aocr-linked-inspection-note {
+        margin-top: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: 0.95rem;
+        background: rgba(30, 90, 168, 0.06);
+        color: #234a83;
+        font-size: 0.92rem;
+        line-height: 1.6;
+    }
+
+    .aocr-linked-inspection-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 1.15rem;
+        background: rgba(255, 255, 255, 0.94);
+        padding: 1.2rem;
+    }
+
+    .aocr-linked-inspection-actions-copy {
+        color: #4a5d75;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    .aocr-linked-inspection-actions .btn {
+        min-height: 3rem;
+        font-weight: 700;
+        justify-content: center;
+    }
+
+    @@media (max-width: 991.98px) {
+        .aocr-linked-inspection-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .aocr-form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .aocr-history-table thead th {
+        border-bottom-width: 1px;
+        color: #4a5d75;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .aocr-responsive-table td,
+    .aocr-responsive-table th {
+        vertical-align: top;
+    }
+
+    .aocr-responsive-table {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .aocr-responsive-table td {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .aocr-responsive-table td[data-label="Acción"] {
+        white-space: nowrap;
+    }
+
+    .aocr-responsive-table td[data-label="Acción"] .btn {
+        margin-right: 0.35rem;
+    }
+
+    .aocr-responsive-table td.aocr-cell-empty {
+        display: none;
+    }
+
+    .aocr-rt-summary-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .aocr-rt-summary-badges .badge {
+        font-size: 0.72rem;
+    }
+
+    .aocr-rt-summary-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.75rem;
+        color: #52657d;
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .aocr-rt-summary-note {
+        margin-top: 0.35rem;
+        color: #6a7d94;
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .aocr-table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .aocr-doc-review-table {
+        width: 100%;
+        min-width: 1320px;
+        table-layout: fixed;
+    }
+
+    .aocr-doc-review-table th,
+    .aocr-doc-review-table td {
+        vertical-align: top;
+    }
+
+    .aocr-doc-review-table td {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .aocr-doc-review-table .aocr-doc-name {
+        font-weight: 700;
+        color: #19324b;
+    }
+
+    .aocr-doc-review-table .aocr-doc-code {
+        display: block;
+        margin-top: 0.2rem;
+        color: #6a7d94;
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .aocr-doc-actions,
+    .aocr-action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .aocr-doc-actions .btn,
+    .aocr-action-buttons .btn {
+        min-width: 120px;
+    }
+
+    .aocr-doc-observation {
+        min-width: 220px;
+    }
+
+    .aocr-doc-review-table .form-select,
+    .aocr-doc-review-table .form-control {
+        min-height: 2.35rem;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-select {
+        color-scheme: light;
+        cursor: pointer;
+    }
+
+    .aocr-doc-review-table .form-select option,
+    .aocr-doc-review-table .form-select option:checked,
+    .aocr-doc-review-table .form-select option:hover,
+    .aocr-doc-review-table .form-select option:focus {
+        background-color: #ffffff;
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-control::placeholder,
+    .aocr-doc-review-table .form-select:invalid {
+        color: #64748b !important;
+        opacity: 1;
+        -webkit-text-fill-color: #64748b;
+    }
+
+    .aocr-doc-review-table .form-select:focus,
+    .aocr-doc-review-table .form-control:focus {
+        border-color: #1b6ec2;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.18);
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-select:disabled,
+    .aocr-doc-review-table .form-control:disabled,
+    .aocr-doc-review-table .form-control[readonly] {
+        background-color: #eef2f6 !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
+    }
+
+    @@media (max-width: 1199.98px) {
+        .aocr-doc-review-table {
+            min-width: 1220px;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-table-responsive {
+            overflow: visible;
+        }
+
+        .aocr-doc-review-table,
+        .aocr-doc-review-table thead,
+        .aocr-doc-review-table tbody,
+        .aocr-doc-review-table tr,
+        .aocr-doc-review-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-doc-review-table {
+            min-width: 0;
+            table-layout: auto;
+        }
+
+        .aocr-doc-review-table thead {
+            display: none;
+        }
+
+        .aocr-doc-review-table tr {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid #e4edf7;
+        }
+
+        .aocr-doc-review-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-doc-review-table td {
+            border: 0;
+            padding: 0.32rem 0;
+            background: transparent;
+        }
+
+        .aocr-doc-review-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.15rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-doc-actions .btn,
+        .aocr-action-buttons .btn {
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+
+        .aocr-doc-observation {
+            min-width: 0;
+        }
+    }
+
+    @@media (max-width: 1399.98px) and (min-width: 768px) {
+        .aocr-responsive-table thead {
+            display: none;
+        }
+
+        .aocr-responsive-table,
+        .aocr-responsive-table tbody,
+        .aocr-responsive-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-responsive-table {
+            table-layout: auto;
+        }
+
+        .aocr-responsive-table tr {
+            display: grid;
+            grid-template-columns: minmax(0, 1.55fr) minmax(240px, 1fr) auto;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-bottom: 1px solid #e4edf7;
+            background: #fff;
+        }
+
+        .aocr-responsive-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-responsive-table td {
+            min-width: 0;
+            border: 1px solid #eef3f9;
+            border-radius: 12px;
+            padding: 0.7rem 0.8rem;
+            background: #f8fbff;
+            white-space: normal;
+        }
+
+        .aocr-responsive-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-responsive-table td:nth-child(1) {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .aocr-responsive-table td:nth-child(2) {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .aocr-responsive-table td:nth-child(3) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .aocr-responsive-table td:nth-child(4) {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .aocr-responsive-table td:nth-child(5) {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .aocr-responsive-table td:nth-child(6) {
+            grid-column: 1 / span 2;
+            grid-row: 4;
+        }
+
+        .aocr-responsive-table td:nth-child(7) {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .aocr-responsive-table td:nth-child(8) {
+            grid-column: 1 / span 3;
+            grid-row: 5;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] {
+            grid-column: 3;
+            grid-row: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            align-self: start;
+            justify-content: flex-end;
+            gap: 0.35rem;
+            min-width: 88px;
+            padding: 0.1rem 0 0 0;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"]::before {
+            display: none;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] .btn {
+            margin-right: 0;
+            margin-bottom: 0;
+        }
+
+        .aocr-rt-latest-table tr {
+            grid-template-columns: minmax(180px, 0.95fr) minmax(240px, 1.2fr) minmax(260px, 1fr) auto;
+            gap: 0.75rem;
+            padding: 0.55rem 0.9rem;
+            align-items: center;
+        }
+
+        .aocr-rt-latest-table td {
+            border: 0;
+            border-radius: 0;
+            padding: 0.15rem 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .aocr-rt-latest-table td::before {
+            display: none;
+        }
+
+        .aocr-rt-latest-table td:nth-child(1) {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td:nth-child(2) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td:nth-child(3) {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td[data-label="Acción"] {
+            grid-column: 4;
+            grid-row: 1;
+            align-self: center;
+            padding-top: 0;
+            justify-content: flex-start;
+        }
+
+        .aocr-rt-latest-table td[data-label="Tipo documental"] strong,
+        .aocr-rt-latest-table td[data-label="Archivo"] {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .aocr-rt-latest-table td[data-label="Archivo"] {
+            color: #33475b;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-badges,
+        .aocr-rt-latest-table .aocr-rt-summary-meta {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-badges {
+            margin: 0 0.5rem 0 0;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-meta {
+            gap: 0.25rem 0.65rem;
+            font-size: 0.8rem;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-note {
+            display: inline;
+            margin-top: 0;
+            margin-left: 0.5rem;
+            font-size: 0.78rem;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-note strong,
+        .aocr-rt-latest-table .aocr-rt-summary-meta strong {
+            font-weight: 600;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-rt-summary-meta {
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-responsive-table thead {
+            display: none;
+        }
+
+        .aocr-responsive-table,
+        .aocr-responsive-table tbody,
+        .aocr-responsive-table tr,
+        .aocr-responsive-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-responsive-table {
+            table-layout: auto;
+        }
+
+        .aocr-responsive-table tr {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid #e4edf7;
+        }
+
+        .aocr-responsive-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-responsive-table td {
+            border: 0;
+            padding: 0.3rem 0;
+            white-space: normal;
+            background: transparent;
+        }
+
+        .aocr-responsive-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.15rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] {
+            padding-top: 0.55rem;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] .btn {
+            margin-bottom: 0.35rem;
+        }
+    }
+
+</style>
+
+<div class="container-fluid aocr-detail-shell">
+    @if (!string.IsNullOrWhiteSpace(mensajeExito))
+    {
+        <div class="alert alert-success mb-4" role="alert">@mensajeExito</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <div class="alert alert-danger mb-4" role="alert">@mensajeError</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeInfo))
+    {
+        <div class="alert alert-info mb-4" role="alert"><i class="fas fa-circle-info me-2"></i>@mensajeInfo</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeWarning))
+    {
+        <div class="alert alert-warning mb-4" role="alert">@mensajeWarning</div>
+    }
+
+    @if (procesoCerradoOperativamente)
+    {
+        <div class="card border-secondary mb-4" style="border-left: 5px solid #6c757d !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-secondary fs-3"><i class="fas fa-lock"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-secondary mb-1">Proceso cerrado operativamente</h5>
+                        <p class="text-muted mb-3">Este expediente ya terminó su flujo AOCR y quedó en modo consulta histórica. Las acciones operativas quedan bloqueadas; si necesita continuar con un nuevo trámite, genere una Nueva Orden de Recaudación.</p>
+                        @if (puedeIniciarNuevaOrden)
+                        {
+                            <a href="@urlNuevaOrden" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-1"></i> Nueva Orden de Recaudación
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!procesoCerradoOperativamente && documentosObligatoriosFaltantes.Count > 0)
+    {
+        <div class="card border-danger mb-4" style="border-left: 5px solid #dc3545 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-danger fs-3"><i class="fas fa-file-exclamation"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-danger mb-1">Documentación obligatoria pendiente</h5>
+                        <p class="text-muted mb-2">No puede continuar al siguiente paso mientras no se carguen todos los documentos solicitados en la Solicitud AOCR.</p>
+                        <ul class="mb-0">
+                            @foreach (var documentoPendiente in documentosObligatoriosFaltantes)
+                            {
+                                <li>@documentoPendiente</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card aocr-detail-card aocr-hero mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
+                <div>
+                    <div class="aocr-eyebrow">
+                        <i class="fas fa-file-signature"></i>
+                        Detalle del tramite AOCR
+                    </div>
+                    <h1 class="aocr-hero-title">Solicitud AOCR #@Model.CodigoSolicitud</h1>
+                    <p class="aocr-hero-subtitle">Vista consolidada del estado del tramite, datos del operador y acciones del flujo.</p>
+                </div>
+                <div class="text-lg-end">
+                    <div class="mb-2 small text-uppercase opacity-75">Estado del tramite</div>
+                    <span class="@estadoCss(estadoVisibleExpediente)">@estadoVisibleExpediente</span>
+                </div>
+            </div>
+
+            <div class="aocr-summary-grid">
+                <div class="aocr-summary-item">
+                    <div class="aocr-summary-label">Fecha de solicitud</div>
+                    <div class="aocr-summary-value">@(Model.FechaSolicitud.HasValue ? Model.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "No registrada")</div>
+                </div>
+                <div class="aocr-summary-item">
+                    <div class="aocr-summary-label">Operador</div>
+                    <div class="aocr-summary-value">@Model.NombreOperador</div>
+                </div>
+                <div class="aocr-summary-item">
+                    <div class="aocr-summary-label">Tipo de operacion</div>
+                    <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
+                </div>
+                <div class="aocr-summary-item">
+                    <div class="aocr-summary-label">Inspector asignado</div>
+                    <div class="aocr-summary-value">@inspectorAsignadoDetalle</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-7">
+            <div class="card aocr-detail-card h-100">
+                <div class="card-body p-4">
+                    <div class="aocr-section-title">
+                        <i class="fas fa-building"></i>
+                        <span>Datos del Operador</span>
+                    </div>
+
+                    <div class="aocr-info-grid">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-id-card"></i> RUC</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Ruc) ? "No registrado" : Model.Ruc)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-plane-departure"></i> Codigo OACI</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.CodigoOaci) ? "No registrado" : Model.CodigoOaci)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-building"></i> Nombre operador</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.NombreOperador) ? "No registrado" : Model.NombreOperador)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-envelope"></i> Email</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Email) ? "No registrado" : Model.Email)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-phone"></i> Telefono</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Telefono) ? "No registrado" : Model.Telefono)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-map-marker-alt"></i> Direccion</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(direccionCompleta) ? "No registrada" : direccionCompleta)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-user-tie"></i> Representante legal</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.RepresentanteLegal) ? "No registrado" : Model.RepresentanteLegal + (string.IsNullOrWhiteSpace(Model.CedulaRepresentante) ? string.Empty : " (" + Model.CedulaRepresentante + ")"))</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="card aocr-detail-card h-100">
+                <div class="card-body p-4">
+                    <div class="aocr-section-title">
+                        <i class="fas fa-cogs"></i>
+                        <span>Informacion de Operacion</span>
+                    </div>
+
+                    <div class="aocr-info-grid">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-briefcase"></i> Tipo de operacion</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-align-left"></i> Descripcion</div>
+                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.DescripcionOperacion) ? "No definida" : normalizeVisibleText(Model.DescripcionOperacion))</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-user-cog"></i> Inspector principal</div>
+                            <div class="aocr-info-value">@inspectorAsignadoDetalle</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-user-friends"></i> Inspector apoyo</div>
+                            <div class="aocr-info-value">@inspectorApoyoDetalle</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Observaciones))
+    {
+        <div class="card border-warning mb-4" style="border-left: 5px solid #ffc107 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-warning fs-3"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div>
+                        <h5 class="fw-bold text-warning mb-1">Observaciones</h5>
+                        <p class="mb-0" style="white-space: pre-line;">@normalizeVisibleText(Model.Observaciones)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (inspeccionVinculada != null
+        && (estadoActual == EstadoSolicitud.DocumentacionCompleta
+            || estadoActual == EstadoSolicitud.AceptacionDocumental
+            || estadoActual == EstadoSolicitud.RequiereInspeccion
+            || estadoActual == EstadoSolicitud.EnInspeccion
+            || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
+    {
+        <div class="card aocr-detail-card aocr-review-card warning aocr-linked-inspection-card mb-4">
+            <div class="card-body p-4 p-xl-4">
+                <div class="aocr-linked-inspection-layout">
+                    <div>
+                        <div class="aocr-linked-inspection-header">
+                            <span class="aocr-linked-inspection-kicker">
+                                <i class="fas fa-route"></i>
+                                Continuar desde inspeccion
+                            </span>
+                            <span class="aocr-linked-inspection-status">@textoEstadoInspeccion(estadoInspeccionVinculada)</span>
+                        </div>
+
+                        <div class="aocr-linked-inspection-title mb-3">
+                            <span class="aocr-linked-inspection-icon">
+                                <i class="fas fa-clipboard-check"></i>
+                            </span>
+                            <div>
+                                <div class="aocr-section-title mb-1">
+                                    <span>Solicitud de inspeccion vinculada</span>
+                                </div>
+                                <div class="text-secondary small">El expediente AOCR ya migró a su bandeja operativa de inspección.</div>
+                            </div>
+                        </div>
+
+                        <p class="aocr-linked-inspection-copy">
+                            Este trámite ya tiene una inspección asociada. La revisión documental, observaciones, pago, LV/EAE e inicio operativo deben gestionarse desde el módulo de inspección para mantener la trazabilidad completa del proceso.
+                        </p>
+
+                        <div class="aocr-linked-inspection-summary">
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspeccion vinculada</span>
+                                <div class="aocr-linked-inspection-meta-value">#@inspeccionVinculada.CodigoInspeccion</div>
+                            </div>
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspector principal</span>
+                                <div class="aocr-linked-inspection-meta-value">@inspectorAsignadoDetalle</div>
+                            </div>
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspector de apoyo</span>
+                                <div class="aocr-linked-inspection-meta-value">@inspectorApoyoDetalle</div>
+                            </div>
+                        </div>
+
+                        <div class="aocr-linked-inspection-note">
+                            @if (User.IsInRole("Inspector"))
+                            {
+                                <strong>Accion requerida:</strong><span> continúe su revisión técnica desde la inspección vinculada para ver las opciones operativas y los documentos del expediente.</span>
+                            }
+                            else
+                            {
+                                <strong>Referencia operativa:</strong><span> a partir de este punto el seguimiento principal del trámite continúa dentro del módulo de inspección.</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="aocr-linked-inspection-actions">
+                        <div>
+                            <div class="aocr-section-title mb-2">
+                                <i class="fas fa-arrow-right"></i>
+                                <span>Siguiente paso</span>
+                            </div>
+                            <p class="aocr-linked-inspection-actions-copy">
+                                Abra la inspección vinculada para continuar con la gestión del expediente y usar las acciones habilitadas para su rol actual.
+                            </p>
+                        </div>
+
+                        @if (puedeAbrirInspeccionVinculada)
+                        {
+                            <a href="@urlInspeccionVinculada" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-external-link-alt"></i>
+                                Abrir inspeccion vinculada
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="btn btn-outline-secondary aocr-action-btn disabled w-100" aria-disabled="true">
+                                <i class="fas fa-lock"></i>
+                                Inspeccion vinculada disponible segun permisos
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeSubsanar)
+    {
+        <div class="card border-info mb-4" style="border-left: 5px solid #17a2b8 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-info fs-3"><i class="fas fa-tools"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-info mb-1">Subsanar Solicitud</h5>
+                        <p class="text-muted mb-3">Su solicitud ha sido observada. Corrija la documentación y vuelva a enviar para que sea revisada nuevamente.</p>
+                        <a href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-info">
+                            <i class="fas fa-edit me-1"></i> Corregir y Reenviar Solicitud
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card aocr-detail-card aocr-action-card mb-4">
+        <div class="card-body p-4">
+            <div class="aocr-section-title">
+                <i class="fas fa-folder-open"></i>
+                <span>Gestion Documental</span>
+            </div>
+
+            @{
+                var puedeGenerarAocr = !procesoCerradoOperativamente && (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
+                var motivoAocr = ViewBag.MotivoGenerarAOCR as string;
+                var aocrYaGenerado = (ViewBag.AocrYaGenerado != null) && (bool)ViewBag.AocrYaGenerado;
+                var documentoAocr = ViewBag.DocumentoAOCRGenerado as CapaModelo.Documento;
+            }
+
+            <div class="aocr-action-grid">
+                @if (aocrYaGenerado && documentoAocr != null)
+                {
+                    <div class="btn btn-success aocr-action-btn-full disabled" style="cursor: default;">
+                        <i class="fas fa-check-circle"></i>
+                        AOCR Generada
+                        <small class="d-block" style="font-size: 0.78em; opacity: 0.9;">
+                            @(documentoAocr.NombreArchivo)
+                            @if (documentoAocr.FechaCarga.HasValue)
+                            {
+                                <text> — @documentoAocr.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm")</text>
+                            }
+                        </small>
+                    </div>
+                    <a href="@Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })"
+                       class="btn btn-outline-primary aocr-action-btn-full" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa AOCR
+                    </a>
+                    <a href="@Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = Model.CodigoSolicitud })"
+                       class="btn btn-outline-success aocr-action-btn-full" target="_blank" rel="noopener">
+                        <i class="fas fa-download"></i>
+                        Descargar AOCR
+                    </a>
+                }
+                else if (puedeGenerarAocr)
+                {
+                    var esFirmaInstitucionalAocr = User.IsInRole("Direccion")
+                        || User.IsInRole("DireccionJefaturaTecnica")
+                        || User.IsInRole("DIRDAC")
+                        || User.IsInRole("JefaturaTecnica")
+                        || User.IsInRole("DirectorGeneral");
+                    if (esFirmaInstitucionalAocr)
+                    {
+                        <a class="btn btn-primary aocr-action-btn-full"
+                           href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })"
+                           title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Abrir Firma institucional AOCR" : normalizeVisibleText(motivoAocr))">
+                            <i class="fas fa-file-signature"></i>
+                            Firma institucional AOCR
+                        </a>
+                    }
+                    else
+                    {
+                        using (Html.BeginForm("GenerarAOCR", "SolicitudAOCR", new { id = Model.CodigoSolicitud }, FormMethod.Post, new { style = "display:contents;" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="btn btn-primary aocr-action-btn-full"
+                                    onclick="return confirm('¿Confirma la generación automática del documento AOCR para esta solicitud?');"
+                                    title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Generar PDF oficial AOCR desde el sistema" : normalizeVisibleText(motivoAocr))">
+                                <i class="fas fa-file-signature"></i>
+                                Generar AOCR
+                            </button>
+                        }
+                    }
+                }
+                else
+                {
+                    <button type="button"
+                            class="btn btn-primary aocr-action-btn-full"
+                            disabled="disabled"
+                            title="@(procesoCerradoOperativamente
+                                ? "El expediente está cerrado; solo permanece habilitada la consulta histórica y la Nueva Orden de Recaudación."
+                                : (string.IsNullOrWhiteSpace(motivoAocr)
+                                    ? "Disponible una vez la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector"
+                                    : normalizeVisibleText(motivoAocr)))"
+                            style="opacity: 0.55; cursor: not-allowed;">
+                        <i class="fas fa-file-signature"></i>
+                        Generar AOCR
+                    </button>
+                }
+
+                @Html.Partial("_DocumentoWorkflowActions", accesosDocumentalesSolicitudVm)
+            </div>
+
+            @if (!puedeGenerarAocr && !aocrYaGenerado)
+            {
+                <div class="alert alert-info mt-3 mb-0" style="font-size: 0.9em;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>AOCR no disponible aún:</strong>
+                    @(string.IsNullOrEmpty(motivoAocr)
+                        ? "La AOCR estara disponible cuando el Informe Tecnico quede aprobado por Direccion/DIRDAC y la solicitud entre en fase AOCR."
+                        : normalizeVisibleText(motivoAocr))
+                </div>
+            }
+            else if (aocrYaGenerado)
+            {
+                <div class="alert alert-success mt-3 mb-0" style="font-size: 0.9em;">
+                    <i class="fas fa-check-circle me-1"></i>
+                    La AOCR de esta solicitud ya fue generada automáticamente por el sistema y está disponible en el expediente.
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (puedeInspectorDocumental)
+    {
+        var documentosRevision = (ViewBag.DocumentosSolicitud as List<Documento>) ?? new List<Documento>();
+        var totalDocumentosRevision = documentosRevision.Count;
+        var documentosRevisados = documentosRevision.Count(doc =>
+        {
+            var estadoDoc = (doc.Estado ?? string.Empty).Trim().ToUpperInvariant();
+            Tuple<string, string> revisionActual;
+            return revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual)
+                   || RevisionDocumentalDisplayHelper.IsAcceptedState(estadoDoc)
+                   || RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc)
+                   || RevisionDocumentalDisplayHelper.IsModificationRequestedState(estadoDoc);
+        });
+        var documentosConObservacionPendiente = documentosRevision.Count(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = string.Empty;
+            var observacionActual = (doc.Observaciones ?? string.Empty).Trim();
+
+            if (revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null)
+            {
+                decisionActual = (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant();
+                observacionActual = string.IsNullOrWhiteSpace(revisionActual.Item2) ? observacionActual : revisionActual.Item2.Trim();
+            }
+            else if (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado))
+            {
+                decisionActual = "OBSERVADO";
+            }
+            else if (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado))
+            {
+                decisionActual = "DEVUELTO";
+            }
+
+            return (decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO")
+                   && string.IsNullOrWhiteSpace(observacionActual);
+        });
+        var documentosSinDecision = totalDocumentosRevision - documentosRevisados;
+        var todosDocumentosAceptados = totalDocumentosRevision > 0 && documentosRevision.All(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
+                ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                : (RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado)
+                    ? "ACEPTADO"
+                    : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado)
+                        ? "OBSERVADO"
+                        : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+            return decisionActual == "ACEPTADO";
+        });
+        var existeObservadoODevuelto = documentosRevision.Any(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
+                ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                : (RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado)
+                    ? "ACEPTADO"
+                    : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado)
+                        ? "OBSERVADO"
+                        : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+            return decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO";
+        });
+
+        <div id="revision-documental" class="card aocr-detail-card aocr-review-card success mb-4">
+            <div id="documentos-rt-historial"></div>
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Revisión documental</span>
+                </div>
+                <p class="text-muted mb-3">Revise cada documento vigente y registre su decisión. La solicitud solo podrá enviarse cuando todos los documentos tengan revisión y cada devolución/observación tenga su motivo.</p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-folder-open"></i> Documentos vigentes</div>
+                            <div class="aocr-info-value">@totalDocumentosRevision</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-check-circle"></i> Revisados</div>
+                            <div class="aocr-info-value">@documentosRevisados / @totalDocumentosRevision</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-exclamation-triangle"></i> Observaciones pendientes</div>
+                            <div class="aocr-info-value">@documentosConObservacionPendiente</div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (documentosRevision.Count == 0)
+                {
+                    <div class="alert alert-light mb-0">No existen documentos cargados para revisar en esta solicitud.</div>
+                }
+                else
+                {
+                    <div class="aocr-table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 aocr-doc-review-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Archivo</th>
+                                    <th>Estado actual</th>
+                                    <th>Resumen / trazabilidad</th>
+                                    <th>Visualizar</th>
+                                    <th>Descargar</th>
+                                    <th>Decisión</th>
+                                    <th>Observación</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var doc in documentosRevision)
+                                {
+                                    var estadoDoc = (doc.Estado ?? "PENDIENTE").Trim().ToUpperInvariant();
+                                    var formId = "frmRevisionDoc_" + doc.CodigoDocumento;
+                                    Tuple<string, string> revisionActual;
+                                    var tieneRevisionGuardada = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null;
+                                    var decisionActual = tieneRevisionGuardada
+                                        ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                                        : (RevisionDocumentalDisplayHelper.IsAcceptedState(estadoDoc)
+                                            ? "ACEPTADO"
+                                            : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(estadoDoc)
+                                                ? "OBSERVADO"
+                                                : (RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc) ? "DEVUELTO" : string.Empty)));
+                                    var observacionActual = tieneRevisionGuardada
+                                        ? normalizeVisibleText((revisionActual.Item2 ?? string.Empty).Trim())
+                                        : normalizeVisibleText((doc.Observaciones ?? string.Empty).Trim());
+                                    var estadoVisible = RevisionDocumentalDisplayHelper.GetVisibleStateLabel(estadoDoc);
+                                    var claseBadge = RevisionDocumentalDisplayHelper.GetBadgeClass(estadoDoc);
+                                    var fechaCargaTexto = doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+                                    var usuarioRegistroTexto = normalizeVisibleText(doc.UsuarioRegistro ?? "—");
+                                    var esSubsanacion = (doc.Version ?? 1) > 1;
+                                    var etiquetaOrigen = esSubsanacion ? "Subsanación" : "Inicial";
+                                    <tr>
+                                        <td data-label="Documento">
+                                            <div class="aocr-doc-name">@(string.IsNullOrWhiteSpace(doc.TipoDocumentoNombre) ? (string.IsNullOrWhiteSpace(doc.TipoDocumento) ? "Documento" : doc.TipoDocumento) : doc.TipoDocumentoNombre)</div>
+                                            @if (!string.IsNullOrWhiteSpace(doc.TipoDocumentoCodigoCanonico) && !string.Equals(doc.TipoDocumentoCodigoCanonico, "OTRO", System.StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="aocr-doc-code">@doc.TipoDocumentoCodigoCanonico</span>
+                                            }
+                                        </td>
+                                        <td data-label="Archivo">
+                                            <div class="fw-semibold">@Html.Encode(doc.NombreArchivo)</div>
+                                            @if (!string.IsNullOrWhiteSpace(doc.NombreArchivoGuardado))
+                                            {
+                                                <small class="text-muted">@Html.Encode(doc.NombreArchivoGuardado)</small>
+                                            }
+                                        </td>
+                                        <td data-label="Estado actual"><span class="@claseBadge">@estadoVisible</span></td>
+                                        <td data-label="Resumen / trazabilidad">
+                                            <div class="aocr-rt-summary-badges">
+                                                <span class="badge bg-success">v@(doc.Version ?? 1)</span>
+                                                <span class="badge @(esSubsanacion ? "bg-warning text-dark" : "bg-primary")">@etiquetaOrigen</span>
+                                            </div>
+                                            <div class="aocr-rt-summary-meta">
+                                                <span><strong>Fecha:</strong> @fechaCargaTexto</span>
+                                                <span><strong>Por:</strong> @Html.Encode(usuarioRegistroTexto)</span>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(observacionActual) && (decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO"))
+                                            {
+                                                <div class="aocr-rt-summary-note"><strong>Obs.:</strong> @Html.Encode(observacionActual)</div>
+                                            }
+                                        </td>
+                                        <td data-label="Visualizar">
+                                            @if (doc.PuedeVisualizar && !string.IsNullOrWhiteSpace(doc.UrlVisualizar))
+                                            {
+                                                <div class="aocr-doc-actions">
+                                                    <a href="@doc.UrlVisualizar" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">
+                                                        <i class="fas fa-eye"></i> Visualizar
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td data-label="Descargar">
+                                            @if (doc.PuedeDescargar && !string.IsNullOrWhiteSpace(doc.UrlDescargar))
+                                            {
+                                                <div class="aocr-doc-actions">
+                                                    <a href="@doc.UrlDescargar" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
+                                                        <i class="fas fa-download"></i> Descargar
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td data-label="Decisión">
+                                            <select name="decision" class="form-select form-select-sm js-decision-documental" data-codigo-documento="@doc.CodigoDocumento" required form="@formId">
+                                                <option value="">Seleccione</option>
+                                                <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected" : null)>Aceptado</option>
+                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Observado</option>
+                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Devuelto / Rechazado</option>
+                                            </select>
+                                        </td>
+                                        <td data-label="Observación">
+                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental aocr-doc-observation" data-codigo-documento="@doc.CodigoDocumento" placeholder="Observación del revisor" maxlength="500" value="@observacionActual" form="@formId" />
+                                        </td>
+                                        <td data-label="Acción">
+                                            <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline js-form-revision-documental">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                                                <input type="hidden" name="codigoDocumento" value="@doc.CodigoDocumento" />
+                                                <div class="aocr-action-buttons">
+                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-save"></i> Registrar
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-light border mt-3 mb-0">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                            <div>
+                                <div class="fw-semibold text-dark">Acción masiva de revisión documental</div>
+                                <div class="text-muted small">Si todos están en Aceptado, puede aprobar masivamente. Si existe al menos un documento Observado/Devuelto, registre devolución/observaciones masivas.</div>
+                                <div class="small mt-1 text-secondary">Sin decisión: <strong id="lblDocsSinDecision">@documentosSinDecision</strong> · Observaciones pendientes: <strong id="lblDocsObsPendientes">@documentosConObservacionPendiente</strong></div>
+                            </div>
+                            <form id="frmRevisionMasiva" method="post" action="@Url.Action("AccionMasivaRevisionDocumental", "SolicitudAOCR")" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                                <input type="hidden" name="tipoAccion" id="tipoAccionMasiva" value="" />
+                                <input type="hidden" name="revisionesJson" id="revisionesJsonMasiva" value="" />
+                                <div class="mb-2">
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           name="observacionCoordinador"
+                                           maxlength="500"
+                                           placeholder="Observación opcional para coordinación (se registra en trazabilidad)." />
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                    <button type="button"
+                                            id="btnAprobarTodosDocumentos"
+                                            class="btn btn-success aocr-action-btn"
+                                            @((puedeFinalizarRevisionDocumental && !existeObservadoODevuelto) ? null : "disabled=\"disabled\"")>
+                                        <i class="fas fa-check-double"></i>
+                                        Aprobar todos los documentos
+                                    </button>
+                                    <button type="button"
+                                            id="btnRegistrarObsMasiva"
+                                            class="btn btn-outline-danger aocr-action-btn"
+                                            @((puedeFinalizarRevisionDocumental && existeObservadoODevuelto) ? null : "disabled=\"disabled\"")>
+                                        <i class="fas fa-comment-dots"></i>
+                                        Registrar observaciones/devolución masiva
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (puedeFirmarAceptacionDocumental)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-file-signature"></i>
+                    <span>Revision final de Coordinacion</span>
+                </div>
+                <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. Coordinación registra la revisión final del expediente; la firma final institucional se gestiona posteriormente con DIRDAC/DCAV cuando corresponda.</p>
+                <form method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de revision final</label>
+                            <textarea class="form-control" id="observacionAceptacion" name="observacion" rows="3" placeholder="Constancia interna de la revisión final de Coordinación."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-pen-nib"></i>
+                                Registrar revision final
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeDescargarAceptacionDocumental)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Revision final registrada</span>
+                    </div>
+                    <p class="text-muted mb-0">La aceptación documental firmada por coordinación ya está disponible para descarga.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })" class="btn btn-outline-secondary aocr-action-btn" target="_blank">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                    <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
+                        <i class="fas fa-download"></i>
+                        Descargar constancia
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeResolverRutaModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Resolucion de modificacion</span>
+                </div>
+                @if (modificacionConNuevoAeropuerto)
+                {
+                    <p class="text-muted mb-3">La modificación declara inclusión de aeropuerto(s) en Ecuador. Debe cerrar la fase documental y derivar al RT para que genere la orden de recaudación con solicitud de inspección.</p>
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold" for="obsCierreNuevoAeropuerto">Observacion del inspector</label>
+                                <textarea class="form-control" id="obsCierreNuevoAeropuerto" name="observacion" rows="3" placeholder="Indique el cierre de fase documental y que el RT debe solicitar inspección del nuevo aeropuerto."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="aocr-review-actions">
+                                    <button formaction="@Url.Action("CerrarFaseDocumentalNuevoAeropuertoModificacion", "SolicitudAOCR")" class="btn btn-warning aocr-action-btn" type="submit">
+                                        <i class="fas fa-plane-departure"></i>
+                                        Cerrar fase y derivar a inspeccion
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <p class="text-muted mb-3">La documentación ya fue aceptada. El inspector debe resolver si la modificación continúa al módulo de inspección o si puede cerrarse con Condiciones y Limitaciones sin nueva inspección.</p>
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold" for="obsResolucionModificacion">Observacion del inspector</label>
+                                <textarea class="form-control" id="obsResolucionModificacion" name="observacion" rows="3" placeholder="Fundamente si la modificación requiere inspección o si puede cerrar directo con Condiciones y Limitaciones."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="aocr-review-actions">
+                                    <button formaction="@Url.Action("GenerarCondicionesLimitacionesModificacion", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                                        <i class="fas fa-file-contract"></i>
+                                        No requiere nueva inspeccion
+                                    </button>
+                                    <button formaction="@Url.Action("MarcarRequiereInspeccionModificacion", "SolicitudAOCR")" class="btn btn-outline-warning aocr-action-btn" type="submit">
+                                        <i class="fas fa-clipboard-list"></i>
+                                        Derivar a inspeccion
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+
+    @if (puedeRtSolicitarNuevaInspeccionNoConformidad)
+    {
+        <div class="card aocr-detail-card aocr-review-card danger mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Solicitar nueva inspeccion por No Conformidad</span>
+                    </div>
+                    <p class="text-muted mb-0">La inspección anterior resultó insatisfactoria y requiere una nueva inspección in situ. Se generará una nueva orden de recaudación para que pueda realizar el pago correspondiente.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="post" action="@Url.Action("SolicitarNuevaInspeccion", "RT")">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="codigoSolicitud" value="@Model.CodigoSolicitud" />
+                        <button type="submit" class="btn btn-danger aocr-action-btn">
+                            <i class="fas fa-redo-alt"></i>
+                            Solicitar nueva inspeccion
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeRtSubsanarNc)
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-signature text-warning"></i>
+                        <span class="text-warning">Subsanar No Conformidad (Fase Documental)</span>
+                    </div>
+                    <p class="text-muted mb-0">La inspección anterior identificó hallazgos que pueden resolverse enviando documentación adicional. Por favor, cargue su respuesta.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-warning aocr-action-btn">
+                        <i class="fas fa-file-upload"></i> Subsanar No Conformidad
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeRtSolicitarInspeccionNuevoAeropuerto)
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-plane-circle-check"></i>
+                        <span>Solicitar inspeccion del nuevo aeropuerto</span>
+                    </div>
+                    <p class="text-muted mb-0">La fase documental quedó cerrada. Debe generar una orden de recaudación con el concepto de solicitud de inspección, completar el formulario, cargar la factura y continuar el flujo institucional.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        Generar orden de recaudacion
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedePrepararCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Condiciones y Limitaciones de la modificacion</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento institucional ya puede completarse y revisarse desde este trámite antes del envío a DCAV/DGAC.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-pen"></i>
+                        Completar documento
+                    </a>
+                    <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, firmado = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        PDF directo
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeRevisarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-search"></i>
+                    <span>Revision final de coordinacion</span>
+                </div>
+                <form method="post" action="@Url.Action("RevisarCondicionesLimitacionesModificacion", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsRevisionCondiciones">Observacion</label>
+                            <textarea class="form-control" id="obsRevisionCondiciones" name="observacion" rows="3" placeholder="Constancia de revisión previa al envío a DCAV/DGAC."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-check-circle"></i>
+                                Marcar revision final
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeEnviarCondicionesDcav)
+    {
+        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Envio a DCAV / DGAC</span>
+                </div>
+                <form method="post" action="@Url.Action("EnviarCondicionesLimitacionesDcav", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsEnvioDcav">Observacion de envío</label>
+                            <textarea class="form-control" id="obsEnvioDcav" name="observacion" rows="3" placeholder="Detalle del envío institucional para firma final."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-share-square"></i>
+                                Enviar a DCAV / DGAC
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeFirmarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-signature"></i>
+                        <span>Firma institucional pendiente</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento ya fue revisado por coordinación y está listo para firma digital institucional de DCAV/DGAC.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-dark aocr-action-btn">
+                        <i class="fas fa-signature"></i>
+                        Abrir para firmar
+                    </a>
+                    <a href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud, firmado = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeDescargarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-download"></i>
+                        <span>Condiciones y Limitaciones firmadas</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento final firmado ya está disponible para consulta y descarga.</p>
+                    @if (esPropietario && estadoActual == EstadoSolicitud.FirmadoDcav)
+                    {
+                        <div class="small text-secondary mt-2">La primera descarga del RT cerrará esta fase como <strong>FINALIZADO</strong>.</div>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                    <a href="@Url.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
+                        <i class="fas fa-download"></i>
+                        Descargar documento firmado
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeMarcarElaboracion)
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-file-signature"></i>
+                    <span>AOCR en Elaboracion</span>
+                </div>
+                <form method="post" action="@Url.Action("MarcarAocrEnElaboracion", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsElaboracion">Observacion</label>
+                            <textarea class="form-control" id="obsElaboracion" name="observacion" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-file-signature"></i>
+                                Marcar en Elaboracion
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeMarcarRevision)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-search"></i>
+                    <span>Validar paso a Revision</span>
+                </div>
+                <form method="post" action="@Url.Action("MarcarAocrEnRevision", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsRevision">Observacion</label>
+                            <textarea class="form-control" id="obsRevision" name="observacion" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-search"></i>
+                                Marcar en Revision
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeValidarJefatura)
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-stamp"></i>
+                    <span>Validacion Tecnica de Jefatura</span>
+                </div>
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="observacionJefatura" class="form-label fw-semibold">Observaciones</label>
+                            <textarea class="form-control" id="observacionJefatura" name="observaciones" rows="4" placeholder="Observaciones de jefatura"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="aocr-review-actions">
+                                <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                                    <i class="fas fa-check-circle"></i>
+                                    Aprobar AOCR
+                                </button>
+                                <button formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-outline-danger aocr-action-btn" type="submit">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Observar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeLegalizar)
+    {
+        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-gavel"></i>
+                    <span>Legalizacion AOCR</span>
+                </div>
+                <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="observacionLegal" class="form-label fw-semibold">Observaciones de legalizacion</label>
+                            <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="4"></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-balance-scale"></i>
+                                Legalizar AOCR
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeEmitirAocr)
+    {
+        <div class="card aocr-detail-card aocr-review-card emit mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Emision / Recepcion AOCR</span>
+                </div>
+                <form method="post" action="@Url.Action("EmitirAocr", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="observacionEmitir" class="form-label fw-semibold">Observaciones</label>
+                            <textarea class="form-control" id="observacionEmitir" name="observacion" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-file-export"></i>
+                                Emitir / Recibir AOCR
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @{
+        var documentosSubsanacion = (ViewBag.DocumentosSubsanacion as List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>)
+                                    ?? new List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>();
+        var trazabilidadCompleta = (ViewBag.TrazabilidadCompleta as List<CapaDatos.Entidades.EventoTrazabilidad>)
+                                   ?? new List<CapaDatos.Entidades.EventoTrazabilidad>();
+    }
+
+    @if (documentosSubsanacion.Count > 0)
+    {
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-file-import"></i>
+                    <span>Documentos de respuesta a observaciones (Subsanación)</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    Archivos cargados por el RT en respuesta a subsanaciones emitidas por el revisor.
+                </p>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 aocr-responsive-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha carga</th>
+                                <th>Archivo</th>
+                                <th>Tipo</th>
+                                <th>Cargado por</th>
+                                <th>Motivo (observación)</th>
+                                <th>Fecha subsanación solicitada</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ds in documentosSubsanacion)
+                            {
+                                <tr>
+                                    <td>@ds.FechaCarga.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@Html.Encode(ds.NombreArchivo)</td>
+                                    <td>@Html.Encode(ds.TipoDocumento ?? "—")</td>
+                                    <td>@Html.Encode(ds.UsuarioCargaNombre ?? "RT")</td>
+                                    <td class="small" style="max-width:280px;">@Html.Encode(normalizeVisibleText(ds.ObservacionMotivo ?? string.Empty))</td>
+                                    <td>@(ds.FechaSubsanacionSolicitada.HasValue ? ds.FechaSubsanacionSolicitada.Value.ToString("yyyy-MM-dd HH:mm") : "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(ds.RutaArchivo))
+                                        {
+                                            <a href="@Url.Action("Descargar", "Documento", new { id = ds.CodigoDocumento, vistaPrevia = true })" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (esAdministradorVisualizacion && trazabilidadCompleta.Count > 0)
+    {
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-stream"></i>
+                    <span>Línea de tiempo completa del expediente</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    Registro auditable de todas las acciones realizadas sobre el trámite: cambios de estado, decisiones documentales, cargas del RT, subsanaciones y eventos internos.
+                </p>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha / hora</th>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>Módulo</th>
+                                <th>Acción</th>
+                                <th>Estado anterior → nuevo</th>
+                                <th>Documento</th>
+                                <th>Observación / detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ev in trazabilidadCompleta)
+                            {
+                                var trans = string.Empty;
+                                if (!string.IsNullOrWhiteSpace(ev.EstadoAnterior) || !string.IsNullOrWhiteSpace(ev.EstadoNuevo))
+                                {
+                                    trans = (ev.EstadoAnterior ?? "—") + " → " + (ev.EstadoNuevo ?? "—");
+                                }
+                                <tr>
+                                    <td class="text-nowrap">@ev.FechaEvento.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@Html.Encode(ev.UsuarioNombre ?? "—")</td>
+                                    <td><span class="badge bg-light text-dark border">@Html.Encode(ev.Rol ?? "—")</span></td>
+                                    <td><span class="badge bg-info text-dark">@Html.Encode(ev.Modulo ?? "—")</span></td>
+                                    <td><strong>@Html.Encode(ev.Accion ?? "—")</strong></td>
+                                    <td class="small">@Html.Encode(trans)</td>
+                                    <td class="small">@Html.Encode(ev.DocumentoAfectado ?? string.Empty)</td>
+                                    <td class="small" style="max-width:320px;">@Html.Encode(normalizeVisibleText(ev.Observacion ?? string.Empty))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (esAdministradorVisualizacion && ViewBag.HistorialEstados != null)
+    {
+        var historial = (List<HistorialEstado>)ViewBag.HistorialEstados;
+        if (historial.Count > 0)
+        {
+            <div class="card aocr-detail-card mt-4">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <div class="aocr-section-title mb-0">
+                        <i class="fas fa-history"></i>
+                        <span>Historial de Cambios y Observaciones</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0 aocr-history-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Estado Anterior</th>
+                                    <th>Estado Nuevo</th>
+                                    <th>Observaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in historial)
+                                {
+                                    <tr>
+                                        <td>@Convert.ToDateTime(item.FechaCambio).ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@Html.Encode(item.EstadoAnterior)</td>
+                                        <td>@Html.Encode(item.EstadoNuevo)</td>
+                                        <td>@Html.Raw(System.Web.HttpUtility.HtmlEncode(normalizeVisibleText(item.Observaciones ?? string.Empty)).Replace("\n", "<br/>"))</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light mt-3">No hay observaciones registradas.</div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-light mt-3">No hay historial registrado para esta solicitud.</div>
+    }
+
+    <div class="mt-4 d-flex justify-content-end">
+        @Html.ActionLink("Volver al listado", "Index", null, new { @class = "btn btn-outline-secondary px-4" })
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        (function () {
+            function requiereObservacion(decision) {
+                return decision === "DEVUELTO" || decision === "OBSERVADO";
+            }
+
+            function obtenerFilasRevision() {
+                var decisiones = Array.prototype.slice.call(document.querySelectorAll(".js-decision-documental"));
+                return decisiones.map(function (controlDecision) {
+                    var codigo = parseInt(controlDecision.getAttribute("data-codigo-documento") || "0", 10);
+                    var observacion = document.querySelector('.js-observacion-documental[data-codigo-documento="' + codigo + '"]');
+                    var decision = (controlDecision.value || "").trim().toUpperCase();
+                    var textoObs = observacion ? (observacion.value || "").trim() : "";
+                    return {
+                        codigoDocumento: codigo,
+                        decision: decision,
+                        observacion: textoObs
+                    };
+                });
+            }
+
+            function evaluarAccionesMasivas() {
+                var filas = obtenerFilasRevision();
+                if (!filas.length) {
+                    return;
+                }
+
+                var sinDecision = filas.filter(function (f) { return !f.decision; }).length;
+                var obsPendientes = filas.filter(function (f) {
+                    return requiereObservacion(f.decision) && !f.observacion;
+                }).length;
+                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
+
+                var btnAprobar = document.getElementById("btnAprobarTodosDocumentos");
+                var btnObs = document.getElementById("btnRegistrarObsMasiva");
+                if (btnAprobar) {
+                    btnAprobar.disabled = !!(existeObservadoODevuelto || obsPendientes > 0);
+                }
+                if (btnObs) {
+                    btnObs.disabled = !(existeObservadoODevuelto && sinDecision === 0 && obsPendientes === 0);
+                }
+
+                var lblSinDecision = document.getElementById("lblDocsSinDecision");
+                if (lblSinDecision) {
+                    lblSinDecision.textContent = sinDecision;
+                }
+                var lblObsPendientes = document.getElementById("lblDocsObsPendientes");
+                if (lblObsPendientes) {
+                    lblObsPendientes.textContent = obsPendientes;
+                }
+            }
+
+            function enviarAccionMasiva(tipoAccion) {
+                var filas = obtenerFilasRevision();
+                if (!filas.length) {
+                    alert("No existen documentos para revisión masiva.");
+                    return;
+                }
+                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
+
+                if (tipoAccion === "APROBAR_TODOS") {
+                    if (existeObservadoODevuelto) {
+                        alert("No se puede aprobar masivamente mientras exista al menos un documento observado o devuelto.");
+                        return;
+                    }
+
+                    filas = filas.map(function (fila) {
+                        return {
+                            codigoDocumento: fila.codigoDocumento,
+                            decision: fila.decision || "ACEPTADO",
+                            observacion: fila.decision === "ACEPTADO" ? "" : (fila.observacion || "")
+                        };
+                    });
+                }
+
+                var sinDecision = filas.filter(function (f) { return !f.decision; });
+                if (sinDecision.length > 0) {
+                    alert("No se puede ejecutar la acción masiva: existen documentos sin decisión.");
+                    return;
+                }
+
+                var sinObs = filas.filter(function (f) { return requiereObservacion(f.decision) && !f.observacion; });
+                if (sinObs.length > 0) {
+                    alert("No se puede ejecutar la acción masiva: todo documento observado/devuelto requiere observación.");
+                    return;
+                }
+
+                if (tipoAccion === "REGISTRAR_OBSERVACIONES" && !existeObservadoODevuelto) {
+                    alert("Para registrar devolución/observaciones masivas debe existir al menos un documento observado o devuelto.");
+                    return;
+                }
+
+                var tipoAccionInput = document.getElementById("tipoAccionMasiva");
+                var revisionesJsonInput = document.getElementById("revisionesJsonMasiva");
+                var form = document.getElementById("frmRevisionMasiva");
+                if (!tipoAccionInput || !revisionesJsonInput || !form) {
+                    return;
+                }
+
+                tipoAccionInput.value = tipoAccion;
+                revisionesJsonInput.value = JSON.stringify(filas);
+                form.submit();
+            }
+
+            document.querySelectorAll(".js-form-revision-documental").forEach(function (form) {
+                form.addEventListener("submit", function (event) {
+                    var decision = form.elements.namedItem("decision");
+                    var observacion = form.elements.namedItem("observacion");
+                    var valorDecision = decision ? (decision.value || "").trim().toUpperCase() : "";
+                    var valorObservacion = observacion ? (observacion.value || "").trim() : "";
+
+                    if (!valorDecision) {
+                        event.preventDefault();
+                        alert("Debe seleccionar una decisión para el documento.");
+                        if (decision) {
+                            decision.focus();
+                        }
+                        return;
+                    }
+
+                    if (requiereObservacion(valorDecision) && !valorObservacion) {
+                        event.preventDefault();
+                        alert("Debe registrar una observación cuando el documento sea devuelto u observado.");
+                        if (observacion) {
+                            observacion.focus();
+                        }
+                    }
+                });
+            });
+
+            document.querySelectorAll(".js-decision-documental, .js-observacion-documental").forEach(function (control) {
+                control.addEventListener("change", evaluarAccionesMasivas);
+                control.addEventListener("input", evaluarAccionesMasivas);
+            });
+
+            var btnAprobarTodos = document.getElementById("btnAprobarTodosDocumentos");
+            if (btnAprobarTodos) {
+                btnAprobarTodos.addEventListener("click", function () {
+                    enviarAccionMasiva("APROBAR_TODOS");
+                });
+            }
+
+            var btnRegistrarObs = document.getElementById("btnRegistrarObsMasiva");
+            if (btnRegistrarObs) {
+                btnRegistrarObs.addEventListener("click", function () {
+                    enviarAccionMasiva("REGISTRAR_OBSERVACIONES");
+                });
+            }
+
+            evaluarAccionesMasivas();
+        })();
+    </script>
+}

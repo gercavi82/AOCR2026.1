@@ -23,3 +23,13 @@ TestResults/
 docs/export/node_modules/
 
 .fake
+
+# Security ignores (P01)
+*.p12
+*.pfx
+*.pem
+*.key
+*.bak
+*.backup
+temp_viewcheck/
+.env

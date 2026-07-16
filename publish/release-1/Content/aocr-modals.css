@@ -1,0 +1,126 @@
+/* Modales institucionales AOCR — stacking, centrado en área útil y responsive */
+
+:root {
+    --aocr-modal-z-backdrop: 10490;
+    --aocr-modal-z-modal: 10500;
+    --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 236px);
+    --aocr-modal-sidebar-total-offset: var(--aocr-sidebar-total-width, 522px);
+    --aocr-modal-sidebar-mini-offset: 4.6rem;
+}
+
+/* Sidebar siempre por debajo de modales (incluye reglas legacy con z-index alto) */
+body.aocr-body .main-sidebar.aocr-sidebar,
+body.aocr-body .main-sidebar,
+body.aocr-body .sidebar,
+body.aocr-body .aocr-subnav-panel {
+    z-index: 1020 !important;
+}
+
+body.aocr-body .main-header.navbar,
+body.aocr-body .aocr-topbar {
+    z-index: 1010 !important;
+}
+
+body.aocr-body .modal-backdrop,
+body.aocr-body .modal-backdrop.show {
+    z-index: var(--aocr-modal-z-backdrop) !important;
+}
+
+body.aocr-body .modal,
+body.aocr-body .modal.show {
+    z-index: var(--aocr-modal-z-modal) !important;
+}
+
+/* SweetAlert2 por encima del sidebar y modales Bootstrap */
+body.aocr-body .swal2-container {
+    z-index: 10600 !important;
+}
+
+/* Centrar el diálogo en el área útil (descontando sidebar), no bajo el menú lateral */
+@media (min-width: 992px) {
+    body.aocr-body .modal {
+        padding-left: var(--aocr-modal-sidebar-offset);
+    }
+
+    body.aocr-body.aocr-subnav-open .modal {
+        padding-left: var(--aocr-modal-sidebar-total-offset);
+    }
+
+    body.aocr-body.sidebar-mini.sidebar-collapse .modal,
+    body.aocr-body.sidebar-collapse .modal {
+        padding-left: var(--aocr-modal-sidebar-mini-offset);
+    }
+}
+
+body.aocr-body .modal-dialog {
+    margin: 1.75rem auto !important;
+    max-width: 980px;
+    width: calc(100% - 2rem);
+}
+
+body.aocr-body .modal-dialog-centered {
+    min-height: calc(100% - 3.5rem);
+}
+
+body.aocr-body .modal-content {
+    border: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+}
+
+body.aocr-body .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+}
+
+body.aocr-body .modal-header .modal-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+body.aocr-body .modal-body {
+    padding: 22px;
+}
+
+body.aocr-body .modal-footer {
+    padding: 16px 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+body.aocr-body .modal textarea.form-control {
+    width: 100%;
+    min-height: 110px;
+    resize: vertical;
+}
+
+body.aocr-body .aocr-modal-anulacion .alert-warning {
+    margin-bottom: 0;
+}
+
+@media (max-width: 991.98px) {
+    body.aocr-body .modal {
+        padding-left: 0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    body.aocr-body .modal-dialog {
+        width: calc(100% - 1rem);
+        margin: 0.75rem auto !important;
+    }
+
+    body.aocr-body .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    body.aocr-body .modal-footer .btn {
+        width: 100%;
+    }
+}

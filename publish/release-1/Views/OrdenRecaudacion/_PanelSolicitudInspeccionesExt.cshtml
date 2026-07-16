@@ -1,0 +1,234 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@if (Model != null)
+{
+    var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-4 d-none" : "row mb-4";
+    var placeholderAeropuertos = "Ej: Quito, Guayaquil, Manta";
+    var puedeEditarAeropuertos = Model.EsNuevaOrden || (Model.PuedeEditarSolicitudInspeccionExt && Model.PuedeGenerarSolicitud);
+
+    <div class="@panelClass" id="panelSolicitudInspeccion">
+        <div class="col-md-12">
+            <div class="card solicitud-inspeccion-card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h5 class="mb-0"><i class="fas fa-file-signature me-2 text-primary"></i>Solicitud de Inspecciones requerida</h5>
+                    <span class="badge bg-@Model.ClaseEstadoCss" id="estadoSolicitudInspeccion">@Model.EstadoDocumentoSolicitudInspeccion</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        @Model.MensajeEstado
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="alert alert-warning d-none" id="mensajeSolicitudInspeccion"></div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(Model.MensajeSoloLectura))
+                    {
+                        <div class="alert @(Model.MostrarSoloLecturaSinFirmado ? "alert-warning" : "alert-secondary") mb-3">
+                            @Model.MensajeSoloLectura
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label" for="AeropuertosSolicitados">Aeropuertos solicitados</label>
+                        @if (puedeEditarAeropuertos)
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   name="AeropuertosSolicitados"
+                                   class="form-control"
+                                   maxlength="500"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos" />
+                            <small class="text-muted">Obligatorio al generar la Solicitud de Inspecciones.</small>
+                        }
+                        else
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   class="form-control bg-light"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos"
+                                   readonly="readonly" />
+                            <small class="text-muted">Los aeropuertos quedaron registrados al generar el PDF y ya no pueden modificarse.</small>
+                        }
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionNueva">
+                                <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnDescargarSolicitudInspeccionNueva" disabled title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-download me-1"></i> Descargar Solicitud
+                            </button>
+                            <label class="btn btn-outline-secondary mb-0 disabled" id="btnSubirSolicitudInspeccionNueva" title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-upload me-1"></i> Subir Solicitud firmada
+                                <input type="file" class="d-none" disabled accept=".pdf" />
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Al confirmar la generación, la orden se guardará como borrador, se cerrará la selección de acciones y el PDF quedará asociado al concepto INSPECCION_EXT.
+                        </small>
+                    }
+                    else if (Model.PuedeEditarSolicitudInspeccionExt || Model.PuedeDescargarSolicitud || Model.PuedeSubirSolicitudFirmada)
+                    {
+                        <div class="solicitud-inspeccion-actions mb-3">
+                            @if (Model.PuedeGenerarSolicitud)
+                            {
+                                using (Html.BeginForm("GenerarSolicitudInspeccion", "OrdenRecaudacion", FormMethod.Post, new { id = "formGenerarSolicitudInspeccion", @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", Model.OrdenId)
+                                    @Html.Hidden("aeropuertosSolicitados", Model.AeropuertosSolicitados, new { id = "aeropuertosSolicitadosProxy" })
+                                    <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionOrden">
+                                        <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                                    </button>
+                                }
+                            }
+                            @if (Model.PuedeDescargarSolicitud)
+                            {
+                                <a href="@Model.UrlDescargarSolicitudGenerada" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                    <i class="fas fa-download me-1"></i> Descargar Solicitud
+                                </a>
+                            }
+                            @if (Model.PuedeVerSolicitudFirmada)
+                            {
+                                <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                    <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                                </a>
+                            }
+                        </div>
+
+                        if (Model.PuedeSubirSolicitudFirmada)
+                        {
+                            using (Html.BeginForm("SubirSolicitudInspeccionFirmada", "OrdenRecaudacion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "solicitud-inspeccion-upload" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.OrdenId)
+                                <label class="form-label" for="archivoSolicitudFirmada">Subir Solicitud firmada</label>
+                                <div class="input-group solicitud-inspeccion-file">
+                                    <input type="file"
+                                           id="archivoSolicitudFirmada"
+                                           name="archivoSolicitudFirmada"
+                                           class="form-control"
+                                           accept=".pdf"
+                                           required="required" />
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-upload me-1"></i> Subir
+                                    </button>
+                                </div>
+                                <small class="text-muted">Solo PDF. Tamaño máximo según configuración del sistema.</small>
+                            }
+                        }
+
+                        if (Model.PuedeRechazarGeneracionSolicitud)
+                        {
+                            using (Html.BeginForm("RechazarGeneracionSolicitudInspeccion", "OrdenRecaudacion", FormMethod.Post, new { id = "formRechazarGeneracionSolicitud", @class = "mt-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.OrdenId)
+                                @Html.Hidden("motivo", "Rechazo por usuario para agregar acciones", new { id = "motivoRechazoGeneracionSolicitud" })
+                                <button type="button" class="btn btn-outline-warning" id="btnRechazarGeneracionSolicitud">
+                                    <i class="fas fa-undo me-1"></i> Rechazar generación y seguir agregando acciones
+                                </button>
+                            }
+                        }
+                    }
+                    else if (Model.PuedeVerSolicitudFirmada)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    if (!Model.EsNuevaOrden && (Model.PuedeGenerarSolicitud || Model.PuedeRechazarGeneracionSolicitud))
+    {
+        <script>
+        (function (window, document) {
+            'use strict';
+
+            function inicializarPanelSolicitudInspecciones() {
+                if (!window.jQuery) {
+                    console.error('[AOCR][JS] jQuery no está cargado. No se puede inicializar el panel de solicitud de inspecciones.');
+                    return;
+                }
+
+                var $ = window.jQuery;
+
+                function solicitarConfirmacionGeneracion(onConfirm) {
+                    if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {
+                        window.AOCR.confirmarGeneracionSolicitudInspeccion(onConfirm);
+                        return;
+                    }
+
+                    var mensajePlano = 'Está por generar el PDF definitivo de la Solicitud de Inspecciones.\n\n' +
+                        'Si continúa, la solicitud quedará cerrada y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.\n\n' +
+                        '¿Desea generar el PDF definitivo con la información actual?';
+
+                    if (window.confirm(mensajePlano)) {
+                        onConfirm();
+                    }
+                }
+
+                function solicitarConfirmacionRechazo(onConfirm) {
+                    if (window.AOCR && typeof window.AOCR.confirmarRechazoGeneracionSolicitudInspeccion === 'function') {
+                        window.AOCR.confirmarRechazoGeneracionSolicitudInspeccion(onConfirm);
+                        return;
+                    }
+
+                    if (window.confirm('¿Desea rechazar la generación actual y seguir agregando acciones a la orden?')) {
+                        onConfirm();
+                    }
+                }
+
+                $('#btnGenerarSolicitudInspeccionOrden').off('click.aocrGenerar').on('click.aocrGenerar', function () {
+                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                    $('#AeropuertosSolicitados').val(aeropuertos);
+                    if (!aeropuertos) {
+                        if (window.AOCR && typeof window.AOCR.notify === 'function') {
+                            window.AOCR.notify('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.', 'error');
+                        } else {
+                            alert('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.');
+                        }
+                        return;
+                    }
+
+                    solicitarConfirmacionGeneracion(function () {
+                        $('#aeropuertosSolicitadosProxy').val(aeropuertos);
+                        var $btn = $('#btnGenerarSolicitudInspeccionOrden');
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
+                        $('#formGenerarSolicitudInspeccion').trigger('submit');
+                    });
+                });
+
+                $('#btnRechazarGeneracionSolicitud').off('click.aocrRechazar').on('click.aocrRechazar', function () {
+                    solicitarConfirmacionRechazo(function () {
+                        var $btn = $('#btnRechazarGeneracionSolicitud');
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Procesando...');
+                        $('#formRechazarGeneracionSolicitud').trigger('submit');
+                    });
+                });
+            }
+
+            if (window.jQuery) {
+                inicializarPanelSolicitudInspecciones();
+            } else if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', inicializarPanelSolicitudInspecciones);
+            } else {
+                setTimeout(inicializarPanelSolicitudInspecciones, 100);
+            }
+
+        })(window, document);
+        </script>
+    }
+}

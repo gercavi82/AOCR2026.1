@@ -1,0 +1,234 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ValidarAocrViewModel>
+@using CapaPresentacion.Models
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Validacion y firma institucional AOCR";
+    var documentos = Model != null ? (Model.DocumentosFirma ?? new List<DocumentoFirmaAocrViewModel>()) : new List<DocumentoFirmaAocrViewModel>();
+    var items = Model != null ? (Model.Items ?? new List<ValidarAocrSolicitudItemViewModel>()) : new List<ValidarAocrSolicitudItemViewModel>();
+    var item = items.FirstOrDefault();
+    var solicitudId = Model != null && Model.SolicitudId > 0 ? Model.SolicitudId : (item != null && item.Solicitud != null ? item.Solicitud.CodigoSolicitud : 0);
+    var codigoSolicitud = Model != null && !string.IsNullOrWhiteSpace(Model.CodigoSolicitud) ? Model.CodigoSolicitud : (item != null && item.Solicitud != null ? item.Solicitud.NumeroSolicitud : solicitudId.ToString());
+    var operadora = Model != null && !string.IsNullOrWhiteSpace(Model.Operadora) ? Model.Operadora : (item != null && item.Solicitud != null ? (item.Solicitud.RazonSocial ?? item.Solicitud.NombreOperador ?? item.Solicitud.NombreComercial) : "No registrada");
+    var estadoSolicitud = Model != null ? Model.EstadoSolicitud : (item != null ? item.EstadoSolicitud : null);
+    var codigoAocr = Model != null ? Model.CodigoAocr : (item != null ? item.NumeroAocr : null);
+    var rolFirma = Model != null ? Model.RolFirma : "No registrado";
+    var usuarioFirma = Model != null ? Model.UsuarioFirma : User.Identity.Name;
+    var puedeModificar = item != null && item.PuedeSolicitarModificacion;
+    Func<bool, string> stepClass = done => done ? "is-done" : "is-pending";
+    Func<DocumentoFirmaAocrViewModel, string> docClass = doc => doc != null && doc.EstaFirmado ? "is-done" : (doc != null && doc.RutaDisponible ? "is-ready" : "is-pending");
+}
+
+<style>
+    .aocr-sign-page { display: grid; gap: 18px; color: #0f2f45; }
+    .aocr-sign-header, .aocr-sign-flow, .aocr-sign-card, .aocr-sign-panel, .aocr-sign-observation, .aocr-sign-alert {
+        background: #fff; border: 1px solid #dbe8f3; border-radius: 14px; box-shadow: 0 10px 28px rgba(15, 50, 80, 0.06);
+    }
+    .aocr-sign-header { padding: 20px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    .aocr-sign-title { margin: 0; color: #0f2f45; font-size: 26px; font-weight: 800; }
+    .aocr-sign-subtitle { margin: 6px 0 0; color: #5f7280; }
+    .aocr-sign-kpis { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
+    .aocr-kpi { border: 1px solid #e0edf5; background: #f8fbfd; border-radius: 12px; padding: 10px; }
+    .aocr-kpi span { display: block; color: #6b7d8a; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .aocr-kpi strong { display: block; margin-top: 4px; font-size: 14px; color: #0f2f45; overflow-wrap: anywhere; }
+    .aocr-state-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 800; background: #e7f7ed; color: #166534; }
+    .aocr-sign-flow { padding: 16px; }
+    .aocr-stepper { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .aocr-step { border: 1px solid #dbe8f3; border-radius: 12px; padding: 12px; background: #f8fbfd; min-height: 82px; }
+    .aocr-step.is-done { background: #e7f7ed; border-color: #a7d8b7; }
+    .aocr-step.is-pending { background: #fff7df; border-color: #f3d38a; }
+    .aocr-step small { display: block; color: #6b7d8a; font-weight: 800; text-transform: uppercase; }
+    .aocr-step strong { display: block; margin-top: 6px; color: #0f2f45; }
+    .aocr-sign-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; }
+    .aocr-sign-documents { display: grid; gap: 14px; }
+    .aocr-sign-card { padding: 16px; display: grid; gap: 12px; }
+    .aocr-sign-card.is-ready { border-color: #bcd5e5; }
+    .aocr-sign-card.is-done { border-color: #a7d8b7; background: #fbfffd; }
+    .aocr-sign-card.is-pending { border-color: #f3d38a; }
+    .aocr-sign-card-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .aocr-sign-card-title { margin: 0; color: #0f2f45; font-size: 18px; font-weight: 800; }
+    .aocr-sign-card-desc { margin: 4px 0 0; color: #5f7280; font-size: 13px; }
+    .aocr-doc-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .aocr-doc-meta div { background: #f8fbfd; border: 1px solid #e4eef6; border-radius: 10px; padding: 8px; font-size: 12px; }
+    .aocr-doc-meta span { display: block; color: #6b7d8a; font-weight: 800; text-transform: uppercase; }
+    .aocr-doc-meta strong { display: block; color: #0f2f45; margin-top: 3px; overflow-wrap: anywhere; }
+    .aocr-sign-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .aocr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 8px 12px; border-radius: 9px; font-weight: 800; font-size: 13px; border: 1px solid transparent; text-decoration: none; cursor: pointer; line-height: 1.2; }
+    .aocr-btn-primary { background: #0f5578; color: #fff; border-color: #0f5578; }
+    .aocr-btn-primary:hover { background: #0a405c; border-color: #0a405c; color: #fff; text-decoration: none; }
+    .aocr-btn-outline { background: #fff; color: #0f5578; border-color: #bcd5e5; }
+    .aocr-btn-outline:hover { background: #eef7fb; border-color: #78b8d6; color: #0f5578; text-decoration: none; }
+    .aocr-btn-ghost { background: #f8fbfd; color: #0f5578; border-color: #dbe8f3; }
+    .aocr-btn-danger-soft { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .aocr-sign-panel { padding: 16px; align-self: start; position: sticky; top: 90px; }
+    .aocr-sign-panel h3, .aocr-sign-observation h3 { margin: 0 0 10px; color: #0f2f45; font-size: 18px; font-weight: 800; }
+    .aocr-sign-meta { display: grid; gap: 8px; margin: 12px 0; }
+    .aocr-sign-meta div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; border-bottom: 1px solid #e7eef5; padding-bottom: 6px; }
+    .aocr-sign-meta span { color: #6b7d8a; }
+    .aocr-sign-observation { padding: 16px; }
+    .aocr-sign-observation textarea { width: 100%; min-height: 90px; border: 1px solid #c7dce9; border-radius: 10px; padding: 10px; resize: vertical; }
+    .aocr-sign-alert { padding: 14px 16px; background: #fff7df; color: #92400e; border-color: #f3d38a; }
+    .aocr-empty { padding: 24px; text-align: center; color: #5f7280; }
+    @@media (max-width: 992px) {
+        .aocr-sign-layout { grid-template-columns: 1fr; }
+        .aocr-sign-panel { position: static; }
+        .aocr-stepper { grid-template-columns: repeat(2, 1fr); }
+        .aocr-sign-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @@media (max-width: 640px) {
+        .aocr-sign-header, .aocr-sign-card-header { flex-direction: column; }
+        .aocr-stepper, .aocr-sign-kpis, .aocr-doc-meta { grid-template-columns: 1fr; }
+        .aocr-sign-actions .aocr-btn, .aocr-sign-actions form { width: 100%; }
+        .aocr-sign-actions form .aocr-btn { width: 100%; }
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="aocr-sign-page">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">Dashboard Inspeccion</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Validacion AOCR</li>
+            </ol>
+        </nav>
+
+        @if (Model != null && !string.IsNullOrWhiteSpace(Model.MensajeError))
+        {
+            <div class="aocr-sign-alert">@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(Model.MensajeError)</div>
+        }
+
+        <section class="aocr-sign-header">
+            <div>
+                <h1 class="aocr-sign-title">Validacion y firma institucional AOCR</h1>
+                <p class="aocr-sign-subtitle">Revise, descargue y firme los documentos finales del reconocimiento AOCR.</p>
+                <div class="aocr-sign-kpis">
+                    <div class="aocr-kpi"><span>Solicitud</span><strong>@codigoSolicitud</strong></div>
+                    <div class="aocr-kpi"><span>Operadora</span><strong>@operadora</strong></div>
+                    <div class="aocr-kpi"><span>AOCR</span><strong>@(string.IsNullOrWhiteSpace(codigoAocr) ? "Pendiente" : codigoAocr)</strong></div>
+                    <div class="aocr-kpi"><span>Rol actual</span><strong>@rolFirma</strong></div>
+                </div>
+            </div>
+            <div>
+                <span class="aocr-state-pill">@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(estadoSolicitud ?? "Sin estado")</span>
+            </div>
+        </section>
+
+        <section class="aocr-sign-flow">
+            <div class="aocr-stepper">
+                <div class="aocr-step @stepClass(Model != null && Model.InformeAprobadoDireccion)"><small>Paso 1</small><strong>Informe tecnico aprobado</strong></div>
+                <div class="aocr-step @stepClass(Model != null && Model.AocrExiste)"><small>Paso 2</small><strong>AOCR generada</strong></div>
+                <div class="aocr-step @stepClass(Model != null && Model.AocrFirmada)"><small>Paso 3</small><strong>AOCR firmada</strong></div>
+                <div class="aocr-step @stepClass(Model != null && Model.CondicionesFirmadas)"><small>Paso 4</small><strong>Condiciones firmadas</strong></div>
+                <div class="aocr-step @stepClass(Model != null && Model.PuedeFinalizar)"><small>Paso 5</small><strong>Documentos finales disponibles</strong></div>
+            </div>
+        </section>
+
+        @if (!documentos.Any())
+        {
+            <div class="aocr-sign-card aocr-empty">No existen documentos AOCR listos para validacion institucional.</div>
+        }
+        else
+        {
+            <section class="aocr-sign-layout">
+                <div class="aocr-sign-documents">
+                    @foreach (var doc in documentos)
+                    {
+                        <article class="aocr-sign-card @docClass(doc)">
+                            <div class="aocr-sign-card-header">
+                                <div>
+                                    <h2 class="aocr-sign-card-title">@doc.Titulo</h2>
+                                    <p class="aocr-sign-card-desc">@doc.Descripcion</p>
+                                </div>
+                                <span class="aocr-state-pill">@doc.EstadoVisible</span>
+                            </div>
+
+                            <div class="aocr-doc-meta">
+                                <div><span>Tipo</span><strong>@doc.Tipo</strong></div>
+                                <div><span>Fecha</span><strong>@(doc.Fecha.HasValue ? doc.Fecha.Value.ToString("dd/MM/yyyy HH:mm") : "Pendiente")</strong></div>
+                                <div><span>Archivo</span><strong>@(doc.RutaDisponible ? "Disponible" : "No generado")</strong></div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(doc.ErrorDocumento))
+                            {
+                                <div class="aocr-sign-alert">@doc.ErrorDocumento</div>
+                            }
+
+                            <div class="aocr-sign-actions">
+                                @if (doc.PuedeGenerar && !string.IsNullOrWhiteSpace(doc.UrlGenerar))
+                                {
+                                    <a class="aocr-btn aocr-btn-primary" href="@doc.UrlGenerar"><i class="fas fa-file-circle-plus"></i> Generar PDF oficial</a>
+                                }
+                                @if (doc.PuedeVer && !string.IsNullOrWhiteSpace(doc.UrlVer))
+                                {
+                                    <a class="aocr-btn aocr-btn-outline" href="@doc.UrlVer" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Ver PDF</a>
+                                }
+                                @if (doc.PuedeDescargar && !string.IsNullOrWhiteSpace(doc.UrlDescargar))
+                                {
+                                    <a class="aocr-btn aocr-btn-ghost" href="@doc.UrlDescargar" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+                                }
+                                @if (doc.PuedeFirmar && !string.IsNullOrWhiteSpace(doc.UrlFirmar))
+                                {
+                                    <form method="post" action="@doc.UrlFirmar" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="solicitudId" value="@solicitudId" />
+                                        @if (doc.Tipo == "RECONOCIMIENTO")
+                                        {
+                                            <input type="hidden" name="aocrId" value="@(item != null && item.Certificado != null ? item.Certificado.CodigoCertificado : 0)" />
+                                        }
+                                        else
+                                        {
+                                            <input type="hidden" name="condicionesId" value="@(item != null && item.Certificado != null ? item.Certificado.CodigoCertificado : 0)" />
+                                        }
+                                        <button type="submit" class="aocr-btn aocr-btn-primary"><i class="fas fa-pen-nib"></i> Firmar oficialmente</button>
+                                    </form>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <aside class="aocr-sign-panel">
+                    <h3>Firma institucional</h3>
+                    <p class="aocr-sign-subtitle">Los documentos se firman desde el formulario seguro con certificado digital.</p>
+                    <div class="aocr-sign-meta">
+                        <div><span>Usuario</span><strong>@usuarioFirma</strong></div>
+                        <div><span>Rol</span><strong>@rolFirma</strong></div>
+                        <div><span>AOCR</span><strong>@(Model != null && Model.AocrFirmada ? "Firmada" : "Pendiente")</strong></div>
+                        <div><span>Condiciones</span><strong>@(Model != null && Model.CondicionesFirmadas ? "Firmadas" : "Pendiente")</strong></div>
+                    </div>
+                    @if (Model != null && Model.PuedeFinalizar)
+                    {
+                        <div class="aocr-state-pill">Documentos finales disponibles</div>
+                    }
+                    else
+                    {
+                        <div class="aocr-sign-alert">Complete la firma institucional de los documentos pendientes.</div>
+                    }
+                    <div class="aocr-sign-actions mt-3">
+                        <a class="aocr-btn aocr-btn-outline" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudId })"><i class="fas fa-folder-open"></i> Ver expediente</a>
+                    </div>
+                </aside>
+            </section>
+        }
+
+        @if (puedeModificar && item != null && item.Solicitud != null)
+        {
+            <section class="aocr-sign-observation">
+                <h3>Solicitar correccion</h3>
+                <p class="aocr-sign-subtitle">Use esta opcion solo si el documento requiere ajuste antes de continuar con la firma institucional.</p>
+                <form method="post" action="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@item.Solicitud.CodigoSolicitud" />
+                    <textarea name="observaciones" required="required" placeholder="Detalle el ajuste requerido para el inspector."></textarea>
+                    <div class="aocr-sign-actions mt-3">
+                        <button type="submit" class="aocr-btn aocr-btn-danger-soft"><i class="fas fa-triangle-exclamation"></i> Solicitar correccion</button>
+                    </div>
+                </form>
+            </section>
+        }
+    </div>
+</div>

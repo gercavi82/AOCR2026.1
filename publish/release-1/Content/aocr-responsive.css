@@ -1,0 +1,465 @@
+html {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.content-wrapper,
+.main-content,
+.wrapper,
+.aocr-page,
+.aocr-container,
+.container,
+.container-fluid {
+    max-width: 100%;
+}
+
+.card,
+.panel,
+.modal-content,
+.dropdown-menu {
+    max-width: 100%;
+}
+
+.aocr-card,
+.panel {
+    border-radius: 14px;
+    margin-bottom: 1rem;
+}
+
+.aocr-text-break {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.aocr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.aocr-actions .btn,
+.aocr-actions a {
+    white-space: normal;
+}
+
+.table-responsive,
+.aocr-table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table {
+    min-width: 100%;
+    width: 100%;
+}
+
+.aocr-action-toolbar,
+.report-actions-buttons,
+.report-pdf-bar,
+.aocr-action-grid,
+.btn-group {
+    flex-wrap: wrap;
+}
+
+.aocr-action-toolbar .btn,
+.report-actions-buttons .btn {
+    white-space: normal;
+}
+
+.modal-dialog {
+    max-width: min(1000px, calc(100vw - 24px));
+}
+
+.modal-body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.panel-body,
+.panel-heading,
+.panel-footer {
+    max-width: 100%;
+}
+
+.row > [class*="col-"],
+.card-body > *,
+.panel-body > *,
+.modal-body > *,
+.modal-header > *,
+.aocr-actions > *,
+.aocr-actions-bar > *,
+.aocr-action-toolbar > *,
+.report-actions-buttons > * {
+    min-width: 0;
+}
+
+.card-title,
+.panel-title,
+.modal-title,
+.section-title,
+.alert,
+.badge {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+textarea.form-control {
+    min-height: 88px;
+}
+
+img,
+canvas,
+iframe,
+object,
+embed {
+    max-width: 100%;
+}
+
+.dataTables_wrapper {
+    max-width: 100%;
+}
+
+.dataTables_wrapper .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.aocr-certificate-page,
+.aocr-certificate-preview,
+#certificado-content {
+    max-width: 100%;
+}
+
+.aocr-certificate-preview,
+#certificado-content {
+    overflow-x: auto;
+    box-sizing: border-box;
+}
+
+.aocr-certificate-preview img,
+#certificado-content img {
+    height: auto;
+    max-width: 100%;
+}
+
+.aocr-certificate-preview table,
+#certificado-content table {
+    max-width: 100%;
+}
+
+.aocr-certificate-preview th,
+.aocr-certificate-preview td,
+#certificado-content th,
+#certificado-content td,
+.dl-horizontal dd,
+.dl-horizontal dt {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 992px) {
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    .content-wrapper,
+    .aocr-main-wrapper {
+        width: 100% !important;
+    }
+
+    .main-sidebar.aocr-sidebar {
+        bottom: 0;
+        left: 0;
+        max-width: 300px;
+        position: fixed;
+        top: 0;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        width: min(86vw, 300px);
+        z-index: 1030;
+    }
+
+    body.sidebar-open .main-sidebar.aocr-sidebar {
+        pointer-events: auto;
+        transform: translateX(0);
+    }
+
+    body:not(.sidebar-open) .main-sidebar.aocr-sidebar {
+        pointer-events: none;
+    }
+
+    #sidebar-overlay {
+        background: rgba(8, 18, 31, .42);
+        backdrop-filter: blur(2px);
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .section-heading,
+    .report-module-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .report-grid-2,
+    .report-observation-grid {
+        display: grid;
+        grid-template-columns: 1fr !important;
+    }
+
+    .aocr-topbar-brand__copy {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: .75rem;
+        padding-right: .75rem;
+    }
+
+    .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    [class*="col-"] {
+        padding-left: .35rem;
+        padding-right: .35rem;
+    }
+
+    .card {
+        border-radius: 8px;
+    }
+
+    .panel {
+        border-radius: 14px;
+    }
+
+    .card-header,
+    .card-body,
+    .card-footer,
+    .panel-body,
+    .panel-heading,
+    .panel-footer {
+        padding: .85rem;
+    }
+
+    .aocr-desktop-only,
+    .aocr-hide-mobile {
+        display: none !important;
+    }
+
+    .aocr-mobile-stack {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .aocr-actions,
+    .aocr-actions-bar {
+        align-items: stretch;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        width: 100%;
+    }
+
+    .btn,
+    .form-control,
+    .form-select {
+        min-height: 38px;
+    }
+
+    .modal-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .modal-header .btn-close {
+        margin-left: auto;
+    }
+
+    .btn-group,
+    .aocr-action-toolbar,
+    .report-actions-buttons,
+    .report-pdf-bar,
+    .aocr-action-grid,
+    .modal-footer {
+        align-items: stretch !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: .5rem;
+        width: 100%;
+    }
+
+    .btn-group > .btn,
+    .aocr-action-toolbar .btn,
+    .report-actions-buttons .btn,
+    .report-pdf-bar .btn,
+    .aocr-action-grid .btn,
+    .modal-footer .btn,
+    .aocr-actions .btn,
+    .aocr-actions a,
+    .aocr-actions-bar .btn,
+    .aocr-actions-bar a {
+        border-radius: 6px !important;
+        width: 100%;
+    }
+
+    .modal-dialog {
+        margin: .5rem;
+        max-width: calc(100vw - 1rem);
+    }
+
+    .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    .modal-body {
+        overflow-y: auto;
+    }
+
+    .table {
+        font-size: .86rem;
+    }
+
+    .table-responsive > .table,
+    .aocr-table-responsive > .table,
+    .dataTables_wrapper table.table {
+        min-width: 560px;
+    }
+
+    .w-md-auto {
+        width: 100% !important;
+    }
+
+    .aocr-pdf-viewer,
+    .pdf-viewer,
+    iframe,
+    embed,
+    object {
+        border: 0;
+        min-height: 70vh;
+        width: 100% !important;
+    }
+
+    .dl-horizontal dt,
+    .dl-horizontal dd {
+        float: none;
+        margin-left: 0;
+        text-align: left;
+        width: auto;
+    }
+
+    .form-horizontal .form-group {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .form-horizontal .control-label,
+    .form-horizontal .col-md-3,
+    .form-horizontal .col-md-9,
+    .form-horizontal .col-md-offset-3 {
+        display: block;
+        margin-left: 0;
+        max-width: 100%;
+        text-align: left;
+        width: 100%;
+    }
+
+    .aocr-certificate-preview,
+    #certificado-content {
+        border-width: 2px !important;
+        padding: 1rem !important;
+    }
+
+    .aocr-certificate-preview .row,
+    #certificado-content .row {
+        display: block;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .aocr-certificate-preview [class*="col-"],
+    #certificado-content [class*="col-"] {
+        display: block;
+        flex: 0 0 100%;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .aocr-certificate-preview table,
+    #certificado-content table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: normal;
+    }
+
+    .dataTables_wrapper .dataTables_filter {
+        text-align: left !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        justify-content: center !important;
+        text-align: center;
+    }
+}
+
+@media (max-width: 576px) {
+    h1, .h1 { font-size: 1.55rem; }
+    h2, .h2 { font-size: 1.35rem; }
+    h3, .h3 { font-size: 1.15rem; }
+
+    .aocr-certificate-page h2,
+    .aocr-certificate-page h3,
+    .aocr-certificate-page h4 {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .section-title,
+    .report-module-title {
+        font-size: 1rem;
+    }
+
+    .dataTables_wrapper .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (min-width: 769px) {
+    .aocr-show-mobile {
+        display: none !important;
+    }
+
+    .w-md-auto {
+        width: auto;
+    }
+}

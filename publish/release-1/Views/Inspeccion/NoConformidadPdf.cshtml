@@ -1,0 +1,153 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.NoConformidadPdfViewModel>
+@using System
+@using System.Globalization
+@using CapaPresentacion.Helpers
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+
+    var nc = Model?.NoConformidad;
+    var inspeccion = Model?.Inspeccion;
+    var solicitud = Model?.Solicitud;
+    var informe = Model?.Informe;
+
+    var esVistaPrevia = Model != null && Model.EsVistaPrevia;
+    var mostrarMarcaAguaBorrador = Model != null && Model.MostrarMarcaAguaBorrador;
+    var mostrarFirmas = Model == null || Model.MostrarFirmas;
+
+    var numeroNC = nc != null && !string.IsNullOrWhiteSpace(nc.NumeroNoConformidad) ? nc.NumeroNoConformidad : "NC-BORRADOR";
+    var numeroSolicitud = solicitud != null ? solicitud.NumeroSolicitud : "N/A";
+    var operador = solicitud != null ? solicitud.NombreOperador : "N/A";
+    
+    var inspectorNombre = inspeccion != null ? (inspeccion.InspectorPrincipalNombre ?? string.Empty).Trim() : string.Empty;
+    var inspectorCedula = inspeccion != null ? (inspeccion.InspectorPrincipalCedula ?? string.Empty).Trim() : string.Empty;
+    var inspector = !string.IsNullOrWhiteSpace(inspectorNombre)
+        ? (!string.IsNullOrWhiteSpace(inspectorCedula) ? inspectorNombre + " - " + inspectorCedula : inspectorNombre)
+        : inspectorCedula;
+
+    var fechaInspeccion = inspeccion != null && inspeccion.FechaProgramada.HasValue 
+        ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy", new CultureInfo("es-EC")) 
+        : "N/A";
+
+    var firmadoInspector = nc != null && nc.FechaFirmaInspector.HasValue;
+    var firmadoCoordinador = nc != null && nc.FechaFirmaCoordinador.HasValue;
+}
+
+@if (mostrarMarcaAguaBorrador)
+{
+    <div class="watermark-borrador">DOCUMENTO BORRADOR - NO VÁLIDO</div>
+}
+
+<style>
+    body { font-family: 'Arial', sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+    h1, h2, h3 { color: #002b5e; text-align: center; font-weight: bold; }
+    h1 { font-size: 16px; text-transform: uppercase; margin-bottom: 5px; }
+    h2 { font-size: 14px; margin-bottom: 20px; }
+    .table-info { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .table-info th, .table-info td { border: 1px solid #000; padding: 6px; text-align: left; }
+    .table-info th { background-color: #f2f2f2; font-weight: bold; width: 30%; }
+    .section-title { background-color: #002b5e; color: #fff; padding: 5px; font-weight: bold; margin-top: 20px; }
+    .content-box { border: 1px solid #000; padding: 10px; min-height: 50px; white-space: pre-line; text-align: justify; }
+    
+    .firma-container { margin-top: 40px; width: 100%; page-break-inside: avoid; }
+    .firma-box { width: 45%; display: inline-block; text-align: center; vertical-align: top; }
+    .firma-line { border-top: 1px solid #000; margin: 60px auto 10px auto; width: 80%; }
+    .firma-texto { font-size: 10px; font-weight: bold; }
+    
+    .ruta-badge { padding: 4px 8px; border: 1px solid #000; display: inline-block; font-weight: bold; background-color: #ffebee; }
+    
+    @@media print {
+        .watermark-borrador {
+            position: fixed; top: 40%; left: 15%; font-size: 60px; color: rgba(255, 0, 0, 0.15);
+            transform: rotate(-45deg); z-index: -1000; pointer-events: none; text-align: center;
+        }
+    }
+</style>
+
+<h1>DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</h1>
+<h2>INFORME DE NO CONFORMIDAD</h2>
+
+<table class="table-info">
+    <tr>
+        <th>NÚMERO DE NC</th>
+        <td><strong>@numeroNC</strong></td>
+    </tr>
+    <tr>
+        <th>OPERADOR / EXPLOTADOR</th>
+        <td>@operador</td>
+    </tr>
+    <tr>
+        <th>NÚMERO DE SOLICITUD AOCR</th>
+        <td>@numeroSolicitud</td>
+    </tr>
+    <tr>
+        <th>FECHA DE INSPECCIÓN</th>
+        <td>@fechaInspeccion</td>
+    </tr>
+    <tr>
+        <th>INSPECTOR DESIGNADO</th>
+        <td>@inspector</td>
+    </tr>
+    <tr>
+        <th>ACCIÓN REQUERIDA (RUTA)</th>
+        <td>
+            <div class="ruta-badge">
+                @(nc?.TipoRuta == "CON_INSPECCION" ? "REQUIERE NUEVA INSPECCIÓN IN SITU" : "REQUIERE SUBSANACIÓN DOCUMENTAL")
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div class="section-title">RESUMEN DEL HALLAZGO</div>
+<div class="content-box">
+    @(nc != null && !string.IsNullOrWhiteSpace(nc.Resumen) ? nc.Resumen : "No se ha registrado resumen.")
+</div>
+
+<div class="section-title">DETALLE DE LA NO CONFORMIDAD</div>
+<div class="content-box">
+    @(nc != null && !string.IsNullOrWhiteSpace(nc.Detalle) ? nc.Detalle : "No se ha registrado detalle.")
+</div>
+
+<div class="section-title">FUNDAMENTO TÉCNICO / NORMATIVA</div>
+<div class="content-box">
+    @(nc != null && !string.IsNullOrWhiteSpace(nc.FundamentoTecnico) ? nc.FundamentoTecnico : "No se ha registrado fundamento técnico.")
+</div>
+
+<div class="section-title">ACCIONES REQUERIDAS POR EL EXPLOTADOR</div>
+<div class="content-box">
+    @(nc != null && !string.IsNullOrWhiteSpace(nc.AccionesRequeridas) ? nc.AccionesRequeridas : "No se han registrado acciones.")
+</div>
+
+<div class="section-title">PLAZO DE SUBSANACIÓN</div>
+<div class="content-box" style="min-height: 20px;">
+    @(nc != null && nc.PlazoSubsanacion.HasValue ? nc.PlazoSubsanacion.Value + " DÍAS" : "N/A")
+</div>
+
+@if (mostrarFirmas)
+{
+    <div class="firma-container">
+        <div class="firma-box" id="PosicionFirma1">
+            @if (firmadoInspector)
+            {
+                <div style="height: 60px;"><em>[FIRMADO ELECTRÓNICAMENTE]</em><br/>@(nc.FechaFirmaInspector?.ToString("dd/MM/yyyy HH:mm"))</div>
+            }
+            else
+            {
+                <div class="firma-line"></div>
+            }
+            <span class="firma-texto">INSPECTOR RESPONSABLE<br/>DGAC</span>
+        </div>
+        
+        <div class="firma-box" id="PosicionFirma2">
+            @if (firmadoCoordinador)
+            {
+                <div style="height: 60px;"><em>[FIRMADO ELECTRÓNICAMENTE]</em><br/>@(nc.FechaFirmaCoordinador?.ToString("dd/MM/yyyy HH:mm"))</div>
+            }
+            else
+            {
+                <div class="firma-line"></div>
+            }
+            <span class="firma-texto">COORDINADOR / JEFATURA<br/>DGAC</span>
+        </div>
+    </div>
+}

@@ -1,0 +1,61 @@
+@inherits System.Web.Mvc.WebViewPage<System.Collections.Generic.List<CapaModelo.SolicitudAOCR>>
+@using System
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    var solicitudes = Model ?? new System.Collections.Generic.List<CapaModelo.SolicitudAOCR>();
+}
+
+<div class="rv-pane-header">
+    <div>
+        <h3 class="rv-pane-title"><i class="fas fa-folder-open"></i> Bandeja de revisión documental</h3>
+        <p class="rv-pane-sub">Solicitudes pendientes de revisión documental y validación previa dentro del flujo documental sincronizado.</p>
+    </div>
+    @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudes.Any() ? "En bandeja" : "Completado" } })
+</div>
+
+@if (!solicitudes.Any())
+{
+    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+        { "Icon", "fas fa-folder-open" },
+        { "Title", "Sin pendientes en la bandeja documental" },
+        { "Description", "No existen solicitudes pendientes de revisión documental en este momento dentro de la bandeja sincronizada." }
+    })
+}
+else
+{
+    <div class="table-responsive aocr-table-wrap">
+        <table id="tblControlDocumental" class="table aocr-table aocr-datatable align-middle mb-0" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Solicitud</th>
+                    <th>Operador</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in solicitudes)
+                {
+                    var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
+                    <tr>
+                        <td>
+                            <div class="fw-semibold text-primary">@numeroSolicitud</div>
+                            <small class="text-muted">Código @item.CodigoSolicitud</small>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
+                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                        <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
+                                <i class="fas fa-eye"></i> Detalle
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,493 @@
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Common.CertificadoAOCRViewModel>
+@using System.Globalization
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+    var cultureEs = new CultureInfo("es-EC");
+    Func<string, string> text = value =>
+    {
+        var normalized = CapaPresentacion.Helpers.VisibleTextHelper.Normalize(value);
+        return !string.IsNullOrWhiteSpace(normalized) ? System.Web.HttpUtility.HtmlEncode(normalized) : "No aplica";
+    };
+    Func<DateTime?, string> date = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultureEs) : "No aplica";
+    var aeronaves = Model != null ? Model.AeronavesCondiciones ?? new System.Collections.Generic.List<CapaModelo.Common.CertificadoAOCRAeronaveFilaViewModel>() : new System.Collections.Generic.List<CapaModelo.Common.CertificadoAOCRAeronaveFilaViewModel>();
+}
+
+@section PdfHead {
+<style>
+    @@page {
+        size: A4 portrait;
+        margin: 8mm 9mm 10mm 9mm;
+    }
+
+    body {
+        font-family: "Times New Roman", Georgia, serif;
+        font-size: 8.8pt;
+        line-height: 1.28;
+        color: #111;
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .aocr-page {
+        page-break-after: always;
+    }
+
+    .aocr-page:last-child {
+        page-break-after: auto;
+    }
+
+    .doc-header {
+        text-align: center;
+        border-bottom: 2px solid #003366;
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+    }
+
+    .doc-title {
+        font-size: 11pt;
+        font-weight: bold;
+        color: #003366;
+        text-transform: uppercase;
+        margin: 0;
+        letter-spacing: .3px;
+    }
+
+    .doc-subtitle {
+        font-size: 8.5pt;
+        font-style: italic;
+        color: #5b6570;
+        margin: 1px 0 0 0;
+    }
+
+    .doc-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        margin-top: 5px;
+    }
+
+    .doc-table td,
+    .doc-table th {
+        border: 1px solid #6d87a8;
+        padding: 4px 6px;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    .doc-table th,
+    .section-head {
+        background: #eaf0f7;
+        color: #003366;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 7.4pt;
+    }
+
+    .label-es {
+        display: block;
+        font-weight: bold;
+        color: #003366;
+        font-size: 7.8pt;
+        text-transform: uppercase;
+    }
+
+    .label-en {
+        display: block;
+        font-style: italic;
+        color: #666;
+        font-size: 6.8pt;
+    }
+
+    .value {
+        display: block;
+        min-height: 12px;
+        font-size: 8.5pt;
+        color: #111;
+        margin-top: 2px;
+    }
+
+    .legal-box,
+    .signature-box,
+    .footer-box {
+        border: 1px solid #6d87a8;
+        border-top: none;
+        padding: 6px 8px;
+    }
+
+    .legal-box p {
+        margin: 3px 0;
+        text-align: justify;
+        font-size: 7.5pt;
+    }
+
+    .signature-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .signature-table td {
+        vertical-align: top;
+        padding: 4px 6px;
+    }
+
+    .signature-slot {
+        height: 22mm;
+        position: relative;
+        overflow: hidden;
+        margin: 8px auto 6px;
+        width: 74mm;
+    }
+
+    .signature-slot img {
+        display: block;
+        max-height: 38px;
+        max-width: 100%;
+        margin: 8px auto 0;
+    }
+
+    .firma-anchor {
+        font-size: 2pt;
+        color: #fff;
+        line-height: 2pt;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .signature-line {
+        border-top: 1.4px solid #000;
+        width: 72%;
+        margin: 4px auto 2px;
+        padding-top: 3px;
+        text-align: center;
+        font-size: 8pt;
+        font-weight: bold;
+    }
+
+    .footer-box {
+        display: table;
+        width: 100%;
+        font-size: 7pt;
+        color: #666;
+        font-style: italic;
+    }
+
+    .footer-cell {
+        display: table-cell;
+        width: 33%;
+    }
+
+    .footer-center { text-align: center; }
+    .footer-right { text-align: right; }
+
+    .page-break {
+        page-break-before: always;
+    }
+
+    .notes {
+        font-size: 7.4pt;
+        margin: 4px 0 0 16px;
+        padding: 0;
+    }
+
+    .notes li {
+        margin-bottom: 3px;
+    }
+</style>
+}
+
+<div class="aocr-page">
+    <div class="doc-header">
+        <p class="doc-title">Reconocimiento de Certificado de Explotador de Servicios Aereos</p>
+        <p class="doc-subtitle">Air Operator Certificate Recognized</p>
+    </div>
+
+    <table class="doc-table">
+        <tr>
+            <td style="width:22%; text-align:center; vertical-align:middle;">
+                @if (!string.IsNullOrWhiteSpace(Model.LogoBase64))
+                {
+                    <img src="data:image/jpeg;base64,@Model.LogoBase64" style="max-height:70px; max-width:70px;" alt="DGAC" />
+                }
+            </td>
+            <td style="width:46%; text-align:center;">
+                <span class="label-es">Republica del Ecuador</span>
+                <span class="label-en">Republic of Ecuador</span>
+                <span class="label-es" style="font-size:8.6pt; margin-top:4px;">Direccion General de Aviacion Civil</span>
+                <span class="label-en">Civil Aviation General Directorate</span>
+            </td>
+            <td style="width:32%;">
+                <span class="label-es">Permiso Operacion CNAC</span>
+                <span class="label-en">CNAC Operation Permit</span>
+                <span class="value">@text(Model.PermisoOperacionCNAC)</span>
+                <span class="label-es" style="margin-top:6px;">AOCR #</span>
+                <span class="label-en">AOCR number</span>
+                <span class="value">@text(Model.NumeroAOCR)</span>
+            </td>
+        </tr>
+    </table>
+
+    <table class="doc-table" style="margin-top:0;">
+        <tr>
+            <td style="width:33%;">
+                <span class="label-es">AOC base</span>
+                <span class="label-en">Base AOC</span>
+                <span class="value">@text(Model.NumeroAOCBase)</span>
+            </td>
+            <td style="width:34%;">
+                <span class="label-es">Estado del explotador</span>
+                <span class="label-en">State of the operator</span>
+                <span class="value">@text(Model.EstadoExplotador)</span>
+            </td>
+            <td style="width:33%;">
+                <span class="label-es">Fecha de emision / vencimiento</span>
+                <span class="label-en">Issue / expiry date</span>
+                <span class="value">@date(Model.FechaEmision) / @date(Model.FechaVencimiento)</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="label-es">Nombre del explotador</span>
+                <span class="label-en">Operator name</span>
+                <span class="value">@text(Model.NombreExplotador)</span>
+            </td>
+            <td>
+                <span class="label-es">Razon social</span>
+                <span class="label-en">Trade name</span>
+                <span class="value">@text(Model.RazonSocial)</span>
+            </td>
+            <td>
+                <span class="label-es">Representante tecnico</span>
+                <span class="label-en">Technical representative</span>
+                <span class="value">@text(Model.RepresentanteTecnico)</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="label-es">Direccion del explotador</span>
+                <span class="label-en">Operator address</span>
+                <span class="value">@text(Model.DireccionExplotador)</span>
+            </td>
+            <td>
+                <span class="label-es">Telefono / correo</span>
+                <span class="label-en">Telephone / email</span>
+                <span class="value">@text(Model.TelefonoExplotador) / @text(Model.CorreoExplotador)</span>
+            </td>
+            <td>
+                <span class="label-es">Punto de contacto Ecuador</span>
+                <span class="label-en">Ecuador contact point</span>
+                <span class="value">@text(Model.PuntoContactoEcuador)</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="label-es">Direccion contacto Ecuador</span>
+                <span class="label-en">Ecuador contact address</span>
+                <span class="value">@text(Model.DireccionContactoEcuador)</span>
+            </td>
+            <td>
+                <span class="label-es">Telefono contacto Ecuador</span>
+                <span class="label-en">Ecuador contact telephone</span>
+                <span class="value">@text(Model.TelefonoContactoEcuador)</span>
+            </td>
+            <td>
+                <span class="label-es">Correo contacto Ecuador</span>
+                <span class="label-en">Ecuador contact email</span>
+                <span class="value">@text(Model.CorreoContactoEcuador)</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <span class="label-es">Puntos de contacto operacionales</span>
+                <span class="label-en">Operational points of contact</span>
+                <span class="value">@text(Model.DireccionOperacional)</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="legal-box">
+        <p>@Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.TextoLegalEs ?? string.Empty).Replace("\n", "<br />"))</p>
+        <p><em>@Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.TextoLegalEn ?? string.Empty).Replace("\n", "<br />"))</em></p>
+    </div>
+
+    <div class="signature-box">
+        <table class="signature-table">
+            <tr>
+                <td style="width:45%;">
+                    <span class="label-es">Fecha de expedicion</span>
+                    <span class="label-en">Date of issue</span>
+                    <span class="value">@date(Model.FechaEmision)</span>
+                    <span class="label-es" style="margin-top:8px;">Fecha de renovacion</span>
+                    <span class="label-en">Date of renewal</span>
+                    <span class="value">@date(Model.FechaRenovacion)</span>
+                </td>
+                <td style="width:55%; text-align:center;" data-firma-rol="DIRDAC">
+                    <span class="label-es">Nombre y firma</span>
+                    <span class="label-en">Name and signature</span>
+                    <div class="signature-slot" data-firma-rol="DIRDAC">
+                        <span class="firma-anchor">ANCLA_FIRMA_CERTIFICADO_DIRDAC</span>
+                        @if (!string.IsNullOrWhiteSpace(Model.RutaFirmaDigital))
+                        {
+                            <img src="@Model.RutaFirmaDigital" alt="Firma DGAC" />
+                        }
+                    </div>
+                    <div class="signature-line">@text(Model.NombreFirmante)</div>
+                    <span class="label-es">Titulo: @text(Model.TituloFirmante)</span>
+                    <span class="label-en">Title: Director General of Civil Aviation</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer-box">
+        <span class="footer-cell">Enmienda No.: @Model.NumeroEnmienda</span>
+        <span class="footer-cell footer-center">1 / 2</span>
+        <span class="footer-cell footer-right">Actualizada: @DateTime.Now.ToString("dd/MM/yyyy")</span>
+    </div>
+</div>
+
+<div class="aocr-page page-break">
+    <div class="doc-header">
+        <p class="doc-title">Condiciones y Limitaciones</p>
+        <p class="doc-subtitle">Conditions and Limitations</p>
+    </div>
+
+    <table class="doc-table">
+        <tr>
+            <td style="width:25%;">
+                <span class="label-es">AOCR #</span>
+                <span class="label-en">AOCR number</span>
+                <span class="value">@text(Model.NumeroAOCR)</span>
+            </td>
+            <td style="width:25%;">
+                <span class="label-es">Fecha de vencimiento</span>
+                <span class="label-en">Expiry date</span>
+                <span class="value">@date(Model.FechaVencimiento)</span>
+            </td>
+            <td style="width:25%;">
+                <span class="label-es">Representante tecnico</span>
+                <span class="label-en">Technical representative</span>
+                <span class="value">@text(Model.RepresentanteTecnico)</span>
+            </td>
+            <td style="width:25%;">
+                <span class="label-es">Tipos de operacion</span>
+                <span class="label-en">Types of operation</span>
+                <span class="value">@text(Model.TiposOperacionAutorizados)</span>
+            </td>
+        </tr>
+    </table>
+
+    <table class="doc-table" style="margin-top:6px;">
+        <thead>
+            <tr>
+                <th>Modelo y tipo de aeronave</th>
+                <th>Matricula</th>
+                <th>Serie</th>
+                <th>UIO</th>
+                <th>GYE</th>
+                <th>MEC</th>
+                <th>LTX</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var aeronave in aeronaves)
+            {
+                <tr>
+                    <td>@text(aeronave != null ? aeronave.ModeloTipo : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Matricula : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Serie : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Uio : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Gye : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Mec : null)</td>
+                    <td>@text(aeronave != null ? aeronave.Ltx : null)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <table class="doc-table" style="margin-top:6px;">
+        <tr>
+            <td style="width:50%;">
+                <span class="label-es">Aeropuertos autorizados</span>
+                <span class="label-en">Authorized airports</span>
+                <span class="value">@text(Model.AeropuertosAutorizados)</span>
+            </td>
+            <td style="width:50%;">
+                <span class="label-es">Tipos de operacion</span>
+                <span class="label-en">R = Regular, NR = Non regular, RC = Refuelling, ET = Technical stop, A = Alternate</span>
+                <span class="value">@text(Model.TiposOperacionAutorizados)</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="label-es">Restricciones y observaciones</span>
+                <span class="label-en">Restrictions and remarks</span>
+                <span class="value">@text(Model.RestriccionesCondiciones)</span>
+            </td>
+            <td>
+                <span class="label-es">Condiciones adicionales</span>
+                <span class="label-en">Additional conditions</span>
+                <span class="value">@text(Model.CondicionesAdicionales)</span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="label-es">Fecha de emision / renovacion / modificacion</span>
+                <span class="label-en">Issue / renewal / amendment date</span>
+                <span class="value">@date(Model.FechaEmision) / @date(Model.FechaRenovacion) / @date(Model.FechaEmision)</span>
+            </td>
+            <td>
+                <span class="label-es">Base operativa aprobada</span>
+                <span class="label-en">Approved operational basis</span>
+                <span class="value">@text(Model.AlcanceOperacion)</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="legal-box">
+        <span class="label-es">Notas institucionales</span>
+        <span class="label-en">Institutional notes</span>
+        <ul class="notes">
+            <li>La flota, aeropuertos y tipos de operacion autorizados deben mantenerse alineados con el expediente AOCR y las especificaciones operacionales vigentes.</li>
+            <li>Si un campo no aplica a la operacion aprobada, el documento mantiene el valor "No aplica" sin alterar la estructura oficial.</li>
+            <li>Cualquier cambio posterior requiere revision institucional y nueva emision del documento oficial cuando corresponda.</li>
+        </ul>
+    </div>
+
+    <div class="signature-box">
+        <table class="signature-table">
+            <tr>
+                <td style="width:45%;">
+                    <span class="label-es">Nombre y firma</span>
+                    <span class="label-en">Name and signature</span>
+                    <div class="signature-line">@text(Model.NombreFirmante)</div>
+                    <span class="label-es">Cargo: @text(Model.CargoFirmanteCondiciones)</span>
+                    <span class="label-en">Title: @text(Model.TituloFirmanteCondiciones)</span>
+                </td>
+                <td style="width:55%; text-align:center;">
+                    <span class="label-es">Control de firma institucional</span>
+                    <span class="label-en">Institutional signature control</span>
+                    <div class="signature-slot">
+                        @if (!string.IsNullOrWhiteSpace(Model.RutaFirmaDigital))
+                        {
+                            <img src="@Model.RutaFirmaDigital" alt="Firma DGAC" />
+                        }
+                    </div>
+                    <span class="label-en">Director of Aeronautical Certification and Continuous Surveillance</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer-box">
+        <span class="footer-cell">Enmienda No.: @Model.NumeroEnmienda</span>
+        <span class="footer-cell footer-center">2 / 2</span>
+        <span class="footer-cell footer-right">Actualizada: @DateTime.Now.ToString("dd/MM/yyyy")</span>
+    </div>
+</div>

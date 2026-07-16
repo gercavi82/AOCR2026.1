@@ -1,0 +1,211 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Usuario>>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Aprobar Usuarios RT";
+}
+
+<h2 class="mb-3">Gestion de Usuarios RT</h2>
+
+@if (TempData["msg"] != null)
+{
+    <div class="alert alert-success">@TempData["msg"]</div>
+}
+
+@if (TempData["error"] != null)
+{
+    <div class="alert alert-danger">@TempData["error"]</div>
+}
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">No hay usuarios RT registrados para revision.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Empresa</th>
+                    <th>Compañías RT</th>
+                    <th>Estado RT</th>
+                    <th>Estado Cuenta</th>
+                    <th>Documento</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model)
+                {
+                    var estadoRt = (u.EstadoDesignacionRT ?? "pendiente").Trim().ToLowerInvariant();
+                    var estadoExpedienteRt = (u.EstadoSolicitudRT ?? string.Empty).Trim().ToUpperInvariant();
+                    if (string.IsNullOrWhiteSpace(estadoExpedienteRt))
+                    {
+                        if (estadoRt == "aceptado")
+                        {
+                            estadoExpedienteRt = "FINALIZADO";
+                        }
+                        else if (estadoRt == "rechazado")
+                        {
+                            estadoExpedienteRt = "DEVUELTO_CON_OBSERVACIONES";
+                        }
+                        else
+                        {
+                            estadoExpedienteRt = "EN_REVISION_COORDINADOR";
+                        }
+                    }
+
+                    var observacionRt = (u.ObservacionSolicitudRT ?? string.Empty).Trim();
+                    var enRevision = u.Activo
+                        && (estadoExpedienteRt == "EN_REVISION_COORDINADOR"
+                            || estadoExpedienteRt == "ENVIADO"
+                            || estadoExpedienteRt == "ENVIADA");
+                    var puedeEliminar = u.PuedeEliminarRT;
+                    if (string.IsNullOrWhiteSpace(estadoRt))
+                    {
+                        estadoRt = "pendiente";
+                    }
+
+                    var claseEstadoRt = "badge badge-secondary";
+                    if (estadoExpedienteRt == "EN_REVISION_COORDINADOR" || estadoExpedienteRt == "ENVIADO" || estadoExpedienteRt == "ENVIADA")
+                    {
+                        claseEstadoRt = "badge badge-info";
+                    }
+                    else if (estadoExpedienteRt == "FINALIZADO" || estadoExpedienteRt == "APROBADO" || estadoExpedienteRt == "FIRMADO")
+                    {
+                        claseEstadoRt = "badge badge-success";
+                    }
+                    else if (estadoExpedienteRt == "DEVUELTO_CON_OBSERVACIONES")
+                    {
+                        claseEstadoRt = "badge badge-warning";
+                    }
+
+                    <tr>
+                        <td>
+                            @Html.Encode(u.NombreCompleto)
+                            <div class="text-muted small">@Html.Encode(u.CodigoUsuario)</div>
+                            @if (u.SolicitudRtId.HasValue)
+                            {
+                                <div class="text-muted small">Expediente RT #@u.SolicitudRtId.Value</div>
+                            }
+                            @if (!puedeEliminar)
+                            {
+                                <div class="text-danger small mt-1">
+                                    No eliminable (tiene @u.TotalRelacionesBloqueantes registro(s) relacionados)
+                                </div>
+                            }
+                        </td>
+                        <td>@Html.Encode(u.Email)</td>
+                        <td>@Html.Encode(u.EmpresaCodigo)</td>
+                        <td>
+                            <a class="btn btn-outline-primary btn-sm"
+                               href="@Url.Action("GestionarCompaniasRT", "Usuario", new { id = u.Id })"
+                               title="Gestionar compañías asignadas">
+                                <i class="fas fa-building me-1"></i> Gestionar
+                            </a>
+                        </td>
+                        <td>
+                            <span class="@claseEstadoRt">@Html.Encode(estadoExpedienteRt)</span>
+                            <div class="text-muted small mt-1">Legacy: @Html.Encode(estadoRt.ToUpperInvariant())</div>
+                            @if (!string.IsNullOrWhiteSpace(observacionRt))
+                            {
+                                <div class="small text-warning mt-1">Obs.: @Html.Encode(observacionRt)</div>
+                            }
+                        </td>
+                        <td>
+                            @if (u.Activo)
+                            {
+                                <span class="badge badge-success">ACTIVO</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-secondary">INACTIVO</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(u.RutaDocumentoLegal))
+                            {
+                                <a class="btn btn-outline-primary btn-sm" href="@Url.Action("DescargarDesignacionRT", "Usuario", new { id = u.Id })">
+                                    <i class="fas fa-file-download mr-1"></i> Ver PDF
+                                </a>
+                                if (!string.IsNullOrWhiteSpace(u.RutaConstanciaRT))
+                                {
+                                    <a class="btn btn-outline-success btn-sm mt-1" href="@Url.Action("DescargarConstanciaRT", "Usuario", new { id = u.Id })">
+                                        <i class="fas fa-file-circle-check mr-1"></i> Constancia
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Sin documento</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (enRevision)
+                            {
+                                <form method="post" action="@Url.Action("AceptarDesignacion", "Usuario")" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn btn-success btn-sm mr-1 mb-1" title="Aprobar RT" onclick="return confirm('Desea aprobar esta designacion RT?');">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+
+                                <form method="post" action="@Url.Action("RechazarDesignacion", "Usuario")" class="mt-2 text-start">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <textarea name="observacion"
+                                              class="form-control form-control-sm mb-1"
+                                              rows="2"
+                                              maxlength="500"
+                                              placeholder="Observación obligatoria para devolver la solicitud RT"
+                                              required></textarea>
+                                    <button type="submit" class="btn btn-warning btn-sm mr-1 mb-1" title="Devolver RT" onclick="return confirm('Desea devolver esta designacion RT con observaciones?');">
+                                        <i class="fas fa-undo"></i> Devolver
+                                    </button>
+                                </form>
+                            }
+
+                            @if (u.Activo)
+                            {
+                                <form method="post" action="@Url.Action("InactivarUsuarioRT", "Usuario")" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn btn-secondary btn-sm mr-1 mb-1" title="Inactivar usuario" onclick="return confirm('Desea inactivar este usuario?');">
+                                        <i class="fas fa-user-slash"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" action="@Url.Action("ActivarUsuarioRT", "Usuario")" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn btn-info btn-sm mr-1 mb-1" title="Activar usuario" onclick="return confirm('Desea activar este usuario?');">
+                                        <i class="fas fa-user-check"></i>
+                                    </button>
+                                </form>
+                            }
+
+                            <form method="post" action="@Url.Action("EliminarUsuarioRT", "Usuario")" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm mb-1"
+                                        title="@(puedeEliminar ? "Eliminar usuario" : "No se puede eliminar porque tiene información relacionada")"
+                                        @(puedeEliminar ? "" : "disabled=\"disabled\"")
+                                        onclick="return confirm('Desea eliminar este usuario de forma permanente?');">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,2011 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm>
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using CapaModelo
+@using CapaPresentacion.Helpers
+@using CapaPresentacion.Models.ViewModels
+
+@functions {
+    private sealed class LvOficialLineaPanel
+    {
+        public LvOficialLineaPanel(string texto, string cssClass = null)
+        {
+            Texto = texto ?? string.Empty;
+            CssClass = cssClass ?? string.Empty;
+        }
+
+        public string Texto { get; private set; }
+        public string CssClass { get; private set; }
+    }
+
+    private sealed class LvOficialFilaPanel
+    {
+        public LvOficialFilaPanel()
+        {
+            RowKey = string.Empty;
+            RequirementCode = string.Empty;
+            ResponseIndices = new List<int>();
+            ReferenceLines = new List<LvOficialLineaPanel>();
+            QuestionLines = new List<LvOficialLineaPanel>();
+            OrientationLines = new List<LvOficialLineaPanel>();
+            ShowImplementation = true;
+        }
+
+        public string RowKey { get; set; }
+        public string RequirementCode { get; set; }
+        public IList<int> ResponseIndices { get; set; }
+        public bool ShowCompliance { get; set; }
+        public bool ShowImplementation { get; set; }
+        public IList<LvOficialLineaPanel> ReferenceLines { get; set; }
+        public IList<LvOficialLineaPanel> QuestionLines { get; set; }
+        public IList<LvOficialLineaPanel> OrientationLines { get; set; }
+    }
+
+    private static LvOficialLineaPanel LineaOficialPanel(string texto, string cssClass = null)
+    {
+        return new LvOficialLineaPanel(texto, cssClass);
+    }
+
+    private static IList<LvOficialLineaPanel> LineasOficialPanel(params LvOficialLineaPanel[] lineas)
+    {
+        return new List<LvOficialLineaPanel>(lineas ?? new LvOficialLineaPanel[0]);
+    }
+
+    private static IList<int> IndicesOficialPanel(params int[] indices)
+    {
+        return (indices ?? new int[0]).Distinct().ToList();
+    }
+
+    private static string ObtenerCodigoPreguntaOficialPanel(ListaVerificacionOperacionalEaeItem item)
+    {
+        if (item == null)
+        {
+            return string.Empty;
+        }
+
+        var codigoPregunta = (item.CodigoPregunta ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(codigoPregunta))
+        {
+            return codigoPregunta;
+        }
+
+        var codigo = (item.Codigo ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            return string.Empty;
+        }
+
+        var indiceUltimoGuion = codigo.LastIndexOf('-');
+        if (indiceUltimoGuion > 0)
+        {
+            int sufijo;
+            if (int.TryParse(codigo.Substring(indiceUltimoGuion + 1), out sufijo))
+            {
+                return codigo.Substring(0, indiceUltimoGuion).Trim();
+            }
+        }
+
+        return codigo;
+    }
+
+    private static IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> ConstruirMapaRespuestasOficialPanel(IEnumerable<ListaVerificacionOperacionalEaeItem> items)
+    {
+        return (items ?? Enumerable.Empty<ListaVerificacionOperacionalEaeItem>())
+            .Where(item => item != null)
+            .GroupBy(ObtenerCodigoPreguntaOficialPanel, StringComparer.OrdinalIgnoreCase)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .ToDictionary(group => group.Key, group => group.OrderBy(item => item.Orden).ToList(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IList<ListaVerificacionOperacionalEaeItem> ObtenerItemsFilaOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta, IEnumerable<int> indices)
+    {
+        List<ListaVerificacionOperacionalEaeItem> respuestas;
+        if (respuestasPorCodigo == null
+            || string.IsNullOrWhiteSpace(codigoPregunta)
+            || !respuestasPorCodigo.TryGetValue(codigoPregunta, out respuestas)
+            || respuestas == null)
+        {
+            return new List<ListaVerificacionOperacionalEaeItem>();
+        }
+
+        return (indices ?? Enumerable.Empty<int>())
+            .Where(indice => indice >= 0 && indice < respuestas.Count)
+            .Select(indice => respuestas[indice])
+            .Where(item => item != null)
+            .ToList();
+    }
+
+    private static IList<string> ObtenerCodigosRequisitoOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta)
+    {
+        List<ListaVerificacionOperacionalEaeItem> respuestas;
+        if (respuestasPorCodigo == null
+            || string.IsNullOrWhiteSpace(codigoPregunta)
+            || !respuestasPorCodigo.TryGetValue(codigoPregunta, out respuestas)
+            || respuestas == null)
+        {
+            return new List<string>();
+        }
+
+        return respuestas
+            .Where(item => item != null && !item.EsNotaOrientacion && !string.IsNullOrWhiteSpace(item.Codigo))
+            .Select(item => item.Codigo.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IList<string> ObtenerCodigosFilaOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta, IEnumerable<int> indices)
+    {
+        return ObtenerItemsFilaOficialPanel(respuestasPorCodigo, codigoPregunta, indices)
+            .Where(item => item != null && !item.EsNotaOrientacion && !string.IsNullOrWhiteSpace(item.Codigo))
+            .Select(item => item.Codigo.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string ObtenerEstadoCumplimientoOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta)
+    {
+        List<ListaVerificacionOperacionalEaeItem> respuestas;
+        if (respuestasPorCodigo == null
+            || string.IsNullOrWhiteSpace(codigoPregunta)
+            || !respuestasPorCodigo.TryGetValue(codigoPregunta, out respuestas)
+            || respuestas == null)
+        {
+            return string.Empty;
+        }
+
+        return respuestas
+            .Where(item => item != null && !item.EsNotaOrientacion)
+            .Select(item => (item.EstadoCumplimiento ?? string.Empty).Trim())
+            .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+    }
+
+    private static string ObtenerEstadoImplementacionOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta, IEnumerable<int> indices)
+    {
+        return ObtenerItemsFilaOficialPanel(respuestasPorCodigo, codigoPregunta, indices)
+            .Where(item => item != null && !item.EsNotaOrientacion)
+            .Select(item => (item.EstadoImplementacion ?? string.Empty).Trim())
+            .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+    }
+
+    private static string ObtenerComentariosOficialPanel(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta, IEnumerable<int> indices)
+    {
+        return ObtenerItemsFilaOficialPanel(respuestasPorCodigo, codigoPregunta, indices)
+            .Where(item => item != null && !item.EsNotaOrientacion)
+            .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
+            .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+    }
+
+    private static IList<LvOficialFilaPanel> ObtenerFilasOficialesPanel()
+    {
+        return new List<LvOficialFilaPanel>
+        {
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-1-1",
+                RequirementCode = "129-1",
+                ResponseIndices = IndicesOficialPanel(0, 2),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.010 (a)"), LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(1)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-1", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero el formulario de solicitud de reconocimiento de su AOC?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("1. Verificar que el explotador haya completado los formularios de solicitud de la forma y manera que prescribe la AAC."),
+                    LineaOficialPanel("Nota: Revisar el formulario y asegurarse que este debidamente completado.", "lv-orientacion-nota"),
+                    LineaOficialPanel("2. Verificar que los datos coincidan con los registros presentados."))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-1",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(0, 1),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(5) y (7)")),
+                QuestionLines = LineasOficialPanel(
+                    LineaOficialPanel("129-2", "lv-question-code"),
+                    LineaOficialPanel("¿Ha presentado el explotador extranjero una descripción de la operación propuesta?", "lv-question-text"),
+                    LineaOficialPanel("Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.", "lv-nota")),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("1. Verificar que dentro de la descripción se identifique si se trata de:"),
+                    LineaOficialPanel("a. operaciones regulares o no regulares", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-2",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(2),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("b. transporte de pasajeros/carga/otros.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-3",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(3, 4),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("2. Verificar que en la descripción del área de operaciones se identifiquen:"),
+                    LineaOficialPanel("a. los aeropuertos que se pretende utilizar.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-4",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(5),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("b. las áreas especiales en que pretende operar; por ejemplo Cordillera de los Andes.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-5",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(6),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("c. las aprobaciones específicas requeridas.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-2-6",
+                RequirementCode = "129-2",
+                ResponseIndices = IndicesOficialPanel(7),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("3. Verificar que el explotador haya presentado los tipos y las matrículas de las aeronaves sujetas a la operación."),
+                    LineaOficialPanel("Nota 1. Algunos Estados requieren que las aeronaves estén listadas en las OpSpecs. Si no están en las OpSpecs, el explotador debe presentarlas en otro documento, como una parte del manual de operaciones, o copias de los certificados de matrícula que atestigüen que el EAE es el explotador de dichas aeronaves.", "lv-orientacion-nota"),
+                    LineaOficialPanel("Nota 2. Verificar la nacionalidad de las aeronaves involucradas. Es posible que el Estado de matrícula sea diferente del Estado del explotador. En este caso, identificar los Estados de matrícula en la Casilla 14.", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-3-1",
+                RequirementCode = "129-3",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.200 (a)"), LineaOficialPanel("(3) y (4)")),
+                QuestionLines = LineasOficialPanel(
+                    LineaOficialPanel("129-3", "lv-question-code"),
+                    LineaOficialPanel("¿Ha presentado el explotador extranjero los contratos de las aeronaves?", "lv-question-text"),
+                    LineaOficialPanel("Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.", "lv-nota")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que se presenten los contratos de las aeronaves afectadas a intercambio o arrendamiento de aeronave con tripulación."))
+            },
+            new LvOficialFilaPanel { RowKey = "129-3-2", RequirementCode = "129-3", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. En caso de un arrendamiento de aeronave con tripulación, verificar que se presente la aprobación de la AAC del Estado del explotador con identificación del explotador que actualmente ejerce el control operacional de la aeronave.")) },
+            new LvOficialFilaPanel { RowKey = "129-3-3", RequirementCode = "129-3", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. Si la aeronave está involucrada en un acuerdo concertado en virtud del Artículo 83 bis del Convenio verificar que se presenten los resúmenes del acuerdo.")) },
+            new LvOficialFilaPanel { RowKey = "129-3-4", RequirementCode = "129-3", ResponseIndices = IndicesOficialPanel(3), OrientationLines = LineasOficialPanel(LineaOficialPanel("4. Verificar que se presenten los certificados de cobertura de seguro para cada aeronave.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-4-1",
+                RequirementCode = "129-4",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(8)")),
+                QuestionLines = LineasOficialPanel(
+                    LineaOficialPanel("129-4", "lv-question-code"),
+                    LineaOficialPanel("¿Ha presentado el explotador extranjero los certificados de ruido de las aeronaves?", "lv-question-text"),
+                    LineaOficialPanel("Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.", "lv-nota")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el certificado de ruido y los documentos técnicos de respaldo están de acuerdo al capítulo adecuado de la Parte II del Anexo 16, Volumen 1."))
+            },
+            new LvOficialFilaPanel { RowKey = "129-4-2", RequirementCode = "129-4", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que la homologación acústica fue otorgada o convalidada por el Estado de matrícula de la aeronave y se encuentre vigente.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-4-3",
+                RequirementCode = "129-4",
+                ShowImplementation = false,
+                QuestionLines = LineasOficialPanel(),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("Nota. El certificado de ruido puede ser parte de otro documento aprobado por el Estado de matrícula.", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-1",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(2)")),
+                QuestionLines = LineasOficialPanel(
+                    LineaOficialPanel("129-5", "lv-question-code"),
+                    LineaOficialPanel("¿Ha presentado el explotador extranjero una copia de su AOC y las OpSpecs actualizadas que autorizan las operaciones solicitadas?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el AOC contiene la información requerida y autoriza las operaciones solicitadas."))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-2",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(1),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que las OpSpecs contienen la información requerida y autorizan las operaciones solicitadas."))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-3",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(2),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("a. modelos de aeronave.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-4",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(3),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("b. tipo de transporte.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-5",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(4),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("c. área de operaciones.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-6",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(5),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("d. aprobaciones específicas.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-5-7",
+                RequirementCode = "129-5",
+                ResponseIndices = IndicesOficialPanel(6),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("e. matrículas y aeródromos, si aplica.", "lv-orientacion-literal"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-6-1",
+                RequirementCode = "129-6",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(3)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-6", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el manual de operaciones esté completo, con el contenido requerido por el Apéndice 2 del Anexo 6, Parte I o Apéndice 8 del Anexo 6, Parte III, según corresponda."))
+            },
+            new LvOficialFilaPanel { RowKey = "129-6-2", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar las indicaciones de aprobación/aceptación, incluyendo, si se ubica en separada, una página de aprobación de la MEL.")) },
+            new LvOficialFilaPanel { RowKey = "129-6-3", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(2, 3, 4, 5, 6, 7), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. Verificar que la parte de 'rutas y aeródromos', incluyendo la guía de ruta (Tercera Parte o 'Parte C' del manual de operaciones) contiene información relativa a los servicios e instalaciones de comunicaciones y ayudas para la navegación, aeródromos y aproximaciones, llegadas y salidas por instrumentos, según corresponda para la operación y toda información necesaria para las operaciones solicitadas.")) },
+            new LvOficialFilaPanel { RowKey = "129-6-4", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(8), OrientationLines = LineasOficialPanel(LineaOficialPanel("4. Verificar que el manual de operaciones contempla procedimientos y/o entrenamientos específicos para las operaciones en áreas o aeródromos especiales (p. ej. Cordillera de los Andes o aeródromos elevados).")) },
+            new LvOficialFilaPanel { RowKey = "129-6-5", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(9), OrientationLines = LineasOficialPanel(LineaOficialPanel("5. De ser requerido por el Estado verificar que el manual de operaciones contempla procedimientos específicos de despacho para las operaciones en su territorio (p. ej. Despachador local en lugar de despachador remoto).")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-7-1",
+                RequirementCode = "129-7",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-7", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero una copia del plan operacional de vuelo para cada ruta que el explotador pretende utilizar?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que los planes operacionales de vuelo contienen información como modelo de aeronave, pesos de las aeronaves, combustible, rutas y aeródromos de alternativa."))
+            },
+            new LvOficialFilaPanel { RowKey = "129-7-2", RequirementCode = "129-7", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que los planes operacionales de vuelo son adecuados tomando en cuenta la descripción de la operación propuesta y las autorizaciones de las OpSpecs, incluyendo áreas de operaciones y aprobaciones específicas (p. ej. RVSM, PBN AR, EDTO, etc.).")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-8-1",
+                RequirementCode = "129-8",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-8", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre los servicios de mantenimiento que pretende utilizar?", "lv-question-text"), LineaOficialPanel("Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.", "lv-nota")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar si el explotador informa la extensión y alcance del mantenimiento que pretende realizar en las operaciones solicitadas."))
+            },
+            new LvOficialFilaPanel { RowKey = "129-8-2", RequirementCode = "129-8", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar si el explotador pretende realizar los servicios de mantenimiento con estructura propia o con una OMA contratada.")) },
+            new LvOficialFilaPanel { RowKey = "129-8-3", RequirementCode = "129-8", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. Verificar si la organización indicada en (2) está autorizada y capacitada para los servicios de mantenimiento pretendidos.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-9-1",
+                RequirementCode = "129-9",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-9", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero los contratos (o cartas de intención) de los servicios de tierra que pretende utilizar?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que los servicios de tierra, incluyan (de ser aplicable):"))
+            },
+            new LvOficialFilaPanel { RowKey = "129-9-2", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("a. manipulación del equipaje y de carga (carga/descarga de la aeronave);", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-3", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("b. despacho y atención a los pasajeros;", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-4", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(3), OrientationLines = LineasOficialPanel(LineaOficialPanel("c. reabastecimiento de combustible y aceite;", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-5", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(4), OrientationLines = LineasOficialPanel(LineaOficialPanel("d. operaciones de deshielo y antihielo para aeronaves en tierra;", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-6", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(5), OrientationLines = LineasOficialPanel(LineaOficialPanel("e. limpieza de la aeronave;", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-7", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(6), OrientationLines = LineasOficialPanel(LineaOficialPanel("f. aprovisionamiento del servicio de a bordo,", "lv-orientacion-literal")) },
+            new LvOficialFilaPanel { RowKey = "129-9-8", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(7), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que las organizaciones que operen los servicios de tierra garantizan la adecuada capacitación de sus empleados, incluyendo, si es aplicable, el entrenamiento en mercancías peligrosas.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-10-1",
+                RequirementCode = "129-10",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.010 (b)"), LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-10", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre su sistema de gestión de la seguridad operacional (SMS), en cumplimiento del Anexo 19?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el explotador tiene todos los elementos mínimos presentes."), LineaOficialPanel("Nota. La verificación detallada de implementación del SMS es compleja y exigiría una evaluación más detallada de los manuales, procedimientos y evidencias prácticas del explotador. En este caso, una verificación de que el explotador tiene esos elementos en su manual de operaciones puede ser suficiente.", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel { RowKey = "129-10-2", RequirementCode = "129-10", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que el explotador tiene implementado el programa de análisis de datos de vuelo como parte de su sistema de gestión de la seguridad operacional."), LineaOficialPanel("Nota. El Anexo 6 Parte I contiene los requisitos para la implantación del programa de análisis de datos de vuelo. Su cumplimiento es requerido por el LAR 129.010 (b).", "lv-orientacion-nota")) },
+            new LvOficialFilaPanel { RowKey = "129-10-3", RequirementCode = "129-10", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. De ser requerido por el Estado, verificar que el plan de respuesta ante emergencias del explotador es adecuado al país y a los aeropuertos que pretende utilizar.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-11-1",
+                RequirementCode = "129-11",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.010 (b)"), LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-11", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre el cumplimiento del Anexo 1 por su tripulación?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que las licencias de la tripulación de vuelo son expedidas o convalidadas por el Estado de matrícula de las aeronaves."), LineaOficialPanel("Nota. Si hay un acuerdo en virtud del Artículo 83 bis del Convenio que incluya transferencia de funciones y obligaciones referentes a los Artículos 30 (b) y 32 (a), las licencias pueden ser expedidas o convalidadas por el Estado al cual se le ha transferido dichas funciones y responsabilidades, por ejemplo el Estado del explotador.", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel { RowKey = "129-11-2", RequirementCode = "129-11", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que la tripulación de vuelo tiene la capacidad de hablar y comprender el idioma utilizado para las comunicaciones radiotelefónicas en el Estado.")) },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-12-1",
+                RequirementCode = "129-12",
+                ResponseIndices = IndicesOficialPanel(0, 1, 2),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.010 (b)"), LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-12", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre alguna exención emitida por su AAC que se aplique a las operaciones solicitadas?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados en el LAR 129.010 (b)."),
+                    LineaOficialPanel("2. Verificar si los certificados de aeronavegabilidad y/o licencias que hayan sido objeto de alguna exención, han sido anotados/anotadas o se hayan agregado a éstos/éstas, una numeración completa de los detalles respecto a los cuales dejen de satisfacer la norma o normas relacionadas con la exención, de acuerdo con el Artículo 39 al Convenio sobre Aviación Civil Internacional."),
+                    LineaOficialPanel("3. Verificar si la AAC del explotador extranjero ha solicitado la aceptación de la exención a la AAC y si esta exención ha sido aceptada, de conformidad con el Artículo 40 al Convenio sobre Aviación Civil Internacional."),
+                    LineaOficialPanel("Nota. Si la exención no ha sido aceptada por la AAC, entonces el explotador extranjero cumplirá con los requisitos establecidos por la AAC.", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-13-1",
+                RequirementCode = "129-13",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(6)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-13", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero una copia de su plan de seguridad de la aviación?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el plan de seguridad de la aviación, por su calidad de restricto, haya sido presentado a las personas autorizadas en la AAC u organismo apropiado del Estado."))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-14-1",
+                RequirementCode = "129-14",
+                ResponseIndices = IndicesOficialPanel(0),
+                ShowCompliance = true,
+                ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(4)")),
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("129-14", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero una copia del documento que autoriza los derechos de tránsito específicos, expedidos por la autoridad del Estado en que pretende operar?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(
+                    LineaOficialPanel("1. Verificar que existe una autorización de derecho de tránsito expedida por la AAC y otro organismo nacional competente."),
+                    LineaOficialPanel("Nota. De acuerdo con los reglamentos de cada Estado, es posible que la autorización de", "lv-orientacion-nota"))
+            },
+            new LvOficialFilaPanel
+            {
+                RowKey = "129-14-2",
+                RequirementCode = "129-14",
+                ShowImplementation = false,
+                QuestionLines = LineasOficialPanel(LineaOficialPanel("por la autoridad del Estado en que pretende operar?", "lv-question-text")),
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("derecho de tránsito solamente sea emitida después de la evaluación técnica. En este caso, puede considerarse el ítem 'no aplicable', justificando en la Casilla 14.", "lv-orientacion-nota"))
+            }
+        };
+    }
+}
+
+@{
+    var vm = Model ?? new ListaVerificacionOperacionalEaePanelVm();
+    var solicitud = vm.Solicitud ?? new SolicitudAOCR();
+    var lista = vm.ListaVerificacion ?? new ListaVerificacionOperacionalEae();
+    var items = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>()).OrderBy(item => item.Orden).ToList();
+    var respuestasPorCodigoOficial = ConstruirMapaRespuestasOficialPanel(items);
+    var filasOficiales = ObtenerFilasOficialesPanel();
+    var tieneLv = lista.CodigoListaVerificacion > 0 || items.Any(item => !string.IsNullOrWhiteSpace(item.EstadoCumplimiento) || !string.IsNullOrWhiteSpace(item.EstadoImplementacion) || !string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+    var tienePdf = !string.IsNullOrWhiteSpace(vm.UrlVisualizacion);
+    var firmada = vm.EstaFirmada || (lista.Finalizado && lista.FirmadoTecnico);
+    var finalizada = lista.Finalizado;
+    var estado = (lista.EstadoLista ?? "LV_BORRADOR").ToUpperInvariant();
+    var operadorArchivoLv = PdfFileNameHelper.PrimerValorNoVacio(
+        lista.NombreEae,
+        PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreOperador),
+        PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreComercial),
+        PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.RazonSocial),
+        solicitud.NombreOperador,
+        solicitud.NombreComercial,
+        solicitud.RazonSocial,
+        solicitud.Ruc);
+    var nombreArchivoLvPdf = vm.CodigoInspeccion > 0
+        ? PdfFileNameHelper.CrearNombreListaVerificacionEae(operadorArchivoLv, vm.CodigoInspeccion, lista.FechaFirma ?? lista.FechaFinalizacion ?? lista.UpdatedAt ?? lista.FechaLista ?? lista.CreatedAt)
+        : string.Empty;
+
+    string estadoLabel;
+    string estadoClass;
+    switch (estado)
+    {
+        case "LV_FIRMADA":
+        case "FIRMADA":
+            estadoLabel = "LV firmada";
+            estadoClass = "success";
+            break;
+        case "LV_COMPLETADA":
+        case "FINALIZADA":
+        case "COMPLETA":
+            estadoLabel = "LV completada";
+            estadoClass = "primary";
+            break;
+        default:
+            estadoLabel = tieneLv ? "LV borrador" : "Sin LV";
+            estadoClass = tieneLv ? "secondary" : "warning";
+            break;
+    }
+}
+
+<style>
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-wrapper {
+        width: 100%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form table,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form tbody,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form td {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form th {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form .form-control,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"] {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input::placeholder,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea::placeholder {
+        color: #64748b !important;
+        opacity: 1;
+        -webkit-text-fill-color: #64748b;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"]:focus {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input[readonly],
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea[readonly],
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select:disabled {
+        background-color: #f8fafc !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"] {
+        min-height: 32px;
+        padding: 6px 8px;
+        outline: 1px solid #cbd5e1;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-document-header {
+        background: #fff;
+        color: #000;
+        margin-bottom: 16px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-official-header {
+        width: 100%;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-official-top {
+        text-align: right;
+        line-height: 1.2;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-official-center {
+        text-align: center;
+        line-height: 1.2;
+        margin-top: 2px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-official-bottom {
+        border-bottom: 1px solid #222;
+        padding-bottom: 2px;
+        margin-top: 4px;
+        line-height: 1.2;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-title-box-main {
+        border: 1px solid #222;
+        background: #d9d9d9;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.05rem;
+        line-height: 1.3;
+        text-transform: uppercase;
+        padding: 12px 10px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-title-box-sub {
+        border-left: 1px solid #222;
+        border-right: 1px solid #222;
+        border-bottom: 1px solid #222;
+        background: #d9d9d9;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1rem;
+        line-height: 1.3;
+        padding: 10px 10px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-stack {
+        margin-bottom: 0;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-row {
+        border-left: 1px solid #222;
+        border-right: 1px solid #222;
+        border-bottom: 1px solid #222;
+        padding: 6px 8px;
+        background: #fff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-row.first {
+        border-top: 1px solid #222;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-input,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-textarea,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-date {
+        display: block;
+        width: 100%;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        background: #ffffff !important;
+        color: #111827 !important;
+        box-shadow: none;
+        font-size: 0.82rem;
+        font-weight: 400;
+        line-height: 1.25;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-textarea {
+        min-height: 44px;
+        resize: vertical;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-input:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-textarea:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-field-date:focus {
+        outline: 1px dashed #666;
+        outline-offset: 2px;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target {
+        position: relative;
+        background: #fff5f5;
+        box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.28);
+        border-radius: 4px;
+        animation: lvValidationPulse 1.4s ease-in-out 2;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target::before {
+        content: attr(data-lv-missing-cue);
+        display: inline-flex;
+        align-items: center;
+        margin: 0 0 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #b42318;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target[data-lv-missing-cue=""]::before {
+        display: none;
+    }
+
+    @@keyframes lvValidationPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.32);
+        }
+
+        60% {
+            box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.18);
+        }
+
+        100% {
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.28);
+        }
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-scroll-container {
+        width: 100%;
+        max-height: clamp(260px, 52vh, 680px);
+        overflow-x: auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        background: #ffffff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table th,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+        border: 1px solid #222;
+        padding: 6px;
+        vertical-align: top;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        background: #fff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table th {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-align: left;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #d9d9d9;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+        font-size: 0.79rem;
+        line-height: 1.25;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion {
+        width: 100%;
+        min-width: 0;
+        min-height: 96px;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        background: #ffffff !important;
+        color: #111827 !important;
+        box-shadow: none;
+        font-size: 0.79rem;
+        line-height: 1.25;
+        opacity: 1;
+        resize: vertical;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #6b7280;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion:focus {
+        outline: 1px dashed #666;
+        outline-offset: 2px;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion[readonly] {
+        background: #f8fafc !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-th-number {
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-ref {
+        width: 10%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-pregunta {
+        width: 17%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-cumplimiento {
+        width: 17%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-orientacion {
+        width: 24%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-implementacion {
+        width: 15%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-col-comentarios {
+        width: 17%;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-group-cell {
+        background: #fff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-empty-cell {
+        background: #fff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-question-code {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 3px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-question-text {
+        white-space: pre-line;
+        line-height: 1.3;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-check-group {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-choice {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        margin: 0;
+        font-weight: 400;
+        line-height: 1.25;
+        cursor: pointer;
+        position: relative;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-choice input[type="radio"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 12px;
+        height: 12px;
+        margin: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-choice-box {
+        width: 12px;
+        height: 12px;
+        flex: 0 0 12px;
+        border: 1px solid #000;
+        margin-top: 2px;
+        position: relative;
+        background: #fff;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-choice input[type="radio"]:checked + .lv-choice-box::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        bottom: 2px;
+        left: 2px;
+        background: #000;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-choice-text {
+        flex: 1 1 auto;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-nota {
+        margin-top: 4px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        font-style: italic;
+        line-height: 1.15;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-guidance-text {
+        white-space: pre-line;
+        line-height: 1.25;
+        text-align: left;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-guidance-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-guidance-entry + .lv-guidance-entry {
+        margin-top: 2px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-orientacion-subnumeral {
+        font-weight: 400;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-orientacion-literal {
+        padding-left: 10px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-orientacion-nota {
+        font-style: italic;
+        background: transparent;
+        border-left: 0;
+        padding: 0;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-headline {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+    }
+
+    @@media (max-width: 1440px) {
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-wrapper {
+            padding: 12px;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table th,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+            font-size: 11.5px;
+            padding: 5px;
+            vertical-align: top;
+        }
+    }
+
+    @@media (max-width: 1400px) {
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-scroll-container {
+            max-height: none;
+            overflow: visible;
+            background: transparent;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
+            display: block;
+            min-width: 0;
+            border: 0;
+            border-collapse: separate;
+            table-layout: auto;
+            background: transparent;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table colgroup,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table thead {
+            display: none;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table tbody {
+            display: block;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table tr {
+            display: block;
+            border: 1px solid rgba(27, 79, 114, 0.14);
+            border-radius: 18px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(13, 40, 58, 0.08);
+            margin-bottom: 12px;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+            display: grid;
+            grid-template-columns: minmax(150px, 32%) minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: start;
+            border: 0;
+            border-bottom: 1px solid rgba(27, 79, 114, 0.12);
+            padding: 0.8rem 0.9rem;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td:last-child {
+            border-bottom: 0;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td::before {
+            content: attr(data-column-label);
+            display: block;
+            color: #1b4f72;
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-ref,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-pregunta,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-cumplimiento,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-orientacion,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-implementacion,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-comentarios {
+            width: auto;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion {
+            min-height: 120px;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-wrapper {
+            padding: 8px;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+            grid-template-columns: 1fr;
+            gap: 0.45rem;
+            padding: 0.75rem;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEae">
+    <div class="card-body">
+        <div class="aocr-lv-wrapper aocr-lv-form">
+        <div class="section-heading">
+            <div class="section-icon">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div>
+                <h2 class="section-title">LISTA DE VERIFICACIÓN OPERACIONAL (LV)</h2>
+                <p class="section-copy">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE) - RDAC 129</p>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+            <div>
+                <span class="badge bg-@estadoClass">@estadoLabel</span>
+                <span class="ms-2 text-muted">Resultado general: <strong>@(string.IsNullOrWhiteSpace(lista.ResultadoGeneral) ? "PENDIENTE" : lista.ResultadoGeneral)</strong></span>
+            </div>
+            <div class="d-flex flex-column flex-md-row gap-2">
+                @if (tienePdf)
+                {
+                    <a class="btn btn-outline-primary" href="@vm.UrlVisualizacion" target="_blank" rel="noopener">
+                        <i class="fas fa-file-pdf me-1"></i> Vista previa LV
+                    </a>
+                    <a class="btn btn-outline-secondary" href="@vm.UrlDescarga" target="_blank" rel="noopener">
+                        <i class="fas fa-download me-1"></i> Descargar LV
+                    </a>
+                }
+            </div>
+        </div>
+
+        @if (!tieneLv)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                Antes de generar el informe técnico debe completar la Lista de Verificación Operacional (LV).
+            </div>
+        }
+        else if (firmada)
+        {
+            <div class="alert alert-success alert-inline mb-3">
+                La Lista de Verificación Operacional ya fue firmada. Ahora puede generar el informe técnico.
+                Flujo simplificado activo: LV firmada + informe técnico firmado por técnico / inspector.
+            </div>
+        }
+        else if (finalizada)
+        {
+            <div class="alert alert-info alert-inline mb-3">
+                La Lista de Verificación Operacional fue completada correctamente. Proceda con la firma del técnico / inspector.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                Informe técnico bloqueado. Primero complete y firme la Lista de Verificación Operacional (LV).
+            </div>
+        }
+
+        @if (finalizada && !firmada && vm.PuedeFirmar)
+        {
+            <div class="card mt-4 border-0 bg-light mb-3" data-lv-signature-section="true">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del técnico / inspector responsable de la LV</h5>
+                    @using (Html.BeginForm("FirmarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", data_lv_signature_form = "true" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
+                        <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Certificado digital (.p12 / .pfx)</label>
+                                <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required="required" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Contrasena del certificado</label>
+                                <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required="required" />
+                            </div>
+                        </div>
+                        <div class="lv-signature-actions">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shield-alt me-1"></i> Firmar Lista de Verificacion LV
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (tienePdf)
+        {
+            @Html.Partial("~/Views/Shared/_AocrPdfViewer.cshtml", new AocrPdfViewerViewModel
+            {
+                PdfUrl = vm.UrlVisualizacion,
+                DescargarUrl = vm.UrlDescarga,
+                Titulo = "Lista de Verificación Operacional (LV)",
+                Subtitulo = nombreArchivoLvPdf,
+                EstadoDocumento = lista.EstadoLista ?? "LV_BORRADOR",
+                MensajeAyuda = firmada ? "LV firmada por el técnico / inspector responsable." : "Revise el PDF generado antes de aplicar la firma digital.",
+                PermitirDescarga = true,
+                PermitirImpresion = true,
+                MostrarToolbar = true,
+                ContenedorId = "viewerListaVerificacionOperacionalEae",
+                PantallaCompleta = false
+            })
+        }
+        else if (finalizada || firmada)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                El registro de la LV/EAE existe, pero el PDF asociado no está disponible en el servidor. Debe regenerarse o volver a finalizarse antes de abrir la vista previa.
+            </div>
+        }
+
+        @if (!vm.PuedeEditar && !firmada)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                @(!string.IsNullOrWhiteSpace(vm.MensajeBloqueoEdicion)
+                    ? vm.MensajeBloqueoEdicion
+                    : "La lista de verificación operacional se encuentra disponible solo en modo consulta para su rol o en el estado actual del trámite.")
+            </div>
+
+            <div class="d-flex flex-column flex-md-row gap-2 mb-3">
+                <div class="w-100">
+                    @Html.Partial("_DocumentoWorkflowActions", vm.AccesosDocumentales)
+                </div>
+
+            </div>
+
+            <div class="alert alert-light alert-inline mb-3">
+                Cuando la revisión documental esté confirmada, esta misma ventana mostrará la cabecera completa de la LV/EAE, la tabla de criterios y los botones para guardar, finalizar o firmar.
+            </div>
+        }
+
+        @if (vm.PuedeEditar && !firmada)
+        {
+            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4", novalidate = "novalidate" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
+                <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
+                <input type="hidden" name="lvSubmitAction" value="guardar" />
+                <div class="alert alert-warning alert-inline lv-validation-message d-none mb-3" data-lv-validation-message="true" role="alert"></div>
+
+                <div class="lv-hidden-sync-fields" style="display:none;">
+                    @foreach (var itemSync in items.Where(item => item != null && !item.EsNotaOrientacion && !string.IsNullOrWhiteSpace(item.Codigo)))
+                    {
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="cumplimiento" name="@("lvItem_" + itemSync.Codigo + "_cumplimiento")" value="@(itemSync.EstadoCumplimiento ?? string.Empty)" />
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="implementacion" name="@("lvItem_" + itemSync.Codigo + "_implementacion")" value="@(itemSync.EstadoImplementacion ?? string.Empty)" />
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="comentarios" name="@("lvItem_" + itemSync.Codigo + "_comentarios")" value="@(itemSync.PruebasNotasComentarios ?? string.Empty)" />
+                    }
+                </div>
+
+                <div class="aocr-lv-document-header">
+                    <div class="aocr-lv-official-header">
+                        <div class="aocr-lv-official-top">Parte II - Explotadores de servicios aéreos</div>
+                        <div class="aocr-lv-official-center">Volumen VII – Vigilancia de explotadores extranjeros en operaciones de transporte aéreo comercial<br />Capítulo 2 – Solicitud, evaluación y aprobación de un explotador extranjero</div>
+                        <div class="aocr-lv-official-bottom">Manual del Inspector de Operaciones Ecuador</div>
+                    </div>
+                    <div class="aocr-lv-title-box-main">DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</div>
+                    <div class="aocr-lv-title-box-sub">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE)<br />RDAC 129</div>
+                    <div class="aocr-lv-field-stack mb-3">
+                        <div class="aocr-lv-field-row first">
+                            <label class="aocr-lv-field-label" for="lvNombreEae">1. Nombre del EAE / Nombre comercial del EAE:</label>
+                            <input id="lvNombreEae" class="aocr-lv-field-input" name="lvNombreEae" value="@(lista.NombreEae ?? string.Empty)" required="required" />
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvNumeroAocFechaValidez">2. N° AOC / Fecha de expedición / Validez:</label>
+                            <input id="lvNumeroAocFechaValidez" class="aocr-lv-field-input" name="lvNumeroAocFechaValidez" value="@(lista.NumeroAocFechaValidez ?? string.Empty)" required="required" />
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvDireccionEstadoExplotador">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</label>
+                            <textarea id="lvDireccionEstadoExplotador" class="aocr-lv-field-textarea" name="lvDireccionEstadoExplotador" rows="2" required="required">@(lista.DireccionEstadoExplotador ?? string.Empty)</textarea>
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvDireccionEstadoReconocimiento">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento:</label>
+                            <textarea id="lvDireccionEstadoReconocimiento" class="aocr-lv-field-textarea" name="lvDireccionEstadoReconocimiento" rows="2" required="required">@(lista.DireccionEstadoReconocimiento ?? string.Empty)</textarea>
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvTiposAeronaves">5. Tipo/s de aeronave/s (marca, modelo, número de serie):</label>
+                            <textarea id="lvTiposAeronaves" class="aocr-lv-field-textarea" name="lvTiposAeronaves" rows="2" required="required">@(lista.TiposAeronaves ?? string.Empty)</textarea>
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvTipoOperacion">6. Tipo de operación:</label>
+                            <input id="lvTipoOperacion" class="aocr-lv-field-input" name="lvTipoOperacion" value="@(lista.TipoOperacion ?? string.Empty)" required="required" />
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvFecha">7. Fecha:</label>
+                            <input id="lvFecha" class="aocr-lv-field-date" type="date" name="lvFecha" value="@(lista.FechaLista.HasValue ? lista.FechaLista.Value.ToString("yyyy-MM-dd") : DateTime.Now.ToString("yyyy-MM-dd"))" required="required" />
+                        </div>
+                        <div class="aocr-lv-field-row">
+                            <label class="aocr-lv-field-label" for="lvInspectorResponsable">8. Inspector responsable de la aprobación:</label>
+                            <input id="lvInspectorResponsable" class="aocr-lv-field-input" name="lvInspectorResponsable" value="@(lista.InspectorResponsable ?? string.Empty)" required="required" />
+                        </div>
+                    </div>
+                    <input type="hidden" name="lvCargoInspector" value="@(string.IsNullOrWhiteSpace(lista.CargoInspector) ? "Tecnico / Inspector responsable" : lista.CargoInspector)" />
+                </div>
+
+                <div class="aocr-lv-scroll-container">
+                    <table class="lv-operacional-table aocr-lv-table aocr-lv-eae-table">
+                        <colgroup>
+                            <col class="aocr-lv-col-ref" />
+                            <col class="aocr-lv-col-pregunta" />
+                            <col class="aocr-lv-col-cumplimiento" />
+                            <col class="aocr-lv-col-orientacion" />
+                            <col class="aocr-lv-col-implementacion" />
+                            <col class="aocr-lv-col-comentarios" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th><span class="aocr-lv-th-number">9.</span>Referencia</th>
+                                <th><span class="aocr-lv-th-number">10.</span>Pregunta del requisito</th>
+                                <th><span class="aocr-lv-th-number">11.</span>Estado de cumplimiento del requisito</th>
+                                <th><span class="aocr-lv-th-number">12.</span>Orientación para el examen de pruebas o evidencias</th>
+                                <th><span class="aocr-lv-th-number">13.</span>Estado de implementación</th>
+                                <th><span class="aocr-lv-th-number">14.</span>Pruebas / Notas / Comentarios</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fila in filasOficiales)
+                            {
+                                var codigosRequisito = fila.ShowCompliance
+                                    ? ObtenerCodigosRequisitoOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode)
+                                    : new List<string>();
+                                var codigosFila = ObtenerCodigosFilaOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices);
+                                var estadoCumplimiento = fila.ShowCompliance
+                                    ? ObtenerEstadoCumplimientoOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode)
+                                    : string.Empty;
+                                var estadoImplementacion = fila.ShowImplementation
+                                    ? ObtenerEstadoImplementacionOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices)
+                                    : string.Empty;
+                                var comentariosFila = codigosFila.Any()
+                                    ? ObtenerComentariosOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices)
+                                    : string.Empty;
+                                var targetRequisito = string.Join("|", codigosRequisito);
+                                var targetFila = string.Join("|", codigosFila);
+                                var etiquetaFila = (fila.RequirementCode + " - " + (fila.OrientationLines.FirstOrDefault() != null ? fila.OrientationLines.First().Texto : string.Empty)).Trim();
+                                if (etiquetaFila.Length > 160)
+                                {
+                                    etiquetaFila = etiquetaFila.Substring(0, 157).TrimEnd() + "...";
+                                }
+                                <tr class="lv-official-edit-row" data-lv-requirement-code="@fila.RequirementCode" data-lv-row-key="@fila.RowKey">
+                                    <td class="aocr-lv-col-ref @(fila.ReferenceLines.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Referencia">
+                                        @if (fila.ReferenceLines.Any())
+                                        {
+                                            foreach (var lineaReferencia in fila.ReferenceLines)
+                                            {
+                                                <div class="@(string.IsNullOrWhiteSpace(lineaReferencia.CssClass) ? null : lineaReferencia.CssClass)">@lineaReferencia.Texto</div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @Html.Raw("&nbsp;")
+                                        }
+                                    </td>
+                                    <td class="aocr-lv-col-pregunta @(fila.QuestionLines.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Pregunta del requisito">
+                                        @if (fila.QuestionLines.Any())
+                                        {
+                                            foreach (var lineaPregunta in fila.QuestionLines)
+                                            {
+                                                <div class="@(string.IsNullOrWhiteSpace(lineaPregunta.CssClass) ? null : lineaPregunta.CssClass)">@lineaPregunta.Texto</div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @Html.Raw("&nbsp;")
+                                        }
+                                    </td>
+                                    <td class="aocr-lv-col-cumplimiento @(fila.ShowCompliance ? string.Empty : "lv-empty-cell")" data-column-label="Estado de cumplimiento">
+                                        @if (fila.ShowCompliance)
+                                        {
+                                            <div class="lv-check-group lv-visible-compliance-group" data-target-codes="@targetRequisito" data-requirement-code="@fila.RequirementCode">
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="SATISFACTORIO" @(string.Equals(estadoCumplimiento, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">Satisfactorio</span>
+                                                </label>
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_SATISFACTORIO" @(string.Equals(estadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">No satisfactorio</span>
+                                                </label>
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_APLICABLE" @(string.Equals(estadoCumplimiento, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">No aplicable</span>
+                                                </label>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @Html.Raw("&nbsp;")
+                                        }
+                                    </td>
+                                    <td class="aocr-lv-col-orientacion" data-column-label="Orientación para evidencias">
+                                        <div class="lv-guidance-stack">
+                                            @foreach (var lineaOrientacion in fila.OrientationLines)
+                                            {
+                                                <div class="lv-guidance-entry lv-guidance-text @(string.IsNullOrWhiteSpace(lineaOrientacion.CssClass) ? string.Empty : lineaOrientacion.CssClass)">@lineaOrientacion.Texto</div>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="aocr-lv-col-implementacion @(fila.ShowImplementation ? string.Empty : "lv-empty-cell")" data-column-label="Estado de implementación">
+                                        @if (fila.ShowImplementation)
+                                        {
+                                            <div class="lv-check-group lv-visible-implementation-group" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila">
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="IMPLEMENTADO" @(string.Equals(estadoImplementacion, "IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">Implementado</span>
+                                                </label>
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_IMPLEMENTADO" @(string.Equals(estadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">No implementado</span>
+                                                </label>
+                                                <label class="lv-choice">
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_APLICABLE" @(string.Equals(estadoImplementacion, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span class="lv-choice-box" aria-hidden="true"></span>
+                                                    <span class="lv-choice-text">No aplicable</span>
+                                                </label>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @Html.Raw("&nbsp;")
+                                        }
+                                    </td>
+                                    <td class="aocr-lv-col-comentarios @(codigosFila.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Pruebas / Notas / Comentarios">
+                                        @if (codigosFila.Any())
+                                        {
+                                            <textarea class="lv-visible-comentarios lv-observacion" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila" name="@("lvVisible_" + fila.RowKey + "_comentarios")" rows="4">@comentariosFila</textarea>
+                                        }
+                                        else
+                                        {
+                                            @Html.Raw("&nbsp;")
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row gap-2 mt-3 lv-operacional-actions aocr-lv-actions">
+                    @if (tienePdf)
+                    {
+                        <a class="btn btn-outline-secondary" href="@Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })" target="_blank" rel="noopener">
+                            <i class="fas fa-file-pdf me-1"></i> Ver PDF
+                        </a>
+                    }
+                    <button type="submit" class="btn btn-outline-primary" data-lv-submit-action="guardar">
+                        <i class="fas fa-save me-1"></i> Guardar LV
+                    </button>
+                    <button type="submit" class="btn btn-primary" name="finalizar" value="true" data-lv-submit-action="finalizar">
+                        <i class="fas fa-file-pdf me-1"></i> Finalizar LV
+                    </button>
+                </div>
+            }
+        }
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    function parseCodes(value) {
+        return (value || '')
+            .split('|')
+            .map(function (item) { return item.trim(); })
+            .filter(function (item) { return item.length > 0; });
+    }
+
+    function setHiddenValue(form, code, field, value) {
+        if (!form || !code || !field) {
+            return;
+        }
+
+        var selector = '.lv-server-field[data-item-code="' + code + '"][data-field="' + field + '"]';
+        var input = form.querySelector(selector);
+        if (input) {
+            input.value = value || '';
+        }
+    }
+
+    function setSubmitAction(form, action) {
+        if (!form || !form.elements || !form.elements['lvSubmitAction']) {
+            return;
+        }
+
+        form.elements['lvSubmitAction'].value = action || 'guardar';
+    }
+
+    function clearValidationTarget(form) {
+        if (!form) {
+            return;
+        }
+
+        var highlighted = form.querySelectorAll('.lv-missing-target');
+        for (var index = 0; index < highlighted.length; index++) {
+            highlighted[index].classList.remove('lv-missing-target');
+            highlighted[index].removeAttribute('data-lv-missing-cue');
+        }
+    }
+
+    function showFloatingValidationNotice(message) {
+        if (!message) {
+            return;
+        }
+
+        if (window.Site && typeof window.Site.notify === 'function') {
+            try {
+                window.Site.notify(message, 'warning');
+                return;
+            } catch (error) {
+            }
+        }
+
+        if (window.toastr && typeof window.toastr.warning === 'function') {
+            window.toastr.warning(message);
+            return;
+        }
+
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                icon: 'warning',
+                title: message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3500
+            });
+            return;
+        }
+
+        window.alert(message);
+    }
+
+    function normalizeValidationLabel(text) {
+        return (text || '')
+            .replace(/\s+/g, ' ')
+            .replace(/^\d+\.\s*/, '')
+            .replace(/\s*:\s*$/, '')
+            .trim();
+    }
+
+    function truncateValidationCueText(text, maxLength) {
+        var normalized = normalizeValidationLabel(text);
+        var limit = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 72;
+        if (normalized.length <= limit) {
+            return normalized;
+        }
+
+        return normalized.substring(0, limit - 3).trimEnd() + '...';
+    }
+
+    function getHeaderFieldLabel(field) {
+        if (!field) {
+            return 'este campo';
+        }
+
+        var scope = field.form || document;
+        var label = field.id
+            ? scope.querySelector('label[for="' + escapeAttributeValue(field.id) + '"]')
+            : null;
+        var labelText = label ? normalizeValidationLabel(label.textContent) : '';
+        if (labelText) {
+            return labelText;
+        }
+
+        return normalizeValidationLabel(field.getAttribute('aria-label') || field.getAttribute('placeholder') || field.name || 'este campo');
+    }
+
+    function getValidationCueText(target) {
+        if (!target || !target.classList) {
+            return 'Complete aqui';
+        }
+
+        if (target.classList.contains('lv-visible-cumplimiento')) {
+            return 'Seleccione cumplimiento aqui';
+        }
+
+        if (target.classList.contains('lv-visible-implementacion')) {
+            return 'Seleccione implementación aquí';
+        }
+
+        if (target.classList.contains('lv-visible-comentarios')) {
+            return 'Complete la observación aquí';
+        }
+
+        return 'Complete ' + truncateValidationCueText(getHeaderFieldLabel(target), 68);
+    }
+
+    function getMissingHeaderField(form) {
+        if (!form) {
+            return null;
+        }
+
+        var requiredFields = form.querySelectorAll('input[required], textarea[required], select[required]');
+        for (var index = 0; index < requiredFields.length; index++) {
+            var field = requiredFields[index];
+            if (!field || field.disabled || field.type === 'hidden') {
+                continue;
+            }
+
+            if (field.type === 'checkbox' && !field.checked) {
+                return field;
+            }
+
+            if (field.type === 'radio') {
+                if (field.name && !form.querySelector('input[type="radio"][name="' + escapeAttributeValue(field.name) + '"]:checked')) {
+                    return field;
+                }
+                continue;
+            }
+
+            if (!field.value || !field.value.trim()) {
+                return field;
+            }
+        }
+
+        return null;
+    }
+
+    function getValidationDisplayTarget(target) {
+        if (!target) {
+            return null;
+        }
+
+        if (target.classList && target.classList.contains('lv-visible-cumplimiento')) {
+            return target.closest('.lv-check-group') || target.closest('.aocr-lv-col-cumplimiento') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        if (target.classList && target.classList.contains('lv-visible-implementacion')) {
+            return target.closest('.lv-check-group') || target.closest('.aocr-lv-col-implementacion') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        if (target.classList && target.classList.contains('lv-visible-comentarios')) {
+            return target.closest('.aocr-lv-col-comentarios') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        return target.closest('.aocr-lv-field-row') || target.closest('.lv-official-edit-row') || target;
+    }
+
+    function scrollAndHighlightValidationTarget(form, target) {
+        var displayTarget = getValidationDisplayTarget(target);
+        if (!displayTarget) {
+            return;
+        }
+
+        clearValidationTarget(form);
+        displayTarget.classList.add('lv-missing-target');
+        displayTarget.setAttribute('data-lv-missing-cue', getValidationCueText(target));
+
+        if (typeof displayTarget.scrollIntoView === 'function') {
+            displayTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        }
+    }
+
+    function focusValidationTarget(target) {
+        if (!target || typeof target.focus !== 'function') {
+            return;
+        }
+
+        try {
+            target.focus({ preventScroll: true });
+        } catch (error) {
+            target.focus();
+        }
+    }
+
+    function reportValidationAtField(target, message) {
+        if (!target
+            || target.type === 'radio'
+            || typeof target.setCustomValidity !== 'function'
+            || typeof target.reportValidity !== 'function') {
+            return false;
+        }
+
+        target.setCustomValidity(message || 'Campo requerido.');
+        target.reportValidity();
+        target.setCustomValidity('');
+        return true;
+    }
+
+    function clearValidationMessage(form) {
+        if (!form) {
+            return;
+        }
+
+        clearValidationTarget(form);
+
+        var box = form.querySelector('[data-lv-validation-message="true"]');
+        if (!box) {
+            return;
+        }
+
+        box.textContent = '';
+        box.classList.add('d-none');
+    }
+
+    function showValidationMessage(form, message, focusTarget) {
+        if (!form) {
+            return false;
+        }
+
+        var box = form.querySelector('[data-lv-validation-message="true"]');
+        if (box) {
+            box.textContent = message;
+            box.classList.remove('d-none');
+        }
+
+        showFloatingValidationNotice(message);
+
+        if (focusTarget) {
+            scrollAndHighlightValidationTarget(form, focusTarget);
+            focusValidationTarget(focusTarget);
+            reportValidationAtField(focusTarget, message);
+        } else if (box && typeof box.scrollIntoView === 'function') {
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        return false;
+    }
+
+    function escapeAttributeValue(value) {
+        return (value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    function obtenerCumplimientoSeleccionado(form, requirementCode) {
+        if (!form || !requirementCode) {
+            return null;
+        }
+
+        var selector = '.lv-visible-compliance-group[data-requirement-code="' + escapeAttributeValue(requirementCode) + '"]';
+        var group = form.querySelector(selector);
+        return group ? group.querySelector('.lv-visible-cumplimiento:checked') : null;
+    }
+
+    function obtenerComentariosRequisito(form, requirementCode) {
+        if (!form || !requirementCode) {
+            return [];
+        }
+
+        var selector = '.lv-official-edit-row[data-lv-requirement-code="' + escapeAttributeValue(requirementCode) + '"] .lv-visible-comentarios';
+        return Array.prototype.slice.call(form.querySelectorAll(selector));
+    }
+
+    function requisitoTieneComentario(form, requirementCode) {
+        var comentarios = obtenerComentariosRequisito(form, requirementCode);
+        for (var index = 0; index < comentarios.length; index++) {
+            if (comentarios[index].value && comentarios[index].value.trim()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function bindToggleableRadio(radio) {
+        if (!radio || radio.getAttribute('data-lv-toggle-bound') === 'true') {
+            return;
+        }
+
+        radio.setAttribute('data-lv-toggle-bound', 'true');
+
+        var rememberState = function () {
+            radio.setAttribute('data-lv-was-checked', radio.checked ? 'true' : 'false');
+        };
+
+        radio.addEventListener('pointerdown', rememberState);
+        radio.addEventListener('keydown', function (event) {
+            if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+                rememberState();
+            }
+        });
+
+        radio.addEventListener('click', function () {
+            if (radio.getAttribute('data-lv-was-checked') !== 'true') {
+                return;
+            }
+
+            radio.checked = false;
+            radio.setAttribute('data-lv-was-checked', 'false');
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    function syncComplianceGroup(form, group) {
+        if (!form || !group) {
+            return;
+        }
+
+        var selected = group.querySelector('.lv-visible-cumplimiento:checked');
+        var value = selected ? selected.value : '';
+        parseCodes(group.getAttribute('data-target-codes')).forEach(function (code) {
+            setHiddenValue(form, code, 'cumplimiento', value);
+        });
+    }
+
+    function syncImplementationGroup(form, group) {
+        if (!form || !group) {
+            return;
+        }
+
+        var selected = group.querySelector('.lv-visible-implementacion:checked');
+        var value = selected ? selected.value : '';
+        parseCodes(group.getAttribute('data-target-codes')).forEach(function (code) {
+            setHiddenValue(form, code, 'implementacion', value);
+        });
+    }
+
+    function syncCommentsField(form, field) {
+        if (!form || !field) {
+            return;
+        }
+
+        var value = field.value || '';
+        parseCodes(field.getAttribute('data-target-codes')).forEach(function (code) {
+            setHiddenValue(form, code, 'comentarios', value);
+        });
+    }
+
+    function mirrorImplementationRows(form, source) {
+        if (!form || !source) {
+            return;
+        }
+
+        var syncKey = source.getAttribute('data-sync-key') || '';
+        if (!syncKey) {
+            return;
+        }
+
+        var selected = source.querySelector('.lv-visible-implementacion:checked');
+        var selectedValue = selected ? selected.value : '';
+        var groups = form.querySelectorAll('.lv-visible-implementation-group[data-sync-key="' + syncKey + '"]');
+        for (var i = 0; i < groups.length; i++) {
+            var group = groups[i];
+            if (group === source) {
+                continue;
+            }
+
+            var radios = group.querySelectorAll('.lv-visible-implementacion');
+            for (var j = 0; j < radios.length; j++) {
+                radios[j].checked = radios[j].value === selectedValue && !!selectedValue;
+            }
+        }
+    }
+
+    function mirrorCommentsFields(form, source) {
+        if (!form || !source) {
+            return;
+        }
+
+        var syncKey = source.getAttribute('data-sync-key') || '';
+        if (!syncKey) {
+            return;
+        }
+
+        var fields = form.querySelectorAll('.lv-visible-comentarios[data-sync-key="' + syncKey + '"]');
+        for (var i = 0; i < fields.length; i++) {
+            if (fields[i] !== source) {
+                fields[i].value = source.value;
+            }
+        }
+    }
+
+    function sincronizarCamposLvEae(form) {
+        if (!form) {
+            return;
+        }
+
+        var complianceGroups = form.querySelectorAll('.lv-visible-compliance-group');
+        for (var i = 0; i < complianceGroups.length; i++) {
+            syncComplianceGroup(form, complianceGroups[i]);
+        }
+
+        var implementationGroups = form.querySelectorAll('.lv-visible-implementation-group');
+        for (var j = 0; j < implementationGroups.length; j++) {
+            syncImplementationGroup(form, implementationGroups[j]);
+        }
+
+        var commentsFields = form.querySelectorAll('.lv-visible-comentarios');
+        for (var k = 0; k < commentsFields.length; k++) {
+            syncCommentsField(form, commentsFields[k]);
+        }
+    }
+
+    window.validarComentariosLvEae = function (form, requiereConfirmacion) {
+        if (!form) {
+            return true;
+        }
+
+        clearValidationMessage(form);
+        sincronizarCamposLvEae(form);
+
+        if (!requiereConfirmacion) {
+            return true;
+        }
+
+        var missingHeaderField = getMissingHeaderField(form);
+        if (missingHeaderField) {
+            return showValidationMessage(form, 'Falta completar el campo "' + getHeaderFieldLabel(missingHeaderField) + '" antes de finalizar la LV/EAE.', missingHeaderField);
+        }
+
+        var implementationGroups = form.querySelectorAll('.lv-visible-implementation-group');
+        for (var i = 0; i < implementationGroups.length; i++) {
+            var implementationGroup = implementationGroups[i];
+            var row = implementationGroup.closest('.lv-official-edit-row');
+            if (!row) {
+                continue;
+            }
+
+            var requirementCode = row.getAttribute('data-lv-requirement-code') || '';
+            var rowLabel = implementationGroup.getAttribute('data-row-label') || requirementCode || ('fila ' + (i + 1));
+            var complianceSelected = obtenerCumplimientoSeleccionado(form, requirementCode);
+            var implementationSelected = implementationGroup.querySelector('.lv-visible-implementacion:checked');
+            var commentField = row.querySelector('.lv-visible-comentarios');
+            var commentValue = commentField && commentField.value ? commentField.value.trim() : '';
+
+            if ((!complianceSelected || !implementationSelected) && !commentValue) {
+                var focusTarget = commentField || implementationGroup.querySelector('.lv-visible-implementacion') || (obtenerCumplimientoSeleccionado(form, requirementCode) ? null : form.querySelector('.lv-visible-compliance-group[data-requirement-code="' + escapeAttributeValue(requirementCode) + '"] .lv-visible-cumplimiento'));
+                return showValidationMessage(form, 'Debe seleccionar el estado de cumplimiento/implementación o registrar una observación en la columna 14 para ' + rowLabel + '.', focusTarget);
+            }
+
+            if (implementationSelected && implementationSelected.value === 'NO_IMPLEMENTADO' && !commentValue) {
+                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para ' + rowLabel + ' cuando el estado de implementación sea No implementado.', commentField || implementationGroup.querySelector('.lv-visible-implementacion'));
+            }
+        }
+
+        var complianceGroups = form.querySelectorAll('.lv-visible-compliance-group');
+        for (var j = 0; j < complianceGroups.length; j++) {
+            var complianceGroup = complianceGroups[j];
+            var complianceSelected = complianceGroup.querySelector('.lv-visible-cumplimiento:checked');
+            var requirementCode = complianceGroup.getAttribute('data-requirement-code') || ('requisito ' + (j + 1));
+            if (complianceSelected && complianceSelected.value === 'NO_SATISFACTORIO' && !requisitoTieneComentario(form, requirementCode)) {
+                var requirementRows = obtenerComentariosRequisito(form, requirementCode);
+                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para el requisito ' + requirementCode + ' cuando el estado de cumplimiento sea No satisfactorio.', requirementRows.length > 0 ? requirementRows[0] : complianceGroup.querySelector('.lv-visible-cumplimiento'));
+            }
+        }
+
+        clearValidationMessage(form);
+        return !requiereConfirmacion || confirm('Confirma que desea finalizar la Lista de Verificacion Operacional (LV) y generar el PDF?');
+    };
+
+    var forms = document.querySelectorAll('#bloqueListaVerificacionOperacionalEae form[action*="GuardarListaVerificacionOperacionalEae"]');
+    for (var formIndex = 0; formIndex < forms.length; formIndex++) {
+        var form = forms[formIndex];
+        if (form.getAttribute('data-lv-sync-bound') === 'true') {
+            continue;
+        }
+
+        form.setAttribute('data-lv-sync-bound', 'true');
+
+        var submitButtons = form.querySelectorAll('[data-lv-submit-action]');
+        for (var buttonIndex = 0; buttonIndex < submitButtons.length; buttonIndex++) {
+            submitButtons[buttonIndex].addEventListener('click', function () {
+                var action = this.getAttribute('data-lv-submit-action') || 'guardar';
+                form.setAttribute('data-lv-last-action', action);
+                setSubmitAction(form, action);
+            });
+        }
+
+        form.addEventListener('pointerdown', function (event) {
+            if (!event.target || !event.target.closest) {
+                return;
+            }
+
+            var choice = event.target.closest('.lv-choice');
+            var radio = choice
+                ? choice.querySelector('.lv-toggle-radio')
+                : (event.target.matches('.lv-toggle-radio') ? event.target : null);
+
+            if (radio) {
+                radio.setAttribute('data-lv-was-checked', radio.checked ? 'true' : 'false');
+            }
+        });
+
+        form.addEventListener('submit', function (event) {
+            var submitter = event && event.submitter ? event.submitter : null;
+            var action = submitter && submitter.getAttribute('data-lv-submit-action')
+                ? submitter.getAttribute('data-lv-submit-action')
+                : (form.getAttribute('data-lv-last-action') || (form.elements['lvSubmitAction'] ? form.elements['lvSubmitAction'].value : 'guardar') || 'guardar');
+
+            setSubmitAction(this, action);
+            if (!window.validarComentariosLvEae(this, action === 'finalizar')) {
+                event.preventDefault();
+            }
+        });
+
+        var toggleRadios = form.querySelectorAll('.lv-toggle-radio');
+        for (var radioIndex = 0; radioIndex < toggleRadios.length; radioIndex++) {
+            bindToggleableRadio(toggleRadios[radioIndex]);
+        }
+
+        var complianceRadios = form.querySelectorAll('.lv-visible-cumplimiento');
+        for (var c = 0; c < complianceRadios.length; c++) {
+            complianceRadios[c].addEventListener('change', function () {
+                clearValidationMessage(form);
+                var group = this.closest('.lv-visible-compliance-group');
+                syncComplianceGroup(form, group);
+            });
+        }
+
+        var implementationRadios = form.querySelectorAll('.lv-visible-implementacion');
+        for (var r = 0; r < implementationRadios.length; r++) {
+            implementationRadios[r].addEventListener('change', function () {
+                clearValidationMessage(form);
+                var group = this.closest('.lv-visible-implementation-group');
+                mirrorImplementationRows(form, group);
+                syncImplementationGroup(form, group);
+            });
+        }
+
+        var commentFields = form.querySelectorAll('.lv-visible-comentarios');
+        for (var t = 0; t < commentFields.length; t++) {
+            commentFields[t].addEventListener('input', function () {
+                clearValidationMessage(form);
+                mirrorCommentsFields(form, this);
+                syncCommentsField(form, this);
+            });
+        }
+
+        var requiredHeaderFields = form.querySelectorAll('input[required], textarea[required], select[required]');
+        for (var h = 0; h < requiredHeaderFields.length; h++) {
+            requiredHeaderFields[h].addEventListener('input', function () {
+                clearValidationMessage(form);
+            });
+
+            requiredHeaderFields[h].addEventListener('change', function () {
+                clearValidationMessage(form);
+            });
+        }
+
+        sincronizarCamposLvEae(form);
+    }
+})();
+</script>

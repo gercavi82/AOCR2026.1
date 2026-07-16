@@ -1,0 +1,252 @@
+@inherits System.Web.Mvc.WebViewPage
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using CapaPresentacion.Services
+
+@{
+    var sidebar = SidebarMenuService.BuildForView(ViewContext, ViewData, Model);
+    Func<int, string> sidebarBadgeText = value => value >= 100 ? "99+" : value.ToString();
+}
+
+<div class="aocr-sidebar-shell text-white" data-aocr-sidebar>
+    <div class="aocr-sidebar-brandbar">
+        <span class="aocr-sidebar-brandmark" aria-hidden="true">
+            <i class="fas fa-plane"></i>
+        </span>
+        <div class="aocr-sidebar-brandcopy">
+            <div class="aocr-sidebar-brandcopy__eyebrow">DGAC Ecuador</div>
+            <div class="aocr-sidebar-brandcopy__title">Sistema AOCR</div>
+        </div>
+    </div>
+
+    <div class="aocr-sidebar-userpanel">
+        <div class="aocr-sidebar-userpanel__name">@sidebar.UserName</div>
+        <div class="aocr-sidebar-userpanel__role">@sidebar.UserRoleDisplay</div>
+        @if (!string.IsNullOrWhiteSpace(sidebar.UserEmail))
+        {
+            <div class="aocr-sidebar-userpanel__meta">@sidebar.UserEmail</div>
+        }
+    </div>
+
+    <div class="aocr-sidebar-block aocr-sidebar-block--search">
+        <label class="aocr-sidebar-block__title" for="aocrSidebarSearch">Buscar</label>
+        <div class="aocr-sidebar-search">
+            <span class="aocr-sidebar-search__icon"><i class="fas fa-search"></i></span>
+            <input id="aocrSidebarSearch"
+                   type="search"
+                   class="aocr-sidebar-search__input"
+                   data-aocr-sidebar-search
+                   placeholder="Módulo o acción"
+                   autocomplete="off" />
+        </div>
+    </div>
+
+    @if (sidebar.AvailableRoleCount > 1)
+    {
+        <div class="aocr-sidebar-block">
+            <div class="aocr-sidebar-block__title">Cambio de rol</div>
+            <div class="mt-2">
+                @Html.Partial("_SeleccionarRol")
+            </div>
+        </div>
+    }
+
+    @if (sidebar.OrderStatusCard != null && sidebar.OrderStatusCard.Visible)
+    {
+        <div class="aocr-sidebar-status aocr-sidebar-status--@sidebar.OrderStatusCard.ToneClass">
+            <span class="aocr-sidebar-status__icon"><i class="@sidebar.OrderStatusCard.IconClass"></i></span>
+            <div class="aocr-sidebar-status__body">
+                <div class="aocr-sidebar-status__title">@sidebar.OrderStatusCard.Title</div>
+                <div class="aocr-sidebar-status__text">@sidebar.OrderStatusCard.Message</div>
+                @if (!string.IsNullOrWhiteSpace(sidebar.OrderStatusCard.LinkUrl))
+                {
+                    <a class="aocr-sidebar-status__link" href="@sidebar.OrderStatusCard.LinkUrl">@sidebar.OrderStatusCard.LinkText</a>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="aocr-sidebar-block compania-contexto aocr-company-switcher">
+        <div class="aocr-sidebar-block__title aocr-sidebar-section-title">Compañía activa</div>
+        <div class="compania-name">
+            @if (!string.IsNullOrWhiteSpace(sidebar.ActiveCompanyCode))
+            {
+                <span>[@sidebar.ActiveCompanyCode] </span>
+            }
+            @sidebar.ActiveCompanyName
+        </div>
+
+        @if (sidebar.ShowCompanySelector)
+        {
+            using (Html.BeginForm("CambiarCompaniaActiva", "Account", System.Web.Mvc.FormMethod.Post, new { @class = "mt-2 mb-0" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@sidebar.ReturnUrl" />
+                <div class="input-group input-group-sm aocr-sidebar-company-form">
+                    <select name="companiaCodigo" class="form-select form-select-sm aocr-sidebar-select" required>
+                        @foreach (var compania in sidebar.Companias)
+                        {
+                            <option value="@compania.Code" @(compania.Selected ? "selected" : null)>[@compania.Code] @compania.Name</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn btn-outline-info">Cambiar</button>
+                </div>
+            }
+        }
+    </div>
+
+    @if (sidebar.QuickActions.Any())
+    {
+        <div class="aocr-sidebar-block aocr-sidebar-quick-panel">
+            <div class="aocr-section-title aocr-sidebar-section-title aocr-quick-actions-title">Acciones rápidas</div>
+            <div class="aocr-quick-actions">
+                @foreach (var item in sidebar.QuickActions)
+                {
+                    if (item.Enabled)
+                    {
+                        <a href="@item.Url" class="aocr-quick-action @(item.IsActive ? "is-active" : string.Empty)" title="@item.Title">
+                            <span class="aocr-quick-icon"><i class="@item.IconClass"></i></span>
+                            <span class="aocr-quick-text">
+                                <span class="aocr-quick-title">@item.Title</span>
+                            </span>
+                            @if (item.ShowBadge)
+                            {
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
+                            }
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="aocr-quick-action is-disabled" data-bs-toggle="tooltip" title="@item.Tooltip">
+                            <span class="aocr-quick-icon"><i class="@item.IconClass"></i></span>
+                            <span class="aocr-quick-text">
+                                <span class="aocr-quick-title">@item.Title</span>
+                            </span>
+                            @if (item.ShowBadge)
+                            {
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
+                            }
+                        </span>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+    <nav class="aocr-sidebar-nav" aria-label="Navegación principal AOCR">
+        <div class="aocr-sidebar-block__title">Módulos principales</div>
+
+        @if (!sidebar.HasNavigation)
+        {
+            <div class="aocr-sidebar-empty-state">
+                <div class="aocr-sidebar-empty-state__icon">
+                    <i class="fas fa-circle-info text-info"></i>
+                </div>
+                <div class="aocr-sidebar-empty-state__title">@sidebar.EmptyStateTitle</div>
+                <div class="aocr-sidebar-empty-state__copy">@sidebar.EmptyStateMessage</div>
+            </div>
+        }
+        else
+        {
+            <ul class="aocr-main-menu">
+                @foreach (var group in sidebar.Groups)
+                {
+                    var visibleItems = group.Items.Where(i => i.Visible).ToList();
+                    var groupSearchText = string.Join(" ", visibleItems.Select(i => i.Title ?? string.Empty));
+                    <li class="aocr-menu-item has-submenu accent-@group.AccentClass @(group.Expanded ? "is-current is-open" : string.Empty)"
+                        data-aocr-menu-item
+                        data-search-text="@group.Title @groupSearchText">
+                        <button type="button"
+                            class="aocr-menu-toggle aocr-menu-link @(group.Expanded ? "is-active is-open" : string.Empty)"
+                            data-menu-toggle
+                            data-title="@group.Title"
+                            data-subtitle="@group.Description"
+                            aria-expanded="@(group.Expanded ? "true" : "false")"
+                            aria-controls="@group.CollapseId">
+                            <span class="aocr-menu-icon"><i class="@group.IconClass"></i></span>
+                            <span class="aocr-menu-title">@group.Title</span>
+                            @if (group.ShowBadge)
+                            {
+                                <span class="aocr-menu-badge">@sidebarBadgeText(group.BadgeCount)</span>
+                            }
+                            <span class="aocr-menu-arrow" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>
+                        </button>
+
+                        <ul class="aocr-submenu @(group.Expanded ? "is-open" : string.Empty)"
+                            id="@group.CollapseId"
+                            role="menu"
+                            aria-hidden="@(group.Expanded ? "false" : "true")">
+                            @foreach (var item in visibleItems)
+                            {
+                                if (item.Enabled)
+                                {
+                                    <li class="aocr-submenu-item" role="none">
+                                        <a class="aocr-submenu-link aocr-subnav-link @(item.IsActive ? "active" : string.Empty) @item.CssClass"
+                                           href="@item.Url"
+                                           role="menuitem"
+                                           title="@item.Title">
+                                            <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
+                                            <span class="aocr-subnav-link-copy">
+                                                <strong>@item.Title</strong>
+                                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                {
+                                                    <small>@item.Description</small>
+                                                }
+                                            </span>
+                                            @if (item.ShowBadge)
+                                            {
+                                                <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
+                                            }
+                                        </a>
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li class="aocr-submenu-item" role="none">
+                                        <span class="aocr-submenu-link aocr-subnav-link is-disabled @item.CssClass"
+                                              role="menuitem"
+                                              aria-disabled="true"
+                                              data-bs-toggle="tooltip"
+                                              title="@item.Tooltip">
+                                            <span class="aocr-subnav-link-icon"><i class="@item.IconClass"></i></span>
+                                            <span class="aocr-subnav-link-copy">
+                                                <strong>@item.Title</strong>
+                                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                {
+                                                    <small>@item.Description</small>
+                                                }
+                                            </span>
+                                            @if (item.ShowBadge)
+                                            {
+                                                <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
+                                            }
+                                        </span>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </li>
+                }
+            </ul>
+        }
+    </nav>
+
+    @if (sidebar.FooterItems.Any(i => i.Visible))
+    {
+        <div class="aocr-sidebar-footer mt-auto">
+            <div class="aocr-sidebar-block__title">Atajos</div>
+            <ul class="aocr-sidebar-footer-list">
+                @foreach (var item in sidebar.FooterItems.Where(i => i.Visible))
+                {
+                    <li>
+                        <a class="aocr-footer-link @item.CssClass" href="@item.Url" title="@item.Title">
+                            <span class="aocr-footer-link__icon"><i class="@item.IconClass"></i></span>
+                            <span class="aocr-footer-link__label">@item.Title</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</div>

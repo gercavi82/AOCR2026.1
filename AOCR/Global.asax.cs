@@ -12,6 +12,9 @@ namespace AOCR
     {
         protected void Application_Start()
         {
+            // Inyectar configuración desde variables de entorno sobreescribiendo ConfigurationManager
+
+            AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);

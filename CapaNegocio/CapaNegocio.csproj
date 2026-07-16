@@ -223,6 +223,7 @@
     <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Services\ResultadoOperacion.cs" />
     <Compile Include="Services\SecureConfigurationService.cs" />
+    <Compile Include="Services\EnvironmentConfigInjector.cs" />
     <Compile Include="Services\TecnicoService.cs" />
     <Compile Include="Services\TramiteService.cs" />
     <Compile Include="SolicitudAOCRBL.cs" />

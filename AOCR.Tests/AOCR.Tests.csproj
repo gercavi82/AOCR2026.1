@@ -73,6 +73,7 @@
     <Compile Include="Unit\OperationalFlowCharacterizationTests.cs" />
     <Compile Include="Unit\DocumentoSubsanacionTests.cs" />
     <Compile Include="Unit\AocrCompaniaContextServiceTests.cs" />
+    <Compile Include="Unit\EnvironmentConfigInjectorTests.cs" />
     <Compile Include="Unit\PdfGeneratorTests.cs" />
     <Compile Include="Unit\AocrModificationNuevoAeropuertoTests.cs" />
     <Compile Include="Unit\FinancialOrderStateHelperTests.cs" />

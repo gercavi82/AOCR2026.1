@@ -2,14 +2,14 @@ using CapaDatos.Constants;
 using CapaNegocio.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Npgsql;
+using System;
 
 namespace AOCR.Tests.Integration
 {
     [TestClass]
     public class FinancieroAprobacionPagoIntegrationTest
     {
-        private const string ConnectionString =
-            "Host=172.20.16.55;Port=5432;Database=dgac_des;Username=root;Password=control;Timeout=15;Command Timeout=120;";
+        private const string ConnectionString = "Host=172.20.16.55;Port=5432;Database=dgac_des;Username=root;Timeout=15;Command Timeout=120;";
 
         [TestMethod]
         [TestCategory("Integration")]

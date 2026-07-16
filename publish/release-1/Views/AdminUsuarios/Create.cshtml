@@ -1,0 +1,120 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Administracion - Crear usuario";
+}
+
+<h2>Crear usuario</h2>
+<p class="text-muted">Registre un usuario AOCR y asigne sus roles iniciales.</p>
+
+<div class="card mb-3 border-primary">
+    <div class="card-header bg-white">
+        <strong>Usuarios genéricos por perfil</strong>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">Prepare cuentas genéricas para iniciar sesión por perfil. Si la cuenta ya existe, el sistema la reactiva, reasigna su rol base y genera una nueva contraseña temporal.</p>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "administrador")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Administrador</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_ADMIN</span>
+                        <span class="text-muted small mb-3">Acceso completo al módulo administrativo.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "solicitante")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Solicitante / RT</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_SOLICITANTE</span>
+                        <span class="text-muted small mb-3">Pruebas de flujo externo y navegación de solicitante.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "inspector")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Inspector / Técnico</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_INSPECTOR</span>
+                        <span class="text-muted small mb-3">Bandejas técnicas, inspecciones y seguimiento operativo.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "direccion")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Dirección / Jefatura</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_DIRECCION</span>
+                        <span class="text-muted small mb-3">Validación directiva, jefatura y revisión ejecutiva.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "financiero")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Financiero</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_FINANCIERO</span>
+                        <span class="text-muted small mb-3">Aprobación, verificación y gestión financiera.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-4 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "coordinacion")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>Coordinación</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_COORDINACION</span>
+                        <span class="text-muted small mb-3">Coordinación operativa, legal e inspecciones.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    El usuario se guarda localmente en AOCR aunque no tenga vinculacion con fuentes externas o catalogos institucionales.
+</div>
+
+@using (Html.BeginForm("Create", "AdminUsuarios", FormMethod.Post, new { autocomplete = "off" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+    @Html.Partial("_UserForm", Model, new ViewDataDictionary { { "EsEdicion", false } })
+
+    <div class="d-flex justify-content-end mt-3">
+        <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Cancelar</a>
+        <button type="submit" class="btn btn-success">Guardar usuario</button>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/Scripts/admin-usuarios.js"></script>
+}

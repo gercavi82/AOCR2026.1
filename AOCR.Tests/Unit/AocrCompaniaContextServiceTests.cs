@@ -55,8 +55,8 @@ namespace AOCR.Tests.Unit
                 Compania = "Otra compañía"
             };
 
-            Assert.IsTrue(_service.OrdenPerteneceACompania(orden, "LAN", null, 45));
-            Assert.IsFalse(_service.OrdenPerteneceACompania(orden, "AAA", null, 45));
+            Assert.IsTrue(_service.OrdenPerteneceACompania(orden, "LAN", null, 0));
+            Assert.IsFalse(_service.OrdenPerteneceACompania(orden, "AAA", null, 0));
         }
 
         [TestMethod]
