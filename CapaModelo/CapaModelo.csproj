@@ -50,6 +50,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AocrFirmaDocumento.cs" />
+    <Compile Include="FirmaDocumentoRequest.cs" />
+    <Compile Include="FirmaDocumentoResultado.cs" />
     <Compile Include="AocrDocumentoGenerado.cs" />
     <Compile Include="AocrFirmaPosicionDocumento.cs" />
     <Compile Include="Auditoria.cs" />

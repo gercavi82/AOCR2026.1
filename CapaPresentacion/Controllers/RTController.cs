@@ -7,6 +7,7 @@ using CapaModelo.RT;
 using CapaModelo.RT.ViewModels;
 using CapaNegocio.Services;
 using CapaNegocio.Helpers;
+using CapaNegocio.Interfaces;
 using CapaDatos.DAOs;
 using CapaNegocio;
 using iTextSharp.text;
@@ -23,17 +24,21 @@ namespace CapaPresentacion.Controllers
         private const int MAX_SUBSANACION_BYTES = 10 * 1024 * 1024;
         private readonly RTService _service = new RTService();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
+        private readonly IUsuarioContextoService _usuarioContexto;
 
-        private bool TryObtenerUsuarioActualId(out int usuarioId){usuarioId=ObtenerUsuarioId();return usuarioId>0;}
+        public RTController()
+        {
+            _usuarioContexto = DependencyResolver.Current.GetService<IUsuarioContextoService>() 
+                ?? new UsuarioContextoService();
+        }
+
+        private bool TryObtenerUsuarioActualId(out int usuarioId) { usuarioId = ObtenerUsuarioId(); return usuarioId > 0; }
         private bool EsPropietarioSolicitud(CapaModelo.SolicitudAOCR solicitud,int usuarioId){return solicitud!=null&&usuarioId>0&&(solicitud.CodigoUsuario==usuarioId||solicitud.UsuarioId==usuarioId||User.IsInRole(ROL_ADMIN));}
 
         private int ObtenerUsuarioId()
         {
-            var v = Session["UserId"] ?? Session["IdUsuario"] ?? Session["CodigoUsuario"];
-            if (v != null && int.TryParse(v.ToString(), out var id))
-                return id;
-
-            return 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private void CargarContextoSolicitudRt(SolicitudRTModel solicitud, int usuarioId)

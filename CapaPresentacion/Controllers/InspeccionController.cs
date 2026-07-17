@@ -100,7 +100,7 @@ namespace CapaPresentacion.Controllers
         private const string CARPETA_VIRTUAL_TEMP_PDF = "~/App_Data/TempPdf";
         private const string CARPETA_VIRTUAL_ADJUNTOS_INFORME = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Adjuntos";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
-        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
 
         public InspeccionController()
         {
@@ -127,81 +127,20 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerCodigoUsuario()
         {
-            int id;
-            if (_userContext.TryGetCodigoUsuario(Session, out id))
-            {
-                return id;
-            }
-
-            if (_userContext.TryGetUserId(Session, out id))
-            {
-                return id;
-            }
-
-            if (User != null &&
-                User.Identity != null &&
-                User.Identity.IsAuthenticated &&
-                !string.IsNullOrWhiteSpace(User.Identity.Name))
-            {
-                try
-                {
-                    var usuario = UsuarioDAO.ObtenerPorNombreUsuario(User.Identity.Name.Trim());
-                    if (usuario != null && usuario.Id > 0)
-                    {
-                        Session["UserId"] = usuario.Id;
-                        Session["IdUsuario"] = usuario.Id;
-                        Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
-                            ? usuario.CodigoUsuario.Trim()
-                            : usuario.Id.ToString(CultureInfo.InvariantCulture);
-                        Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
-                            ? usuario.NombreCompleto.Trim()
-                            : (!string.IsNullOrWhiteSpace(usuario.NombreUsuario) ? usuario.NombreUsuario.Trim() : User.Identity.Name.Trim());
-                        Session["Correo"] = !string.IsNullOrWhiteSpace(usuario.Email)
-                            ? usuario.Email.Trim()
-                            : (Session["Correo"] as string ?? string.Empty);
-
-                        if (int.TryParse(Convert.ToString(Session["CodigoUsuario"], CultureInfo.InvariantCulture), out id) && id > 0)
-                        {
-                            _logger.LogWarning("[GestionInspeccion] Sesion reconstruida desde FormsAuth. User=" + User.Identity.Name + ", CodigoUsuario=" + id + ", UserId=" + usuario.Id);
-                            return id;
-                        }
-
-                        _logger.LogWarning("[GestionInspeccion] Sesion reconstruida desde FormsAuth sin CodigoUsuario numerico. User=" + User.Identity.Name + ", UserId=" + usuario.Id);
-                        return usuario.Id;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning("[GestionInspeccion] No se pudo reconstruir sesion desde FormsAuth. User=" + User.Identity.Name + ", Error=" + ex.Message);
-                }
-            }
-
-            return 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private int ObtenerIdUsuarioActual()
         {
-            int id;
-            return _userContext.TryGetUserId(Session, out id) ? id : 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private string ObtenerCodigoUsuarioSesion()
         {
-            var codigoUsuario = Session != null ? Session["CodigoUsuario"] as string : null;
-            if (!string.IsNullOrWhiteSpace(codigoUsuario))
-            {
-                return codigoUsuario.Trim();
-            }
-
-            if (User != null &&
-                User.Identity != null &&
-                User.Identity.IsAuthenticated &&
-                !string.IsNullOrWhiteSpace(User.Identity.Name))
-            {
-                return User.Identity.Name.Trim();
-            }
-
-            return string.Empty;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.CodigoInstitucional ?? string.Empty;
         }
 
         private bool EsAdmin() => User != null && User.IsInRole(ROL_ADMIN);
@@ -9664,13 +9603,8 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerUsuarioActual()
         {
-            var usuarioSesion = Session != null ? Session["Usuario"] as string : null;
-            if (!string.IsNullOrWhiteSpace(usuarioSesion))
-            {
-                return usuarioSesion.Trim();
-            }
-
-            return _userContext.GetNombreUsuario(Session, User);
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.Nombre;
         }
 
         private string ObtenerRolActual()

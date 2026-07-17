@@ -31,6 +31,20 @@ namespace CapaNegocio.Services
             return null;
         }
 
+        private string NormalizarLogin(string login)
+        {
+            if (string.IsNullOrWhiteSpace(login)) return string.Empty;
+            login = login.Trim().ToLowerInvariant();
+            
+            int idxDomain = login.IndexOf('\\');
+            if (idxDomain >= 0) login = login.Substring(idxDomain + 1);
+
+            int idxAt = login.IndexOf('@');
+            if (idxAt > 0) login = login.Substring(0, idxAt);
+
+            return login.Trim();
+        }
+
         public UsuarioContexto ObtenerContextoActual()
         {
             var ctx = GetContext();
@@ -41,13 +55,14 @@ namespace CapaNegocio.Services
 
             var session = ctx.Session;
             var identity = ctx.User?.Identity;
-
-            var estaAutenticado = identity != null && identity.IsAuthenticated;
+            bool estaAutenticado = identity != null && identity.IsAuthenticated;
+            string loginOriginal = identity?.Name ?? string.Empty;
+            string loginNormalizado = NormalizarLogin(loginOriginal);
 
             var contexto = new UsuarioContexto
             {
                 EstaAutenticado = estaAutenticado,
-                LoginNormalizado = identity?.Name ?? string.Empty
+                LoginNormalizado = loginNormalizado
             };
 
             if (session != null)
@@ -61,13 +76,27 @@ namespace CapaNegocio.Services
 
                 // Extraer Nombre
                 var nombre = session["NombreUsuario"] as string;
-                contexto.Nombre = string.IsNullOrWhiteSpace(nombre) ? (estaAutenticado ? identity.Name : "ANONIMO") : nombre.Trim();
+                contexto.Nombre = string.IsNullOrWhiteSpace(nombre) ? (estaAutenticado ? loginNormalizado : "ANONIMO") : nombre.Trim();
+
+                // Extraer Correo
+                contexto.Correo = (session["Correo"] as string ?? string.Empty).Trim();
 
                 // Extraer Roles
                 var rol = session["Rol"] as string;
                 if (!string.IsNullOrWhiteSpace(rol))
                 {
-                    contexto.Roles.Add(rol.Trim().ToUpperInvariant());
+                    contexto.RolSeleccionado = rol.Trim().ToUpperInvariant();
+                    contexto.Roles.Add(contexto.RolSeleccionado);
+                }
+                
+                var rolesList = session["Roles"] as List<string>;
+                if (rolesList != null)
+                {
+                    foreach (var r in rolesList)
+                    {
+                        if (!contexto.Roles.Contains(r.ToUpperInvariant()))
+                            contexto.Roles.Add(r.ToUpperInvariant());
+                    }
                 }
 
                 // Extraer Compañia
@@ -75,6 +104,53 @@ namespace CapaNegocio.Services
                 if (ciaObj != null && int.TryParse(ciaObj.ToString(), out int ciaId) && ciaId > 0)
                 {
                     contexto.CompaniaActivaId = ciaId;
+                }
+            }
+
+            // Fallback a DAO si falta info vital pero estamos autenticados
+            if (estaAutenticado && (contexto.UsuarioId <= 0 || !contexto.Roles.Any() || string.IsNullOrWhiteSpace(contexto.Correo)))
+            {
+                var usrDb = CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(loginNormalizado);
+                if (usrDb != null && usrDb.Id > 0)
+                {
+                    if (contexto.UsuarioId <= 0) contexto.UsuarioId = usrDb.Id;
+                    if (string.IsNullOrWhiteSpace(contexto.Nombre)) contexto.Nombre = usrDb.NombreCompleto ?? usrDb.NombreUsuario;
+                    if (string.IsNullOrWhiteSpace(contexto.Correo)) contexto.Correo = usrDb.Email;
+                    
+                    var dbRoles = CapaDatos.DAOs.UsuarioDAO.ObtenerRoles(usrDb.Id);
+                    foreach (var r in dbRoles)
+                    {
+                        string rUpper = r.ToUpperInvariant();
+                        if (!contexto.Roles.Contains(rUpper))
+                        {
+                            contexto.Roles.Add(rUpper);
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(contexto.RolSeleccionado) && contexto.Roles.Any())
+                    {
+                        contexto.RolSeleccionado = contexto.Roles.First();
+                    }
+
+                    contexto.CodigoInstitucional = usrDb.CodigoUsuario;
+                    contexto.IdentificadorInstitucional = usrDb.Ruc ?? usrDb.CodigoUsuario;
+
+                    // Poblar la sesión si era nula o le faltaba info (para evitar consultas futuras repetidas en la misma sesión si es WebForms/MVC tradicional)
+                    if (session != null && session["UserId"] == null)
+                    {
+                        session["UserId"] = contexto.UsuarioId;
+                        session["IdUsuario"] = contexto.UsuarioId;
+                        session["CodigoUsuario"] = contexto.UsuarioId;
+                        session["NombreUsuario"] = contexto.Nombre;
+                        session["Correo"] = contexto.Correo;
+                        session["Rol"] = contexto.RolSeleccionado;
+                        session["Roles"] = contexto.Roles;
+                    }
+                }
+                else
+                {
+                    // Usuario no encontrado en BD. Podría ser un error de estado.
+                    contexto.EstaAutenticado = false; 
                 }
             }
 

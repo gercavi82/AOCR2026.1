@@ -34,6 +34,7 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class SolicitudAOCRController : Controller
     {
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
         private readonly SolicitudBL _solicitudBL = new SolicitudBL();
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
@@ -7889,168 +7890,9 @@ namespace CapaPresentacion.Controllers
 
         private bool TryObtenerUsuarioActualId(out int idUsuario)
         {
-            idUsuario = 0;
-
-            var idSesion = Session["IdUsuario"] ?? Session["UserId"];
-            if (idSesion != null && int.TryParse(idSesion.ToString(), out idUsuario) && idUsuario > 0)
-            {
-                Session["IdUsuario"] = idUsuario;
-                Session["UserId"] = idUsuario;
-                return true;
-            }
-
-            if (Session["CodigoUsuario"] != null)
-            {
-                var codigoSesion = Session["CodigoUsuario"].ToString();
-                if (int.TryParse(codigoSesion, out idUsuario) && idUsuario > 0)
-                {
-                    Session["IdUsuario"] = idUsuario;
-                    Session["UserId"] = idUsuario;
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(codigoSesion))
-                {
-                    Usuario usuarioPorCodigo;
-                    if (TryResolverUsuarioPorLogin(codigoSesion, out usuarioPorCodigo))
-                    {
-                        SincronizarSesionUsuario(usuarioPorCodigo, codigoSesion);
-                        idUsuario = usuarioPorCodigo.Id;
-                        return true;
-                    }
-                }
-            }
-
-            try
-            {
-                if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
-                {
-                    var identidades = new List<string>
-                    {
-                        User.Identity.Name
-                    };
-
-                    if (HttpContext != null && HttpContext.User != null && HttpContext.User.Identity != null)
-                    {
-                        identidades.Add(HttpContext.User.Identity.Name);
-                    }
-
-                    if (Request != null && Request.LogonUserIdentity != null)
-                    {
-                        identidades.Add(Request.LogonUserIdentity.Name);
-                    }
-
-                    foreach (var identidad in identidades.Where(x => !string.IsNullOrWhiteSpace(x)))
-                    {
-                        Usuario usuarioPorIdentidad;
-                        if (TryResolverUsuarioPorLogin(identidad, out usuarioPorIdentidad))
-                        {
-                            SincronizarSesionUsuario(usuarioPorIdentidad, identidad);
-                            idUsuario = usuarioPorIdentidad.Id;
-                            return true;
-                        }
-                    }
-                }
-            }
-            catch (Exception exIdentity)
-            {
-                System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error resolviendo ID de usuario desde Identity.Name: " + exIdentity.Message);
-            }
-
-            return false;
-        }
-
-        private bool TryResolverUsuarioPorLogin(string loginInput, out Usuario usuario)
-        {
-            usuario = null;
-            var candidatos = ExpandirCandidatosLogin(loginInput);
-
-            foreach (var candidato in candidatos)
-            {
-                try
-                {
-                    usuario = UsuarioDAO.ObtenerPorNombreUsuario(candidato);
-                    if (usuario != null && usuario.Id > 0)
-                    {
-                        return true;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error resolviendo usuario por login '" + candidato + "': " + ex.Message);
-                }
-            }
-
-            return false;
-        }
-
-        private static List<string> ExpandirCandidatosLogin(string valor)
-        {
-            var candidatos = new List<string>();
-            var bruto = (valor ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(bruto))
-            {
-                return candidatos;
-            }
-
-            candidatos.Add(bruto);
-
-            if (bruto.Contains("\\"))
-            {
-                var afterSlash = bruto.Substring(bruto.LastIndexOf("\\", StringComparison.Ordinal) + 1).Trim();
-                if (!string.IsNullOrWhiteSpace(afterSlash))
-                {
-                    candidatos.Add(afterSlash);
-                }
-            }
-
-            if (bruto.Contains("/"))
-            {
-                var afterForwardSlash = bruto.Substring(bruto.LastIndexOf("/", StringComparison.Ordinal) + 1).Trim();
-                if (!string.IsNullOrWhiteSpace(afterForwardSlash))
-                {
-                    candidatos.Add(afterForwardSlash);
-                }
-            }
-
-            if (bruto.Contains("@"))
-            {
-                var localPart = bruto.Split('@')[0].Trim();
-                if (!string.IsNullOrWhiteSpace(localPart))
-                {
-                    candidatos.Add(localPart);
-                }
-            }
-
-            return candidatos
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-
-        private void SincronizarSesionUsuario(Usuario usuario, string loginFallback)
-        {
-            if (usuario == null || usuario.Id <= 0)
-            {
-                return;
-            }
-
-            Session["IdUsuario"] = usuario.Id;
-            Session["UserId"] = usuario.Id;
-            Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
-                ? usuario.CodigoUsuario.Trim()
-                : (loginFallback ?? string.Empty).Trim();
-
-            if (Session["NombreUsuario"] == null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
-            {
-                Session["NombreUsuario"] = usuario.NombreCompleto.Trim();
-            }
-
-            if (Session["Correo"] == null && !string.IsNullOrWhiteSpace(usuario.Email))
-            {
-                Session["Correo"] = usuario.Email.Trim();
-            }
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            idUsuario = ctx.UsuarioId;
+            return ctx.EstaAutenticado && idUsuario > 0;
         }
 
         private int ObtenerUsuarioActualId()

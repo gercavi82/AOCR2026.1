@@ -24,6 +24,8 @@ namespace CapaPresentacion.Controllers
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly AocrProcesoNotificacionService _procesoNotificacionService = new AocrProcesoNotificacionService();
         private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
+        private readonly CapaNegocio.Interfaces.IDocumentoFirmaService _firmaService = new CapaNegocio.Services.DocumentoFirmaService();
+        private readonly CapaNegocio.Interfaces.IFinalizacionInstitucionalService _finalizacionInstService = new CapaNegocio.Services.FinalizacionInstitucionalService();
 
         private FirmaAocrStorageService StorageService
         {
@@ -276,9 +278,18 @@ namespace CapaPresentacion.Controllers
                     return JsonError(400, "Solicitud AOCR invalida.", id);
                 }
 
-                if (!_authorizationService.UsuarioPuedeEntrar(User))
+                // 1. Validar Roles mediante IDocumentoFirmaService (GATE 7)
+                var validacionFirma = _firmaService.Firmar(new CapaModelo.FirmaDocumentoRequest
                 {
-                    return JsonError(403, "Solo Direccion / DIRDAC puede firmar el AOCR final.", id);
+                    SolicitudId = id,
+                    TipoDocumento = tipoDocumento,
+                    UsuarioId = ObtenerUsuarioActualId(),
+                    RolSolicitado = ObtenerRolActual()
+                });
+                
+                if (!validacionFirma.Exitoso)
+                {
+                    return JsonError(403, validacionFirma.Mensaje, id);
                 }
 
                 var workflow = WorkflowService;
@@ -384,37 +395,33 @@ namespace CapaPresentacion.Controllers
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][DB_UPDATE] SolicitudId=" + id + "; EstadoAocrNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][DB_UPDATE] SolicitudId=" + id + "; EstadoAnterior=" + (contexto.Solicitud.Estado ?? string.Empty) + "; EstadoNuevo=AOCR_FIRMADO_DIRDAC; FilasAfectadas=1");
 
-                var finalizacion = _finalizacionService.LiberarDocumentoFinal(id, ObtenerUsuarioActualId(), StorageService.Existe);
-                ActualizarEstadoCentralSeguro(contexto, tipoDocumento, finalizacion);
-                var estadoSolicitudNuevo = finalizacion != null && !string.IsNullOrWhiteSpace(finalizacion.EstadoNuevo)
-                    ? finalizacion.EstadoNuevo
-                    : contexto.Solicitud.Estado;
-                var observacionHistorial = finalizacion != null && finalizacion.Finalizado
-                    ? "Firma institucional AOCR completa. Documento final liberado."
-                    : "Firma institucional registrada para " + tipoDocumento + ". Pendiente la firma del otro documento.";
-                _historialService.Registrar(id, contexto.Solicitud.Estado, estadoSolicitudNuevo, ObtenerUsuarioActualId(), observacionHistorial);
-                if (finalizacion != null && finalizacion.Finalizado)
+                var finalizacion = _finalizacionInstService.Finalizar(id, ObtenerUsuarioActualId(), tipoDocumento, StorageService.Existe);
+                if (!finalizacion.Exitoso)
+                {
+                    return JsonError(500, finalizacion.Mensaje, id);
+                }
+
+                var estadoSolicitudNuevo = finalizacion.EstadoSolicitudNuevo;
+                var urlDescarga = Url.Action("DescargarFirmado", "FirmaAocr", new { solicitudId = id, tipoDocumento });
+
+                if (estadoSolicitudNuevo == "FINALIZADO")
                 {
                     _notificationService.NotificarLiberacion(id, rutaFirmada);
                     _procesoNotificacionService.NotificarProcesoAocrFinalizado(id);
                 }
 
-                var urlDescarga = Url.Action("DescargarFirmado", "FirmaAocr", new { solicitudId = id, tipoDocumento });
-                Trace.TraceInformation("[FIRMA_AOCR_NUEVA][OK] SolicitudId=" + id + "; EstadoAocr=AOCR_FIRMADO_DIRDAC; UrlDescarga=" + urlDescarga);
-                Trace.TraceInformation("[FIRMA_AOCR_V2][OK] SolicitudId=" + id + "; RutaFirmada=" + rutaFirmada + "; Hash=" + (resultadoFirma.HashSha256 ?? string.Empty) + "; Bytes=" + bytesFirmado);
-
                 return Json(new
                 {
                     ok = true,
                     code = 200,
-                    message = "AOCR firmada oficialmente por Direccion / DIRDAC.",
-                    estadoAocr = "AOCR_FIRMADO_DIRDAC",
+                    message = finalizacion.Mensaje,
+                    estadoAocr = finalizacion.EstadoAocrNuevo ?? estadoSolicitudNuevo,
                     urlDescarga = urlDescarga,
                     data = new
                     {
                         solicitudId = id,
                         tipoDocumento,
-                        estadoAocr = "AOCR_FIRMADO_DIRDAC",
+                        estadoAocr = finalizacion.EstadoAocrNuevo ?? estadoSolicitudNuevo,
                         estadoSolicitud = estadoSolicitudNuevo,
                         rutaOrigen,
                         rutaFirmada,
@@ -539,7 +546,7 @@ namespace CapaPresentacion.Controllers
                 RutaDocumento = rutaFirmada,
                 HashDocumento = resultadoFirma.HashSha256,
                 TamanioPdfFirmado = bytesFirmado,
-                FirmadoPorRol = "DIRECCION_DIRDAC",
+                FirmadoPorRol = ObtenerRolActual(),
                 CodigoQr = contenidoQr,
                 SujetoCertificado = resultadoFirma.SujetoCertificado,
                 NombreFirmante = nombreFirmante,
@@ -561,7 +568,7 @@ namespace CapaPresentacion.Controllers
                 "TipoDocumento=" + FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento),
                 "SolicitudId=" + (solicitud != null ? solicitud.CodigoSolicitud.ToString() : string.Empty),
                 "NumeroSolicitud=" + (solicitud != null ? solicitud.NumeroSolicitud : string.Empty),
-                "EstadoAocr=AOCR_FIRMADO_DIRDAC",
+                "FirmadoPor=" + ObtenerRolActual(),
                 "Firmante=" + (nombreFirmante ?? string.Empty),
                 "Fecha=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 "Certificado=" + (infoCertificado != null ? infoCertificado.SujetoCertificado : string.Empty)

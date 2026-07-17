@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -21,7 +21,7 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class NotificacionController : Controller
     {
-        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly OrdenRecaudacionDAO _ordenDao = new OrdenRecaudacionDAO();
@@ -34,8 +34,8 @@ namespace CapaPresentacion.Controllers
         // ============================================
         private int ObtenerCodigoUsuario()
         {
-            int id;
-            return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
 
@@ -63,15 +63,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    }, JsonRequestBehavior.AllowGet);
-                }
 
                 var notificaciones = NotificacionBL.ObtenerNoLeidas(codigoUsuario);
                 int cantidad = NotificacionBL.ContarNoLeidas(codigoUsuario);
@@ -93,12 +86,18 @@ namespace CapaPresentacion.Controllers
                     }).ToList()
                 }, JsonRequestBehavior.AllowGet);
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al obtener notificaciones: " + ex.Message
+                    message = "Error interno del servidor"
                 }, JsonRequestBehavior.AllowGet);
             }
         }
@@ -113,15 +112,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    }, JsonRequestBehavior.AllowGet);
-                }
 
                 var notificaciones = NotificacionBL.ObtenerRecientes(codigoUsuario, cantidad);
 
@@ -142,12 +134,18 @@ namespace CapaPresentacion.Controllers
                     }).ToList()
                 }, JsonRequestBehavior.AllowGet);
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al obtener notificaciones: " + ex.Message
+                    message = "Error interno del servidor"
                 }, JsonRequestBehavior.AllowGet);
             }
         }
@@ -163,15 +161,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    });
-                }
 
                 string mensaje;
                 bool resultado = NotificacionBL.MarcarComoLeida(id, codigoUsuario, out mensaje);
@@ -182,12 +173,18 @@ namespace CapaPresentacion.Controllers
                     message = mensaje
                 });
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message });
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al marcar notificació: " + ex.Message
+                    message = "Error interno del servidor"
                 });
             }
         }
@@ -203,15 +200,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    });
-                }
 
                 string mensaje;
                 bool resultado = NotificacionBL.MarcarTodasComoLeidas(codigoUsuario, out mensaje);
@@ -222,12 +212,18 @@ namespace CapaPresentacion.Controllers
                     message = mensaje
                 });
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message });
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al marcar todas como leÃ­das: " + ex.Message
+                    message = "Error interno del servidor"
                 });
             }
         }
@@ -243,15 +239,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    });
-                }
 
                 string mensaje;
                 bool resultado = NotificacionBL.Eliminar(id, out mensaje);
@@ -262,12 +251,18 @@ namespace CapaPresentacion.Controllers
                     message = mensaje
                 });
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message });
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al eliminar notificació: " + ex.Message
+                    message = "Error interno del servidor"
                 });
             }
         }
@@ -284,15 +279,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = "Usuario no autenticado"
-                    });
-                }
 
                 string mensaje;
                 bool resultado = NotificacionBL.EliminarTodasLeidas(codigoUsuario, out mensaje);
@@ -303,12 +291,18 @@ namespace CapaPresentacion.Controllers
                     message = mensaje
                 });
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message });
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
-                    message = "Error al eliminar notificaciones: " + ex.Message
+                    message = "Error interno del servidor"
                 });
             }
         }
@@ -323,15 +317,8 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                _usuarioContexto.ValidarAutenticacion();
                 int codigoUsuario = ObtenerCodigoUsuario();
-                if (codigoUsuario == 0)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        cantidad = 0
-                    }, JsonRequestBehavior.AllowGet);
-                }
 
                 int cantidad = NotificacionBL.ContarNoLeidas(codigoUsuario);
 
@@ -341,13 +328,19 @@ namespace CapaPresentacion.Controllers
                     cantidad = cantidad
                 }, JsonRequestBehavior.AllowGet);
             }
-            catch (Exception ex)
+            catch (HttpException hex)
             {
+                Response.StatusCode = hex.GetHttpCode();
+                return Json(new { success = false, message = hex.Message, cantidad = 0 }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception)
+            {
+                Response.StatusCode = 500;
                 return Json(new
                 {
                     success = false,
                     cantidad = 0,
-                    message = ex.Message
+                    message = "Error interno del servidor"
                 }, JsonRequestBehavior.AllowGet);
             }
         }

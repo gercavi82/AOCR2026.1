@@ -26,6 +26,7 @@ namespace CapaPresentacion.Controllers
     [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DirectorCertificacionesDcav,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
     public class CoordinacionJefaturaController : Controller
     {
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly InspeccionInformeDAO _informeDao = new InspeccionInformeDAO();
@@ -4830,20 +4831,10 @@ namespace CapaPresentacion.Controllers
             _historialEstadoDao.RegistrarCambio(solicitud.CodigoSolicitud, estadoActual, estadoActual, usuarioId, observacion);
         }
 
-        private int ObtenerUsuarioActualIdSeguro()
+  private int ObtenerUsuarioActualIdSeguro()
         {
-            int usuarioId;
-            if (Session != null && Session["IdUsuario"] != null && int.TryParse(Session["IdUsuario"].ToString(), out usuarioId))
-            {
-                return usuarioId;
-            }
-
-            if (Session != null && Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out usuarioId))
-            {
-                return usuarioId;
-            }
-
-            return 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private string RegistrarErrorValidacionAocr(string operacion, Exception ex, int? solicitudId = null, int? inspeccionId = null, string tipoDocumento = null)

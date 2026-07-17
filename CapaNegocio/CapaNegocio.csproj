@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -152,6 +152,8 @@
     <Compile Include="Interfaces\IFileStorageService.cs" />
     <Compile Include="Interfaces\IOrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Interfaces\IPdfGeneratorService.cs" />
+    <Compile Include="Interfaces\IDocumentoFirmaService.cs" />
+    <Compile Include="Interfaces\IFinalizacionInstitucionalService.cs" />
     <Compile Include="OrdenRecaudacionBL.cs" />
     <Compile Include="ControlFR3BL.cs" />
     <Compile Include="Helpers\ValidacionEstadosOR.cs" />
@@ -165,6 +167,8 @@
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\PdfBrandingHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
+    <Compile Include="Services\DocumentoFirmaService.cs" />
+    <Compile Include="Services\FinalizacionInstitucionalService.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\DashboardOrdenesService.cs" />
     <Compile Include="Services\EstadoOrdenService.cs" />

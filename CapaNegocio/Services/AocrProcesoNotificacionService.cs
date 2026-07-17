@@ -91,6 +91,8 @@ namespace CapaNegocio.Services
                     return false;
                 }
 
+
+
                 Trace.TraceInformation("[NOTIF_AOCR][DESTINATARIO_RESUELTO] SolicitudId=" + solicitudId + "; TipoEvento=" + EventoFinalRt + "; Email=" + rt.Email + "; UsuarioId=" + solicitud.CodigoUsuario + ";");
 
                 var docAocr = ResolverDocumentoFirmado(solicitudId, TipoReconocimiento);
@@ -114,7 +116,10 @@ namespace CapaNegocio.Services
                 }
                 LiberarDocumentoRt(solicitudId, TipoCondiciones, docCondiciones);
 
-                var eventKey = SolicitudAocrCorreoService.BuildAocrEventKey(EventoFinalRt, solicitudId, null, null, rt.Email);
+                var vAocr = docAocr.EsValido ? docAocr.Bytes.ToString() : "0"; // Idealmente seria version, pero usamos bytes como fallback
+                var vCond = docCondiciones.EsValido ? docCondiciones.Bytes.ToString() : "0";
+                var eventKey = $"DOCUMENTOS_FINALES_RT:{solicitudId}:{vAocr}:{vCond}:{rt.Email}";
+                
                 if (_emailQueue.ExisteNotificacionAsync(EventoFinalRt, eventKey, solicitudId).GetAwaiter().GetResult())
                 {
                     Trace.TraceInformation("[NOTIF_AOCR][SKIP_DUPLICADO] SolicitudId=" + solicitudId + "; TipoEvento=" + EventoFinalRt + "; Email=" + rt.Email + ";");
@@ -140,16 +145,18 @@ namespace CapaNegocio.Services
                     FileSize = docCondiciones.Bytes
                 });
 
+                var asunto = $"AOCR y Condiciones y Limitaciones firmadas – Solicitud {NumeroSolicitud(solicitud)}";
+
                 var item = new EmailQueueItem
                 {
                     Para = rt.Email,
                     ParaNombre = rt.Nombre,
-                    Asunto = "Sistema AOCR - Proceso AOCR finalizado",
+                    Asunto = asunto,
                     Cuerpo = ConstruirCuerpoFinal(solicitud, rt.Nombre, planCierre),
                     Estado = EstadoEmail.Pendiente,
                     SolicitudId = solicitudId,
-                    TipoNotificacion = EventoFinalRt,
                     EventKey = eventKey,
+                    TipoNotificacion = EventoFinalRt,
                     CorrelationId = "AOCRFINAL-" + solicitudId,
                     EsHtml = true,
                     MaxIntentos = 5,
