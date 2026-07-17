@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using IBM.Data.DB2.iSeries;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using CapaDatos.Services;
 
 namespace CapaDatos.DAOs
 {
-    public class EmpresaAS400DAO
+    public class EmpresaAS400DAO : CapaDatos.Interfaces.IEmpresaAS400DAO
     {
         private readonly ISecureConfigurationService _configService;
         private readonly string _connectionString;
@@ -37,7 +37,7 @@ namespace CapaDatos.DAOs
                 throw new InvalidOperationException("Servidor AS400 no configurado. Verifique Web.config: AS400:Server, AS400:Database, AS400:UserId, AS400:Password");
             }
 
-            // Usar biblioteca si está configurada, sino Database
+            // Usar biblioteca si est� configurada, sino Database
             var defaultCollection = !string.IsNullOrWhiteSpace(creds.Library) ? creds.Library : creds.Database;
 
             // Formato para IBM.Data.DB2.iSeries
@@ -50,10 +50,10 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Cierra la conexión iDB2 de forma segura.
+        /// Cierra la conexi�n iDB2 de forma segura.
         /// NO se llama Dispose() porque el driver IBM.Data.DB2.iSeries tiene un bug
         /// que lanza NullReferenceException en iDB2Connection.Dispose().
-        /// Close() libera los recursos de red; el GC se encargará del objeto.
+        /// Close() libera los recursos de red; el GC se encargar� del objeto.
         /// </summary>
         private void SafeDisposeConnection(iDB2Connection conn)
         {
@@ -65,9 +65,9 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ [EmpresaAS400DAO] Error al cerrar conexión: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"?? [EmpresaAS400DAO] Error al cerrar conexi�n: {ex.Message}");
             }
-            // No llamar conn.Dispose() — bug en IBM.Data.DB2.iSeries.iDB2Connection.Dispose(Boolean)
+            // No llamar conn.Dispose() � bug en IBM.Data.DB2.iSeries.iDB2Connection.Dispose(Boolean)
         }
 
         public bool TestConnection()
@@ -81,7 +81,7 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error de conexión AS400: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Error de conexi�n AS400: " + ex.Message);
                 return false;
             }
             finally
@@ -97,11 +97,11 @@ namespace CapaDatos.DAOs
             iDB2Connection conn = null;
             try
             {
-                System.Diagnostics.Debug.WriteLine("🔍 [EmpresaAS400DAO] Iniciando consulta a CIAARC...");
+                System.Diagnostics.Debug.WriteLine("?? [EmpresaAS400DAO] Iniciando consulta a CIAARC...");
                 conn = GetConnection();
-                System.Diagnostics.Debug.WriteLine($"🔗 [EmpresaAS400DAO] Connection String: {conn.ConnectionString.Replace("Password=", "Password=***")}");
+                System.Diagnostics.Debug.WriteLine($"?? [EmpresaAS400DAO] Connection String: {conn.ConnectionString.Replace("Password=", "Password=***")}");
                 conn.Open();
-                System.Diagnostics.Debug.WriteLine("✅ [EmpresaAS400DAO] Conexión abierta exitosamente");
+                System.Diagnostics.Debug.WriteLine("? [EmpresaAS400DAO] Conexi�n abierta exitosamente");
 
                 string query = @"
                     SELECT 
@@ -113,7 +113,7 @@ namespace CapaDatos.DAOs
                     WHERE CIAEST = 'AC'
                     ORDER BY CIANOM";
 
-                System.Diagnostics.Debug.WriteLine($"📝 [EmpresaAS400DAO] Ejecutando query: {query}");
+                System.Diagnostics.Debug.WriteLine($"?? [EmpresaAS400DAO] Ejecutando query: {query}");
 
                 using (var cmd = new iDB2Command(query, conn))
                 using (var reader = cmd.ExecuteReader())
@@ -129,14 +129,14 @@ namespace CapaDatos.DAOs
                         });
                     }
                 }
-                System.Diagnostics.Debug.WriteLine($"✅ [EmpresaAS400DAO] {empresas.Count} empresas activas encontradas");
+                System.Diagnostics.Debug.WriteLine($"? [EmpresaAS400DAO] {empresas.Count} empresas activas encontradas");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] ERROR: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] Tipo: {ex.GetType().Name}");
-                System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] StackTrace: {ex.StackTrace}");
-                System.Diagnostics.Debug.WriteLine("⚠️ [EmpresaAS400DAO] Se devuelve lista vacia por fallback.");
+                System.Diagnostics.Debug.WriteLine($"? [EmpresaAS400DAO] ERROR: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"? [EmpresaAS400DAO] Tipo: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"? [EmpresaAS400DAO] StackTrace: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine("?? [EmpresaAS400DAO] Se devuelve lista vacia por fallback.");
             }
             finally
             {
@@ -147,7 +147,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Obtiene una empresa específica por su código OACI
+        /// Obtiene una empresa espec�fica por su c�digo OACI
         /// </summary>
         public Empresa ObtenerEmpresaPorCodigo(string codigoOaci)
         {

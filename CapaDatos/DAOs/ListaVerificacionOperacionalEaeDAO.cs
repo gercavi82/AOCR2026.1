@@ -385,7 +385,7 @@ namespace CapaDatos.DAOs
 
         private static ListaVerificacionOperacionalEae Map(NpgsqlDataReader dr)
         {
-            return new ListaVerificacionOperacionalEae
+            var m = new ListaVerificacionOperacionalEae
             {
                 CodigoListaVerificacion = GetInt(dr, "codigo_lv"),
                 CodigoInspeccion = GetInt(dr, "codigo_inspeccion"),
@@ -417,6 +417,13 @@ namespace CapaDatos.DAOs
                 UpdatedAt = GetDateTime(dr, "updated_at"),
                 UpdatedBy = GetNullableInt(dr, "updated_by")
             };
+
+            try { m.CodigoListaAnterior = GetNullableInt(dr, "codigo_lista_anterior"); } catch { }
+            try { m.CodigoNoConformidadOrigen = GetNullableInt(dr, "codigo_no_conformidad_origen"); } catch { }
+            try { m.CicloEvaluacion = GetInt(dr, "ciclo_evaluacion"); } catch { }
+            try { m.EsReevaluacion = GetBool(dr, "es_reevaluacion"); } catch { }
+
+            return m;
         }
 
         private static void Bind(NpgsqlCommand cmd, ListaVerificacionOperacionalEae lista, int usuarioId)

@@ -43,7 +43,8 @@ namespace CapaNegocio.Services
                 EnFase = inspecciones.Count(ins => EsEstadoEnFase(ins.Estado)),
                 Observadas = inspecciones.Count(ins => EsEstadoObservada(ins.Estado)),
                 Finalizadas = inspecciones.Count(ins => EsEstadoFinalizada(ins.Estado)),
-                RevisionDocumental = ContarRevisionDocumentalPendiente(context)
+                RevisionDocumental = ContarRevisionDocumentalPendiente(context),
+                EmisionAocrCondiciones = inspecciones.Count(ins => EsEstadoEmisionAocr(ins.Estado))
             };
         }
 
@@ -181,6 +182,13 @@ namespace CapaNegocio.Services
             return string.Equals(normalized, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalized, EstadosInspeccion.CERRADA, StringComparison.OrdinalIgnoreCase);
         }
+
+        private static bool EsEstadoEmisionAocr(string estado)
+        {
+            var normalized = EstadosInspeccion.NormalizarEstado(estado);
+            return string.Equals(normalized, AocrEstadosProceso.InformeTecnicoAprobadoDcav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "EMISION_AOCR_CONDICIONES", StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     public sealed class InspectorBandejaContadores
@@ -191,5 +199,6 @@ namespace CapaNegocio.Services
         public int Observadas { get; set; }
         public int Finalizadas { get; set; }
         public int RevisionDocumental { get; set; }
+        public int EmisionAocrCondiciones { get; set; }
     }
 }

@@ -28,8 +28,8 @@ namespace CapaNegocio.Services
         private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly IEmailQueueService _emailQueueService;
 
-        public DocumentoSubsanacionService()
-            : this(new RevisionDocumentalService(), new EmailQueueService())
+        public DocumentoSubsanacionService(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
+            : this(new RevisionDocumentalService(usuarioAs400Dao, empresaAs400Dao), new EmailQueueService())
         {
         }
 

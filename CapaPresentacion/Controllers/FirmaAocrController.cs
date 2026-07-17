@@ -23,6 +23,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaAocrNotificationService _notificationService = new FirmaAocrNotificationService();
         private readonly AocrFirmaDocumentoDAO _firmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly AocrProcesoNotificacionService _procesoNotificacionService = new AocrProcesoNotificacionService();
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
 
         private FirmaAocrStorageService StorageService
         {
@@ -689,33 +690,14 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerUsuarioActualId()
         {
-            object valor = Session != null ? (Session["IdUsuario"] ?? Session["UserId"]) : null;
-            int id;
-            if (valor != null && int.TryParse(Convert.ToString(valor), out id))
-            {
-                return id;
-            }
-
-            valor = Session != null ? Session["CodigoUsuario"] : null;
-            if (valor != null && int.TryParse(Convert.ToString(valor), out id))
-            {
-                return id;
-            }
-
-            return 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private string ObtenerUsuarioActualNombre()
         {
-            var nombreSesion = Session != null ? Convert.ToString(Session["NombreUsuario"] ?? Session["NombreCompleto"]) : null;
-            if (!string.IsNullOrWhiteSpace(nombreSesion))
-            {
-                return nombreSesion.Trim();
-            }
-
-            return User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
-                ? User.Identity.Name.Trim()
-                : "Sistema AOCR";
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.Nombre;
         }
 
         private string ObtenerRolActual()

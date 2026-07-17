@@ -18,14 +18,19 @@ namespace CapaNegocio
     /// </summary>
     public class SolicitudAocrInfraBL
     {
+        public SolicitudAocrInfraBL(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
+        {
+            _empresaAs400Dao = empresaAs400Dao ?? new EmpresaAS400DAO(new SecureConfigurationService());
+            _usuarioAs400Dao = usuarioAs400Dao ?? new UsuarioAS400DAO(new SecureConfigurationService());
+        }
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly DocumentoDAO _documentoDao = new DocumentoDAO();
         private readonly HistorialEstadoDAO _historialEstadoDao = new HistorialEstadoDAO();
         private readonly RevisionDocumentalDAO _revisionDocumentalDao = new RevisionDocumentalDAO();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
-        private readonly UsuarioAS400DAO _usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
-        private readonly EmpresaAS400DAO _empresaAs400Dao = new EmpresaAS400DAO(new SecureConfigurationService());
+        private readonly CapaDatos.Interfaces.IUsuarioAS400DAO _usuarioAs400Dao;
+        private readonly CapaDatos.Interfaces.IEmpresaAS400DAO _empresaAs400Dao;
         private readonly MirrorReadService _mirrorReadService = new MirrorReadService();
         private readonly TrazabilidadDAO _trazabilidadDao = new TrazabilidadDAO();
 

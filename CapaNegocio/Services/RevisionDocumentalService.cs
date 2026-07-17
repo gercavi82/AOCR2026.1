@@ -60,9 +60,9 @@ namespace CapaNegocio.Services
         private readonly SolicitudAOCRDAO _solicitudDao;
         private readonly AocrPostPagoWorkflowService _postPagoWorkflowService;
 
-        public RevisionDocumentalService()
+        public RevisionDocumentalService(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
         {
-            _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
+            _solicitudAocrInfraBL = new SolicitudAocrInfraBL(usuarioAs400Dao, empresaAs400Dao);
             _solicitudDao = new SolicitudAOCRDAO();
             _postPagoWorkflowService = new AocrPostPagoWorkflowService();
         }

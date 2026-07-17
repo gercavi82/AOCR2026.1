@@ -24,6 +24,21 @@ namespace AOCR.Tests.Integration
     [TestClass]
     public class SubsanacionDocumentalFlujoIntegracionTests
     {
+    public class FakeUsuarioAS400DAO : CapaDatos.Interfaces.IUsuarioAS400DAO
+    {
+        public string ObtenerCodigoCiudadPorCodigoUsuario(string codigoUsuario) => "UIO";
+        public CapaDatos.Models.UsuarioInternoAs400Info ObtenerDatosUsuarioInterno(string codigoUsuario) => new CapaDatos.Models.UsuarioInternoAs400Info();
+        public string ObtenerNumeroRucPorCodigoUsuario(string codigoUsuario) => "1790000000001";
+        public string ObtenerCedulaPorCodigoUsuario(string codigoUsuario) => "1700000000";
+        public bool UpsertUsuarioCompleto(CapaDatos.Models.UsuarioAs400Record record, out string error) { error = null; return true; }
+    }
+
+    public class FakeEmpresaAS400DAO : CapaDatos.Interfaces.IEmpresaAS400DAO
+    {
+        public bool TestConnection() => true;
+        public System.Collections.Generic.List<CapaDatos.DAOs.Empresa> ObtenerEmpresas() => new System.Collections.Generic.List<CapaDatos.DAOs.Empresa>();
+        public CapaDatos.DAOs.Empresa ObtenerEmpresaPorCodigo(string codigoOaci) => new CapaDatos.DAOs.Empresa { CodigoOaci = codigoOaci };
+    }
         private const int UsuarioRtId = 45;
         private const string InspectorCedula = "1709565459";
         private const string InspectorUsuarioId = "43";
@@ -87,9 +102,11 @@ namespace AOCR.Tests.Integration
 
             var solicitudDao = new SolicitudAOCRDAO();
             var documentoDao = new DocumentoDAO();
-            var infra = new SolicitudAocrInfraBL();
-            var revisionService = new RevisionDocumentalService();
-            var subsanacionService = new DocumentoSubsanacionService();
+            var fakeUsuarioDao = new FakeUsuarioAS400DAO();
+            var fakeEmpresaDao = new FakeEmpresaAS400DAO();
+            var infra = new SolicitudAocrInfraBL(fakeUsuarioDao, fakeEmpresaDao);
+            var revisionService = new RevisionDocumentalService(fakeUsuarioDao, fakeEmpresaDao);
+            var subsanacionService = new DocumentoSubsanacionService(fakeUsuarioDao, fakeEmpresaDao);
             var transitionBl = new SolicitudEstadoTransitionBL();
 
             int solicitudId = 0;

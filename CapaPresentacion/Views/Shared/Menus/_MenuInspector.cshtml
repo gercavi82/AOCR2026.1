@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
 @using System
 
 @{
@@ -75,6 +75,15 @@
                         <span class="aocr-sidebar-item__content">
                             <span class="aocr-sidebar-item__title">Hallazgos, resultados y subsanaciones</span>
                             <span class="aocr-sidebar-item__meta">El informe técnico, firma y no conformidades se gestionan desde el detalle de inspección.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("Inspeccion", "PendientesEmisionAocr") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("PendientesEmisionAocr", "Inspeccion")">
+                        <i class="fas fa-file-signature text-success mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Emisión AOCR y Condiciones</span>
+                            <span class="aocr-sidebar-item__meta">Redactar especificaciones y generar AOCR.</span>
                         </span>
                     </a>
                 </li>

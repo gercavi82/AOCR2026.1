@@ -9698,5 +9698,123 @@ namespace CapaPresentacion.Controllers
 
             return roles.Count == 0 ? "SIN_ROL_DETECTADO" : string.Join(",", roles);
         }
+
+        // =====================================================================
+        // GATE 4: BANDEJA EMISION AOCR Y CONDICIONES (INSPECTOR)
+        // =====================================================================
+
+        [HttpGet]
+        public ActionResult PendientesEmisionAocr()
+        {
+            var inspectorIds = ObtenerIdsInspectorActual().Where(id => id > 0).ToList();
+            var inspeccionesAsignadas = inspectorIds
+                .SelectMany(id => _inspeccionBL.ListarPorInspector(id) ?? new List<Inspeccion>())
+                .GroupBy(ins => ins.CodigoInspeccion)
+                .Select(group => group.OrderByDescending(ins => ins.UpdatedAt ?? DateTime.MinValue).First())
+                .ToList();
+            
+            var filtradas = inspeccionesAsignadas.Where(i => 
+                string.Equals(EstadosInspeccion.NormalizarEstado(i.Estado), AocrEstadosProceso.InformeTecnicoAprobadoDcav, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(EstadosInspeccion.NormalizarEstado(i.Estado), "EMISION_AOCR_CONDICIONES", StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+
+            var modelo = new PendienteEmisionAocrViewModel();
+            var documentoDao = new DocumentoDAO();
+            
+            foreach(var ins in filtradas)
+            {
+                var doc = documentoDao.ObtenerPorSolicitud(ins.CodigoSolicitud).FirstOrDefault(d => d.TipoDocumento == "CONDICIONES_OPERACION_BORRADOR");
+                bool redactadas = doc != null && !string.IsNullOrWhiteSpace(doc.RutaGuardada);
+                
+                var item = new PendienteEmisionAocrItemViewModel
+                {
+                    InspeccionId = ins.CodigoInspeccion,
+                    SolicitudId = ins.CodigoSolicitud,
+                    CompaniaRuc = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.Ruc ?? "",
+                    CompaniaNombre = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.RazonSocial ?? "",
+                    TramiteAocr = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.NumeroSolicitud ?? "",
+                    FechaAsignacion = ins.CreatedAt ?? DateTime.Now,
+                    EstadoNormalizado = "EMISIÓN AOCR Y CONDICIONES",
+                    CondicionesRedactadas = redactadas,
+                    PuedeGenerarAocr = true,
+                    MotivoBloqueoAocr = "Debe redactar las Especificaciones antes de generar AOCR."
+                };
+                modelo.Inspecciones.Add(item);
+            }
+            
+            return View(modelo);
+        }
+
+        [HttpGet]
+        public ActionResult RedactarEspecificaciones(int inspeccionId)
+        {
+            var inspeccion = _inspeccionBL.ObtenerPorId(inspeccionId);
+            if (inspeccion == null) return HttpNotFound();
+            
+            var documentoDao = new DocumentoDAO();
+            var doc = documentoDao.ObtenerPorSolicitud(inspeccion.CodigoSolicitud).FirstOrDefault(d => d.TipoDocumento == "CONDICIONES_OPERACION_BORRADOR");
+            
+            string contenidoBase64 = "";
+            if (doc != null && !string.IsNullOrWhiteSpace(doc.RutaGuardada))
+            {
+                try {
+                    if (System.IO.File.Exists(doc.RutaGuardada)) {
+                        var texto = System.IO.File.ReadAllText(doc.RutaGuardada, System.Text.Encoding.UTF8);
+                        contenidoBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(texto));
+                    }
+                } catch { }
+            }
+            
+            ViewBag.InspeccionId = inspeccionId;
+            ViewBag.ContenidoBase64 = contenidoBase64;
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult GuardarEspecificaciones(int inspeccionId, string ContenidoBase64)
+        {
+            var inspeccion = _inspeccionBL.ObtenerPorId(inspeccionId);
+            if (inspeccion == null) return HttpNotFound();
+            
+            string textoHtml = "";
+            if (!string.IsNullOrWhiteSpace(ContenidoBase64))
+            {
+                try {
+                    var bytes = Convert.FromBase64String(ContenidoBase64);
+                    textoHtml = System.Text.Encoding.UTF8.GetString(bytes);
+                } catch { }
+            }
+            
+            var carpeta = Server.MapPath("~/App_Data/Borradores");
+            if (!System.IO.Directory.Exists(carpeta)) System.IO.Directory.CreateDirectory(carpeta);
+            
+            var rutaArchivo = System.IO.Path.Combine(carpeta, "BorradorCondiciones_" + inspeccion.CodigoSolicitud + ".txt");
+            System.IO.File.WriteAllText(rutaArchivo, textoHtml, System.Text.Encoding.UTF8);
+            
+            var documentoDao = new DocumentoDAO();
+            var docExistente = documentoDao.ObtenerPorSolicitud(inspeccion.CodigoSolicitud).FirstOrDefault(d => d.TipoDocumento == "CONDICIONES_OPERACION_BORRADOR");
+            
+            if (docExistente != null)
+            {
+                docExistente.RutaGuardada = rutaArchivo;
+                documentoDao.Actualizar(docExistente);
+            }
+            else
+            {
+                var nuevoDoc = new CapaModelo.Documento
+                {
+                    CodigoSolicitud = inspeccion.CodigoSolicitud,
+                    TipoDocumento = "CONDICIONES_OPERACION_BORRADOR",
+                    RutaGuardada = rutaArchivo,
+                    NombreArchivo = "Borrador Condiciones",
+                    Extension = ".txt",
+                    Estado = "BORRADOR"
+                };
+                documentoDao.Crear(nuevoDoc);
+            }
+            
+            TempData["NotificacionExito"] = "Borrador de especificaciones guardado correctamente.";
+            return RedirectToAction("PendientesEmisionAocr");
+        }
     }
 }

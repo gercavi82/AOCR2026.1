@@ -793,6 +793,11 @@ namespace CapaDatos.DAOs
             try { m.FechaDevolucion = dr["fecha_devolucion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_devolucion"]); } catch { }
             try { m.UsuarioDevolucion = dr["usuario_devolucion"] == DBNull.Value ? null : dr["usuario_devolucion"].ToString(); } catch { }
 
+            try { m.CodigoInformeAnterior = dr["codigo_informe_anterior"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["codigo_informe_anterior"]); } catch { }
+            try { m.CodigoNoConformidadOrigen = dr["codigo_no_conformidad_origen"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["codigo_no_conformidad_origen"]); } catch { }
+            try { m.CicloEvaluacion = dr["ciclo_evaluacion"] == DBNull.Value ? 1 : Convert.ToInt32(dr["ciclo_evaluacion"]); } catch { }
+            try { m.EsReevaluacion = dr["es_reevaluacion"] != DBNull.Value && Convert.ToBoolean(dr["es_reevaluacion"]); } catch { }
+
             return m;
         }
 

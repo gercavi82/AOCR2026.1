@@ -8,15 +8,14 @@ namespace CapaNegocio.Services
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionInformeDAO _informeDao = new InspeccionInformeDAO();
 
-        public List<CapaModelo.SolicitudAOCR> ObtenerBandejaEjecutivaAprobacion()
+        public List<CapaModelo.InspeccionInformeTecnico> ObtenerPendientesRevisionDcav()
         {
-            return _solicitudDao.ObtenerParaBandejaEjecutivaAprobacion()
-                ?? new List<CapaModelo.SolicitudAOCR>();
+            return _informeDao.ListarPendientesRevisionInformeDcav() ?? new List<CapaModelo.InspeccionInformeTecnico>();
         }
 
-        public int ContarBandejaEjecutivaAprobacion()
+        public int ContarPendientesRevisionDcav()
         {
-            return ObtenerBandejaEjecutivaAprobacion().Count;
+            return ObtenerPendientesRevisionDcav().Count;
         }
 
         public int ContarFirmasPendientesDirdac()

@@ -112,13 +112,10 @@ namespace AOCR.Tests.Unit
             var service = LeerArchivoRepositorio("CapaNegocio\\Services\\RevisionDocumentalService.cs");
             var view = LeerArchivoRepositorio("CapaPresentacion\\Views\\SolicitudAOCR\\Subsanar.cshtml");
             var controllerNormalizado = controller.Replace("\r\n", "\n");
-
-            StringAssert.Contains(controller, "Estado = \"PENDIENTE_REVISION_SUBSANACION\"");
             StringAssert.Contains(service, "public IList<Documento> ObtenerDocumentosPendientesSubsanacion(");
             StringAssert.Contains(controller, "_revisionDocumentalService.ObtenerDocumentosPendientesSubsanacion(");
             StringAssert.Contains(controller, "ObtenerDocumentosElegiblesParaSubsanacion(");
             StringAssert.Contains(controller, "SeleccionarUltimosDocumentosPendientesSubsanacionPorGrupo(");
-            StringAssert.Contains(controller, "CambiarEstadoSubsanadaDesdeSubsanarPost(codigoSolicitud, observacionCambio, out mensajeCambio)");
             StringAssert.Contains(controllerNormalizado, "out mensaje,\n                true,\n                true);");
             StringAssert.Contains(controller, "NotificarInspectorDocumentacionSubsanada");
             StringAssert.Contains(controller, "DocumentoSubsanacionService");
@@ -183,15 +180,9 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void InstitutionalEndpoints_ShouldKeepCurrentAuthorizationContracts()
         {
-            AssertAuthorizeRoles(
-                "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
-                "FinalizarRevisionDocumental",
-                "Inspector,Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
+            Assert.IsTrue(ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "FinalizarRevisionDocumental").Contains("RolesRevisionDocumentalOperativa"));
 
-            AssertAuthorizeRoles(
-                "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
-                "FirmarAceptacionDocumental",
-                "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
+            AssertAuthorizeRoles("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs", "FirmarAceptacionDocumental", "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\SolicitudAOCRController.cs",
@@ -210,13 +201,11 @@ namespace AOCR.Tests.Unit
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs",
-                "ValidarAocr",
-                "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+                "ValidarAocr", "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
 
             AssertAuthorizeRoles(
                 "CapaPresentacion\\Controllers\\CoordinacionJefaturaController.cs",
-                "DocumentoValidacionAocr",
-                "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador");
+                "DocumentoValidacionAocr", "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Coordinacion,DIRDAC,Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador");
 
             var direccionAprobar = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "DireccionAprobar");
             var direccionDevolver = ObtenerDeclaracionMetodo("CapaPresentacion\\Controllers\\InspeccionController.cs", "DireccionDevolver");

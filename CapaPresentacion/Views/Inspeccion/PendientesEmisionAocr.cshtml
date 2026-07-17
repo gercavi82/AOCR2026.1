@@ -1,0 +1,96 @@
+@model CapaPresentacion.Models.ViewModels.PendienteEmisionAocrViewModel
+
+@{
+    ViewBag.Title = "Bandeja Emisión AOCR y Condiciones";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="aocr-page-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="aocr-page-title text-success">
+                <i class="fas fa-file-signature mr-2"></i> Bandeja Emisión AOCR y Condiciones
+            </h1>
+            <p class="aocr-page-subtitle">Redacción de especificaciones de operación y generación de certificado.</p>
+        </div>
+    </div>
+</div>
+
+<div class="aocr-card">
+    <div class="aocr-card-body p-0">
+        <div class="table-responsive">
+            <table class="table aocr-table aocr-table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>COMPAÑÍA</th>
+                        <th>NRO. TRÁMITE</th>
+                        <th>FECHA ASIGNACIÓN</th>
+                        <th>ESTADO</th>
+                        <th>ESPECIFICACIONES</th>
+                        <th class="text-right">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Inspecciones != null && Model.Inspecciones.Any())
+                    {
+                        foreach (var fila in Model.Inspecciones)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold">@fila.CompaniaNombre</div>
+                                    <div class="text-muted small">RUC: @fila.CompaniaRuc</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-light border border-secondary text-dark">
+                                        @fila.TramiteAocr
+                                    </span>
+                                </td>
+                                <td>@fila.FechaAsignacion.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <span class="badge badge-success">@fila.EstadoNormalizado</span>
+                                </td>
+                                <td>
+                                    @if (fila.CondicionesRedactadas)
+                                    {
+                                        <span class="text-success"><i class="fas fa-check-circle"></i> Redactadas</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Pendientes</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a href="@Url.Action("RedactarEspecificaciones", "Inspeccion", new { inspeccionId = fila.InspeccionId })" class="btn btn-sm btn-outline-primary" title="Redactar Especificaciones de Operación">
+                                        <i class="fas fa-edit"></i> Redactar Especificaciones
+                                    </a>
+                                    
+                                    @if (fila.PuedeGenerarAocr && fila.CondicionesRedactadas)
+                                    {
+                                        <a href="@Url.Action("GenerarAOCR", "SolicitudAOCR", new { id = fila.SolicitudId })" class="btn btn-sm btn-success ml-1" title="Generar AOCR">
+                                            <i class="fas fa-certificate"></i> Generar AOCR
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-secondary ml-1" disabled="disabled" title="@(fila.CondicionesRedactadas ? fila.MotivoBloqueoAocr : "Debe redactar las Especificaciones antes de generar AOCR.")">
+                                            <i class="fas fa-certificate"></i> Generar AOCR
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+                                No hay trámites pendientes de emisión AOCR.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

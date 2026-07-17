@@ -44,7 +44,7 @@ namespace CapaNegocio.Services
         {
             return new AocrSidebarDireccionCounters
             {
-                BandejaEjecutivaAprobacion = _direccionBandeja.ContarBandejaEjecutivaAprobacion(),
+                BandejaEjecutivaAprobacion = _direccionBandeja.ContarPendientesRevisionDcav(),
                 FirmasPendientesDirdac = _direccionBandeja.ContarFirmasPendientesDirdac()
             };
         }

@@ -10,7 +10,7 @@ using CapaDatos.Services;
 
 namespace CapaDatos.DAOs
 {
-    public class UsuarioAS400DAO : AS400BaseDAO
+    public class UsuarioAS400DAO : AS400BaseDAO, CapaDatos.Interfaces.IUsuarioAS400DAO
     {
         private readonly string _schema;
         private readonly string _tablaUsuario;

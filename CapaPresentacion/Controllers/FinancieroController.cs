@@ -26,6 +26,7 @@ namespace CapaPresentacion.Controllers
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
         private readonly FinancieroAprobacionPagoOrchestrator _aprobacionOrchestrator = new FinancieroAprobacionPagoOrchestrator();
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
 
         [RequirePermission("FIN_VER_PAGOS")]
         public ActionResult Dashboard(string estado = FinancialOrderStateHelper.PendientesFinanciero)
@@ -1109,14 +1110,8 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerUsuarioIdActual()
         {
-            var v = Session["UserId"] ?? Session["IdUsuario"];
-            if (v == null)
-            {
-                return 0;
-            }
-
-            int id;
-            return int.TryParse(v.ToString(), out id) ? id : 0;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            return ctx.UsuarioId;
         }
 
         private static bool TryParseDecimalFlexible(string raw, out decimal value)

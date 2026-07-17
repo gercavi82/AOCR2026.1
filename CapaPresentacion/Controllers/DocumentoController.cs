@@ -31,6 +31,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly DocumentoSubsanacionService _documentoSubsanacionService = new DocumentoSubsanacionService();
         private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
+        private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
         private readonly string _rutaDocumentos;
 
         public DocumentoController()
@@ -660,64 +661,9 @@ namespace CapaPresentacion.Controllers
         #region Auxiliares
         private bool TryObtenerUsuarioActualId(out int idUsuario)
         {
-            idUsuario = 0;
-
-            var idSesion = Session["IdUsuario"] ?? Session["UserId"];
-            if (idSesion != null && int.TryParse(idSesion.ToString(), out idUsuario) && idUsuario > 0)
-            {
-                Session["IdUsuario"] = idUsuario;
-                Session["UserId"] = idUsuario;
-                return true;
-            }
-
-            var codigoSesion = (Session["CodigoUsuario"] ?? string.Empty).ToString().Trim();
-            if (!string.IsNullOrWhiteSpace(codigoSesion))
-            {
-                if (int.TryParse(codigoSesion, out idUsuario) && idUsuario > 0)
-                {
-                    Session["IdUsuario"] = idUsuario;
-                    Session["UserId"] = idUsuario;
-                    return true;
-                }
-
-                try
-                {
-                    var usuarioPorCodigo = UsuarioDAO.ObtenerPorNombreUsuario(codigoSesion);
-                    if (usuarioPorCodigo != null && usuarioPorCodigo.Id > 0)
-                    {
-                        idUsuario = usuarioPorCodigo.Id;
-                        Session["IdUsuario"] = idUsuario;
-                        Session["UserId"] = idUsuario;
-                        return true;
-                    }
-                }
-                catch
-                {
-                    // Se ignora para continuar con otros orígenes de identidad.
-                }
-            }
-
-            var login = User != null && User.Identity != null ? User.Identity.Name : string.Empty;
-            if (!string.IsNullOrWhiteSpace(login))
-            {
-                try
-                {
-                    var usuarioPorLogin = UsuarioDAO.ObtenerPorNombreUsuario(login);
-                    if (usuarioPorLogin != null && usuarioPorLogin.Id > 0)
-                    {
-                        idUsuario = usuarioPorLogin.Id;
-                        Session["IdUsuario"] = idUsuario;
-                        Session["UserId"] = idUsuario;
-                        return true;
-                    }
-                }
-                catch
-                {
-                    // Se ignora para no romper navegación por un fallo de resolución puntual.
-                }
-            }
-
-            return false;
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            idUsuario = ctx.UsuarioId;
+            return idUsuario > 0;
         }
 
         private JsonResult ProcesarRevisionDocumentoSolicitud(int idDocumento, int codigoSolicitud, int? codigoInspeccion, string decision, string observacion)

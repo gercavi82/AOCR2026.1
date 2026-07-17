@@ -33,6 +33,9 @@ namespace CapaPresentacion
             container.RegisterType<CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<CapaDatos.Services.ISecureConfigurationService, CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<IUserContextAccessor, UserContextAccessor>(new HierarchicalLifetimeManager());
+            
+            // GATE 1: Nuevo servicio de contexto de usuario
+            container.RegisterType<CapaNegocio.Interfaces.IUsuarioContextoService, CapaNegocio.Services.UsuarioContextoService>(new HierarchicalLifetimeManager());
             container.RegisterFactory<BancoP9DAO>(c =>
             {
                 var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();

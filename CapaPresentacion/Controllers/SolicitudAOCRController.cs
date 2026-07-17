@@ -35,7 +35,7 @@ namespace CapaPresentacion.Controllers
     public class SolicitudAOCRController : Controller
     {
         private readonly SolicitudBL _solicitudBL = new SolicitudBL();
-        private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
+        private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
@@ -44,13 +44,24 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAocrService _solicitudAocrService = new SolicitudAocrService();
         private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
         private readonly AocrBandejaDAO _aocrBandejaDao = new AocrBandejaDAO();
-        private readonly RevisionDocumentalService _revisionDocumentalService = new RevisionDocumentalService();
-        private readonly DocumentoSubsanacionService _documentoSubsanacionService = new DocumentoSubsanacionService();
-        private readonly AocrFinalWorkflowService _aocrFinalWorkflowService = new AocrFinalWorkflowService();
-        private readonly AocrModificationWorkflowService _aocrModificationWorkflowService = new AocrModificationWorkflowService();
-        private readonly IAocrAuthorizationService _aocrAuthorizationService = new AocrAuthorizationService();
+                private readonly IAocrAuthorizationService _aocrAuthorizationService;
         private static readonly IAocrEstadoService AocrEstadoService = new AocrEstadoService();
         private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
+
+        private readonly RevisionDocumentalService _revisionDocumentalService;
+        private readonly DocumentoSubsanacionService _documentoSubsanacionService;
+        private readonly AocrFinalWorkflowService _aocrFinalWorkflowService;
+        private readonly AocrModificationWorkflowService _aocrModificationWorkflowService;
+
+        public SolicitudAOCRController(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
+        {
+            _solicitudAocrInfraBL = new SolicitudAocrInfraBL(usuarioAs400Dao, empresaAs400Dao);
+            _revisionDocumentalService = new RevisionDocumentalService(usuarioAs400Dao, empresaAs400Dao);
+            _documentoSubsanacionService = new DocumentoSubsanacionService(usuarioAs400Dao, empresaAs400Dao);
+            _aocrFinalWorkflowService = new AocrFinalWorkflowService();
+            _aocrModificationWorkflowService = new AocrModificationWorkflowService();
+            _aocrAuthorizationService = new AocrAuthorizationService(usuarioAs400Dao, empresaAs400Dao);
+        }
         private readonly CapaDatos.Services.ILoggingService _logger = CapaDatos.Services.LoggingServiceFactory.Create();
 
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();

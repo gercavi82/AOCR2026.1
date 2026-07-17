@@ -346,36 +346,7 @@ namespace CapaDatos.DAOs
             );
         }
 
-        public List<SolicitudAOCR> ObtenerParaBandejaEjecutivaAprobacion()
-        {
-            var lista = ObtenerPorEstados(
-                EstadoSolicitud.AOCR_EnElaboracion,
-                EstadoSolicitud.AOCR_EnRevision,
-                EstadoSolicitud.AOCR_Validado,
-                EstadoSolicitud.Observada,
-                EstadoSolicitud.Subsanada,
-                "AOCR_EN_REVISION",
-                "AOCR EN REVISION",
-                "VALIDADO",
-                "VALIDADO_TECNICAMENTE",
-                "ENVIADO_A_JEFATURA",
-                "ENVIADO A JEFATURA",
-                "ENVIADO_A_LEGALIZACION",
-                "ENVIADO A LEGALIZACION",
-                "OBSERVADO",
-                "OBSERVADO_JEFATURA",
-                "SUBSANADO"
-            ) ?? new List<SolicitudAOCR>();
 
-            _logger.LogInfo("[Direccion] DAO.ObtenerParaBandejaEjecutivaAprobacion registros=" + lista.Count);
-            for (var i = 0; i < lista.Count && i < 10; i++)
-            {
-                var s = lista[i];
-                _logger.LogInfo("[Direccion] BandejaEjecutivaEjemplo[" + i + "] SolicitudId=" + s.CodigoSolicitud + ", Numero=" + (s.NumeroSolicitud ?? "") + ", Estado=" + (s.Estado ?? ""));
-            }
-
-            return lista;
-        }
 
         /// <summary>
         /// Marca la solicitud como pendiente de asignación de inspector por Coordinación

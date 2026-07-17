@@ -184,9 +184,14 @@ namespace CapaNegocio.Services
         private readonly OrdenRecaudacionDAO _ordenDao = new OrdenRecaudacionDAO();
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly InspeccionInformeDAO _informeDao = new InspeccionInformeDAO();
-        private readonly RevisionDocumentalService _revisionDocumentalService = new RevisionDocumentalService();
+        private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
         private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
+
+        public AocrAuthorizationService(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
+        {
+            _revisionDocumentalService = new RevisionDocumentalService(usuarioAs400Dao, empresaAs400Dao);
+        }
 
         public bool TieneAccesoModulo(string modulo, AocrAuthorizationContext usuario)
         {
