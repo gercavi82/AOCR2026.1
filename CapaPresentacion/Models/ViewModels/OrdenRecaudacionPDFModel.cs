@@ -93,5 +93,6 @@ namespace CapaPresentacion.Models.ViewModels
         public string CodigoConcepto { get; set; }
         public string NumeroOrden { get; set; }
         public string TextoResolucion { get; set; }
+        public string FechasInspeccion { get; set; }
     }
 }

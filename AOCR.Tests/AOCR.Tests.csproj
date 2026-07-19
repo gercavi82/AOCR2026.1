@@ -81,6 +81,8 @@
     <Compile Include="Unit\OrdenRecaudacionOperativaHelperTests.cs" />
     <Compile Include="Unit\GateDNoConformidadTests.cs" />
     <Compile Include="Unit\GateHDcavFlowTests.cs" />
+    <Compile Include="Unit\DocumentosFinalesWorkflowTests.cs" />
+    <Compile Include="Unit\InspectorFinalDocumentsTests.cs" />
     <Compile Include="Unit\GateFSubsanacionDocumentalTests.cs" />
     <Compile Include="Unit\GateEAuthorizationTests.cs" />
     <Compile Include="Unit\RevisionDocumentalPreAsignacionTests.cs" />
@@ -88,6 +90,7 @@
     <Compile Include="Unit\RevisionDocumentalFirmaPlanningTests.cs" />
     <Compile Include="Unit\RTServiceStateTests.cs" />
     <Compile Include="Unit\SecurityTests.cs" />
+    <Compile Include="Unit\SidebarRoleMatrixTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
     <Compile Include="Integration\NoConformidadDAOTests.cs" />
     <Compile Include="Integration\Gate1NoConformidadRelacionesIntegrationTests.cs" />

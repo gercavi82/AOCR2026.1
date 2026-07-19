@@ -44,8 +44,9 @@ namespace CapaNegocio.Services
         {
             return new AocrSidebarDireccionCounters
             {
-                BandejaEjecutivaAprobacion = _direccionBandeja.ContarPendientesRevisionDcav(),
-                FirmasPendientesDirdac = _direccionBandeja.ContarFirmasPendientesDirdac()
+                BandejaEjecutivaAprobacion = _direccionBandeja.ContarAocrPendientesFirmaDirdac(),
+                FirmasPendientesDirdac = _direccionBandeja.ContarFirmasPendientesDirdac(),
+                CondicionesPendientesDcav = _direccionBandeja.ContarCondicionesPendientesFirmaDcav()
             };
         }
 
@@ -171,6 +172,7 @@ namespace CapaNegocio.Services
     {
         public int BandejaEjecutivaAprobacion { get; set; }
         public int FirmasPendientesDirdac { get; set; }
+        public int CondicionesPendientesDcav { get; set; }
     }
 
     public sealed class AocrSidebarRtCounters

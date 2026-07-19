@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Web;
 using System.Web.Mvc;
@@ -11,6 +12,7 @@ using CapaDatos.DAOs;
 using CapaModelo;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Models;
 using Rotativa;
 
@@ -100,14 +102,7 @@ namespace CapaPresentacion.Services
 
     public sealed class FirmaAocrAuthorizationService
     {
-        private static readonly string[] RolesFirma =
-        {
-            "DirectorCertificacionesDcav",
-            "Direccion",
-            "DireccionJefaturaTecnica",
-            "DIRDAC",
-            "JefaturaTecnica"
-        };
+        private static readonly string[] RolesFirma = AocrRolesInstitucionales.RolesAcceso;
 
         public bool UsuarioPuedeEntrar(IPrincipal user)
         {
@@ -117,6 +112,132 @@ namespace CapaPresentacion.Services
         public string ObtenerRolActual(IPrincipal user)
         {
             return RolesFirma.FirstOrDefault(rol => user != null && user.IsInRole(rol)) ?? string.Empty;
+        }
+
+        public bool UsuarioPuedeGenerar(IPrincipal user)
+        {
+            return user != null && user.IsInRole(AocrRolesInstitucionales.Inspector);
+        }
+
+        public bool UsuarioPuedeFirmar(IPrincipal user, string tipoDocumento)
+        {
+            var tipo = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+            if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
+                return user != null && AocrRolesInstitucionales.DirdacAliases.Any(user.IsInRole);
+            return user != null && AocrRolesInstitucionales.DcavAliases.Any(user.IsInRole);
+        }
+    }
+
+    /// <summary>
+    /// Aplica a la pantalla los permisos del rol seleccionado en sesion. El principal
+    /// puede contener varios roles, por lo que no debe usarse por si solo para decidir
+    /// que controles se muestran al usuario.
+    /// </summary>
+    public static class FirmaAocrActiveRoleViewPolicy
+    {
+        public static void Aplicar(FirmaAocrInstitucionalViewModel model, SidebarPermissionSnapshot permisos)
+        {
+            if (model == null || permisos == null)
+            {
+                return;
+            }
+
+            model.RolActual = !string.IsNullOrWhiteSpace(permisos.RolDisplay)
+                ? permisos.RolDisplay
+                : permisos.RolActual;
+
+            var documentos = model.Documentos ?? new List<FirmaAocrDocumentoItemViewModel>();
+            if (permisos.EsInspectorRol)
+            {
+                model.EsInspector = true;
+                foreach (var documento in documentos)
+                {
+                    documento.PuedeFirmar = false;
+                }
+                model.PuedeFirmar = false;
+                return;
+            }
+
+            model.EsInspector = false;
+            model.PuedeGuardarDatos = false;
+            model.PuedeGenerar = false;
+            model.PuedeRegenerar = false;
+            model.PuedeEnviarParaFirma = false;
+
+            foreach (var documento in documentos)
+            {
+                documento.PuedeGenerar = false;
+            }
+
+            if (permisos.EsDirdacRol)
+            {
+                documentos = documentos
+                    .Where(d => string.Equals(
+                        FirmaAocrWorkflowService.NormalizarTipoDocumento(d.TipoDocumento),
+                        AocrCierrePorTipoTramiteService.Reconocimiento,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                AplicarFirmaDocumento(documentos, AocrEstadosProceso.PendienteFirmaAocrDirdac);
+                model.ResponsableFirma = "DIRDAC";
+            }
+            else if (permisos.EsDcavRol)
+            {
+                documentos = documentos
+                    .Where(d => string.Equals(
+                        FirmaAocrWorkflowService.NormalizarTipoDocumento(d.TipoDocumento),
+                        AocrCierrePorTipoTramiteService.Condiciones,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                AplicarFirmaDocumento(documentos, AocrEstadosProceso.PendienteFirmaCondicionesDcav);
+                model.ResponsableFirma = "DCAV";
+            }
+            else
+            {
+                foreach (var documento in documentos)
+                {
+                    documento.PuedeFirmar = false;
+                }
+            }
+
+            model.Documentos = documentos;
+            model.PuedeFirmar = documentos.Any(d => d.PuedeFirmar);
+            if (!model.PuedeFirmar && (permisos.EsDirdacRol || permisos.EsDcavRol))
+            {
+                model.MotivoBloqueo = ConstruirMotivoPendiente(documentos, permisos.EsDirdacRol);
+            }
+        }
+
+        private static void AplicarFirmaDocumento(IEnumerable<FirmaAocrDocumentoItemViewModel> documentos, string estadoPendiente)
+        {
+            foreach (var documento in documentos)
+            {
+                documento.PuedeFirmar = documento.PdfExiste
+                    && !documento.Firmado
+                    && documento.Bloqueado
+                    && string.Equals(documento.EstadoWorkflow, estadoPendiente, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private static string ConstruirMotivoPendiente(IList<FirmaAocrDocumentoItemViewModel> documentos, bool esDirdac)
+        {
+            var nombre = esDirdac ? "Documento AOCR" : "Documento Condiciones y Limitaciones";
+            var documento = documentos.FirstOrDefault();
+            if (documento == null || !documento.PdfExiste)
+            {
+                return "El " + nombre + " todavía no ha sido generado por el Inspector asignado.";
+            }
+
+            if (!documento.Bloqueado)
+            {
+                return "El " + nombre + " aún es un borrador. El Inspector debe finalizarlo y enviarlo para firma.";
+            }
+
+            if (documento.Firmado)
+            {
+                return "El " + nombre + " ya fue firmado.";
+            }
+
+            return "El " + nombre + " todavía no se encuentra en el estado habilitado para firma institucional.";
         }
     }
 
@@ -219,13 +340,13 @@ namespace CapaPresentacion.Services
             var documentoCompleto = !camposFaltantes.Any();
             var informeAprobado = InformeAprobadoDireccion(contexto.Informe);
             var puedeFirmar = autorizado && contexto.PdfExiste && !contexto.PdfFirmadoExiste && documentoCompleto && informeAprobado;
-            var documentos = ConstruirDocumentosFirma(solicitudId, contexto, autorizado, documentoCompleto, informeAprobado, url);
-            var reconocimientoFirmado = documentos.Any(d => string.Equals(d.TipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase) && d.Firmado);
-            var condicionesFirmadas = documentos.Any(d => string.Equals(d.TipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) && d.Firmado);
-            var ambosFirmados = reconocimientoFirmado && condicionesFirmadas;
+            var puedeGenerarInspector = _authorizationService.UsuarioPuedeGenerar(user)
+                && contexto.Inspeccion != null;
+            var documentos = ConstruirDocumentosFirma(solicitudId, contexto, user, documentoCompleto, informeAprobado, url);
+            var todosFirmados = documentos.Count > 0 && documentos.All(d => d.Firmado);
             var algunPdfGenerado = documentos.Any(d => d.PdfExiste);
             var algunaFirma = documentos.Any(d => d.Firmado);
-            var motivo = ConstruirMotivoBloqueo(autorizado, algunPdfGenerado, ambosFirmados, documentoCompleto, informeAprobado);
+            var motivo = ConstruirMotivoBloqueo(autorizado, algunPdfGenerado, todosFirmados, documentoCompleto, informeAprobado);
             var solicitud = contexto.Solicitud;
             var certificado = contexto.Certificado;
             var firma = contexto.Firma;
@@ -247,7 +368,7 @@ namespace CapaPresentacion.Services
                 Operadora = PrimerValorNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial),
                 CodigoAocr = PrimerValorNoVacio(contexto.Documento.NumeroAocr, certificado != null ? certificado.NumeroCertificado : null),
                 EstadoSolicitud = solicitud.Estado,
-                EstadoAocr = ambosFirmados ? "AOCR_LEGALIZADO" : (algunaFirma ? "FIRMA_PARCIAL" : (algunPdfGenerado ? "PDFS_PENDIENTES_FIRMA" : "PENDIENTE_GENERAR_PDF")),
+                EstadoAocr = todosFirmados ? "AOCR_LEGALIZADO" : (algunaFirma ? "FIRMA_PARCIAL" : (algunPdfGenerado ? "PDFS_PENDIENTES_FIRMA" : "PENDIENTE_GENERAR_PDF")),
                 InformeTecnicoEstado = contexto.Informe != null ? contexto.Informe.EstadoInforme : "Sin informe",
                 ResultadoTecnico = contexto.Informe != null ? contexto.Informe.Resultado : "Sin resultado",
                 ResponsableFirma = "Direccion / DIRDAC",
@@ -259,14 +380,14 @@ namespace CapaPresentacion.Services
                 NombreArchivoPdf = contexto.PdfExiste ? Path.GetFileName(_storageService.ResolverRutaFisica(certificado.RutaDocumento)) : null,
                 NombreArchivoFirmado = contexto.PdfFirmadoExiste ? Path.GetFileName(_storageService.ResolverRutaFisica(firma.RutaDocumento)) : null,
                 PdfExiste = algunPdfGenerado,
-                PdfFirmadoExiste = ambosFirmados,
+                PdfFirmadoExiste = todosFirmados,
                 TamanioPdf = contexto.PdfBytes,
                 TamanioPdfFirmado = contexto.PdfFirmadoBytes,
                 HashPdfFirmado = firma != null ? firma.HashDocumento : null,
                 RutaPdf = certificado != null ? certificado.RutaDocumento : null,
                 RutaPdfFirmado = firma != null ? firma.RutaDocumento : null,
-                PuedeGenerar = autorizado && documentoCompleto && informeAprobado && !ambosFirmados,
-                PuedeRegenerar = autorizado && documentoCompleto && informeAprobado && !ambosFirmados,
+                PuedeGenerar = puedeGenerarInspector && documentoCompleto && informeAprobado && !todosFirmados,
+                PuedeRegenerar = puedeGenerarInspector && documentoCompleto && informeAprobado && !todosFirmados,
                 PuedeFirmar = documentos.Any(d => d.PuedeFirmar),
                 InformeAprobado = informeAprobado,
                 DocumentoCompleto = documentoCompleto,
@@ -278,7 +399,7 @@ namespace CapaPresentacion.Services
                 AocOriginalNumero = contexto.Documento != null ? contexto.Documento.AocOriginalNumero : null,
                 PermisoOperacionCnac = solicitud.NumeroAOC,
                 CondicionBaseOperacion = contexto.Documento != null ? contexto.Documento.CondicionBaseOperacion : null,
-                PuedeGuardarDatos = autorizado && !ambosFirmados,
+                PuedeGuardarDatos = puedeGenerarInspector && !todosFirmados,
                 UrlGuardarDatos = url.Action("GuardarDatos", "FirmaAocr", new { solicitudId }),
                 UrlGenerar = url.Action("GenerarPdf", "FirmaAocr", new { solicitudId }),
                 UrlVerPdf = url.Action("VerPdf", "FirmaAocr", new { solicitudId, firmado = false }),
@@ -289,7 +410,18 @@ namespace CapaPresentacion.Services
                 UrlVolverBandeja = url.Action("PendientesDireccion", "Inspeccion"),
                 UrlCompletarDatos = url.Action("Index", "FirmaAocr", new { solicitudId }),
                 Documentos = documentos,
-                AmbosDocumentosFirmados = ambosFirmados
+                AmbosDocumentosFirmados = todosFirmados,
+                EsInspector = puedeGenerarInspector,
+                PuedeEnviarParaFirma = puedeGenerarInspector && documentos.Count > 0
+                    && documentos.All(d => d.PdfExiste && !d.Firmado)
+                    && documentos.All(d =>
+                    {
+                        var doc = string.Equals(d.TipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase)
+                            ? contexto.DocumentoReconocimiento
+                            : contexto.DocumentoCondiciones;
+                        return doc != null && doc.Completo && !doc.Bloqueado;
+                    }),
+                UrlEnviarParaFirma = url.Action("FinalizarDocumentosYEnviarParaFirma", "FirmaAocr", new { solicitudId })
             };
         }
 
@@ -302,6 +434,7 @@ namespace CapaPresentacion.Services
 
             var tipo = NormalizarTipoDocumento(tipoDocumento);
             var rutaFisica = _storageService.ResolverRutaFisica(rutaRelativa);
+            var hashPdf = CalcularHashArchivo(rutaFisica);
             _documentoGeneradoDao.Registrar(new AocrDocumentoGenerado
             {
                 CodigoSolicitud = contexto.Solicitud.CodigoSolicitud,
@@ -311,10 +444,16 @@ namespace CapaPresentacion.Services
                 NombreArchivo = !string.IsNullOrWhiteSpace(rutaFisica) ? Path.GetFileName(rutaFisica) : null,
                 RutaDocumento = rutaRelativa,
                 TamanioPdf = bytes,
-                Estado = "GENERADO",
+                Estado = string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase)
+                    ? AocrEstadosProceso.AocrListoParaFirma
+                    : AocrEstadosProceso.CondicionesListasParaFirma,
                 FechaGeneracion = DateTime.Now,
                 CodigoUsuario = usuarioId > 0 ? (int?)usuarioId : null,
-                UsuarioNombre = usuarioNombre
+                UsuarioNombre = usuarioNombre,
+                Completo = bytes > 0 && !string.IsNullOrWhiteSpace(hashPdf),
+                HashPdf = hashPdf,
+                Vigente = true,
+                VersionConcurrencia = 1
             });
 
             if (string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase))
@@ -334,15 +473,32 @@ namespace CapaPresentacion.Services
             return "RECONOCIMIENTO";
         }
 
-        private List<FirmaAocrDocumentoItemViewModel> ConstruirDocumentosFirma(int solicitudId, FirmaAocrContexto contexto, bool autorizado, bool documentoCompleto, bool informeAprobado, UrlHelper url)
+        private static string CalcularHashArchivo(string rutaFisica)
+        {
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !File.Exists(rutaFisica))
+            {
+                return null;
+            }
+
+            using (var stream = File.OpenRead(rutaFisica))
+            using (var sha = SHA256.Create())
+            {
+                return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty).ToLowerInvariant();
+            }
+        }
+
+        private List<FirmaAocrDocumentoItemViewModel> ConstruirDocumentosFirma(int solicitudId, FirmaAocrContexto contexto, IPrincipal user, bool documentoCompleto, bool informeAprobado, UrlHelper url)
         {
             var resultado = new List<FirmaAocrDocumentoItemViewModel>();
-            resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "RECONOCIMIENTO", "Documento AOCR", "Reconocimiento de Certificado de Explotador de Servicios Aereos", contexto, contexto.DocumentoReconocimiento, contexto.FirmaReconocimiento, autorizado, documentoCompleto, informeAprobado, url));
-            resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "CONDICIONES_LIMITACIONES", "Documento Condiciones", "Condiciones y Limitaciones", contexto, contexto.DocumentoCondiciones, contexto.FirmaCondiciones, autorizado, documentoCompleto, informeAprobado, url));
+            var plan = new AocrCierrePorTipoTramiteService().Resolver(contexto != null ? contexto.Solicitud : null);
+            if (plan.EsValido && plan.GenerarAocr)
+                resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "RECONOCIMIENTO", "Documento AOCR", "Reconocimiento de Certificado de Explotador de Servicios Aereos", contexto, contexto.DocumentoReconocimiento, contexto.FirmaReconocimiento, user, documentoCompleto, informeAprobado, url));
+            if (plan.EsValido && plan.GenerarCondiciones)
+                resultado.Add(ConstruirDocumentoFirmaItem(solicitudId, "CONDICIONES_LIMITACIONES", "Documento Condiciones", "Condiciones y Limitaciones", contexto, contexto.DocumentoCondiciones, contexto.FirmaCondiciones, user, documentoCompleto, informeAprobado, url));
             return resultado;
         }
 
-        private FirmaAocrDocumentoItemViewModel ConstruirDocumentoFirmaItem(int solicitudId, string tipoDocumento, string titulo, string descripcion, FirmaAocrContexto contexto, AocrDocumentoGenerado documento, AocrFirmaDocumento firma, bool autorizado, bool documentoCompleto, bool informeAprobado, UrlHelper url)
+        private FirmaAocrDocumentoItemViewModel ConstruirDocumentoFirmaItem(int solicitudId, string tipoDocumento, string titulo, string descripcion, FirmaAocrContexto contexto, AocrDocumentoGenerado documento, AocrFirmaDocumento firma, IPrincipal user, bool documentoCompleto, bool informeAprobado, UrlHelper url)
         {
             var tipo = NormalizarTipoDocumento(tipoDocumento);
             var rutaPdf = documento != null ? documento.RutaDocumento : null;
@@ -355,8 +511,13 @@ namespace CapaPresentacion.Services
             var pdfExiste = !string.IsNullOrWhiteSpace(rutaPdfFisica) && File.Exists(rutaPdfFisica);
             var rutaFirmadaFisica = firma != null ? _storageService.ResolverRutaFisica(firma.RutaDocumento) : null;
             var firmado = !string.IsNullOrWhiteSpace(rutaFirmadaFisica) && File.Exists(rutaFirmadaFisica);
-            var puedeGenerar = autorizado && documentoCompleto && informeAprobado && !firmado;
-            var puedeFirmar = puedeGenerar && pdfExiste;
+            var puedeGenerar = _authorizationService.UsuarioPuedeGenerar(user) && documentoCompleto && informeAprobado && !firmado
+                && (documento == null || !documento.Bloqueado);
+            var estadoPendiente = string.Equals(tipo, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase)
+                ? AocrEstadosProceso.PendienteFirmaAocrDirdac
+                : AocrEstadosProceso.PendienteFirmaCondicionesDcav;
+            var puedeFirmar = _authorizationService.UsuarioPuedeFirmar(user, tipo) && pdfExiste && !firmado
+                && documento != null && documento.Bloqueado && string.Equals(documento.Estado, estadoPendiente, StringComparison.OrdinalIgnoreCase);
 
             return new FirmaAocrDocumentoItemViewModel
             {
@@ -368,6 +529,8 @@ namespace CapaPresentacion.Services
                 NombreArchivoFirmado = firmado ? Path.GetFileName(rutaFirmadaFisica) : null,
                 PdfExiste = pdfExiste,
                 Firmado = firmado,
+                Bloqueado = documento != null && documento.Bloqueado,
+                EstadoWorkflow = documento != null ? documento.Estado : null,
                 PuedeGenerar = puedeGenerar,
                 PuedeFirmar = puedeFirmar,
                 Paginas = 1,
@@ -516,6 +679,7 @@ namespace CapaPresentacion.Services
                 case "INFORME_APROBADO_DIRECCION":
                 case "INFORME_TECNICO_APROBADO":
                 case "INFORME_TECNICO_APROBADO_DIRECCION":
+                case "INFORME_TECNICO_APROBADO_DIRDAC":
                     return true;
                 default:
                     return false;

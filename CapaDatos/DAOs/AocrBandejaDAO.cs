@@ -158,7 +158,9 @@ namespace CapaDatos.DAOs
                     fcond.CargoFirmanteCondiciones,
                     fcond.FechaFirmaCondiciones,
                     daocr.RutaAocrGenerada,
-                    daocr.FechaAocrGenerada
+                    daocr.FechaAocrGenerada,
+                    dfinaocr.EstadoDocumentoAocr,
+                    dfincond.EstadoDocumentoCondiciones
                 FROM solicitud_base sb
                 LEFT JOIN LATERAL (
                     SELECT
@@ -256,10 +258,24 @@ namespace CapaDatos.DAOs
                     ORDER BY {ColumnaFecha("d", "fecha_carga", columnasDocumento)} DESC NULLS LAST, {ColumnaEntera("d", "codigo_documento", columnasDocumento)} DESC
                     LIMIT 1
                 ) daocr ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT dg.estado AS EstadoDocumentoAocr
+                    FROM public.aocr_tbdocumento_generado dg
+                    WHERE dg.codigo_solicitud=sb.SolicitudId AND UPPER(dg.tipo_documento)='RECONOCIMIENTO' AND COALESCE(dg.vigente,TRUE)=TRUE
+                    ORDER BY dg.version_documento DESC,dg.codigo_documento DESC LIMIT 1
+                ) dfinaocr ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT dg.estado AS EstadoDocumentoCondiciones
+                    FROM public.aocr_tbdocumento_generado dg
+                    WHERE dg.codigo_solicitud=sb.SolicitudId AND UPPER(dg.tipo_documento)='CONDICIONES_LIMITACIONES' AND COALESCE(dg.vigente,TRUE)=TRUE
+                    ORDER BY dg.version_documento DESC,dg.codigo_documento DESC LIMIT 1
+                ) dfincond ON TRUE
                 WHERE cert.CertificadoId IS NOT NULL
                     OR frec.FirmaReconocimientoId IS NOT NULL
                     OR fcond.FirmaCondicionesId IS NOT NULL
                     OR daocr.RutaAocrGenerada IS NOT NULL
+                    OR dfinaocr.EstadoDocumentoAocr IS NOT NULL
+                    OR dfincond.EstadoDocumentoCondiciones IS NOT NULL
                     OR {estadoSolicitudNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
                     OR {estadoCertificadoNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
                     OR {estadoInformeNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})

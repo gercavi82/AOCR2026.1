@@ -13,13 +13,16 @@ namespace CapaPresentacion.Models.ViewModels
     {
         public int InspeccionId { get; set; }
         public int SolicitudId { get; set; }
+        public string NumeroSolicitud { get; set; }
         public string CompaniaRuc { get; set; }
         public string CompaniaNombre { get; set; }
-        public string TramiteAocr { get; set; }
-        public DateTime FechaAsignacion { get; set; }
-        public string EstadoNormalizado { get; set; }
-        public bool PuedeGenerarAocr { get; set; }
-        public bool CondicionesRedactadas { get; set; }
-        public string MotivoBloqueoAocr { get; set; }
+        public string NumeroInspeccion { get; set; }
+        public string TipoTramite { get; set; }
+        public string InspectorAsignado { get; set; }
+        public DateTime? FechaAprobacionDirdac { get; set; }
+        public string EstadoAocr { get; set; }
+        public string EstadoCondiciones { get; set; }
+        public bool GenerarAocr { get; set; }
+        public bool GenerarCondiciones { get; set; }
     }
 }

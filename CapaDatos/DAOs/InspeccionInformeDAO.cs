@@ -232,13 +232,79 @@ namespace CapaDatos.DAOs
 
         public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDcav()
         {
-            var ids = new AocrProcesoEstadoDAO().ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDcav);
+            return ListarPendientesRevisionInformeDirdac();
+        }
+
+        public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDirdac()
+        {
+            var idsEstadoCentral = new AocrProcesoEstadoDAO()
+                .ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDirdac);
+
+            // Recuperación defensiva: versiones anteriores confundían la firma
+            // del Inspector con el envío formal y no creaban el estado central.
+            // El alcance es deliberadamente estricto: sólo el último informe,
+            // finalizado, satisfactorio, con PDF firmado y sin firma DIRDAC.
+            var idsFirmadosSinTransicion = ListarInspeccionesFirmadasSinTransicionDcav();
+            var ids = idsEstadoCentral.Concat(idsFirmadosSinTransicion).Distinct();
+
             return ids.Select(ObtenerUltimoPorInspeccion)
                 .Where(x => x != null && x.Finalizado && x.FirmadoInspector && !x.FirmadoDirdac
                     && !string.IsNullOrWhiteSpace(x.RutaDocumentoFirmado)
                     && string.Equals((x.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.FechaEnvioDirdac ?? x.UpdatedAt ?? x.CreatedAt)
                 .ToList();
+        }
+
+        private IList<int> ListarInspeccionesFirmadasSinTransicionDcav()
+        {
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+WITH ultimos AS (
+    SELECT DISTINCT ON (inf.codigo_inspeccion)
+           inf.codigo_inspeccion,
+           inf.estado_informe,
+           inf.finalizado,
+           inf.firmado_inspector,
+           inf.firmado_dirdac,
+           inf.resultado,
+           inf.ruta_documento_firmado
+    FROM public.aocr_tbinforme_inspeccion inf
+    ORDER BY inf.codigo_inspeccion,inf.version DESC,inf.codigo_informe DESC
+)
+SELECT u.codigo_inspeccion
+FROM ultimos u
+JOIN public.aocr_tbinspeccion i ON i.codigo_inspeccion=u.codigo_inspeccion
+WHERE u.finalizado=TRUE
+  AND u.firmado_inspector=TRUE
+  AND COALESCE(u.firmado_dirdac,FALSE)=FALSE
+  AND UPPER(TRIM(COALESCE(u.resultado,'')))='SATISFACTORIO'
+  AND NULLIF(TRIM(COALESCE(u.ruta_documento_firmado,'')),'') IS NOT NULL
+  AND regexp_replace(UPPER(COALESCE(u.estado_informe,'')),'[\s_-]+','_','g') IN
+      ('FIRMADO_INSPECTOR','FIRMADO_POR_INSPECTOR','INFORME_TECNICO_FIRMADO_INSPECTOR')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.aocr_proceso_estado pe
+      WHERE pe.solicitud_id=i.codigo_solicitud
+        AND pe.activo=TRUE
+        AND pe.estado_actual='PENDIENTE_REVISION_INFORME_DIRDAC'
+  );";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        ids.Add(dr.GetInt32(0));
+                    }
+                }
+            }
+
+            return ids;
         }
 
         public List<InspeccionInformeTecnico> ListarTodos()
@@ -367,6 +433,7 @@ namespace CapaDatos.DAOs
                     (
                         codigo_inspeccion,
                         version,
+                        codigo_informe_anterior,
                         titulo,
                         resumen,
                         antecedentes,
@@ -400,6 +467,7 @@ namespace CapaDatos.DAOs
                     (
                         @codigo_inspeccion,
                         @version,
+                        @codigo_informe_anterior,
                         @titulo,
                         @resumen,
                         @antecedentes,
@@ -435,6 +503,7 @@ namespace CapaDatos.DAOs
                 {
                     Bind(cmd, informe, usuarioId);
                     cmd.Parameters.AddWithValue("@version", version);
+                    cmd.Parameters.AddWithValue("@codigo_informe_anterior", (object)(ultimo != null ? (int?)ultimo.CodigoInforme : null) ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@created_by", usuarioId);
                     var codigoInforme = Convert.ToInt32(cmd.ExecuteScalar());
                     return ObtenerPorIdInterno(cn, codigoInforme);
@@ -894,6 +963,7 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos_archivos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS otros_adjuntos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS tipo_resultado_insatisfactorio VARCHAR(30);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS codigo_informe_anterior INTEGER NULL;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estado_informe VARCHAR(80);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_inspector BOOLEAN NOT NULL DEFAULT FALSE;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_dirdac BOOLEAN NOT NULL DEFAULT FALSE;

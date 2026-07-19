@@ -219,7 +219,8 @@ namespace AOCR.Tests.Unit
         {
             var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\InspeccionController.cs");
 
-            StringAssert.Contains(controller, "var resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, informeAprobado, usuarioId, usuarioActual);");
+            StringAssert.Contains(controller, "resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, informeAprobadoTransaccion, usuarioId, usuarioActual);");
+            StringAssert.Contains(controller, "AocrEstadosProceso.DocumentosFinalesPorGenerar");
             StringAssert.Contains(controller, "Se habilita la generación AOCR.");
             StringAssert.Contains(controller, "DIRDAC / Dirección - Jefatura aprobó el informe y la AOCR quedó habilitada para generación.");
         }

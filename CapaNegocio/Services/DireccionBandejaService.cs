@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CapaDatos.DAOs;
 
 namespace CapaNegocio.Services
@@ -7,20 +8,38 @@ namespace CapaNegocio.Services
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly InspeccionInformeDAO _informeDao = new InspeccionInformeDAO();
+        private readonly AocrBandejaDAO _aocrBandejaDao = new AocrBandejaDAO();
 
-        public List<CapaModelo.InspeccionInformeTecnico> ObtenerPendientesRevisionDcav()
+        public List<CapaModelo.InspeccionInformeTecnico> ObtenerPendientesRevisionDirdac()
         {
-            return _informeDao.ListarPendientesRevisionInformeDcav() ?? new List<CapaModelo.InspeccionInformeTecnico>();
+            return _informeDao.ListarPendientesRevisionInformeDirdac() ?? new List<CapaModelo.InspeccionInformeTecnico>();
         }
 
-        public int ContarPendientesRevisionDcav()
+        public int ContarPendientesRevisionDirdac()
         {
-            return ObtenerPendientesRevisionDcav().Count;
+            return ObtenerPendientesRevisionDirdac().Count;
         }
+
+        public int ContarPendientesRevisionDcav() { return ContarPendientesRevisionDirdac(); }
 
         public int ContarFirmasPendientesDirdac()
         {
-            return (_informeDao.ListarPendientesFirmaDirdac() ?? new List<CapaModelo.InspeccionInformeTecnico>()).Count;
+            // El badge "Informes tecnicos por aprobar" abre la bandeja de
+            // revision DCAV. Debe contar exactamente los mismos registros
+            // visibles y respetar sus estados centrales y precondiciones.
+            return ContarPendientesRevisionDirdac();
+        }
+
+        public int ContarAocrPendientesFirmaDirdac()
+        {
+            return (_aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<CapaModelo.Common.AocrBandejaDocumentoRow>())
+                .Count(AocrFirmaPendientePolicy.EsAocrPendienteFirma);
+        }
+
+        public int ContarCondicionesPendientesFirmaDcav()
+        {
+            return (_aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<CapaModelo.Common.AocrBandejaDocumentoRow>())
+                .Count(AocrFirmaPendientePolicy.EsCondicionesPendienteFirma);
         }
     }
 }

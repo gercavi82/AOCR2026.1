@@ -56,19 +56,20 @@ namespace CapaPresentacion.Controllers
         public ActionResult DashboardInspeccion(string compania = null, string inspector = null, string estado = null, string quickFilter = null)
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
-            var puedeGestionarAsignacion = User.IsInRole("Administrador")
-                || User.IsInRole("Coordinador")
-                || User.IsInRole("CoordinadorInspecciones");
-            var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("DireccionJefaturaTecnica") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
-            var puedeValidarAocr = User.IsInRole("Administrador")
-                || User.IsInRole("CoordinacionLegal")
-                || User.IsInRole("CoordinadorLegal")
-                || User.IsInRole("Coordinador")
-                || User.IsInRole("CoordinadorInspecciones")
-                || User.IsInRole("DIRDAC")
-                || User.IsInRole("Direccion")
-                || User.IsInRole("DirectorGeneral")
-                || User.IsInRole("JefaturaTecnica");
+            var permisosRolActivo = SidebarPermissionHelper.Resolve(
+                Session["Rol"] as string ?? string.Empty,
+                Session["RolesRaw"] ?? Session["Roles"]);
+            var puedeGestionarAsignacion = permisosRolActivo.EsAdministrador || permisosRolActivo.EsCoordinadorRol;
+            var puedeVerPendientesDirdac = permisosRolActivo.EsAdministrador
+                || permisosRolActivo.EsDirdacRol
+                || permisosRolActivo.EsDirectorGeneralRol;
+            var puedeValidarAocr = permisosRolActivo.EsAdministrador
+                || permisosRolActivo.EsDirdacRol
+                || permisosRolActivo.EsDcavRol
+                || permisosRolActivo.EsDirectorGeneralRol;
+            ViewBag.PuedeGestionarAsignacionRolActivo = puedeGestionarAsignacion;
+            ViewBag.PuedeVerPendientesDirdacRolActivo = puedeVerPendientesDirdac;
+            ViewBag.PuedeValidarAocrRolActivo = puedeValidarAocr;
             var quickFilterNormalizado = NormalizarQuickFilter(quickFilter);
 
             var inspecciones = _dashboardInspeccionDao.ObtenerInspeccionesEnSeguimiento();

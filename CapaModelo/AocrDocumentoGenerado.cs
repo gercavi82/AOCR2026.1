@@ -18,8 +18,19 @@ namespace CapaModelo
         public string UsuarioNombre { get; set; }
         public DateTime? CreatedAt { get; set; }
         public string HashPdfFirmado { get; set; }
+        public long? TamanioPdfFirmado { get; set; }
         public DateTime? FechaLiberacion { get; set; }
         public bool DisponibleRt { get; set; }
         public DateTime? FechaDisponibleRt { get; set; }
+        public int VersionDocumento { get; set; }
+        public bool Vigente { get; set; }
+        public bool Completo { get; set; }
+        public bool Bloqueado { get; set; }
+        public string HashPdf { get; set; }
+        public string RutaPdfFirmado { get; set; }
+        public int? CodigoUsuarioFirma { get; set; }
+        public string RolFirma { get; set; }
+        public DateTime? FechaFirma { get; set; }
+        public long VersionConcurrencia { get; set; }
     }
 }

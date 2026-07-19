@@ -168,6 +168,7 @@
     <Compile Include="Helpers\PdfBrandingHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Services\DocumentoFirmaService.cs" />
+    <Compile Include="Services\DocumentosFinalesWorkflowService.cs" />
     <Compile Include="Services\FinalizacionInstitucionalService.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\DashboardOrdenesService.cs" />
@@ -197,6 +198,7 @@
     <Compile Include="Services\AocrEstadoService.cs" />
     <Compile Include="Services\AocrFlujoService.cs" />
     <Compile Include="Services\AocrSidebarCounterService.cs" />
+    <Compile Include="Services\AocrFirmaPendientePolicy.cs" />
     <Compile Include="Services\AocrFlujoValidacionService.cs" />
     <Compile Include="Services\AocrEmailFlujoService.cs" />
     <Compile Include="Services\AocrModificationWorkflowService.cs" />

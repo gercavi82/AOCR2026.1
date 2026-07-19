@@ -35,12 +35,16 @@ namespace CapaPresentacion.Models.ViewModels
         }
 
         public string UserName { get; set; }
+        public string ActiveRoleKey { get; set; }
         public string UserRoleDisplay { get; set; }
         public string UserEmail { get; set; }
         public int AvailableRoleCount { get; set; }
         public string ActiveCompanyCode { get; set; }
         public string ActiveCompanyName { get; set; }
         public bool ShowCompanySelector { get; set; }
+        public bool ShowCompanyContext { get; set; }
+        public bool ShowSearch { get; set; }
+        public string NavigationSectionTitle { get; set; }
         public string CompanyChangeUrl { get; set; }
         public string ReturnUrl { get; set; }
         public string ActiveRoleSummary { get; set; }
@@ -101,6 +105,7 @@ namespace CapaPresentacion.Models.ViewModels
         public string Url { get; set; }
         public bool Visible { get; set; }
         public bool Enabled { get; set; }
+        public bool PermissionGranted { get; set; }
         public bool IsActive { get; set; }
         public bool IsQuickAction { get; set; }
         public int BadgeCount { get; set; }

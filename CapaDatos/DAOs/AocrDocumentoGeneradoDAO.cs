@@ -24,6 +24,29 @@ namespace CapaDatos.DAOs
                 EnsureSchema(cn);
 
                 const string sql = @"
+                    WITH guard AS (
+                        SELECT pg_advisory_xact_lock(@codigo_solicitud::bigint)
+                    ), actual AS (
+                        SELECT codigo_documento
+                        FROM public.aocr_tbdocumento_generado, guard
+                        WHERE codigo_solicitud = @codigo_solicitud
+                          AND UPPER(tipo_documento) = UPPER(@tipo_documento)
+                          AND vigente = TRUE
+                        FOR UPDATE
+                    ), misma_evidencia AS (
+                        SELECT codigo_documento
+                        FROM public.aocr_tbdocumento_generado
+                        WHERE codigo_documento IN (SELECT codigo_documento FROM actual)
+                          AND NULLIF(hash_pdf, '') IS NOT DISTINCT FROM NULLIF(@hash_pdf, '')
+                    ), anterior AS (
+                        UPDATE public.aocr_tbdocumento_generado
+                           SET vigente = FALSE,
+                               estado = CASE WHEN bloqueado THEN estado ELSE 'VERSION_ANTERIOR' END,
+                               version_concurrencia = version_concurrencia + 1
+                         WHERE codigo_documento IN (SELECT codigo_documento FROM actual)
+                           AND NOT EXISTS (SELECT 1 FROM misma_evidencia)
+                        RETURNING codigo_documento
+                    )
                     INSERT INTO public.aocr_tbdocumento_generado
                     (
                         codigo_solicitud,
@@ -37,10 +60,15 @@ namespace CapaDatos.DAOs
                         fecha_generacion,
                         codigo_usuario,
                         usuario_nombre,
+                        version_documento,
+                        vigente,
+                        completo,
+                        bloqueado,
+                        hash_pdf,
+                        version_concurrencia,
                         created_at
                     )
-                    VALUES
-                    (
+                    SELECT
                         @codigo_solicitud,
                         @codigo_inspeccion,
                         @tipo_documento,
@@ -52,8 +80,14 @@ namespace CapaDatos.DAOs
                         @fecha_generacion,
                         @codigo_usuario,
                         @usuario_nombre,
+                        COALESCE((SELECT MAX(version_documento) + 1 FROM public.aocr_tbdocumento_generado WHERE codigo_solicitud=@codigo_solicitud AND UPPER(tipo_documento)=UPPER(@tipo_documento)), 1),
+                        TRUE,
+                        @completo,
+                        FALSE,
+                        @hash_pdf,
+                        1,
                         NOW()
-                    );";
+                    WHERE NOT EXISTS (SELECT 1 FROM misma_evidencia);";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
@@ -68,6 +102,8 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@fecha_generacion", documento.FechaGeneracion == DateTime.MinValue ? DateTime.Now : documento.FechaGeneracion);
                     cmd.Parameters.AddWithValue("@codigo_usuario", (object)documento.CodigoUsuario ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@usuario_nombre", (object)documento.UsuarioNombre ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@completo", documento.Completo);
+                    cmd.Parameters.AddWithValue("@hash_pdf", (object)documento.HashPdf ?? DBNull.Value);
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -98,11 +134,24 @@ namespace CapaDatos.DAOs
                            fecha_generacion,
                            codigo_usuario,
                            usuario_nombre,
-                           created_at
+                           created_at,
+                           version_documento,
+                           vigente,
+                           completo,
+                           bloqueado,
+                           hash_pdf,
+                           ruta_pdf_firmado,
+                           hash_pdf_firmado,
+                           tamanio_pdf_firmado,
+                           codigo_usuario_firma,
+                           rol_firma,
+                           fecha_firma,
+                           version_concurrencia
                     FROM public.aocr_tbdocumento_generado
                     WHERE codigo_solicitud = @codigo_solicitud
                       AND UPPER(COALESCE(tipo_documento, '')) = UPPER(@tipo_documento)
-                    ORDER BY fecha_generacion DESC, codigo_documento DESC
+                      AND vigente = TRUE
+                    ORDER BY version_documento DESC, codigo_documento DESC
                     LIMIT 1;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
@@ -130,7 +179,19 @@ namespace CapaDatos.DAOs
                             FechaGeneracion = rd["fecha_generacion"] != DBNull.Value ? Convert.ToDateTime(rd["fecha_generacion"]) : DateTime.MinValue,
                             CodigoUsuario = rd["codigo_usuario"] != DBNull.Value ? (int?)Convert.ToInt32(rd["codigo_usuario"]) : null,
                             UsuarioNombre = rd["usuario_nombre"] != DBNull.Value ? rd["usuario_nombre"].ToString() : null,
-                            CreatedAt = rd["created_at"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["created_at"]) : null
+                            CreatedAt = rd["created_at"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["created_at"]) : null,
+                            VersionDocumento = rd["version_documento"] != DBNull.Value ? Convert.ToInt32(rd["version_documento"]) : 1,
+                            Vigente = rd["vigente"] != DBNull.Value && Convert.ToBoolean(rd["vigente"]),
+                            Completo = rd["completo"] != DBNull.Value && Convert.ToBoolean(rd["completo"]),
+                            Bloqueado = rd["bloqueado"] != DBNull.Value && Convert.ToBoolean(rd["bloqueado"]),
+                            HashPdf = rd["hash_pdf"] != DBNull.Value ? rd["hash_pdf"].ToString() : null,
+                            RutaPdfFirmado = rd["ruta_pdf_firmado"] != DBNull.Value ? rd["ruta_pdf_firmado"].ToString() : null,
+                            HashPdfFirmado = rd["hash_pdf_firmado"] != DBNull.Value ? rd["hash_pdf_firmado"].ToString() : null,
+                            TamanioPdfFirmado = rd["tamanio_pdf_firmado"] != DBNull.Value ? (long?)Convert.ToInt64(rd["tamanio_pdf_firmado"]) : null,
+                            CodigoUsuarioFirma = rd["codigo_usuario_firma"] != DBNull.Value ? (int?)Convert.ToInt32(rd["codigo_usuario_firma"]) : null,
+                            RolFirma = rd["rol_firma"] != DBNull.Value ? rd["rol_firma"].ToString() : null,
+                            FechaFirma = rd["fecha_firma"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["fecha_firma"]) : null,
+                            VersionConcurrencia = rd["version_concurrencia"] != DBNull.Value ? Convert.ToInt64(rd["version_concurrencia"]) : 1L
                         };
                     }
                 }
@@ -287,6 +348,17 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS codigo_usuario_liberacion INTEGER NULL;
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS disponible_rt BOOLEAN NOT NULL DEFAULT FALSE;
                     ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS fecha_disponible_rt TIMESTAMP NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS version_documento INTEGER NOT NULL DEFAULT 1;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS vigente BOOLEAN NOT NULL DEFAULT TRUE;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS completo BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS hash_pdf VARCHAR(128) NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS ruta_pdf_firmado VARCHAR(500) NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS tamanio_pdf_firmado BIGINT NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS codigo_usuario_firma INTEGER NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS rol_firma VARCHAR(100) NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS fecha_firma TIMESTAMP NULL;
+                    ALTER TABLE public.aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS version_concurrencia BIGINT NOT NULL DEFAULT 1;
 
                     CREATE INDEX IF NOT EXISTS idx_aocr_documento_generado_solicitud_tipo
                         ON public.aocr_tbdocumento_generado(codigo_solicitud, tipo_documento, fecha_generacion DESC);";

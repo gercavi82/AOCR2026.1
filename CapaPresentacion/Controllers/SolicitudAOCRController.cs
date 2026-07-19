@@ -3329,6 +3329,10 @@ namespace CapaPresentacion.Controllers
             }
 
             filtros = NormalizarFiltrosBandeja(filtros ?? new AocrGeneradasFirmadasFiltroViewModel());
+            if (!contexto.EsAdministrador && contexto.EsDirdac)
+                filtros.DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoAocr;
+            else if (!contexto.EsAdministrador && contexto.EsDcav)
+                filtros.DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoCondiciones;
             if (filtros.Page <= 0)
             {
                 filtros.Page = 1;
@@ -3350,6 +3354,7 @@ namespace CapaPresentacion.Controllers
             LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroEstadoFinal={filtros.EstadoFinal ?? string.Empty}", "SolicitudAOCRController");
             LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroEstadoFirma={filtros.EstadoFirma ?? string.Empty}", "SolicitudAOCRController");
             LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroTipoTramite={filtros.TipoTramite ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] DocumentoPendiente={filtros.DocumentoPendiente ?? string.Empty}", "SolicitudAOCRController");
             LogBL.RegistrarInfo($"[AOCR_BANDEJA] SQLParametros=consulta base sin parametros SQL; filtros aplicados en controlador {JsonConvert.SerializeObject(new { filtros.Search, filtros.EstadoFinal, filtros.EstadoFirma, filtros.TipoTramite, filtros.SoloConPdf })}", "SolicitudAOCRController");
 
             List<AocrGeneradasFirmadasRowViewModel> visibles;
@@ -3368,6 +3373,7 @@ namespace CapaPresentacion.Controllers
 
                 var filasRol = filas
                     .Where(x => DebeMostrarFilaBandeja(x, contexto))
+                    .Where(x => AocrFirmaPendientePolicy.Coincide(x, filtros.DocumentoPendiente))
                     .ToList();
 
                 totalDespuesRol = filasRol.Count;
@@ -6084,6 +6090,7 @@ namespace CapaPresentacion.Controllers
             filtros.EstadoFirma = NormalizarFiltroTodos(filtros.EstadoFirma);
             filtros.TipoTramite = NormalizarFiltroTodos(filtros.TipoTramite);
             filtros.SoloConPdf = NormalizarFiltroTodos(filtros.SoloConPdf);
+            filtros.DocumentoPendiente = NormalizarFiltroTodos(filtros.DocumentoPendiente);
             return filtros;
         }
 
@@ -6389,7 +6396,8 @@ namespace CapaPresentacion.Controllers
 
         private BandejaAocrContexto ConstruirContextoBandeja()
         {
-            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"]?.ToString());
+            var rolSeleccionado = (Session["Rol"] ?? string.Empty).ToString().Trim();
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(rolSeleccionado);
             var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
             var sinRolesRaw = rolesRaw.Count == 0;
             int codigoUsuarioActual;
@@ -6406,6 +6414,11 @@ namespace CapaPresentacion.Controllers
                 EsCoordinacion = RoleGroupingHelper.IsCoordinacion(rolActual)
                     && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinador", "CoordinadorInspecciones", "CoordinacionLegal", "CoordinadorLegal")),
                 EsDireccion = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual),
+                EsDirdac = string.Equals(rolSeleccionado, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                    || (string.IsNullOrWhiteSpace(rolSeleccionado) && RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DIRDAC")),
+                EsDcav = string.Equals(rolSeleccionado, "DCAV", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(rolSeleccionado, "DirectorCertificacionesDcav", StringComparison.OrdinalIgnoreCase)
+                    || (string.IsNullOrWhiteSpace(rolSeleccionado) && RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DCAV", "DirectorCertificacionesDcav")),
                 CodigosInspector = ObtenerCodigosInspectorActual()
             };
         }
@@ -6515,6 +6528,8 @@ namespace CapaPresentacion.Controllers
             public bool EsInspector { get; set; }
             public bool EsCoordinacion { get; set; }
             public bool EsDireccion { get; set; }
+            public bool EsDirdac { get; set; }
+            public bool EsDcav { get; set; }
             public HashSet<int> CodigosInspector { get; set; } = new HashSet<int>();
             public bool PuedeVerBandeja => EsAdministrador || EsSolicitante || EsInspector || EsCoordinacion || EsDireccion;
         }

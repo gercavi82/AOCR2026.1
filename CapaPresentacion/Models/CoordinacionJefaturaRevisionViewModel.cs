@@ -282,6 +282,9 @@ namespace CapaPresentacion.Models
         public string UrlCompletarDatos { get; set; }
         public List<FirmaAocrDocumentoItemViewModel> Documentos { get; set; } = new List<FirmaAocrDocumentoItemViewModel>();
         public bool AmbosDocumentosFirmados { get; set; }
+        public bool EsInspector { get; set; }
+        public bool PuedeEnviarParaFirma { get; set; }
+        public string UrlEnviarParaFirma { get; set; }
     }
 
     public class FirmaAocrDocumentoItemViewModel
@@ -294,6 +297,8 @@ namespace CapaPresentacion.Models
         public string NombreArchivoFirmado { get; set; }
         public bool PdfExiste { get; set; }
         public bool Firmado { get; set; }
+        public bool Bloqueado { get; set; }
+        public string EstadoWorkflow { get; set; }
         public bool PuedeGenerar { get; set; }
         public bool PuedeFirmar { get; set; }
         public int Paginas { get; set; }

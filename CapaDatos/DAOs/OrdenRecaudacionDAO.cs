@@ -344,14 +344,18 @@ namespace CapaDatos.DAOs
                                     concepto_nombre,
                                     cantidad,
                                     valor_unitario,
-                                    total_linea
+                                    total_linea,
+                                    lugar_inspeccion,
+                                    provincia_inspeccion
                                 ) VALUES (
                                     @OrdenId,
                                     @ConceptoId,
                                     @ConceptoNombre,
                                     @Cantidad,
                                     @ValorUnitario,
-                                    @TotalLinea
+                                    @TotalLinea,
+                                    @LugarInspeccion,
+                                    @ProvinciaInspeccion
                                 )";
                             
                             foreach (var detalle in orden.Detalles)
@@ -363,7 +367,9 @@ namespace CapaDatos.DAOs
                                     detalle.ConceptoNombre,
                                     detalle.Cantidad,
                                     detalle.ValorUnitario,
-                                    detalle.TotalLinea
+                                    detalle.TotalLinea,
+                                    detalle.LugarInspeccion,
+                                    detalle.ProvinciaInspeccion
                                 }, trans);
                             }
                         }
@@ -405,10 +411,12 @@ namespace CapaDatos.DAOs
 
             var sql = @"INSERT INTO aocr_or_orden_detalle 
                         (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
-                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea)
+                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea,
+                         lugar_inspeccion, provincia_inspeccion)
                         VALUES 
                         (@ordenId, @conceptoId, @conceptoCodigo, @conceptoNombre, @descripcion,
-                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea)";
+                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea,
+                         @lugarInspeccion, @provinciaInspeccion)";
 
             using (var cmd = new NpgsqlCommand(sql, conn))
             {
@@ -423,6 +431,8 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@subtotal", detalle.Subtotal);
                 cmd.Parameters.AddWithValue("@admin", detalle.Admin);
                 cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
+                cmd.Parameters.AddWithValue("@lugarInspeccion", (object)detalle.LugarInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@provinciaInspeccion", (object)detalle.ProvinciaInspeccion ?? DBNull.Value);
 
                 cmd.ExecuteNonQuery();
             }
@@ -813,6 +823,20 @@ namespace CapaDatos.DAOs
                 Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
                 TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
             };
+
+            // Intentar leer las columnas nuevas sin romper si no existen (aunque ya fueron agregadas, mejor ser seguros)
+            try
+            {
+                int idxLugar = reader.GetOrdinal("lugar_inspeccion");
+                if (!reader.IsDBNull(idxLugar)) detalle.LugarInspeccion = reader.GetString(idxLugar);
+
+                int idxProvincia = reader.GetOrdinal("provincia_inspeccion");
+                if (!reader.IsDBNull(idxProvincia)) detalle.ProvinciaInspeccion = reader.GetString(idxProvincia);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Ignorar si la columna no viene en el select de alguna consulta específica
+            }
 
             return NormalizarMontosDetalle(detalle);
         }

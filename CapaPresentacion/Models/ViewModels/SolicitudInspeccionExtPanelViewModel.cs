@@ -10,6 +10,7 @@ namespace CapaPresentacion.Models.ViewModels
         public bool TieneInspeccionExt { get; set; }
         public string EstadoDocumentoSolicitudInspeccion { get; set; }
         public string AeropuertosSolicitados { get; set; }
+        public string FechasInspeccion { get; set; }
         public bool TienePdfGenerado { get; set; }
         public bool TienePdfFirmado { get; set; }
         public bool PuedeEditarSolicitudInspeccionExt { get; set; }

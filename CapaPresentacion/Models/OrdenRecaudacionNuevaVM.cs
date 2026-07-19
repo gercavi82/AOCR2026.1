@@ -17,11 +17,16 @@ namespace CapaPresentacion.Models
         // Propiedad Orden que contiene los datos de la nueva orden
         public NuevaOrdenViewModel Orden { get; set; } = new NuevaOrdenViewModel();
 
-        // Para almacenar detalles en JSON
         public string DetallesJson { get; set; }
+
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
 
         [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
         public string AeropuertosSolicitados { get; set; }
+
+        [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
+        public string FechasInspeccion { get; set; }
 
         public bool GenerarSolicitudInspeccionAlGuardar { get; set; }
 
@@ -74,6 +79,12 @@ namespace CapaPresentacion.Models
             [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
             [Display(Name = "Observaciones")]
             public string Observacion { get; set; }
+
+            public string LugarInspeccion { get; set; }
+            public string ProvinciaInspeccion { get; set; }
+            public bool RequiereProvinciaInspeccion { get; set; }
+            public bool InspeccionExternaObligatoria { get; set; }
+            public bool ViaticosInspectorObligatorios { get; set; }
 
             // Para selección de concepto
             [Display(Name = "Conceptos")]

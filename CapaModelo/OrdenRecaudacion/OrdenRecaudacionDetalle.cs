@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace CapaModelo.OrdenRecaudacion
 {
@@ -16,7 +16,10 @@ namespace CapaModelo.OrdenRecaudacion
         public decimal PorcentajeAdmin { get; set; } = 0;
 
         public decimal Subtotal { get; set; } = 0;
-        public decimal Admin { get; set; } = 0;
-        public decimal TotalLinea { get; set; } = 0;
+        public decimal Admin { get; set; }
+        public decimal TotalLinea { get; set; }
+
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
     }
 }

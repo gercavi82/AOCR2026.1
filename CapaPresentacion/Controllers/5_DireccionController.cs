@@ -7,6 +7,7 @@ using CapaDatos.DAOs;
 using CapaNegocio;
 using CapaModelo;
 using CapaPresentacion.Models;
+using CapaNegocio.Services;
 
 namespace CapaPresentacion.Controllers
 {
@@ -29,11 +30,31 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // DASHBOARD GERENCIAL
         // ============================================================
-        [Authorize(Roles = "Direccion,JefaturaTecnica,Administrador")]
+        [Authorize(Roles = "Direccion,DireccionJefaturaTecnica,JefaturaTecnica,DIRDAC,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
         {
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
             var inspecciones = new InspeccionDAO().ListarTodas() ?? new List<Inspeccion>();
+            var informesPendientesDirdac = 0;
+            var aocrPendientesFirmaDirdac = 0;
+            var documentosInstitucionalesFirmados = 0;
+            try
+            {
+                var direccionBandeja = new DireccionBandejaService();
+                informesPendientesDirdac = direccionBandeja.ContarPendientesRevisionDcav();
+                aocrPendientesFirmaDirdac = direccionBandeja.ContarAocrPendientesFirmaDirdac();
+                var documentosInstitucionales = new AocrBandejaDAO().ListarGeneradasFirmadas()
+                    ?? new List<CapaModelo.Common.AocrBandejaDocumentoRow>();
+                documentosInstitucionalesFirmados = documentosInstitucionales.Count(x =>
+                    x.FirmaReconocimientoId.HasValue
+                    || !string.IsNullOrWhiteSpace(x.RutaReconocimientoFirmado)
+                    || x.FirmaCondicionesId.HasValue
+                    || !string.IsNullOrWhiteSpace(x.RutaCondicionesFirmado));
+            }
+            catch
+            {
+                // El resumen gerencial debe seguir disponible aunque falle un contador auxiliar.
+            }
 
             var estados = solicitudes
                 .GroupBy(s => EstadoSolicitud.Normalizar(s.Estado))
@@ -68,6 +89,9 @@ namespace CapaPresentacion.Controllers
                 AocrValidados = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_Validado),
                 AocrLegalizados = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_Legalizado),
                 AocrEmitidosRecibidos = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_EmitidoRecibido),
+                InformesPendientesDirdac = informesPendientesDirdac,
+                AocrPendientesFirmaDirdac = aocrPendientesFirmaDirdac,
+                DocumentosInstitucionalesFirmados = documentosInstitucionalesFirmados,
                 EstadosSolicitud = estados,
                 CuellosBotella = cuellosBotella
             };

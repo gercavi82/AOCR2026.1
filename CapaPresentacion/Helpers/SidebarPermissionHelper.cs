@@ -25,6 +25,7 @@ namespace CapaPresentacion.Helpers
         public bool EsLegalRol { get; set; }
         public bool EsDirectorGeneralRol { get; set; }
         public bool EsDirdacRol { get; set; }
+        public bool EsDcavRol { get; set; }
         public bool PuedeAdministracion { get; set; }
         public bool PuedeAprobarUsuarios { get; set; }
         public bool TieneNavegacionRol { get; set; }
@@ -64,17 +65,27 @@ namespace CapaPresentacion.Helpers
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
             snapshot.EsDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorGeneral"));
-            snapshot.EsDirdacRol = (RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral")))
-                || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorCertificacionesDcav");
+
+            // GATE 8: DIRDAC exclusion of DCAV
+            snapshot.EsDirdacRol = RoleGroupingHelper.IsDirdac(snapshot.RolActual)
+                || ((RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral", "DIRECCION_DIRDAC")))
+                && !RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorCertificacionesDcav", "DCAV", "DIRECCION_DCAV"));
+
+            // GATE 8: DCAV specific role
+            snapshot.EsDcavRol = RoleGroupingHelper.IsDcav(snapshot.RolActual)
+                || (RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorCertificacionesDcav", "DCAV", "DIRECCION_DCAV")));
+
             snapshot.PuedeAdministracion = snapshot.EsAdministrador;
-            snapshot.PuedeAprobarUsuarios = snapshot.EsAdministrador || snapshot.EsLegalRol || snapshot.EsCoordinadorRol || snapshot.EsDirdacRol;
+            snapshot.PuedeAprobarUsuarios = snapshot.EsAdministrador || snapshot.EsLegalRol || snapshot.EsCoordinadorRol || snapshot.EsDirdacRol || snapshot.EsDcavRol;
             snapshot.TieneNavegacionRol = snapshot.EsSolicitanteRol
                 || snapshot.EsRepresentanteRtRol
                 || snapshot.EsInspectorRol
                 || snapshot.EsCoordinadorRol
                 || snapshot.EsFinancieroRol
                 || snapshot.EsDirdacRol
+                || snapshot.EsDcavRol
                 || snapshot.EsLegalRol
                 || snapshot.EsAdministrador
                 || snapshot.PuedeAprobarUsuarios;

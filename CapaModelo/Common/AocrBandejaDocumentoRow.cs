@@ -54,5 +54,7 @@ namespace CapaModelo.Common
         public DateTime? FechaFirmaCondiciones { get; set; }
         public string RutaAocrGenerada { get; set; }
         public DateTime? FechaAocrGenerada { get; set; }
+        public string EstadoDocumentoAocr { get; set; }
+        public string EstadoDocumentoCondiciones { get; set; }
     }
 }

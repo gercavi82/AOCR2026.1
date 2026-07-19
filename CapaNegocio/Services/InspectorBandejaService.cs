@@ -13,6 +13,114 @@ namespace CapaNegocio.Services
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
         private readonly RevisionDocumentalBandejaService _revisionDocumentalBandejaService = new RevisionDocumentalBandejaService();
 
+        /// <summary>
+        /// Fuente unica de la bandeja y del contador de documentos finales del Inspector.
+        /// Las escrituras usan DIRDAC; los alias anteriores se conservan solo para lectura.
+        /// </summary>
+        public IList<InspectorDocumentoFinalPendiente> ObtenerPendientesDocumentosFinales(AocrBandejaRoleContext context)
+        {
+            if (context == null || !context.EsInspectorTecnico)
+            {
+                return new List<InspectorDocumentoFinalPendiente>();
+            }
+
+            var estadosCentrales = new HashSet<int>();
+            var procesoDao = new AocrProcesoEstadoDAO();
+            foreach (var estado in new[]
+            {
+                AocrEstadosProceso.DocumentosFinalesPorGenerar,
+                AocrEstadosProceso.InformeTecnicoAprobadoDirdac,
+                // Compatibilidad de lectura; nunca se utiliza para nuevas escrituras.
+                AocrEstadosProceso.InformeTecnicoAprobadoDcav,
+                "EMISION_AOCR_CONDICIONES"
+            })
+            {
+                foreach (var id in procesoDao.ListarInspeccionesActivas(estado) ?? new List<int>())
+                {
+                    estadosCentrales.Add(id);
+                }
+            }
+
+            var informeDao = new InspeccionInformeDAO();
+            var solicitudDao = new SolicitudAOCRDAO();
+            var ncDao = new NoConformidadDAO();
+            var documentoDao = new AocrDocumentoGeneradoDAO();
+            var cierreService = new AocrCierrePorTipoTramiteService();
+            var resultado = new List<InspectorDocumentoFinalPendiente>();
+
+            foreach (var inspeccion in ObtenerInspeccionesAsignadas(context))
+            {
+                var estadoInspeccion = InformeTecnicoEstadosInstitucionales.NormalizarToken(inspeccion.Estado);
+                var tieneEstadoCentral = estadosCentrales.Contains(inspeccion.CodigoInspeccion);
+                var tieneEstadoCompatible = estadoInspeccion == "EMISION_AOCR_CONDICIONES"
+                    || estadoInspeccion == AocrEstadosProceso.DocumentosFinalesPorGenerar
+                    || estadoInspeccion == AocrEstadosProceso.InformeTecnicoAprobadoDirdac
+                    || estadoInspeccion == AocrEstadosProceso.InformeTecnicoAprobadoDcav;
+                if (!tieneEstadoCentral && !tieneEstadoCompatible)
+                {
+                    continue;
+                }
+
+                var informe = informeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion);
+                if (!EsInformeAprobadoDirdac(informe))
+                {
+                    continue;
+                }
+
+                if (ncDao.ContarAbiertasRelacionadasConInspeccion(inspeccion.CodigoInspeccion) > 0)
+                {
+                    continue;
+                }
+
+                var solicitud = solicitudDao.ObtenerPorCodigo(inspeccion.CodigoSolicitud);
+                if (solicitud == null || EsSolicitudFinal(solicitud.Estado))
+                {
+                    continue;
+                }
+
+                var plan = cierreService.Resolver(solicitud);
+                if (!plan.EsValido)
+                {
+                    continue;
+                }
+
+                var aocr = plan.GenerarAocr
+                    ? documentoDao.ObtenerUltimoPorSolicitudTipo(solicitud.CodigoSolicitud, AocrCierrePorTipoTramiteService.Reconocimiento)
+                    : null;
+                var condiciones = plan.GenerarCondiciones
+                    ? documentoDao.ObtenerUltimoPorSolicitudTipo(solicitud.CodigoSolicitud, AocrCierrePorTipoTramiteService.Condiciones)
+                    : null;
+
+                resultado.Add(new InspectorDocumentoFinalPendiente
+                {
+                    InspeccionId = inspeccion.CodigoInspeccion,
+                    SolicitudId = solicitud.CodigoSolicitud,
+                    NumeroSolicitud = solicitud.NumeroSolicitud,
+                    CompaniaRuc = solicitud.Ruc,
+                    CompaniaNombre = PrimerValor(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial),
+                    NumeroInspeccion = PrimerValor(inspeccion.NumeroInspeccion, inspeccion.CodigoInspeccion.ToString()),
+                    TipoTramite = plan.TipoTramite,
+                    InspectorAsignado = PrimerValor(inspeccion.InspectorPrincipalNombre, context.UserName, context.CodigoUsuario),
+                    FechaAprobacionDirdac = informe.FechaFirma2 ?? informe.FechaFinalizacion ?? informe.UpdatedAt,
+                    EstadoAocr = plan.GenerarAocr ? EstadoDocumento(aocr, "PENDIENTE_GENERAR") : "NO_APLICA",
+                    EstadoCondiciones = plan.GenerarCondiciones ? EstadoDocumento(condiciones, "PENDIENTE_GENERAR") : "NO_APLICA",
+                    GenerarAocr = plan.GenerarAocr,
+                    GenerarCondiciones = plan.GenerarCondiciones
+                });
+            }
+
+            return resultado
+                .OrderBy(x => x.FechaAprobacionDirdac ?? DateTime.MinValue)
+                .ThenBy(x => x.NumeroSolicitud)
+                .ToList();
+        }
+
+        public int ContarPendientesDocumentosFinales(AocrBandejaRoleContext context)
+        {
+            // Intencionalmente usa exactamente la misma consulta/reglas que la bandeja.
+            return ObtenerPendientesDocumentosFinales(context).Count;
+        }
+
         public int ContarRevisionDocumentalPendiente(AocrBandejaRoleContext context)
         {
             return _revisionDocumentalBandejaService.ContarBandejaInspector(context);
@@ -44,8 +152,45 @@ namespace CapaNegocio.Services
                 Observadas = inspecciones.Count(ins => EsEstadoObservada(ins.Estado)),
                 Finalizadas = inspecciones.Count(ins => EsEstadoFinalizada(ins.Estado)),
                 RevisionDocumental = ContarRevisionDocumentalPendiente(context),
-                EmisionAocrCondiciones = inspecciones.Count(ins => EsEstadoEmisionAocr(ins.Estado))
+                EmisionAocrCondiciones = ContarPendientesDocumentosFinales(context)
             };
+        }
+
+        private static bool EsInformeAprobadoDirdac(InspeccionInformeTecnico informe)
+        {
+            if (informe == null || !informe.Finalizado || !informe.FirmadoInspector)
+            {
+                return false;
+            }
+
+            var estado = InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme);
+            return estado == AocrEstadosProceso.InformeTecnicoAprobadoDirdac
+                || estado == "APROBADO_DIRDAC"
+                || estado == "APROBADO_DIRECCION"
+                || estado == "INFORME_TECNICO_APROBADO_DIRECCION"
+                || estado == AocrEstadosProceso.InformeTecnicoAprobadoDcav;
+        }
+
+        private static bool EsSolicitudFinal(string estado)
+        {
+            var normalizado = EstadoSolicitud.Normalizar(estado);
+            return string.Equals(normalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(estado), AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string EstadoDocumento(AocrDocumentoGenerado documento, string estadoVacio)
+        {
+            return documento == null || string.IsNullOrWhiteSpace(documento.Estado)
+                ? estadoVacio
+                : InformeTecnicoEstadosInstitucionales.NormalizarToken(documento.Estado);
+        }
+
+        private static string PrimerValor(params string[] valores)
+        {
+            return (valores ?? new string[0]).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? string.Empty;
         }
 
         private static HashSet<int> ResolverInspectorFilterIds(AocrBandejaRoleContext context)
@@ -200,5 +345,22 @@ namespace CapaNegocio.Services
         public int Finalizadas { get; set; }
         public int RevisionDocumental { get; set; }
         public int EmisionAocrCondiciones { get; set; }
+    }
+
+    public sealed class InspectorDocumentoFinalPendiente
+    {
+        public int InspeccionId { get; set; }
+        public int SolicitudId { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string CompaniaRuc { get; set; }
+        public string CompaniaNombre { get; set; }
+        public string NumeroInspeccion { get; set; }
+        public string TipoTramite { get; set; }
+        public string InspectorAsignado { get; set; }
+        public DateTime? FechaAprobacionDirdac { get; set; }
+        public string EstadoAocr { get; set; }
+        public string EstadoCondiciones { get; set; }
+        public bool GenerarAocr { get; set; }
+        public bool GenerarCondiciones { get; set; }
     }
 }

@@ -22,6 +22,7 @@ using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models;
 using CapaPresentacion.Models.ViewModels;
+using CapaPresentacion.Services;
 using iTextSharp.text.pdf;
 using Newtonsoft.Json;
 using Rotativa;
@@ -199,19 +200,13 @@ namespace CapaPresentacion.Controllers
 
         private bool EsRolDireccionOJefatura()
         {
-            if (EsAdmin())
-            {
-                return true;
-            }
+            var permisosRolActivo = SidebarPermissionHelper.Resolve(
+                Session["Rol"] as string ?? string.Empty,
+                Session["RolesRaw"] ?? Session["Roles"]);
 
-            return UsuarioTieneAlMenosUnRol(
-                ROL_DIRDAC,
-                ROL_DIRECCION,
-                ROL_DIRECCION_JEFATURA_TECNICA,
-                ROL_DIRECTOR_GENERAL,
-                ROL_DIRECTOR,
-                ROL_JEFATURA,
-                ROL_JEFE);
+            return permisosRolActivo.EsAdministrador
+                || permisosRolActivo.EsDirdacRol
+                || permisosRolActivo.EsDirectorGeneralRol;
         }
 
         private bool EsRolInspector()
@@ -292,6 +287,7 @@ namespace CapaPresentacion.Controllers
         {
             var estado = ObtenerEstadoInformeNormalizado(informe);
             return string.Equals(estado, "DEVUELTO_DIRECCION", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estado, "RECHAZADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estado, "DEVUELTO_COORDINADOR", StringComparison.OrdinalIgnoreCase);
         }
@@ -308,6 +304,7 @@ namespace CapaPresentacion.Controllers
             return informe != null
                 && (informe.FirmadoDirdac
                     || informe.NotificadoRt
+                    || string.Equals(estado, AocrEstadosProceso.InformeTecnicoAprobadoDirdac, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estado, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estado, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase));
         }
@@ -1140,7 +1137,7 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogInfo("[INFTEC_DIR][BANDEJA_IN] Usuario=" + ObtenerUsuarioActual() + "; Rol=" + ObtenerRolActual() + ";");
 
-                var pendientes = (_informeDAO.ListarPendientesRevisionInformeDcav() ?? new List<InspeccionInformeTecnico>())
+                var pendientes = (_informeDAO.ListarPendientesRevisionInformeDirdac() ?? new List<InspeccionInformeTecnico>())
                     .Select(informe =>
                     {
                         var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
@@ -1156,6 +1153,10 @@ namespace CapaPresentacion.Controllers
                     .OrderByDescending(x => x.Informe.FechaEnvioDirdac ?? x.Informe.FechaFirma1 ?? x.Informe.FechaFinalizacion ?? x.Informe.UpdatedAt ?? DateTime.MinValue)
                     .Select(x => ConstruirPendienteRevisionDireccionItem(x.Inspeccion, x.Solicitud, x.Informe))
                     .ToList();
+
+                _logger.LogInfo("[INFTEC_DIR][BANDEJA_OUT] Total=" + pendientes.Count
+                    + "; Usuario=" + ObtenerUsuarioActual()
+                    + "; Rol=" + ObtenerRolActual() + ";");
 
                 foreach (var item in pendientes.Where(p => p != null))
                 {
@@ -1789,7 +1790,7 @@ namespace CapaPresentacion.Controllers
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico));
 
             return ServirArchivoInstitucionalSeguro(informeTecnico != null ? informeTecnico.CodigoInforme : id,
-                inspeccion.CodigoSolicitud, rutaRelativa, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico),
+                inspeccion.CodigoSolicitud, fullPath, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico),
                 descargar, baseDir);
         }
 
@@ -1920,7 +1921,8 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("La inspección aún no tiene una lista de verificación operacional generada.");
             }
 
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
+            var baseDirOriginal = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+            var baseDirFirmadas = Server.MapPath(CARPETA_VIRTUAL_LV_EAE_FIRMADAS);
             string rutaRelativa = null;
             string fullPath = null;
             var rutasFueraBase = new List<string>();
@@ -1928,7 +1930,7 @@ namespace CapaPresentacion.Controllers
             foreach (var rutaCandidata in rutasCandidatas)
             {
                 var fullPathCandidata = Server.MapPath("~" + rutaCandidata);
-                if (!EsRutaDentroDeBase(fullPathCandidata, baseDir))
+                if (!EsRutaDentroDeBase(fullPathCandidata, baseDirOriginal) && !EsRutaDentroDeBase(fullPathCandidata, baseDirFirmadas))
                 {
                     rutasFueraBase.Add(rutaCandidata);
                     continue;
@@ -1962,8 +1964,8 @@ namespace CapaPresentacion.Controllers
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista));
             return ServirArchivoInstitucionalSeguro(lista != null ? lista.CodigoListaVerificacion : id,
-                inspeccion.CodigoSolicitud, rutaRelativa, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista),
-                descargar, baseDir);
+                inspeccion.CodigoSolicitud, fullPath, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista),
+                descargar, baseDirOriginal, baseDirFirmadas);
         }
 
         private ActionResult ServirAdjuntoInformeTecnico(int id, string archivo, bool descargar)
@@ -2220,7 +2222,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("El archivo solicitado no existe.");
             }
 
-            return ServirArchivoInstitucionalSeguro(documentoId, inspeccion.CodigoSolicitud, rutaRelativa,
+            return ServirArchivoInstitucionalSeguro(documentoId, inspeccion.CodigoSolicitud, fullPath,
                 documento.NombreArchivoOriginal ?? documento.NombreArchivoStorage ?? ("Documento_" + documentoId), true, baseDir);
         }
 
@@ -3448,14 +3450,26 @@ namespace CapaPresentacion.Controllers
                 + ", Hash=" + (resultadoFirma.HashSha256 ?? string.Empty)
                 + ", Paginas=" + paginasFirmadas);
 
-            _listaVerificacionOperacionalEaeDAO.RegistrarFirmaTecnico(
-                lista.CodigoListaVerificacion,
-                rutaFirmada,
-                resultadoFirma.HashSha256,
-                DateTime.Now,
-                nombreFirmanteCertificado,
-                "LV_FIRMADA",
-                usuarioId);
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                _listaVerificacionOperacionalEaeDAO.RegistrarFirmaTecnico(
+                    lista.CodigoListaVerificacion,
+                    rutaFirmada,
+                    resultadoFirma.HashSha256,
+                    DateTime.Now,
+                    nombreFirmanteCertificado,
+                    "LV_FIRMADA",
+                    usuarioId);
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    inspeccion.CodigoSolicitud,
+                    codigoInspeccion,
+                    AocrEstadosProceso.LvFirmadaInspector,
+                    "ELABORACION_INFORME_TECNICO",
+                    ROL_INSPECTOR,
+                    usuarioId,
+                    "Lista de verificacion firmada digitalmente por el Inspector asignado.");
+                scope.Complete();
+            }
 
             _logger.LogInfo("[FIRMA_LV][ESTADO_OK] InspeccionId=" + codigoInspeccion
                 + ", ListaId=" + lista.CodigoListaVerificacion
@@ -4217,7 +4231,7 @@ namespace CapaPresentacion.Controllers
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
 
-            if (!InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme))
+            if (!string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme), AocrEstadosProceso.PendienteRevisionInformeDirdac, StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -4246,13 +4260,26 @@ namespace CapaPresentacion.Controllers
             var usuarioActual = ObtenerUsuarioActual();
             var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "ENVIADO_A_DIRDAC");
             var observacionAprobacion = string.IsNullOrWhiteSpace(observacionDireccion) ? string.Empty : observacionDireccion.Trim();
+            ResultadoOperacion resultadoSincronizacionAocr;
 
             using (var scope = new TransactionScope(TransactionScopeOption.Required))
             {
-                _informeDAO.RegistrarAprobacionDireccion(informe.CodigoInforme,DateTime.Now,usuarioActual,"APROBADO_DIRECCION",usuarioId);
+                _informeDAO.RegistrarAprobacionDireccion(informe.CodigoInforme,DateTime.Now,usuarioActual,"INFORME_TECNICO_APROBADO_DIRDAC",usuarioId);
                 new AocrProcesoEstadoDAO().CambiarEstado(
                     solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud,id,
-                    AocrEstadosProceso.InformeTecnicoAprobadoDcav,"EMISION_AOCR_CONDICIONES",ROL_COORD_GRUPO,usuarioId,observacionAprobacion);
+                    AocrEstadosProceso.InformeTecnicoAprobadoDirdac,"APROBACION_INFORME_DIRDAC",ROL_INSPECTOR,usuarioId,observacionAprobacion);
+                var informeAprobadoTransaccion = _informeDAO.ObtenerPorId(informe.CodigoInforme) ?? informe;
+                resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, informeAprobadoTransaccion, usuarioId, usuarioActual);
+                if (!resultadoSincronizacionAocr.Exitoso)
+                    throw new InvalidOperationException(FirstNonEmpty(resultadoSincronizacionAocr.Mensaje, "No se pudo habilitar la generacion de documentos finales."));
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud,
+                    id,
+                    AocrEstadosProceso.DocumentosFinalesPorGenerar,
+                    "GENERACION_DOCUMENTOS_FINALES",
+                    ROL_INSPECTOR,
+                    usuarioId,
+                    "Informe Tecnico aprobado por DIRDAC. Ambos documentos finales habilitados para el Inspector asignado.");
                 scope.Complete();
             }
 
@@ -4266,9 +4293,6 @@ namespace CapaPresentacion.Controllers
                 usuarioId,
                 usuarioActual,
                 "INFORME_TECNICO_APROBADO_DIRECCION");
-
-            var informeAprobado = _informeDAO.ObtenerPorId(informe.CodigoInforme) ?? informe;
-            var resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, informeAprobado, usuarioId, usuarioActual);
 
             _logger.LogInfo("[GestionInspeccion] Informe aprobado por Dirección / Jefatura. InspeccionId=" + id
                 + ", InformeId=" + informe.CodigoInforme
@@ -4369,7 +4393,7 @@ namespace CapaPresentacion.Controllers
                 return respuestaPermiso;
             }
 
-            if (!InformeTecnicoEstadosInstitucionales.PuedeRevisarDireccion(informe.EstadoInforme))
+            if (!string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme), AocrEstadosProceso.PendienteRevisionInformeDirdac, StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -4387,9 +4411,9 @@ namespace CapaPresentacion.Controllers
 
             using (var scope = new TransactionScope(TransactionScopeOption.Required))
             {
-                _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme,observacion,usuarioActual,"DEVUELTO_DIRECCION",usuarioId);
+                _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme,observacion,usuarioActual,AocrEstadosProceso.InformeTecnicoDevueltoInspector,usuarioId);
                 new AocrProcesoEstadoDAO().CambiarEstado(
-                    inspeccion.CodigoSolicitud,id,AocrEstadosProceso.InformeTecnicoObservadoDcav,
+                    inspeccion.CodigoSolicitud,id,AocrEstadosProceso.InformeTecnicoDevueltoInspector,
                     "CORRECCION_INFORME_INSPECTOR",ROL_INSPECTOR,usuarioId,observacion);
                 scope.Complete();
             }
@@ -4397,13 +4421,13 @@ namespace CapaPresentacion.Controllers
             RegistrarAuditoriaInformeDigital(
                 id,
                 FirstNonEmpty(informe.EstadoInforme, "ENVIADO_A_DIRDAC"),
-                "DEVUELTO_DIRECCION",
+                AocrEstadosProceso.InformeTecnicoDevueltoInspector,
                 null,
                 null,
                 string.Format("Informe devuelto por Dirección / Jefatura ({0}). Observación: {1}. IP={2}", usuarioActual, observacion, ObtenerIpCliente()),
                 usuarioId,
                 usuarioActual,
-                "INFORME_TECNICO_DEVUELTO_DIRECCION");
+                AocrEstadosProceso.InformeTecnicoDevueltoInspector);
 
             _logger.LogInfo("[GestionInspeccion] Informe devuelto por Dirección / Jefatura. InspeccionId=" + id
                 + ", InformeId=" + informe.CodigoInforme
@@ -7146,6 +7170,7 @@ namespace CapaPresentacion.Controllers
                 : (informe != null && informe.Finalizado ? "GENERADO" : "BORRADOR");
             var informeEnviadoADirdac = InformeEstaEnviadoADirdac(informe);
             var informeDevueltoDireccion = string.Equals(estadoInformeTecnico, "DEVUELTO_DIRECCION", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInformeTecnico, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInformeTecnico, "RECHAZADO_DIRDAC", StringComparison.OrdinalIgnoreCase);
             var informeAprobadoDireccion = string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
                 || InformeTieneDecisionInstitucionalFinal(informe);
@@ -7573,8 +7598,10 @@ namespace CapaPresentacion.Controllers
             var informeEnviadoACoordinador = string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase);
             var informeDevueltoCoordinador = string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", StringComparison.OrdinalIgnoreCase);
             var informeDevueltoDireccion = string.Equals(estadoInformeTecnico, "DEVUELTO_DIRECCION", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInformeTecnico, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInformeTecnico, "RECHAZADO_DIRDAC", StringComparison.OrdinalIgnoreCase);
             var informeAprobadoDireccion = string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInformeTecnico, AocrEstadosProceso.InformeTecnicoAprobadoDirdac, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
                 || informe.NotificadoRt
@@ -7855,12 +7882,18 @@ namespace CapaPresentacion.Controllers
             informe = AsegurarInformeTecnicoFirmable(inspeccion, informe, usuarioIdOperacion);
             if (informe == null || !informe.Finalizado)
             {
+                _logger.LogWarning("[INFTEC_FIRMA][RECHAZADA] InspeccionId=" + id
+                    + "; RolFirma=" + rolFirma
+                    + "; Motivo=INFORME_NO_FINALIZADO;");
                 TempData["Error"] = "Debe generar el PDF del informe técnico antes de firmarlo.";
                 return RedirectToAction("Detalle", new { id });
             }
 
             if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && informe.FirmadoInspector)
             {
+                _logger.LogWarning("[INFTEC_FIRMA][RECHAZADA] InspeccionId=" + id
+                    + "; InformeId=" + informe.CodigoInforme
+                    + "; RolFirma=INSPECTOR; Motivo=YA_FIRMADO;");
                 TempData["Error"] = "El informe técnico ya fue firmado por el inspector.";
                 return RedirectToAction("Detalle", new { id });
             }
@@ -7890,6 +7923,14 @@ namespace CapaPresentacion.Controllers
             string mensajeValidacion;
             if (!EsCertificadoDigitalValido(certificadoArchivo, out mensajeValidacion))
             {
+                _logger.LogWarning("[INFTEC_FIRMA][RECHAZADA] InspeccionId=" + id
+                    + "; InformeId=" + informe.CodigoInforme
+                    + "; RolFirma=" + rolFirma
+                    + "; Motivo=CERTIFICADO_ARCHIVO_INVALIDO"
+                    + "; ArchivoPresente=" + (certificadoArchivo != null)
+                    + "; Tamanio=" + (certificadoArchivo != null ? certificadoArchivo.ContentLength : 0)
+                    + "; Extension=" + (certificadoArchivo != null ? Path.GetExtension(certificadoArchivo.FileName ?? string.Empty) : string.Empty)
+                    + "; Mensaje=" + mensajeValidacion + ";");
                 TempData["Error"] = mensajeValidacion;
                 return RedirectToAction("Detalle", new { id });
             }
@@ -7930,6 +7971,12 @@ namespace CapaPresentacion.Controllers
             var infoCertificado = _firmaDigitalService.LeerCertificado(certificadoBytes, passwordCertificado);
             if (!infoCertificado.Exitoso)
             {
+                _logger.LogWarning("[INFTEC_FIRMA][RECHAZADA] InspeccionId=" + id
+                    + "; InformeId=" + informe.CodigoInforme
+                    + "; RolFirma=" + rolFirma
+                    + "; Motivo=CERTIFICADO_NO_LEIBLE"
+                    + "; Tamanio=" + certificadoBytes.Length
+                    + "; Mensaje=" + infoCertificado.Mensaje + ";");
                 TempData["Error"] = infoCertificado.Mensaje;
                 return RedirectToAction("Detalle", new { id });
             }
@@ -7993,16 +8040,28 @@ namespace CapaPresentacion.Controllers
                 + ", EstadoFinal=" + estadoFinal
                 + ", UsuarioId=" + usuarioId);
 
-            if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
             {
-                _informeDAO.RegistrarFirmaDirdac(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
-            }
-            else
-            {
-                _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
-            }
+                if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+                {
+                    _informeDAO.RegistrarFirmaDirdac(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
+                }
+                else
+                {
+                    _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, nombreFirmanteCertificado, estadoFinal, usuarioId);
+                    new AocrProcesoEstadoDAO().CambiarEstado(
+                        inspeccion.CodigoSolicitud,
+                        id,
+                        AocrEstadosProceso.InformeTecnicoFirmadoInspector,
+                        "ENVIO_INFORME_DIRDAC",
+                        ROL_INSPECTOR,
+                        usuarioId,
+                        "Informe Tecnico vigente firmado digitalmente por el Inspector asignado.");
+                }
 
-            _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+                _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+                scope.Complete();
+            }
 
             _logger.LogInfo("[GestionInspeccion] Firma digital persistida. InspeccionId=" + id
                 + ", RolFirma=" + rolFirma
@@ -8122,13 +8181,13 @@ namespace CapaPresentacion.Controllers
                 var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "GENERADO");
                 using (var scope = new TransactionScope(TransactionScopeOption.Required))
                 {
-                    _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
+                    _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "PENDIENTE_REVISION_INFORME_DIRDAC", usuarioId);
                     new AocrProcesoEstadoDAO().CambiarEstado(
                         solicitud.CodigoSolicitud,
                         inspeccion.CodigoInspeccion,
-                        AocrEstadosProceso.PendienteRevisionInformeDcav,
-                        "REVISION_INFORME_DCAV",
-                        ROL_DIRECTOR_CERTIFICACIONES_DCAV,
+                        AocrEstadosProceso.PendienteRevisionInformeDirdac,
+                        "REVISION_INFORME_DIRDAC",
+                        ROL_DIRDAC,
                         usuarioId,
                         "Informe técnico firmado SATISFACTORIO enviado por Inspector a DCAV.");
                     scope.Complete();
@@ -8185,7 +8244,12 @@ namespace CapaPresentacion.Controllers
 
         private bool InformeEstaEnviadoADirdac(InspeccionInformeTecnico informe)
         {
-            return informe != null && InformeEstaEnRevisionInstitucionalDirdac(informe);
+            // Una firma del Inspector habilita el envío, pero no significa que el
+            // estado central de la bandeja DIRDAC ya haya sido creado. Mantener
+            // separadas ambas condiciones evita omitir MarcarEnviadoADirdac y
+            // AocrProcesoEstadoDAO.CambiarEstado tras la firma automática.
+            return informe != null
+                && InformeTecnicoEstadosInstitucionales.FueEnviadoDireccion(informe.EstadoInforme);
         }
 
         private ActionResult ValidarPermisoDecisionInstitucionalFinal(Inspeccion inspeccion, InspeccionInformeTecnico informe, string endpoint)
@@ -8709,6 +8773,33 @@ namespace CapaPresentacion.Controllers
             if (fileInfo.Length <= 0)
             {
                 resultado.Mensaje = "El archivo del informe firmado esta vacio o no se encuentra disponible.";
+                return resultado;
+            }
+
+            using (var stream = System.IO.File.OpenRead(rutaFisica))
+            {
+                var magic = new byte[4];
+                if (stream.Read(magic, 0, magic.Length) != magic.Length
+                    || magic[0] != 0x25 || magic[1] != 0x50 || magic[2] != 0x44 || magic[3] != 0x46)
+                {
+                    resultado.Mensaje = "El archivo firmado no tiene una cabecera PDF valida.";
+                    return resultado;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(informe.HashDocumento))
+            {
+                resultado.Mensaje = "El informe firmado no tiene una huella de integridad persistida.";
+                return resultado;
+            }
+
+            string hashActual;
+            using (var stream = System.IO.File.OpenRead(rutaFisica))
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                hashActual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty).ToLowerInvariant();
+            if (!string.Equals(hashActual, informe.HashDocumento.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                resultado.Mensaje = "La integridad del informe firmado no coincide con la evidencia persistida.";
                 return resultado;
             }
 
@@ -9638,50 +9729,53 @@ namespace CapaPresentacion.Controllers
         // =====================================================================
 
         [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR)]
         public ActionResult PendientesEmisionAocr()
         {
-            var inspectorIds = ObtenerIdsInspectorActual().Where(id => id > 0).ToList();
-            var inspeccionesAsignadas = inspectorIds
-                .SelectMany(id => _inspeccionBL.ListarPorInspector(id) ?? new List<Inspeccion>())
-                .GroupBy(ins => ins.CodigoInspeccion)
-                .Select(group => group.OrderByDescending(ins => ins.UpdatedAt ?? DateTime.MinValue).First())
-                .ToList();
-            
-            var filtradas = inspeccionesAsignadas.Where(i => 
-                string.Equals(EstadosInspeccion.NormalizarEstado(i.Estado), AocrEstadosProceso.InformeTecnicoAprobadoDcav, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(EstadosInspeccion.NormalizarEstado(i.Estado), "EMISION_AOCR_CONDICIONES", StringComparison.OrdinalIgnoreCase)
-            ).ToList();
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "La bandeja solo está disponible con el rol Inspector activo.");
 
-            var modelo = new PendienteEmisionAocrViewModel();
-            var documentoDao = new DocumentoDAO();
-            
-            foreach(var ins in filtradas)
+            var contexto = AocrUserContextService.ToBandejaRoleContext(AocrUserContextService.FromHttpContext(HttpContext));
+            var pendientes = new InspectorBandejaService().ObtenerPendientesDocumentosFinales(contexto);
+            var modelo = new PendienteEmisionAocrViewModel
             {
-                var doc = documentoDao.ObtenerPorSolicitud(ins.CodigoSolicitud).FirstOrDefault(d => d.TipoDocumento == "CONDICIONES_OPERACION_BORRADOR");
-                bool redactadas = doc != null && !string.IsNullOrWhiteSpace(doc.RutaGuardada);
-                
-                var item = new PendienteEmisionAocrItemViewModel
+                Inspecciones = pendientes.Select(fila => new PendienteEmisionAocrItemViewModel
                 {
-                    InspeccionId = ins.CodigoInspeccion,
-                    SolicitudId = ins.CodigoSolicitud,
-                    CompaniaRuc = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.Ruc ?? "",
-                    CompaniaNombre = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.RazonSocial ?? "",
-                    TramiteAocr = _solicitudDAO.ObtenerPorId(ins.CodigoSolicitud)?.NumeroSolicitud ?? "",
-                    FechaAsignacion = ins.CreatedAt ?? DateTime.Now,
-                    EstadoNormalizado = "EMISIÓN AOCR Y CONDICIONES",
-                    CondicionesRedactadas = redactadas,
-                    PuedeGenerarAocr = true,
-                    MotivoBloqueoAocr = "Debe redactar las Especificaciones antes de generar AOCR."
-                };
-                modelo.Inspecciones.Add(item);
-            }
-            
+                    InspeccionId = fila.InspeccionId,
+                    SolicitudId = fila.SolicitudId,
+                    NumeroSolicitud = fila.NumeroSolicitud,
+                    CompaniaRuc = fila.CompaniaRuc,
+                    CompaniaNombre = fila.CompaniaNombre,
+                    NumeroInspeccion = fila.NumeroInspeccion,
+                    TipoTramite = fila.TipoTramite,
+                    InspectorAsignado = fila.InspectorAsignado,
+                    FechaAprobacionDirdac = fila.FechaAprobacionDirdac,
+                    EstadoAocr = fila.EstadoAocr,
+                    EstadoCondiciones = fila.EstadoCondiciones,
+                    GenerarAocr = fila.GenerarAocr,
+                    GenerarCondiciones = fila.GenerarCondiciones
+                }).ToList()
+            };
+
             return View(modelo);
         }
 
         [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR)]
         public ActionResult RedactarEspecificaciones(int inspeccionId)
         {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "La edición solo está disponible con el rol Inspector activo.");
+
+            var contexto = AocrUserContextService.ToBandejaRoleContext(AocrUserContextService.FromHttpContext(HttpContext));
+            var bandejaService = new InspectorBandejaService();
+            if (!bandejaService.ObtenerInspeccionesAsignadas(contexto).Any(x => x.CodigoInspeccion == inspeccionId))
+                return new HttpStatusCodeResult(403, "La inspección no está asignada al Inspector autenticado.");
+            var pendiente = bandejaService.ObtenerPendientesDocumentosFinales(contexto)
+                .SingleOrDefault(x => x.InspeccionId == inspeccionId);
+            if (pendiente == null)
+                return new HttpStatusCodeResult(409, "La inspección no está asignada al Inspector o ya no está habilitada para generar documentos finales.");
+
             var inspeccion = _inspeccionBL.ObtenerPorId(inspeccionId);
             if (inspeccion == null) return HttpNotFound();
             
@@ -9705,20 +9799,43 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [ValidateAntiForgeryToken]
         public ActionResult GuardarEspecificaciones(int inspeccionId, string ContenidoBase64)
         {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "La edición solo está disponible con el rol Inspector activo.");
+
+            var contexto = AocrUserContextService.ToBandejaRoleContext(AocrUserContextService.FromHttpContext(HttpContext));
+            var bandejaService = new InspectorBandejaService();
+            if (!bandejaService.ObtenerInspeccionesAsignadas(contexto).Any(x => x.CodigoInspeccion == inspeccionId))
+                return new HttpStatusCodeResult(403, "La inspección no está asignada al Inspector autenticado.");
+            var pendiente = bandejaService.ObtenerPendientesDocumentosFinales(contexto)
+                .SingleOrDefault(x => x.InspeccionId == inspeccionId);
+            if (pendiente == null)
+                return new HttpStatusCodeResult(409, "La inspección no está asignada al Inspector o ya no está habilitada para generar documentos finales.");
+
             var inspeccion = _inspeccionBL.ObtenerPorId(inspeccionId);
             if (inspeccion == null) return HttpNotFound();
-            
-            string textoHtml = "";
-            if (!string.IsNullOrWhiteSpace(ContenidoBase64))
+
+            if (string.IsNullOrWhiteSpace(ContenidoBase64) || ContenidoBase64.Length > 1400000)
+                return new HttpStatusCodeResult(400, "El contenido del borrador es obligatorio o excede el tamaño permitido.");
+
+            string textoHtml;
+            try
             {
-                try {
-                    var bytes = Convert.FromBase64String(ContenidoBase64);
-                    textoHtml = System.Text.Encoding.UTF8.GetString(bytes);
-                } catch { }
+                var bytes = Convert.FromBase64String(ContenidoBase64);
+                textoHtml = System.Text.Encoding.UTF8.GetString(bytes);
             }
-            
+            catch (FormatException)
+            {
+                return new HttpStatusCodeResult(400, "El contenido recibido no tiene un formato Base64 válido.");
+            }
+
+            if (System.Text.RegularExpressions.Regex.IsMatch(textoHtml,
+                @"<\s*script|javascript\s*:|\son[a-z]+\s*=", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return new HttpStatusCodeResult(400, "El borrador contiene marcado no permitido.");
+
             var carpeta = Server.MapPath("~/App_Data/Borradores");
             if (!System.IO.Directory.Exists(carpeta)) System.IO.Directory.CreateDirectory(carpeta);
             
@@ -9726,7 +9843,8 @@ namespace CapaPresentacion.Controllers
             System.IO.File.WriteAllText(rutaArchivo, textoHtml, System.Text.Encoding.UTF8);
             
             var documentoDao = new DocumentoDAO();
-            var docExistente = documentoDao.ObtenerPorSolicitud(inspeccion.CodigoSolicitud).FirstOrDefault(d => d.TipoDocumento == "CONDICIONES_OPERACION_BORRADOR");
+            var docExistente = documentoDao.ObtenerPorSolicitud(inspeccion.CodigoSolicitud)
+                .FirstOrDefault(d => string.Equals(d.TipoDocumento, "CONDICIONES_OPERACION_BORRADOR", StringComparison.OrdinalIgnoreCase));
             
             if (docExistente != null)
             {

@@ -1,0 +1,81 @@
+@{
+    ViewBag.Title = "Redactar Especificaciones de Operación";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var inspeccionId = ViewBag.InspeccionId;
+    var contenidoBase64 = ViewBag.ContenidoBase64;
+}
+
+<div class="aocr-page-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="aocr-page-title text-success">
+                <i class="fas fa-edit mr-2"></i> Redactar Especificaciones de Operación
+            </h1>
+            <p class="aocr-page-subtitle">Borrador previo a la generación del AOCR.</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="@Url.Action("PendientesEmisionAocr", "Inspeccion")" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Bandeja
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="aocr-card">
+    <div class="aocr-card-body">
+        <form action="@Url.Action("GuardarEspecificaciones", "Inspeccion")" method="post">
+            <input type="hidden" name="inspeccionId" value="@inspeccionId" />
+            
+            <div class="form-group">
+                <label class="font-weight-bold">Contenido del Borrador (Condiciones y Limitaciones)</label>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Escriba el texto que será incluido en el anexo de Especificaciones. Una vez guardado, se habilitará la generación del AOCR.
+                </div>
+                
+                <input type="hidden" id="ContenidoBase64" name="ContenidoBase64" value="@contenidoBase64" />
+                
+                <div id="editor-container" style="border: 1px solid #ced4da; min-height: 400px; padding: 15px; border-radius: 4px; background: #fff;" contenteditable="true"></div>
+            </div>
+
+            <div class="form-group text-right">
+                <button type="submit" class="btn btn-primary" onclick="guardarContenidoBase64(event)">
+                    <i class="fas fa-save"></i> Guardar Borrador
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var inputBase64 = document.getElementById("ContenidoBase64");
+            var editor = document.getElementById("editor-container");
+            
+            if (inputBase64.value && inputBase64.value.trim() !== '') {
+                try {
+                    // Decodificar Base64 a string y setear el HTML
+                    editor.innerHTML = decodeURIComponent(escape(window.atob(inputBase64.value)));
+                } catch(e) {
+                    console.error("Error decoding base64:", e);
+                }
+            } else {
+                editor.innerHTML = "<h4>Especificaciones de Operación</h4><p>Escriba aquí...</p>";
+            }
+        });
+
+        function guardarContenidoBase64(e) {
+            var editor = document.getElementById("editor-container");
+            var inputBase64 = document.getElementById("ContenidoBase64");
+            var contenidoHtml = editor.innerHTML;
+            
+            try {
+                // Codificar HTML a Base64
+                inputBase64.value = window.btoa(unescape(encodeURIComponent(contenidoHtml)));
+            } catch(e) {
+                console.error("Error encoding base64:", e);
+                inputBase64.value = "";
+            }
+        }
+    </script>
+}

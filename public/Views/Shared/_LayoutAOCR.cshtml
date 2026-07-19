@@ -1,0 +1,1188 @@
+@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using CapaPresentacion.Helpers
+@using System.Web.Mvc.Html
+@using System.Web.Optimization
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="description" content="Sistema AOCR - Dirección General de Aviación Civil Ecuador" />
+    <meta name="author" content="DGAC Ecuador" />
+    <meta name="keywords" content="DGAC, Aviación Civil, Ecuador, AOCR, Órdenes de Recaudación" />
+
+    <!-- CSP simplificado (compatible con DataTables y plugins) -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' https:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+                             https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   style-src  'self' 'unsafe-inline'
+                             https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   img-src    'self' data: https:;
+                   font-src   'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+                   worker-src 'self' blob:;
+                   connect-src 'self' https:;" />
+
+    <!-- Preconexiones para mejorar performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    @{
+        var pageTitle = ViewBag.Title != null
+            ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(Convert.ToString(ViewBag.Title)))
+            : "";
+        var frontVersion = AssetVersionHelper.GetFrontVersion();
+        var faviconVersion = "1";
+        var siteCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/Site.css");
+        var aocrCssInstHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-institucional.css");
+        var aocrCssDtHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-datatables.css");
+        var aocrCssResponsiveHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-responsive.css");
+        var aocrCssDocumentCardsHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-document-cards.css");
+        var aocrModalsCssHref = string.Empty;
+        try
+        {
+            var aocrModalsCssPath = Server.MapPath("~/Content/aocr-modals.css");
+            if (!string.IsNullOrWhiteSpace(aocrModalsCssPath) && System.IO.File.Exists(aocrModalsCssPath))
+            {
+                aocrModalsCssHref = Url.Content("~/Content/aocr-modals.css") + "?v=" + frontVersion;
+            }
+        }
+        catch
+        {
+        }
+        var aocrSidebarCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-sidebar.css");
+        var aocrContrastCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-contrast.css");
+        var aocrPdfViewerCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css");
+        var jqueryLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery-3.6.4.min.js");
+        var dataTablesInitUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-datatables.js");
+        var jqueryValidateUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.min.js");
+        var jqueryValidateUnobtrusiveUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.unobtrusive.min.js");
+        var aocrUtilsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-utils.js");
+        var adminLteLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/dist/js/adminlte.js");
+        var siteJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/site.js");
+        var appJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/app.js");
+        var sidebarJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-sidebar.js");
+        var pdfViewerJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js");
+        var pdfLibUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.min.js");
+        var pdfWorkerUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.worker.min.js");
+        try
+        {
+            var faviconPath = Server.MapPath("~/Content/imganes/logo1.png");
+            if (System.IO.File.Exists(faviconPath))
+            {
+                faviconVersion = System.IO.File.GetLastWriteTimeUtc(faviconPath).Ticks.ToString();
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    <title>@pageTitle - DGAC Sistema AOCR</title>
+
+    <!-- FontAwesome desde CDN compatible con CSP -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Favicon con múltiples formatos y fallbacks -->
+    <link rel="shortcut icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" type="image/png" />
+    <link rel="icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" type="image/png" />
+    <link rel="apple-touch-icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" />
+
+    <!-- AdminLTE CSS (siempre desde CDN — el archivo local no existe) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+
+    <!-- CSS Personalizado -->
+    <meta name="aocr-front-version" content="@frontVersion" />
+    <link href="@siteCssHref" rel="stylesheet" />
+    <link href="@aocrCssInstHref" rel="stylesheet" />
+    <link href="@aocrCssDtHref" rel="stylesheet" />
+    <link href="@aocrCssResponsiveHref" rel="stylesheet" />
+    <link href="@aocrCssDocumentCardsHref" rel="stylesheet" />
+    @if (!string.IsNullOrWhiteSpace(aocrModalsCssHref))
+    {
+        <link href="@aocrModalsCssHref" rel="stylesheet" type="text/css" />
+    }
+    <link href="@aocrSidebarCssHref" rel="stylesheet" />
+    <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
+
+    <!-- Estilos personalizados criticos (inline para performance) -->
+    <style>
+        :root {
+            --dgac-primary: #1B4F72;
+            --dgac-secondary: #0C7C86;
+            --dgac-success: #28a745;
+            --dgac-warning: #ffc107;
+            --dgac-danger: #dc3545;
+            --dgac-light: #f8f9fa;
+            --dgac-dark: #343a40;
+            --transition-fast: 0.2s ease;
+        }
+
+        /* Loader global critico */
+        #global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--dgac-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Fallback para imagenes */
+        .img-fallback {
+            background: linear-gradient(135deg, var(--dgac-primary), var(--dgac-secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Estado de carga */
+        body.waiting { cursor: wait !important; }
+        body.waiting::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 9998;
+        }
+
+        /* Accesibilidad */
+        @@media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap; border: 0;
+        }
+    </style>
+
+    @RenderSection("Styles", required: false)
+    <link href="@aocrContrastCssHref" rel="stylesheet" />
+    <style>
+        /* Modales AOCR — inline obligatorio (evita error MIME/404 si el CSS externo no está publicado en IIS) */
+        :root {
+            --aocr-modal-z-backdrop: 10490;
+            --aocr-modal-z-modal: 10500;
+            --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 260px);
+            --aocr-modal-sidebar-mini-offset: 4.6rem;
+        }
+
+        body.aocr-body .main-sidebar.aocr-sidebar,
+        body.aocr-body .main-sidebar,
+        body.aocr-body .sidebar {
+            z-index: 1030 !important;
+        }
+
+        body.aocr-body .aocr-sidebar-backdrop {
+            z-index: 1025 !important;
+        }
+
+        body.aocr-body .main-header.navbar,
+        body.aocr-body .aocr-topbar {
+            z-index: 1010 !important;
+        }
+
+        body.aocr-body .modal-backdrop,
+        body.aocr-body .modal-backdrop.show {
+            z-index: var(--aocr-modal-z-backdrop) !important;
+        }
+
+        body.aocr-body .modal,
+        body.aocr-body .modal.show {
+            z-index: var(--aocr-modal-z-modal) !important;
+        }
+
+        @@media (min-width: 992px) {
+            body.aocr-body .modal {
+                padding-left: var(--aocr-modal-sidebar-offset);
+            }
+
+            body.aocr-body.sidebar-mini.sidebar-collapse .modal,
+            body.aocr-body.sidebar-collapse .modal {
+                padding-left: var(--aocr-modal-sidebar-mini-offset);
+            }
+        }
+
+        body.aocr-body .modal-dialog {
+            margin: 1.75rem auto !important;
+            max-width: 980px;
+            width: calc(100% - 2rem);
+        }
+
+        body.aocr-body .modal-dialog-centered {
+            min-height: calc(100% - 3.5rem);
+        }
+
+        body.aocr-body .modal-content {
+            border: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+        }
+
+        body.aocr-body .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+        }
+
+        body.aocr-body .modal-header .modal-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        body.aocr-body .modal-body {
+            padding: 22px;
+        }
+
+        body.aocr-body .modal-footer {
+            padding: 16px 22px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        body.aocr-body .modal textarea.form-control {
+            width: 100%;
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        body.aocr-body .aocr-modal-anulacion .alert-warning {
+            margin-bottom: 0;
+        }
+
+        @@media (max-width: 991.98px) {
+            body.aocr-body .modal {
+                padding-left: 0 !important;
+            }
+        }
+
+        @@media (max-width: 768px) {
+            body.aocr-body .modal-dialog {
+                width: calc(100% - 1rem);
+                margin: 0.75rem auto !important;
+            }
+
+            body.aocr-body .modal-footer {
+                flex-direction: column-reverse;
+            }
+
+            body.aocr-body .modal-footer .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed aocr-body">
+
+    <!-- ✅ CORRECCIÓN: AntiForgeryToken para AJAX (FORMA CORRECTA) -->
+    <!-- (no lo pongas dentro de value="", porque Html.AntiForgeryToken() devuelve un input completo) -->
+    <form id="__AjaxAntiForgeryForm" style="display:none;">
+        @System.Web.Helpers.AntiForgery.GetHtml()
+    </form>
+
+    <!-- Global Loader -->
+    <div id="global-loader">
+        <div class="loader-spinner"></div>
+        <div class="mt-3 text-muted">Cargando sistema AOCR...</div>
+    </div>
+
+    <!-- Session timeout warning -->
+    <div id="session-timeout-warning" class="modal fade aocr-session-timeout-modal" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Sesión por expirar</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Su sesión expirará en <span id="session-countdown" class="fw-bold">5:00</span> minutos.</p>
+                    <p>¿Desea extender la sesión?</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary me-2" id="btn-logout-now">
+                        <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-extend-session">
+                        <i class="fas fa-sync-alt me-1"></i> Extender Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper aocr-app-shell">
+        <!-- Navbar Principal -->
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom aocr-topbar shadow-sm">
+            <!-- Botón sidebar -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"
+                       aria-label="Alternar menú lateral">
+                        <i class="fas fa-bars"></i>
+                    </a>
+                </li>
+                <li class="nav-item d-none d-sm-inline-block">
+                    <span class="nav-link text-dark fw-bold aocr-topbar-brand">
+                        <span class="aocr-topbar-brand__icon">
+                            <i class="fas fa-plane"></i>
+                        </span>
+                        <span class="aocr-topbar-brand__copy">
+                            <span class="aocr-topbar-brand__title" id="org-name">Dirección General de Aviación Civil - Ecuador</span>
+                            <small class="aocr-topbar-brand__subtitle">AOCR · Plataforma institucional</small>
+                        </span>
+                    </span>
+                </li>
+            </ul>
+
+            <!-- Controles derecho -->
+            <ul class="navbar-nav ms-auto">
+                <!-- Notificaciones -->
+                @Html.Partial("_NotificacionesBadge")
+
+                <!-- Menú Usuario -->
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+                       aria-haspopup="true" aria-expanded="false">
+                        @{
+                            var avatarUrl = Url.Content("~/Content/imganes/user.png");
+                            var nombreUsuarioSidebar = (Session["NombreUsuario"] as string ?? string.Empty).Trim();
+                            var avatarAlt = !string.IsNullOrWhiteSpace(nombreUsuarioSidebar) ? nombreUsuarioSidebar : "Usuario";
+                            var defaultAvatar = Url.Content("~/Content/imganes/user.png");
+                            var rolSidebar = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+                            var rolesSidebarRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+                            var rolUsuarioSidebar = RoleGroupingHelper.ToDisplayName(rolSidebar);
+                            var empresaNombreSidebar = (Session["EmpresaNombre"] as string ?? string.Empty).Trim();
+                            var empresaCodigoSidebar = (Session["EmpresaCodigo"] as string ?? string.Empty).Trim();
+                            var mostrarEmpresaEnSidebar = RoleGroupingHelper.IsSolicitante(rolSidebar);
+                            var esSidebarSolicitanteRt = mostrarEmpresaEnSidebar
+                                || RoleGroupingHelper.HasAnyRawRole(rolesSidebarRaw, "RepresentanteTecnico", "Representante Técnico", "RepresentanteLegal", "RT");
+                            var subtituloSidebar = rolUsuarioSidebar;
+                            if (mostrarEmpresaEnSidebar)
+                            {
+                                subtituloSidebar = !string.IsNullOrWhiteSpace(empresaNombreSidebar)
+                                    ? empresaNombreSidebar
+                                    : (!string.IsNullOrWhiteSpace(empresaCodigoSidebar) ? empresaCodigoSidebar : rolSidebar);
+                            }
+                        }
+                        <img src="@avatarUrl"
+                             class="user-image img-circle elevation-1"
+                             alt="@avatarAlt"
+                             width="32" height="32"
+                             onerror="this.onerror=null; this.src='@defaultAvatar';">
+                        <span class="d-none d-md-inline ms-2" id="user-display-name">@avatarAlt</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+                        <div class="user-header bg-light p-3 text-center">
+                            <img src="@avatarUrl"
+                                 class="img-circle elevation-2 mb-2"
+                                 alt="@avatarAlt"
+                                 width="90" height="90"
+                                 onerror="this.onerror=null; this.src='@defaultAvatar';">
+                            <p class="mb-0">
+                                <span id="user-fullname" class="d-block">@avatarAlt</span>
+                                <small id="user-role" class="text-muted">@rolUsuarioSidebar</small>
+                            </p>
+                        </div>
+                        <div class="user-footer p-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <a class="btn btn-default btn-block" href="@Url.Action("MiPerfil", "Usuario")">
+                                        <i class="fas fa-user me-1"></i> Perfil
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a class="btn btn-danger btn-block" href="@Url.Action("Logout", "Account")"
+                                       id="logout-link">
+                                        <i class="fas fa-sign-out-alt me-1"></i> Salir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4 aocr-sidebar">
+                <!-- Información usuario sidebar (fijo, no se desplaza) -->
+                @{
+                    var rolSidebarResumen = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+                    var ocultarResumenSidebar = RoleGroupingHelper.IsSolicitante(rolSidebarResumen);
+                }
+                @if (!ocultarResumenSidebar)
+                {
+                    <div class="user-panel d-flex align-items-center compact-user-panel aocr-sidebar-summary aocr-sidebar-summary--sticky">
+                        <div class="image aocr-sidebar-summary__avatar">
+                            <span class="aocr-sidebar-summary__status-dot"></span>
+                            <img src="@avatarUrl"
+                                 class="img-circle elevation-2"
+                                 alt="@avatarAlt"
+                                 width="40" height="40"
+                                 onerror="this.onerror=null; this.src='@defaultAvatar';">
+                        </div>
+                        <div class="info aocr-sidebar-summary__info">
+                            <span class="aocr-sidebar-summary__eyebrow">Acceso institucional</span>
+                            <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block aocr-sidebar-summary__name">@avatarAlt</a>
+                            <small class="aocr-sidebar-summary__role" title="@subtituloSidebar">@subtituloSidebar</small>
+                            <span class="aocr-sidebar-summary__badge">
+                                <i class="fas fa-circle-check"></i>
+                                Usuario activo
+                            </span>
+                        </div>
+                    </div>
+                }
+
+            <div class="sidebar">
+                <!-- Menu Sidebar -->
+                @Html.Partial("_SideBar")
+            </div>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <div class="content-wrapper aocr-main-wrapper">
+            <!-- Contenido -->
+            <section class="content aocr-content-shell px-3 pb-4 pt-3">
+                <div class="container-fluid aocr-page">
+                    @{
+                        var hideHeaderHero = false;
+                        object hideHeaderHeroRaw = ViewData["HideGlobalHeaderHero"];
+
+                        if (hideHeaderHeroRaw != null)
+                        {
+                            bool.TryParse(hideHeaderHeroRaw.ToString(), out hideHeaderHero);
+                        }
+
+                        var shouldRenderHeaderHero = !hideHeaderHero &&
+                                                     (Session["NombreUsuario"] != null || Session["Rol"] != null);
+                    }
+
+                    @if (shouldRenderHeaderHero)
+                    {
+                        @Html.Partial("_AOCRHeaderHero")
+                    }
+
+                    @RenderBody()
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="main-footer aocr-footer text-center border-top pt-3 no-print">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6 text-md-start">
+                        @{
+                            var appSettings = System.Configuration.ConfigurationManager.AppSettings;
+                            var nombreSistema = appSettings["AOCR:UI:NombreSistema"];
+                            var nombreOrganizacion = appSettings["AOCR:UI:NombreOrganizacion"];
+                            var versionSistema = appSettings["AOCR:UI:Version"];
+                            var ensambladoAplicacion = typeof(CapaPresentacion.MvcApplication).Assembly;
+                            string fechaCompilacion;
+
+                            if (string.IsNullOrWhiteSpace(nombreSistema))
+                            {
+                                nombreSistema = "Sistema AOCR";
+                            }
+
+                            if (string.IsNullOrWhiteSpace(nombreOrganizacion))
+                            {
+                                nombreOrganizacion = "Dirección General de Aviación Civil - Ecuador";
+                            }
+
+                            if (string.IsNullOrWhiteSpace(versionSistema))
+                            {
+                                versionSistema = ensambladoAplicacion.GetName().Version.ToString();
+                            }
+
+                            versionSistema = versionSistema.Trim();
+                            if (versionSistema.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                            {
+                                versionSistema = versionSistema.Substring(1);
+                            }
+
+                            try
+                            {
+                                var compilacionConfigurada = appSettings["AOCR:UI:Compilacion"];
+                                if (!string.IsNullOrWhiteSpace(compilacionConfigurada))
+                                {
+                                    fechaCompilacion = compilacionConfigurada.Trim();
+                                }
+                                else
+                                {
+                                    fechaCompilacion = System.IO.File.GetLastWriteTime(ensambladoAplicacion.Location).ToString("dd/MM/yyyy HH:mm");
+                                }
+                            }
+                            catch
+                            {
+                                fechaCompilacion = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                            }
+                        }
+                        <div class="footer-title">@nombreSistema</div>
+                        <small class="d-block footer-subtitle">
+                            @nombreOrganizacion
+                        </small>
+                        <small class="d-block footer-meta">
+                            Versión 1.0.0.0
+                            · Compilación @fechaCompilacion
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small class="footer-meta">
+                            <i class="fas fa-shield-alt"></i>
+                            @(HttpContext.Current.IsDebuggingEnabled ? "Desarrollo" : "Producción")
+                            · Último acceso <span id="last-access-time">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    @RenderSection("PageModals", required: false)
+
+    <!-- Diagnostico global: no silencia promesas, registra causa y contexto. -->
+    <script>
+    window.addEventListener('unhandledrejection', function(e) {
+        var r = e.reason;
+        var details = {
+            reason: r,
+            type: typeof r,
+            message: r && r.message ? r.message : (typeof r === 'string' ? r : ''),
+            status: r && r.status ? r.status : null,
+            responseText: r && r.responseText ? String(r.responseText).substring(0, 500) : '',
+            stack: r && r.stack ? r.stack : '',
+            keys: [],
+            url: window.location.href
+        };
+
+        try {
+            details.keys = r && typeof r === 'object' ? Object.keys(r).slice(0, 20) : [];
+        } catch (ignore) {
+        }
+
+        window.__AOCR_LAST_UNHANDLED_REJECTION__ = details;
+
+        if (window.console && typeof window.console.error === 'function') {
+            window.console.error('[AOCR][UNHANDLED_PROMISE]', details);
+        }
+    });
+
+    window.addEventListener('error', function(event) {
+        if (window.console && typeof window.console.error === 'function') {
+            window.console.error('[AOCR][JS_ERROR]', {
+                message: event.message,
+                source: event.filename,
+                line: event.lineno,
+                column: event.colno,
+                error: event.error,
+                url: window.location.href
+            });
+        }
+    });
+
+    window.__aocrGlobalDiagnosticsInstalled = true;
+    </script>
+
+    <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
+    <!-- ✅ CORRECCIÓN: jQuery PRIMERO, luego dependencias -->
+    <!-- 1. jQuery local (3.6.4) con fallback seguro sin document.write -->
+    <script src="@jqueryLocalUrl"></script>
+    <script>
+        (function () {
+            if (window.jQuery) return;
+            console.warn('⚠️ jQuery local no cargó, intentando CDN (async)...');
+            var s = document.createElement('script');
+            s.src = 'https://code.jquery.com/jquery-3.6.4.min.js';
+            s.onload = s.onreadystatechange = function () {
+                if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
+                    window.$ = window.jQuery;
+                }
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
+
+    <!-- 1.1 DataTables + Bootstrap 5 (estático — debe estar antes que document.ready de las vistas) -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+    <script>
+        window.AOCR_FRONT_VERSION = '@frontVersion';
+        window.AOCR_PDF_LIB_URL = '@pdfLibUrl';
+        window.AOCR_PDF_WORKER_URL = '@pdfWorkerUrl';
+    </script>
+    <script src="@pdfViewerJsUrl"></script>
+    <script src="@dataTablesInitUrl"></script>
+
+    <!-- 1.1b DataTables: defaults institucionales AOCR (aplicados a todas las tablas del proyecto) -->
+    <!--     Paginacion global fija: 5 registros por pagina. -->
+    <script>
+    $(function () {
+        if (!$.fn || !$.fn.dataTable) return;
+        $.extend(true, $.fn.dataTable.defaults, {
+            language: {
+                processing:     'Procesando...',
+                search:         'Buscar:',
+                lengthMenu:     'Mostrar _MENU_ registros',
+                info:           'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                infoEmpty:      'Mostrando 0 a 0 de 0 registros',
+                infoFiltered:   '(filtrado de _MAX_ registros en total)',
+                infoPostFix:    '',
+                loadingRecords: 'Cargando...',
+                zeroRecords:    'No se encontraron resultados',
+                emptyTable:     'No hay datos disponibles en esta tabla',
+                paginate: {
+                    first:    'Primero',
+                    previous: 'Anterior',
+                    next:     'Siguiente',
+                    last:     'Ultimo'
+                },
+                aria: {
+                    sortAscending:  ': activar para ordenar ascendentemente',
+                    sortDescending: ': activar para ordenar descendentemente'
+                }
+            },
+            pageLength:  5,
+            lengthChange: false,
+            responsive:  true,
+            autoWidth:   false,
+            processing:  true,
+            pagingType:  'simple_numbers',
+            // Estandar institucional: buscador a la derecha, info y paginacion abajo (sin selector de longitud)
+            dom: '<"row align-items-center mb-2"<"col-sm-12 text-end"f>>' +
+                 '<"row"<"col-12"tr>>' +
+                 '<"row align-items-center mt-2"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
+            initComplete: function () {
+                var $wrap = $(this).closest('.dataTables_wrapper');
+                $wrap.addClass('aocr-datatable-wrap');
+                $wrap.find('.dataTables_filter input')
+                    .addClass('form-control form-control-sm')
+                    .attr('placeholder', 'Buscar...');
+            }
+        });
+
+        // Institucional enforcement: cualquier vista que llame
+        //   $('#id').DataTable({ pageLength: 10, language: { url: ... } })
+        // queda normalizada (override fuerte) para mantener el estandar global.
+        try {
+            var _DT = $.fn.DataTable;
+            var _dt = $.fn.dataTable;
+            function _aocrNormalize(opts) {
+                if (!opts || typeof opts !== 'object') return opts;
+                // Forzar 5 registros (global)
+                opts.pageLength = 5;
+                opts.lengthChange = false;
+                // Si la vista especifica una URL remota de idioma, descartarla para usar
+                // los strings en espanol inline de los defaults institucionales.
+                if (opts.language && typeof opts.language === 'object' && opts.language.url) {
+                    delete opts.language.url;
+                }
+                // Asegurar paginacion estandar si la vista fijo otro pagingType
+                if (!opts.pagingType) { opts.pagingType = 'simple_numbers'; }
+                // Responsive por defecto salvo opt-out explicito
+                if (opts.responsive === undefined) { opts.responsive = true; }
+                return opts;
+            }
+            $.fn.DataTable = function (opts) {
+                _aocrNormalize(opts);
+                return _DT.apply(this, arguments);
+            };
+            $.each(_DT, function (k, v) { $.fn.DataTable[k] = v; });
+            $.fn.dataTable = function (opts) {
+                _aocrNormalize(opts);
+                return _dt.apply(this, arguments);
+            };
+            $.each(_dt, function (k, v) { $.fn.dataTable[k] = v; });
+        } catch (e) {
+            if (window.console) console.warn('[AOCR] No se pudo instalar el override institucional de DataTables:', e);
+        }
+    });
+    </script>
+
+    <!-- 1.2 jQuery Validate (necesario para validación cliente en vistas MVC) -->
+    <script src="@jqueryValidateUrl"></script>
+    <script src="@jqueryValidateUnobtrusiveUrl"></script>
+    <script>
+        (function () {
+            function loadScript(src) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.async = false;
+                document.head.appendChild(s);
+            }
+
+            function ensureValidationPlugins(retries) {
+                if (!window.jQuery) {
+                    if ((retries || 0) < 40) {
+                        setTimeout(function () {
+                            ensureValidationPlugins((retries || 0) + 1);
+                        }, 50);
+                    }
+                    return;
+                }
+
+                if (!window.jQuery.fn || typeof window.jQuery.fn.validate !== 'function') {
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js');
+                }
+
+                if (!window.jQuery.validator || !window.jQuery.validator.unobtrusive) {
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js');
+                }
+            }
+
+            ensureValidationPlugins(0);
+        })();
+    </script>
+
+    <!-- 2. Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+            crossorigin="anonymous"></script>
+    <script src="@aocrUtilsUrl"></script>
+
+    <!-- 3. Loader optimizado que espera jQuery -->
+    <script>
+    // ✅ CARGA SEGURA DE DEPENDENCIAS
+    (function initScriptLoader() {
+        // Estado de carga
+        var loadedScripts = {
+            jquery: false,
+            bootstrap: false,
+            datatables: false,
+            sweetalert: false,
+            adminlte: false
+        };
+
+        // Verificar si jQuery ya está listo
+        function checkJQuery() {
+            if (window.jQuery && typeof jQuery !== 'undefined') {
+                loadedScripts.jquery = true;
+                // Asegurar que $ esté disponible globalmente
+                if (typeof window.$ === 'undefined') {
+                    window.$ = jQuery;
+                }
+                checkBootstrap();
+            } else {
+                setTimeout(checkJQuery, 50);
+            }
+        }
+
+        // Verificar si Bootstrap está listo
+        function checkBootstrap() {
+            if (window.bootstrap && typeof bootstrap !== 'undefined') {
+                loadedScripts.bootstrap = true;
+                loadDataTables();
+            } else {
+                setTimeout(checkBootstrap, 50);
+            }
+        }
+
+        // Iniciar chequeo
+        checkJQuery();
+
+        function loadDataTables() {
+            // DataTables ya se carga estáticamente en <head> — solo notificar que está listo
+            if (window.jQuery && $.fn.dataTable) {
+                loadedScripts.datatables = true;
+                document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
+                loadSweetAlert();
+            } else {
+                // Fallback: cargar dinámicamente si por alguna razón no está
+                var dtScripts = [
+                    'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
+                    'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
+                    'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js',
+                    'https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js'
+                ];
+                function loadNextScript(index) {
+                    if (index >= dtScripts.length) {
+                        loadedScripts.datatables = true;
+                        document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                        if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
+                        loadSweetAlert();
+                        return;
+                    }
+                    var script = document.createElement('script');
+                    script.src = dtScripts[index];
+                    script.async = false;
+                    script.onload = function () { loadNextScript(index + 1); };
+                    script.onerror = function () { loadNextScript(index + 1); };
+                    document.body.appendChild(script);
+                }
+                loadNextScript(0);
+            }
+        }
+
+        function loadSweetAlert() {
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.sweetalert = true;
+                loadAdminLTE();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ SweetAlert no se pudo cargar');
+                loadedScripts.sweetalert = false;
+                loadAdminLTE();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadAdminLTE() {
+            var script = document.createElement('script');
+            script.src = '@adminLteLocalUrl';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.adminlte = true;
+                loadLocalScripts();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ AdminLTE no se pudo cargar');
+                loadedScripts.adminlte = false;
+                loadLocalScripts();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadLocalScripts() {
+            // Cargar site.js
+            var siteScript = document.createElement('script');
+            siteScript.src = '@siteJsUrl';
+            siteScript.async = false;
+            siteScript.onload = function() {
+                loadAppJS();
+            };
+            siteScript.onerror = function() {
+                console.warn('⚠️ site.js no se pudo cargar');
+                loadAppJS();
+            };
+            document.body.appendChild(siteScript);
+        }
+
+        function loadAppJS() {
+            // Cargar app.js
+            var appScript = document.createElement('script');
+            appScript.src = '@appJsUrl';
+            appScript.async = false;
+            appScript.onload = function() {
+                loadSidebarJS();
+            };
+            appScript.onerror = function() {
+                console.warn('⚠️ app.js no se pudo cargar');
+                loadSidebarJS();
+            };
+            document.body.appendChild(appScript);
+        }
+
+        function loadSidebarJS() {
+            var sidebarScript = document.createElement('script');
+            sidebarScript.src = '@sidebarJsUrl';
+            sidebarScript.async = false;
+            sidebarScript.onload = function() {
+                initializeAOCRSystem();
+            };
+            sidebarScript.onerror = function() {
+                console.warn('⚠️ aocr-sidebar.js no se pudo cargar');
+                initializeAOCRSystem();
+            };
+            document.body.appendChild(sidebarScript);
+        }
+
+        function initializeAOCRSystem() {
+            // Verificar dependencias mínimas
+            if (!loadedScripts.jquery) {
+                console.error('❌ jQuery no cargado - abortando inicialización');
+                return;
+            }
+
+            $(document).ready(function () {
+                // Configuración global
+                window.AOCR_CONFIG = {
+                    apiBaseUrl: '@Url.Content("~/")',
+                    loginUrl: '@Url.Action("Login", "Account")',
+                    debug: @(HttpContext.Current.IsDebuggingEnabled ? "true" : "false"),
+                    uploadMaxSize: 10 * 1024 * 1024,
+                    sessionTimeout: @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetTimeoutMinutes()) * 60 * 1000,
+                    user: {
+                        id: '@(Session["UserId"] ?? "")',
+                        name: '@(Session["NombreUsuario"] ?? "")',
+                        role: '@(RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty))'
+                    }
+                };
+
+                if (window.AOCR && typeof window.AOCR.installGlobalHttpHandlers === 'function') {
+                    window.AOCR.installGlobalHttpHandlers();
+                }
+
+                // Ocultar loader global
+                $('#global-loader').fadeOut(300, function () {
+                    $(this).remove();
+                });
+
+                // Inicializar componentes globales
+                initGlobalComponents();
+                initSessionManagement();
+                setupAjaxDefaults();
+
+                // Integración con site.js y app.js
+                integrateWithSiteJS();
+            });
+        }
+
+        function initGlobalComponents() {
+            // Tooltips de Bootstrap 5
+            if (window.bootstrap && bootstrap.Tooltip) {
+                try {
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.forEach(function (el) {
+                        try {
+                            // Solo crear si no existe
+                            if (!el._tooltip) {
+                                new bootstrap.Tooltip(el);
+                            }
+                        } catch (e) {
+                            console.warn('Tooltip error:', e);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error inicializando tooltips:', e);
+                }
+            }
+
+            // Alertas auto-ocultantes
+            $('.alert-auto-hide').delay(5000).fadeOut(400);
+        }
+
+        function initSessionManagement() {
+            // Tu código existente de gestión de sesión
+            var sessionTimer, warningTimer, countdownTimer;
+            var WARNING_TIME = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetWarningMinutes()) * 60 * 1000;
+            var TOTAL_TIMEOUT = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetTimeoutMinutes()) * 60 * 1000;
+
+            function resetSessionTimers() {
+                clearTimeout(sessionTimer);
+                clearTimeout(warningTimer);
+
+                warningTimer = setTimeout(showSessionWarning, TOTAL_TIMEOUT - WARNING_TIME);
+                sessionTimer = setTimeout(function () {
+                    window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                }, TOTAL_TIMEOUT);
+            }
+
+            function showSessionWarning() {
+                if (!window.bootstrap || !bootstrap.Modal) {
+                    console.warn('Bootstrap Modal no disponible para advertencia de sesión');
+                    return;
+                }
+
+                try {
+                    var modalElement = document.getElementById('session-timeout-warning');
+                    if (!modalElement) return;
+
+                    var modal = new bootstrap.Modal(modalElement);
+                    var timeLeft = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetWarningMinutes()) * 60;
+                    var countdownEl = document.getElementById('session-countdown');
+
+                    function updateCountdown() {
+                        var minutes = Math.floor(timeLeft / 60);
+                        var seconds = timeLeft % 60;
+                        if (countdownEl) {
+                            countdownEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                        }
+                        timeLeft--;
+
+                        if (timeLeft >= 0) {
+                            countdownTimer = setTimeout(updateCountdown, 1000);
+                        } else {
+                            modal.hide();
+                            window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                        }
+                    }
+
+                    if (window.getSelection) {
+                        var selection = window.getSelection();
+                        if (selection && selection.removeAllRanges) {
+                            selection.removeAllRanges();
+                        }
+                    }
+
+                    modal.show();
+                    updateCountdown();
+
+                    $('#btn-extend-session').off('click').on('click', function () {
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
+                        var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                        $.post('@Url.Action("ExtenderSesion", "Account")', {
+                                __RequestVerificationToken: token
+                            })
+                            .done(function () {
+                                modal.hide();
+                                resetSessionTimers();
+                                // Usar Site.notify si existe, o AOCR.showAlert
+                                if (window.Site && Site.notify) {
+                                    Site.notify('Sesión extendida exitosamente', 'success');
+                                } else if (window.AOCR) {
+                                    AOCR.showAlert('Éxito', 'Sesión extendida', 'success');
+                                }
+                            })
+                            .fail(function () {
+                                window.location.href = '@Url.Action("Logout", "Account")';
+                            });
+                    });
+
+                    $('#btn-logout-now').off('click').on('click', function () {
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
+                        window.location.href = '@Url.Action("Logout", "Account")';
+                    });
+
+                } catch (error) {
+                    console.error('Error en advertencia de sesión:', error);
+                }
+            }
+
+            resetSessionTimers();
+            $(document).on('click keypress mousemove', resetSessionTimers);
+        }
+
+        function setupAjaxDefaults() {
+            $.ajaxSetup({
+                beforeSend: function (xhr) {
+                    var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                    if (token) {
+                        xhr.setRequestHeader('RequestVerificationToken', token);
+                    }
+                    $('body').addClass('waiting');
+                },
+                complete: function () {
+                    $('body').removeClass('waiting');
+                },
+                error: function (xhr) {
+                    var message = 'Error en la comunicación con el servidor';
+
+                    if (xhr.status === 401) {
+                        window.location.href = window.AOCR && typeof window.AOCR.buildLoginUrl === 'function'
+                            ? window.AOCR.buildLoginUrl()
+                            : '@Url.Action("Login", "Account")';
+                        return;
+                    }
+                    if (xhr.status === 403) message = 'Acceso no autorizado';
+                    if (xhr.status === 404) message = 'Recurso no encontrado';
+                    if (xhr.status === 500) message = 'Error interno del servidor';
+
+                    // Usar Site.notify si existe, o alert
+                    if (window.Site && Site.notify) {
+                        Site.notify(message, 'error');
+                    } else {
+                        alert('Error: ' + message);
+                    }
+                }
+            });
+        }
+
+        function integrateWithSiteJS() {
+            // Combinar funcionalidades de Site y AOCR
+            if (!window.AOCR) window.AOCR = {};
+
+            // Si Site.notify existe, usarlo para AOCR.showAlert
+            if (window.Site && Site.notify) {
+                window.AOCR.showAlert = function(title, message, type) {
+                    Site.notify(title + ': ' + message, type);
+                };
+            } else {
+                window.AOCR.showAlert = function(title, message, type) {
+                    if (window.Swal) {
+                        Swal.fire({ icon: type || 'info', title: title, text: message });
+                    } else {
+                        alert(title + ': ' + message);
+                    }
+                };
+            }
+
+            // Funciones de utilidad
+            window.AOCR.formatCurrency = function (amount) {
+                return '$ ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            };
+
+            window.AOCR.formatDate = function (dateStr) {
+                if (!dateStr) return '';
+                var date = new Date(dateStr);
+                return date.toLocaleDateString('es-EC');
+            };
+        }
+    })();
+    </script>
+
+    <div id="aocrSidebarBackdrop" class="aocr-sidebar-backdrop" aria-hidden="true"></div>
+
+    <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
+
+
+
+
+
+

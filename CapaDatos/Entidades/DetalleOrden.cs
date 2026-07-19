@@ -28,6 +28,21 @@ namespace CapaDatos.Entidades
         [StringLength(200)]
         public string ConceptoNombre { get; set; }
 
+        [Column("estado")]
+        [StringLength(20)]
+        public string Estado { get; set; }
+
+        [Column("lugar_inspeccion")]
+        [StringLength(50)]
+        public string LugarInspeccion { get; set; }
+
+        [Column("provincia_inspeccion")]
+        [StringLength(150)]
+        public string ProvinciaInspeccion { get; set; }
+
+        [NotMapped]
+        public string NombreTipoCalculo { get; set; }
+
         [Column("descripcion")]
         [StringLength(500)]
         public string Descripcion { get; set; }

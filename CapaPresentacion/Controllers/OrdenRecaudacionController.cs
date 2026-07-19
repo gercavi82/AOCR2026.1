@@ -555,24 +555,49 @@ namespace CapaPresentacion.Controllers
                             var concepto = _conceptoDao.ObtenerPorId(conceptoId);
                             var precioUnitario = concepto?.ValorBase ?? 0m;
 
+                            var lugarInspeccion = (concepto?.Codigo == "VIATICOS_INSPECTOR") ? model.LugarInspeccion : null;
+                            var provinciaInspeccion = (concepto?.Codigo == "VIATICOS_INSPECTOR") ? model.ProvinciaInspeccion : null;
+
                             detalles.Add(new DetalleOrdenRequest
                             {
                                 ConceptoId = conceptoId,
                                 Cantidad = cantidad,
                                 PrecioUnitario = precioUnitario,
-                                Subtotal = cantidad * precioUnitario
+                                Subtotal = cantidad * precioUnitario,
+                                LugarInspeccion = lugarInspeccion,
+                                ProvinciaInspeccion = provinciaInspeccion
                             });
                         }
                     }
                 }
 
-                string errorConceptosObligatorios;
-                if (!ValidarDetallesConceptosObligatoriosOrdenNueva(detalles, out errorConceptosObligatorios))
+                var codigosConceptos = detalles.Select(d => _conceptoDao.ObtenerPorId(d.ConceptoId)?.Codigo).Where(c => c != null).ToList();
+                var codigoTramite = codigosConceptos.FirstOrDefault(c => c.EndsWith("_AOCR")) ?? codigosConceptos.FirstOrDefault();
+                
+                var solicitudIdParaLog = model.Orden?.CodigoSolicitud?.ToString() ?? "N/A";
+                
+                CapaNegocio.LogBL.RegistrarInfo($"[ORDEN][REGLA_TRAMITE_IN] OrdenId=N/A; SolicitudId={solicitudIdParaLog}; TipoTramite={codigoTramite};", "OrdenRecaudacionController");
+                
+                bool esInspeccionExtRequerida = codigoTramite == "EMI_AOCR" || codigoTramite == "REN_AOCR" || codigoTramite == "MOD_AOCR_INC";
+                CapaNegocio.LogBL.RegistrarInfo($"[ORDEN][INSPECCION_EXT_REQUERIDA] TipoTramite={codigoTramite}; Requerida={esInspeccionExtRequerida};", "OrdenRecaudacionController");
+                
+                var lugarParaLog = string.IsNullOrWhiteSpace(model.LugarInspeccion) ? "N/A" : model.LugarInspeccion.Trim().ToUpperInvariant();
+                var provinciaParaLog = string.IsNullOrWhiteSpace(model.ProvinciaInspeccion) ? "N/A" : model.ProvinciaInspeccion.Trim().ToUpperInvariant();
+                bool viaticosSeleccionados = codigosConceptos.Contains("VIATICOS_INSPECTOR");
+                bool viaticosObligatorios = viaticosSeleccionados && (lugarParaLog != "QUITO" && lugarParaLog != "LATACUNGA");
+                
+                CapaNegocio.LogBL.RegistrarInfo($"[ORDEN][VIATICOS_VALIDAR] TipoTramite={codigoTramite}; LugarInspeccion={lugarParaLog}; Provincia={provinciaParaLog}; ViaticosSeleccionados={viaticosSeleccionados}; ViaticosObligatorios={viaticosObligatorios};", "OrdenRecaudacionController");
+
+                var resultadoValidacion = ValidarConceptosPorTipoTramite(codigoTramite, codigosConceptos, model.LugarInspeccion, model.ProvinciaInspeccion);
+                if (!resultadoValidacion.EsValido)
                 {
-                    ModelState.AddModelError("", errorConceptosObligatorios);
+                    CapaNegocio.LogBL.RegistrarInfo($"[ORDEN][VALIDACION_CONCEPTOS_DENY] SolicitudId={solicitudIdParaLog}; TipoTramite={codigoTramite}; Motivo={resultadoValidacion.MensajeError};", "OrdenRecaudacionController");
+                    ModelState.AddModelError("", resultadoValidacion.MensajeError);
                     PrepararNuevaOrdenViewModel(model);
                     return View(model);
                 }
+                
+                CapaNegocio.LogBL.RegistrarInfo($"[ORDEN][VALIDACION_CONCEPTOS_OK] SolicitudId={solicitudIdParaLog}; TipoTramite={codigoTramite};", "OrdenRecaudacionController");
 
                 var requiereSolicitudInspeccion = detalles.Any(det =>
                 {
@@ -684,7 +709,9 @@ namespace CapaPresentacion.Controllers
                             PorcentajeAdmin = porcentajeAdmin,
                             Subtotal = det.Subtotal,
                             Admin = adminLinea,
-                            TotalLinea = totalLinea
+                            TotalLinea = totalLinea,
+                            LugarInspeccion = det.LugarInspeccion,
+                            ProvinciaInspeccion = det.ProvinciaInspeccion
                         };
                         await _dao.CrearDetalleAsync(detalle);
 
@@ -957,57 +984,45 @@ namespace CapaPresentacion.Controllers
             ViewBag.ConceptoObligatorioEncontrado = conceptoObligatorio != null;
         }
 
-        private bool ValidarDetallesConceptosObligatoriosOrdenNueva(List<DetalleOrdenRequest> detalles, out string mensajeError)
+        private class ResultadoValidacionOrden
         {
-            mensajeError = null;
+            public bool EsValido { get; set; }
+            public string MensajeError { get; set; }
+        }
 
-            var conceptoObligatorioCatalogo = _conceptoDao.ObtenerPorCodigo(CodigoConceptoInspeccionExt);
-            if (conceptoObligatorioCatalogo == null || !conceptoObligatorioCatalogo.Activo)
+        private ResultadoValidacionOrden ValidarConceptosPorTipoTramite(string codigoTramite, IEnumerable<string> conceptosSeleccionados, string lugarInspeccion, string provinciaInspeccion)
+        {
+            var conceptos = conceptosSeleccionados.ToList();
+            bool tieneInspeccionExt = conceptos.Contains("INSPECCION_EXT");
+            bool tieneViaticos = conceptos.Contains("VIATICOS_INSPECTOR");
+
+            var lugarNormalized = (lugarInspeccion ?? string.Empty).Trim().ToUpperInvariant();
+            var provinciaNormalized = (provinciaInspeccion ?? string.Empty).Trim().ToUpperInvariant();
+
+            // Regla de INSPECCION_EXT
+            if (codigoTramite == "EMI_AOCR" || codigoTramite == "REN_AOCR" || codigoTramite == "MOD_AOCR_INC")
             {
-                mensajeError = "No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.";
-                return false;
-            }
-
-            if (detalles == null || detalles.Count == 0)
-            {
-                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
-                return false;
-            }
-
-            var tieneInspeccionExt = false;
-            var tieneOtroConcepto = false;
-
-            foreach (var det in detalles)
-            {
-                var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
-                if (concepto == null || det.Cantidad <= 0)
+                if (!tieneInspeccionExt)
                 {
-                    continue;
-                }
-
-                if (EsConceptoInspeccionExt(concepto.Codigo))
-                {
-                    tieneInspeccionExt = true;
-                }
-                else
-                {
-                    tieneOtroConcepto = true;
+                    return new ResultadoValidacionOrden { EsValido = false, MensajeError = $"El trámite {codigoTramite} exige obligatoriamente el concepto INSPECCION_EXT." };
                 }
             }
-
-            if (!tieneInspeccionExt)
+            
+            // Regla de Viáticos
+            if (tieneViaticos)
             {
-                mensajeError = "Debe agregar el concepto obligatorio INSPECCION_EXT para continuar.";
-                return false;
+                if (string.IsNullOrWhiteSpace(lugarNormalized))
+                {
+                    return new ResultadoValidacionOrden { EsValido = false, MensajeError = "Debe especificar el lugar de la inspección para los viáticos." };
+                }
+
+                if (lugarNormalized == "OTRA_PROVINCIA" && string.IsNullOrWhiteSpace(provinciaNormalized))
+                {
+                    return new ResultadoValidacionOrden { EsValido = false, MensajeError = "Debe especificar la provincia de la inspección." };
+                }
             }
 
-            if (!tieneOtroConcepto)
-            {
-                mensajeError = "Debe agregar al menos otra acción o concepto adicional para poder continuar con el proceso.";
-                return false;
-            }
-
-            return true;
+            return new ResultadoValidacionOrden { EsValido = true };
         }
 
         private bool ValidarConceptosOrdenInspeccionExt(OrdenRecaudacionModel orden, out string mensajeError)

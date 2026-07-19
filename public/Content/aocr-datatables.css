@@ -1,0 +1,502 @@
+/* ============================================================
+   AOCR — Estandar institucional para DataTables
+   Aplicado globalmente a todas las tablas del proyecto.
+   Paginacion fija: 5 registros (configurada en _LayoutAOCR.cshtml).
+   ============================================================ */
+
+/* ---------- Wrapper ---------- */
+.dataTables_wrapper {
+    padding: 0.75rem 0;
+    color: var(--dgac-primary, #1B4F72);
+}
+
+/* ---------- Buscador ---------- */
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 0.75rem;
+}
+.dataTables_wrapper .dataTables_filter label {
+    color: #495057;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.dataTables_wrapper .dataTables_filter input {
+    border: 1px solid #ced4da !important;
+    border-radius: 6px !important;
+    padding: 0.375rem 0.75rem !important;
+    min-width: 240px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background-color: #fff;
+}
+.dataTables_wrapper .dataTables_filter input:focus {
+    border-color: #1B4F72 !important;
+    box-shadow: 0 0 0 0.15rem rgba(27, 79, 114, 0.15) !important;
+    outline: none !important;
+}
+
+/* ---------- Selector de longitud (oculto por estandar) ---------- */
+.dataTables_wrapper .dataTables_length {
+    display: none !important;
+}
+
+/* ---------- Tabla ---------- */
+.dataTables_wrapper table.dataTable {
+    border-collapse: separate !important;
+    border-spacing: 0;
+    width: 100% !important;
+    margin: 0 !important;
+}
+.dataTables_wrapper table.dataTable thead th {
+    background-color: #1B4F72 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid #0d3d66 !important;
+    border-top: none !important;
+    padding: 0.75rem 0.85rem;
+    white-space: nowrap;
+}
+.dataTables_wrapper table.dataTable thead th:first-child {
+    border-top-left-radius: 8px;
+}
+.dataTables_wrapper table.dataTable thead th:last-child {
+    border-top-right-radius: 8px;
+}
+/* Iconos de ordenamiento visibles sobre fondo azul */
+.dataTables_wrapper table.dataTable thead th.sorting::before,
+.dataTables_wrapper table.dataTable thead th.sorting_asc::before,
+.dataTables_wrapper table.dataTable thead th.sorting_desc::before,
+.dataTables_wrapper table.dataTable thead th.sorting::after,
+.dataTables_wrapper table.dataTable thead th.sorting_asc::after,
+.dataTables_wrapper table.dataTable thead th.sorting_desc::after {
+    color: #ffffff !important;
+    opacity: 0.55 !important;
+}
+.dataTables_wrapper table.dataTable thead th.sorting_asc::before,
+.dataTables_wrapper table.dataTable thead th.sorting_desc::after {
+    opacity: 1 !important;
+}
+.dataTables_wrapper table.dataTable thead th.sorting,
+.dataTables_wrapper table.dataTable thead th.sorting_asc,
+.dataTables_wrapper table.dataTable thead th.sorting_desc {
+    cursor: pointer;
+}
+.dataTables_wrapper table.dataTable tbody td {
+    padding: 0.7rem 0.85rem;
+    vertical-align: middle;
+    font-size: 0.88rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.dataTables_wrapper table.dataTable tbody tr {
+    transition: background-color 0.12s ease;
+}
+.dataTables_wrapper table.dataTable tbody tr:hover > td {
+    background-color: #f1f7fc !important;
+}
+.dataTables_wrapper table.dataTable.stripe tbody tr.odd > td,
+.dataTables_wrapper table.dataTable.display tbody tr.odd > td {
+    background-color: #fbfcfd;
+}
+
+/* ---------- Info registros ---------- */
+.dataTables_wrapper .dataTables_info {
+    color: #6c757d;
+    font-size: 0.82rem;
+    padding-top: 0.75rem;
+}
+
+/* ---------- Paginacion ---------- */
+.dataTables_wrapper .dataTables_paginate {
+    padding-top: 0.5rem;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    border: 1px solid #dee2e6 !important;
+    background: #fff !important;
+    color: #1B4F72 !important;
+    border-radius: 6px !important;
+    padding: 0.35rem 0.75rem !important;
+    margin: 0 2px !important;
+    font-size: 0.82rem !important;
+    min-width: 32px;
+    text-align: center;
+    transition: all 0.15s ease;
+    box-shadow: none !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #1B4F72 !important;
+    color: #fff !important;
+    border-color: #1B4F72 !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: #1B4F72 !important;
+    color: #fff !important;
+    border-color: #1B4F72 !important;
+    font-weight: 600;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+    background: #f8f9fa !important;
+    color: #adb5bd !important;
+    border-color: #dee2e6 !important;
+    cursor: not-allowed;
+}
+.dataTables_wrapper .dataTables_paginate .ellipsis {
+    color: #6c757d !important;
+    padding: 0 4px;
+}
+
+/* ---------- Responsive ---------- */
+.dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child {
+    background: #fbfcfd;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* ---------- Procesando ---------- */
+.dataTables_wrapper .dataTables_processing {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1B4F72;
+    font-weight: 500;
+}
+
+/* ---------- Compatibilidad con .card.card-body ---------- */
+.card .dataTables_wrapper {
+    padding: 0;
+}
+
+/* ---------- Ajuste para tablas con buttons extendido (exportacion) ---------- */
+.dataTables_wrapper .dt-buttons {
+    margin-bottom: 0.75rem;
+}
+.dataTables_wrapper .dt-buttons .btn {
+    margin-right: 4px;
+}
+
+/* ============================================================
+   ESTANDAR INSTITUCIONAL — contenido de celdas
+   (clases helper para homologar tablas en todas las vistas)
+   ============================================================ */
+
+/* Enlace principal (numero/codigo en azul institucional) */
+.dataTables_wrapper table.dataTable tbody td a,
+.aocr-dt-link {
+    color: #1B4F72;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color .12s ease;
+}
+.dataTables_wrapper table.dataTable tbody td a:hover,
+.aocr-dt-link:hover {
+    color: #0d3d66;
+    text-decoration: underline;
+}
+
+/* Dato primario + secundario (sub-linea gris) */
+.aocr-dt-primary {
+    display: block;
+    font-weight: 600;
+    color: #1B4F72;
+    line-height: 1.25;
+}
+.aocr-dt-sub {
+    display: block;
+    font-size: 0.76rem;
+    color: #6c757d;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+/* Badges / chips de estado — apariencia homogenea dentro de tablas */
+.dataTables_wrapper table.dataTable tbody td .badge,
+.aocr-dt-badge {
+    display: inline-block;
+    padding: 0.32em 0.65em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+/* Mapeo institucional por estado (tolerante a multiples origenes) */
+.aocr-dt-badge.is-pendiente,
+.aocr-dt-badge.is-borrador,
+.dataTables_wrapper table.dataTable tbody .badge.bg-secondary {
+    background: #e9ecef !important; color: #495057 !important; border-color: #dee2e6 !important;
+}
+.aocr-dt-badge.is-revision,
+.aocr-dt-badge.is-enviado,
+.aocr-dt-badge.is-info,
+.dataTables_wrapper table.dataTable tbody .badge.bg-info {
+    background: #e7f3fb !important; color: #0c6878 !important; border-color: #bfe0ef !important;
+}
+.aocr-dt-badge.is-observada,
+.aocr-dt-badge.is-warn,
+.dataTables_wrapper table.dataTable tbody .badge.bg-warning {
+    background: #fff5d8 !important; color: #8a6100 !important; border-color: #f6dc8e !important;
+}
+.aocr-dt-badge.is-ok,
+.aocr-dt-badge.is-aprobada,
+.aocr-dt-badge.is-legalizada,
+.aocr-dt-badge.is-subsanada,
+.aocr-dt-badge.is-success,
+.dataTables_wrapper table.dataTable tbody .badge.bg-success {
+    background: #e2f5ea !important; color: #1e6b3a !important; border-color: #b8e1c7 !important;
+}
+.aocr-dt-badge.is-rechazada,
+.aocr-dt-badge.is-no-satisfactorio,
+.aocr-dt-badge.is-danger,
+.dataTables_wrapper table.dataTable tbody .badge.bg-danger {
+    background: #fde7e9 !important; color: #a42834 !important; border-color: #f2b6bd !important;
+}
+.aocr-dt-badge.is-primary,
+.dataTables_wrapper table.dataTable tbody .badge.bg-primary {
+    background: #e3edf6 !important; color: #1B4F72 !important; border-color: #b9cfe3 !important;
+}
+
+/* Columna de acciones — tamano y espaciado homogeneo */
+.dataTables_wrapper table.dataTable tbody td.actions,
+.dataTables_wrapper table.dataTable tbody td.aocr-dt-actions,
+.aocr-dt-actions {
+    white-space: nowrap;
+    text-align: center;
+}
+.aocr-dt-actions .btn,
+.dataTables_wrapper table.dataTable tbody td.actions .btn,
+.dataTables_wrapper table.dataTable tbody td.aocr-dt-actions .btn {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.1 !important;
+    border-radius: 6px !important;
+    margin: 0 2px !important;
+    min-width: 32px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.aocr-dt-actions .btn i,
+.dataTables_wrapper table.dataTable tbody td.actions .btn i,
+.dataTables_wrapper table.dataTable tbody td.aocr-dt-actions .btn i {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Compat: selector de longitud forzado a oculto incluso si alguna vista lo vuelve a mostrar */
+.dataTables_wrapper .dataTables_length { display: none !important; }
+
+/* ============================================================
+   GANADOR FINAL — selector ultra-especifico que vence cualquier
+   sobre-escritura de Bootstrap, AdminLTE o de vistas.
+   Aplica a TODAS las tablas institucionales del proyecto.
+   ============================================================ */
+html body table.table > thead > tr > th,
+html body .aocr-table-wrap table > thead > tr > th,
+html body .aocr-table-card table > thead > tr > th,
+html body table.table-dgac > thead > tr > th,
+html body table.aocr-table > thead > tr > th,
+html body .dataTables_wrapper table.dataTable > thead > tr > th {
+    background-color: #1B4F72 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-color: #0d3d66 !important;
+    border-top: none !important;
+    border-bottom: 2px solid #0d3d66 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600 !important;
+}
+html body table.table > thead > tr > th a,
+html body .aocr-table-wrap table > thead > tr > th a,
+html body table.table-dgac > thead > tr > th a,
+html body .dataTables_wrapper table.dataTable > thead > tr > th a {
+    color: #ffffff !important;
+}
+html body table.table > thead > tr > th:first-child,
+html body table.table-dgac > thead > tr > th:first-child,
+html body .dataTables_wrapper table.dataTable > thead > tr > th:first-child {
+    border-top-left-radius: 8px;
+}
+html body table.table > thead > tr > th:last-child,
+html body table.table-dgac > thead > tr > th:last-child,
+html body .dataTables_wrapper table.dataTable > thead > tr > th:last-child {
+    border-top-right-radius: 8px;
+}
+/* ============================================================
+   CORRECCIÓN DEFINITIVA — TEXTO FANTASMA EN TABLAS AOCR
+   Fuerza texto visible en el cuerpo de DataTables.
+   Mantiene encabezados blancos sobre azul institucional.
+   ============================================================ */
+
+/* Celdas normales del cuerpo */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody td,
+html body.aocr-body table.dataTable tbody td,
+html body.aocr-body table.table tbody td,
+html body.aocr-body table.table-dgac tbody td,
+html body.aocr-body table.aocr-table tbody td {
+    color: #263845 !important;
+    background-color: #ffffff;
+    text-shadow: none !important;
+}
+
+    /* Texto interno dentro de celdas */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td span,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td div,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td p,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td strong,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td small {
+        color: inherit !important;
+        text-shadow: none !important;
+    }
+
+    /* Enlaces principales dentro de tablas */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td a,
+    html body.aocr-body table.dataTable tbody td a,
+    html body.aocr-body table.table tbody td a {
+        color: #007bff !important;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a:hover {
+            color: #0056b3 !important;
+            text-decoration: underline;
+        }
+
+    /* Subtexto gris: ID interno, OACI, detalle secundario */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td .aocr-dt-sub,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td small,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td .text-muted {
+        color: #6c7b86 !important;
+    }
+
+/* Filas alternas */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr.odd > td,
+html body.aocr-body .dataTables_wrapper table.dataTable.display tbody tr.odd > td,
+html body.aocr-body .dataTables_wrapper table.dataTable.stripe tbody tr.odd > td {
+    background-color: #ffffff !important;
+    color: #263845 !important;
+}
+
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr.even > td {
+    background-color: #ffffff !important;
+    color: #263845 !important;
+}
+
+/* Hover visible */
+html body.aocr-body .dataTables_wrapper table.dataTable tbody tr:hover > td {
+    background-color: #f1f7fc !important;
+    color: #263845 !important;
+}
+
+/* Responsive DataTables: detalle expandido con botón + */
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child ul,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child li,
+html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child span {
+    color: #263845 !important;
+    background-color: #fbfcfd !important;
+    text-shadow: none !important;
+}
+
+    /* Títulos de columnas en detalle responsive */
+    html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child .dtr-title {
+        color: #1B4F72 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Valor de columnas en detalle responsive */
+    html body.aocr-body .dataTables_wrapper table.dataTable.dtr-inline.collapsed > tbody > tr > td.child .dtr-data {
+        color: #263845 !important;
+    }
+
+/* Mantener encabezados blancos */
+html body.aocr-body .dataTables_wrapper table.dataTable thead th,
+html body.aocr-body table.dataTable thead th,
+html body.aocr-body table.table thead th,
+html body.aocr-body table.table-dgac thead th,
+html body.aocr-body table.aocr-table thead th {
+    background-color: #1B4F72 !important;
+    color: #ffffff !important;
+}
+
+#tblInspeccion tbody td,
+#tblInspeccion tbody td span,
+#tblInspeccion tbody td div,
+#tblInspeccion tbody td strong,
+#tblInspeccion tbody td small,
+#tblInspeccionesInspector tbody td,
+#tblInspeccionesInspector tbody td span,
+#tblInspeccionesInspector tbody td div,
+#tblInspeccionesInspector tbody td strong,
+#tblInspeccionesInspector tbody td small {
+    color: #263845 !important;
+    text-shadow: none !important;
+}
+
+#tblInspeccion tbody td a,
+#tblInspeccionesInspector tbody td a {
+    color: #007bff !important;
+    font-weight: 700;
+}
+
+#tblInspeccion tbody td .text-muted,
+#tblInspeccion tbody td small,
+#tblInspeccionesInspector tbody td .text-muted,
+#tblInspeccionesInspector tbody td small {
+    color: #6c7b86 !important;
+}
+
+/* Bandeja coordinacion /Tecnico — tablas custom sin clase .table */
+html body.aocr-body .tecnico-index-table tbody td,
+html body.aocr-body .tecnico-index-table thead th,
+html body.aocr-body .tecnico-index-card-head,
+html body.aocr-body .tecnico-index-card-head h2,
+html body.aocr-body .tecnico-index-card-head p,
+html body.aocr-body .tecnico-index-table tbody td span,
+html body.aocr-body .tecnico-index-table tbody td strong,
+html body.aocr-body .tecnico-index-table tbody td small,
+html body.aocr-body .tecnico-index-badge {
+    color: inherit;
+    text-shadow: none !important;
+    -webkit-text-fill-color: unset !important;
+}
+
+html body.aocr-body .tecnico-index-numero {
+    color: #1b4f72 !important;
+}
+
+html body.aocr-body .tecnico-index-sub {
+    color: #6c7b86 !important;
+}
+
+html body.aocr-body .tecnico-index-primary,
+html body.aocr-body .tecnico-index-primary span,
+html body.aocr-body .tecnico-index-primary i {
+    color: #ffffff !important;
+    text-shadow: none !important;
+}
+
+html body.aocr-body .tecnico-index-secondary,
+html body.aocr-body .tecnico-index-secondary span,
+html body.aocr-body .tecnico-index-secondary i {
+    color: #1b4f72 !important;
+    text-shadow: none !important;
+}
+
+/* Anti-fantasma WebKit — todas las tablas AOCR */
+html body.aocr-body .aocr-page table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .dataTable :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .dataTables_wrapper :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .aocr-table :where(td, th, span, strong, em, small, b, a, div, p, i),
+html body.aocr-body .aocr-page .table-dgac :where(td, th, span, strong, em, small, b, a, div, p, i) {
+    -webkit-text-fill-color: unset !important;
+    text-shadow: none !important;
+}

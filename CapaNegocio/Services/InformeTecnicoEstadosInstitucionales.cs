@@ -7,6 +7,20 @@ namespace CapaNegocio.Services
 {
     public static class InformeTecnicoEstadosInstitucionales
     {
+        public static readonly HashSet<string> EnviadosDireccion =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "ENVIADO_A_DIRDAC",
+                "ENVIADO_A_DIRECCION",
+                "PENDIENTE_REVISION_DIRDAC",
+                "PENDIENTE_REVISION_DIRECCION",
+                "PENDIENTE_REVISION_INSTITUCIONAL",
+                "PENDIENTE_FIRMA_DIRECCION",
+                "PENDIENTE_FIRMA_INSTITUCIONAL",
+                "PENDIENTE_REVISION_INFORME_DCAV",
+                "PENDIENTE_REVISION_INFORME_DIRDAC"
+            };
+
         public static readonly HashSet<string> PendientesRevisionDireccion =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -21,6 +35,7 @@ namespace CapaNegocio.Services
                 "FIRMADO_POR_INSPECTOR",
                 "INFORME_TECNICO_FIRMADO_INSPECTOR"
                 ,"PENDIENTE_REVISION_INFORME_DCAV"
+                ,"PENDIENTE_REVISION_INFORME_DIRDAC"
             };
 
         public static readonly HashSet<string> Cerrados =
@@ -36,7 +51,8 @@ namespace CapaNegocio.Services
                 "RECHAZADO",
                 "RECHAZADO_DIRDAC",
                 "FINALIZADO",
-                "CERRADO"
+                "CERRADO",
+                "INFORME_TECNICO_APROBADO_DIRDAC"
             };
 
         public static bool PuedeRevisarDireccion(string estado)
@@ -45,6 +61,13 @@ namespace CapaNegocio.Services
             return !string.IsNullOrWhiteSpace(token)
                 && !Cerrados.Contains(token)
                 && PendientesRevisionDireccion.Contains(token);
+        }
+
+        public static bool FueEnviadoDireccion(string estado)
+        {
+            var token = NormalizarToken(estado);
+            return !string.IsNullOrWhiteSpace(token)
+                && EnviadosDireccion.Contains(token);
         }
 
         public static string NormalizarToken(string estado)

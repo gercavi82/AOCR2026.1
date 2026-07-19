@@ -34,6 +34,9 @@ namespace CapaNegocio.DTOs
         public int Cantidad { get; set; }
         public decimal PrecioUnitario { get; set; }
         public decimal Subtotal { get; set; }
+        
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
     }
 
     /// <summary>

@@ -11,6 +11,7 @@ namespace CapaPresentacion.Models.ViewModels
         public string EstadoFirma { get; set; }
         public string TipoTramite { get; set; }
         public string SoloConPdf { get; set; }
+        public string DocumentoPendiente { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 15;
     }

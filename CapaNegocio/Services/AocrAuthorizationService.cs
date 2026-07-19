@@ -157,8 +157,8 @@ namespace CapaNegocio.Services
             { "Inspeccion/DescargarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/VerAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/DescargarAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
-            { "Inspeccion/VerLvEaeOficial", new[] { "InspectorTecnico", "Administrador" } },
-            { "Inspeccion/DescargarLvEaeOficial", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/VerLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
+            { "Inspeccion/DescargarLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Solicitante", "Administrador" } },
             { "Inspeccion/CambiarEstado", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/SubirInforme", new[] { "InspectorTecnico", "Administrador" } },
             { "Inspeccion/SubirDocumentoSolicitante", new[] { "Solicitante", "Administrador" } },
@@ -716,7 +716,8 @@ namespace CapaNegocio.Services
                         || Comparer.Equals(accion, "LV"))
                     && !PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId)
                     && !rolesInspeccion.Contains("Coordinacion", Comparer)
-                    && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer))
+                    && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer)
+                    && !rolesInspeccion.Contains("Solicitante", Comparer))
                 {
                     motivo = "La Lista de Verificación no está habilitada para su usuario.";
                     return false;
