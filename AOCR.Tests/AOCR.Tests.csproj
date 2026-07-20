@@ -104,6 +104,9 @@
     <Compile Include="Unit\Gate8NotificacionesAuditoriaTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
     <Compile Include="Unit\UsuarioContextoServiceTests.cs" />
+    <Compile Include="Unit\Fr3ConfigurationTests.cs" />
+    <Compile Include="Integration\Fr3OutboxIntegrationTests.cs" />
+    <Compile Include="Unit\FacturacionAS400DAOTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaModelo\CapaModelo.csproj" />

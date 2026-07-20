@@ -7,6 +7,9 @@
     var puedeFirmar = Model != null && Model.PuedeFirmar;
     var documentos = Model != null && Model.Documentos != null ? Model.Documentos : new System.Collections.Generic.List<CapaPresentacion.Models.FirmaAocrDocumentoItemViewModel>();
     var todosFirmados = Model != null && Model.AmbosDocumentosFirmados;
+    var mensajeOperacion = TempData["FirmaAocrMensaje"] as string;
+    var mensajeOperacionOkValor = TempData["FirmaAocrMensajeOk"];
+    var mensajeOperacionOk = mensajeOperacionOkValor is bool && (bool)mensajeOperacionOkValor;
 }
 
 <link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
@@ -17,15 +20,22 @@
      data-solicitud-id="@(Model != null ? Model.SolicitudId : 0)">
     <section class="firma-aocr__header">
         <div>
-            <p class="firma-aocr__eyebrow">Firma Institucional AOCR</p>
-            <h1>Firma institucional AOCR</h1>
-            <p>Genere, verifique, firme y libere el documento AOCR oficial.</p>
+            <p class="firma-aocr__eyebrow">Documentos finales AOCR</p>
+            <h1>@(Model != null && Model.EsInspector ? "Preparacion de documentos finales" : "Firma institucional por documento")</h1>
+            <p>@(Model != null && Model.EsInspector ? "Complete y previsualice ambos documentos antes de enviarlos juntos para firma." : "Revise y firme exclusivamente el documento asignado a su rol.")</p>
         </div>
         <div class="firma-aocr__state @(firmado ? "is-success" : tienePdf ? "is-warning" : "")">
             <span>Estado</span>
             <strong>@(Model != null ? Model.EstadoAocr : "No disponible")</strong>
         </div>
     </section>
+
+    @if (!string.IsNullOrWhiteSpace(mensajeOperacion))
+    {
+        <section class="firma-aocr__notice @(mensajeOperacionOk ? "is-success" : "")" role="status">
+            <strong>@mensajeOperacion</strong>
+        </section>
+    }
 
     <section class="firma-aocr__steps" aria-label="Estado del flujo">
         <div class="@(Model != null && Model.InformeAprobado ? "is-complete" : "is-pending")"><span>1</span><strong>Informe aprobado</strong></div>
@@ -64,7 +74,7 @@
 
     <section class="firma-aocr__layout">
         <main class="firma-aocr__main">
-            @if (Model != null && !firmado)
+            @if (Model != null && Model.EsInspector && !firmado)
             {
                 <article class="firma-aocr__box firma-aocr__data">
                     <div class="firma-aocr__box-head">
@@ -192,6 +202,41 @@
                             </button>
                         </form>
                     }
+                    else if (Model != null && !Model.EsInspector && !doc.Firmado)
+                    {
+                        <div class="firma-aocr__actions">
+                            <button type="button" class="firma-aocr__btn firma-aocr__btn--outline" disabled>
+                                Firmar @doc.Titulo
+                            </button>
+                            <span class="firma-aocr__action-note">Disponible cuando el Inspector finalice y envíe este documento.</span>
+                        </div>
+                    }
+                </article>
+            }
+
+            @if (Model != null && Model.EsInspector)
+            {
+                <article class="firma-aocr__box">
+                    <div class="firma-aocr__box-head">
+                        <div>
+                            <p class="firma-aocr__eyebrow">Envío transaccional</p>
+                            <h2>Finalizar documentos y enviar para firma</h2>
+                            <p>@(Model.Documentos != null && Model.Documentos.Count == 1
+                                ? "Esta acción bloquea la versión vigente de Condiciones y la envía a DCAV según la regla del Módulo 8."
+                                : "Esta única acción bloquea las dos versiones vigentes y crea las ramas AOCR a DIRDAC y Condiciones a DCAV.")</p>
+                        </div>
+                    </div>
+                    <form method="post" action="@Model.UrlEnviarParaFirma" data-enviar-documentos>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
+                        <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary" @(Model.PuedeEnviarParaFirma ? null : "disabled")>
+                            Finalizar documentos y enviar para firma
+                        </button>
+                        @if (!Model.PuedeEnviarParaFirma)
+                        {
+                            <span class="firma-aocr__action-note">Todos los PDF requeridos deben estar completos, vigentes y sin firmas previas.</span>
+                        }
+                    </form>
                 </article>
             }
 
@@ -217,7 +262,7 @@
             </div>
 
             <dl class="firma-aocr__signer">
-                <div><dt>Rol autorizado</dt><dd>Direccion / DIRDAC</dd></div>
+                <div><dt>Rol autorizado</dt><dd>@(Model != null && Model.EsInspector ? "Inspector asignado" : (Model != null ? Model.RolActual : "-"))</dd></div>
                 <div><dt>Usuario actual</dt><dd>@(Model != null ? Model.UsuarioActual : "-")</dd></div>
                 <div><dt>Cargo</dt><dd>@(Model != null ? Model.CargoFirmante : "-")</dd></div>
                 <div><dt>Posicion</dt><dd>Institucional fija</dd></div>
@@ -251,4 +296,4 @@
     </section>
 </div>
 
-<script src="@Url.Content("~/Scripts/firma-aocr.js")"></script>
+<script src="@(Url.Content("~/Scripts/firma-aocr.js") + "?v=20260719-final-docs-2")"></script>

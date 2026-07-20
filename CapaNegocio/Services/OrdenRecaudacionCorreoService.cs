@@ -353,16 +353,7 @@ namespace CapaNegocio.Services
                 return null;
             }
 
-            var numeroSolicitudGop = !string.IsNullOrWhiteSpace(numeroSolicitud)
-                ? numeroSolicitud
-                : (solicitud != null ? solicitud.NumeroSolicitud : null);
-            var vinculada = OrdenRecaudacionService.ConstruirNumeroOrdenDesdeNumeroSolicitud(
-                numeroSolicitudGop,
-                orden.FechaCreacion != default(DateTime) ? orden.FechaCreacion.Year : DateTime.Now.Year);
-
-            return !string.IsNullOrWhiteSpace(vinculada)
-                ? vinculada
-                : orden.NumeroOrden;
+            return orden.NumeroOrden;
         }
 
         private static string NormalizarAsuntoOrden(string asunto, OrdenRecaudacion orden, string numeroOrdenVisible)

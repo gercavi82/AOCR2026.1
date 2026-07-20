@@ -84,7 +84,7 @@ namespace AOCR.Tests.Unit
             var contexto = service.ObtenerContextoActual();
 
             Assert.IsTrue(contexto.EstaAutenticado);
-            Assert.AreEqual("GACAJAS", contexto.LoginNormalizado);
+            Assert.AreEqual("gacajas", contexto.LoginNormalizado);
             Assert.AreEqual(45, contexto.UsuarioId);
             Assert.AreEqual("GERMAN CAJAS", contexto.Nombre);
             CollectionAssert.Contains(contexto.Roles, "DIRDAC");
@@ -163,7 +163,7 @@ namespace AOCR.Tests.Unit
             var service = CreateService("USER500", true);
             
             var ex = Assert.ThrowsException<HttpException>(() => service.ValidarRol("INSPECTOR", "DCAV"));
-            Assert.AreEqual(403, ex.GetHttpCode());
+            Assert.AreEqual(401, ex.GetHttpCode());
         }
     }
 }

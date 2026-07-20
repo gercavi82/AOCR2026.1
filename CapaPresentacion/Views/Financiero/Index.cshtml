@@ -855,7 +855,7 @@
                                     data-orden-id="@orden.Id"
                                     data-pago-id="@(pago != null ? pago.CodigoPago.ToString() : string.Empty)"
                                     data-numero-orden="@Html.Encode(orden.NumeroOrden)"
-                                    data-monto="@((orden.Total).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))">
+                                    data-monto="@((orden.Total).ToString("N2"))">
                                 <i class="fas fa-check"></i>
                             </button>
 
@@ -921,7 +921,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Aprobar y Enviar AS400</h5>
+                <h5 class="modal-title">Aprobar Orden de Recaudación</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formAprobarPagoFactura" method="post">
@@ -941,13 +941,13 @@
 
                     <div class="alert alert-info py-2" role="alert">
                         <i class="fas fa-info-circle me-1"></i>
-                        Se aprobará la orden y se enviará la facturación FR3 al AS400 solo después de validar el comprobante de pago.
+                        Se aprobará la orden de recaudación y se emitirá la factura correspondiente solo después de validar el comprobante de pago.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" id="btnAprobarConFactura" class="btn btn-success">
-                        <i class="fas fa-paper-plane me-1"></i>Enviar AS400
+                        <i class="fas fa-check-circle me-1"></i>Aprobar Orden
                     </button>
                 </div>
             </form>
@@ -1119,7 +1119,7 @@
         submitButton.disabled = val;
         submitButton.innerHTML = val
             ? '<i class="fas fa-spinner fa-spin me-1"></i>Procesando...'
-            : '<i class="fas fa-paper-plane me-1"></i>Enviar AS400';
+            : '<i class="fas fa-check-circle me-1"></i>Aprobar Orden';
     }
 
     function setInFlight(value) {
@@ -1312,7 +1312,7 @@
             var finalMessage = payload.warning
                 ? (payload.message + ' ' + payload.warning)
                 : payload.message;
-            showAlert('success', finalMessage || 'Enviado a AS400 correctamente.');
+            showAlert('success', finalMessage || 'Orden aprobada y enviada a facturación correctamente.');
             shouldUnlock = false;
 
             setTimeout(function () {

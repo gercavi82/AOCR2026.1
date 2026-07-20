@@ -33,6 +33,7 @@ namespace CapaDatos.DAOs
         private readonly Dictionary<string, Dictionary<string, int>> _numericColumnLengthCache;
         private readonly object _textColumnLengthCacheLock;
         private readonly object _numericColumnLengthCacheLock;
+        private readonly bool _transactionRequired;
 
         public FacturacionAS400DAO(ISecureConfigurationService configService) : base(configService)
         {
@@ -46,6 +47,9 @@ namespace CapaDatos.DAOs
             _numericColumnLengthCache = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
             _textColumnLengthCacheLock = new object();
             _numericColumnLengthCacheLock = new object();
+
+            var trStr = ConfigurationManager.AppSettings["AS400:Facturacion:TransactionRequired"];
+            _transactionRequired = string.IsNullOrWhiteSpace(trStr) || (bool.TryParse(trStr, out bool tr) && tr);
         }
 
         [Obsolete("Use el constructor con ISecureConfigurationService")]
@@ -115,8 +119,16 @@ namespace CapaDatos.DAOs
                     }
                     catch (OdbcException txEx) when (IsSql7008(txEx))
                     {
+                        if (_transactionRequired)
+                        {
+                            // Regla: un error SQL7008 debe producir rollback/error reintentable;
+                            // no debe ejecutarse un segundo intento sin transacción.
+                            throw new InvalidOperationException("FR3_TRANSACTION_REQUIRED está activo pero la tabla en AS400 no soporta journaling (SQL7008). Operación cancelada de forma segura.", txEx);
+                        }
+
                         _logger.LogWarning(
-                            "FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.");
+                            "FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad. " + 
+                            "ADVERTENCIA: Considere activar Journaling en AS400 y TransactionRequired=true.");
 
                         // Reintento sin transacción para ambientes DB2 que no tienen journaling/commitment control habilitado.
                         localResult = RegistrarFacturaCore(conn, null, record, aeropuerto, anio);
@@ -554,7 +566,7 @@ namespace CapaDatos.DAOs
                 {
                     var where = hasOpsAno ? "OPSAER = ? AND OPSANO = ?" : "OPSAER = ?";
                     var sqlSelect = string.Format(
-                        "SELECT OPSSEC FROM {0}.{1} WHERE {2}",
+                        "SELECT OPSSEC FROM {0}.{1} WHERE {2} FOR UPDATE WITH RS",
                         _schema,
                         _tablaSecuencial,
                         where);
@@ -571,6 +583,55 @@ namespace CapaDatos.DAOs
                         if (valor != null && valor != DBNull.Value)
                         {
                             return SafeDecimal(valor) + 1m;
+                        }
+                    }
+
+                    // No existe la fila, hay que crearla.
+                    try
+                    {
+                        var sqlInsert = hasOpsAno
+                            ? string.Format("INSERT INTO {0}.{1} (OPSAER, OPSANO, OPSSEC) VALUES (?, ?, 0)", _schema, _tablaSecuencial)
+                            : string.Format("INSERT INTO {0}.{1} (OPSAER, OPSSEC) VALUES (?, 0)", _schema, _tablaSecuencial);
+                        
+                        using (var cmdInsert = new OdbcCommand(sqlInsert, conn, tx))
+                        {
+                            AddParameter(cmdInsert, aeropuerto, OdbcType.VarChar);
+                            if (hasOpsAno)
+                            {
+                                AddParameter(cmdInsert, anio, OdbcType.VarChar);
+                            }
+                            cmdInsert.ExecuteNonQuery();
+                        }
+                        
+                        // Una vez insertada con valor 0, la reservamos y bloqueamos
+                        using (var cmdSelectNew = new OdbcCommand(sqlSelect, conn, tx))
+                        {
+                            AddParameter(cmdSelectNew, aeropuerto, OdbcType.VarChar);
+                            if (hasOpsAno)
+                            {
+                                AddParameter(cmdSelectNew, anio, OdbcType.VarChar);
+                            }
+                            var nuevoValor = cmdSelectNew.ExecuteScalar();
+                            return SafeDecimal(nuevoValor) + 1m;
+                        }
+                    }
+                    catch (Exception exInsert)
+                    {
+                        _logger.LogWarning("FR3: Error al insertar OPSARC, posible concurrencia. " + exInsert.Message);
+                        // Si falla la insercion, intentamos leer de nuevo asumiendo que otro proceso lo insertó.
+                        using (var cmd = new OdbcCommand(sqlSelect, conn, tx))
+                        {
+                            AddParameter(cmd, aeropuerto, OdbcType.VarChar);
+                            if (hasOpsAno)
+                            {
+                                AddParameter(cmd, anio, OdbcType.VarChar);
+                            }
+
+                            var valor = cmd.ExecuteScalar();
+                            if (valor != null && valor != DBNull.Value)
+                            {
+                                return SafeDecimal(valor) + 1m;
+                            }
                         }
                     }
                 }
@@ -772,9 +833,31 @@ namespace CapaDatos.DAOs
 
             var anio = ResolveAnio(record);
 
-            var observacion = string.IsNullOrWhiteSpace(record.Observaciones)
+            var obsBase = string.IsNullOrWhiteSpace(record.Observaciones)
                 ? string.Format("FACTURA {0}", record.NumeroFactura)
                 : record.Observaciones;
+            
+            // Intenta extraer el token existente, si no asume SOL:0
+            var tokenExtracted = ExtractCorrelationToken(record.Observaciones);
+            var solText = "0";
+            if (!string.IsNullOrWhiteSpace(tokenExtracted) && tokenExtracted.StartsWith("SOL:"))
+            {
+                var partes = tokenExtracted.Split('|');
+                if (partes.Length > 0)
+                {
+                    solText = partes[0].Replace("SOL:", "");
+                }
+            }
+            
+            var observacion = string.Format("SOL:{0}|ORD:{1} {2}", solText, record.OrdenId, obsBase).Trim();
+            if (observacion.Length > 200) observacion = observacion.Substring(0, 200);
+
+            string opcNumString = string.IsNullOrWhiteSpace(record.NumeroFactura) ? "0" : record.NumeroFactura;
+            decimal opcNum = 0;
+            if (decimal.TryParse(opcNumString, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal parsed))
+            {
+                opcNum = parsed > 0 ? parsed : 0;
+            }
 
             var fechaRecepcion = string.IsNullOrWhiteSpace(record.FechaRecepcion)
                 ? fechaControl
@@ -818,7 +901,7 @@ namespace CapaDatos.DAOs
                 ["OPCFOR"] = SafeString(record.FormaPago),
                 ["OPCBAN"] = SafeString(record.CodigoBanco),
                 ["OPCCHE"] = SafeString(record.Deposito),
-                ["OPCNUM"] = string.Empty,
+                ["OPCNUM"] = opcNum,
                 ["OPCFE9"] = SafeString(fechaRecepcion),
                 ["OPCVA6"] = record.Total,
                 ["OPCEST"] = "S",

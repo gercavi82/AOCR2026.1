@@ -869,15 +869,17 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
             catch (Exception ex)
             {
-                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerUltimosLotes no disponible: " + ex.Message, "MirrorReadService");
+                LogBL.RegistrarAdvertencia("MirrorReadService.ListarFr3Recientes no disponible: " + ex.Message, "MirrorReadService");
             }
 
             return list;
         }
 
+
+
         public void SincronizarFr3DesdeEspejo()
         {
-            LogBL.RegistrarInfo("[FR3_SYNC][START] Iniciando sincronización de FR3 desde el espejo hacia la base local.", "FR3_SYNC");
+            LogBL.RegistrarInfo("[FR3_SYNC][START] Iniciando reconciliación de FR3 desde el espejo hacia la base local.", "FR3_SYNC");
             
             try
             {
@@ -895,139 +897,232 @@ namespace CapaNegocio.Integraciones.As400Sync
                         cmdAlter.ExecuteNonQuery();
                     }
 
-                    // Log de filas leídas en el espejo
-                    int filasEspejo = 0;
-                    using (var cmdCount = new NpgsqlCommand("SELECT COUNT(*) FROM mirror_raw.opcar5 WHERE COALESCE(_is_deleted, false) = false", conn))
-                    {
-                        filasEspejo = Convert.ToInt32(cmdCount.ExecuteScalar());
-                    }
-                    LogBL.RegistrarInfo(string.Format("[FR3_SYNC][AS400_ROWS] Filas en espejo AS400 (PostgreSQL): {0}", filasEspejo), "FR3_SYNC");
-
-                    // 1. Actualizar aocr_tb_factura_pago con los datos del espejo
-                    const string sqlUpdateFacturas = @"
-                        UPDATE aocr_tb_factura_pago fp
-                        SET
-                            fr3_estado = 'FR3_GENERADO',
-                            fr3_numero = TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano),
-                            fr3_secuencial = f.opcsec,
-                            fr3_aeropuerto = f.opcaer,
-                            fr3_anio = f.opcano,
-                            fr3_generado_en = CASE
-                                WHEN f.opcda4 IS NOT NULL AND f.opcda4 > 0 
-                                THEN TO_TIMESTAMP(f.opcda4::text || ' ' || LPAD(COALESCE(f.opch01, 0)::text, 6, '0'), 'YYYYMMDD HH24MISS')
-                                ELSE NOW()
-                            END,
-                            updated_at = NOW()
+                    // 1. Obtener todos los registros AS400 que son FR3 (opcsec > 0)
+                    var as400Records = new List<dynamic>();
+                    using (var cmd = new NpgsqlCommand(@"
+                        SELECT f.opcsec, f.opcaer, f.opcano, f.opcnum, f.opcche, f.opcobs, f.ruc, f.opccol, f.opcgra, f.opcda4, f.opch01
                         FROM mirror_raw.opcar5 f
-                        JOIN aocr_or_orden o ON (
-                            (f.opcobs LIKE '%' || o.numero_orden || '%')
-                            OR (f.opcobs LIKE '%ORD:' || o.id::text || '%')
-                            OR (
-                                TRIM(fp.numero_factura) = TRIM(f.opcnum::text)
-                                AND TRIM(fp.numero_factura) <> '' 
-                                AND TRIM(fp.numero_factura) <> '0'
-                                AND TRIM(f.opcnum::text) <> ''
-                                AND TRIM(f.opcnum::text) <> '0'
-                            )
-                            OR (
-                                TRIM(fp.numero_factura) = TRIM(f.opcche)
-                                AND TRIM(fp.numero_factura) <> '' 
-                                AND TRIM(fp.numero_factura) <> '0'
-                                AND TRIM(f.opcche) <> ''
-                                AND TRIM(f.opcche) <> '0'
-                            )
-                        )
-                        WHERE fp.orden_id = o.id
-                          AND f.opcsec IS NOT NULL
-                          AND f.opcsec > 0
-                          AND (fp.fr3_numero IS NULL OR fp.fr3_numero <> TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano) OR fp.fr3_estado <> 'FR3_GENERADO')";
-
-                    int facturasActualizadas = 0;
-                    using (var cmdFacturas = new NpgsqlCommand(sqlUpdateFacturas, conn))
+                        WHERE COALESCE(f._is_deleted, false) = false AND f.opcsec IS NOT NULL AND f.opcsec > 0", conn))
                     {
-                        facturasActualizadas = cmdFacturas.ExecuteNonQuery();
-                    }
-                    if (facturasActualizadas > 0)
-                    {
-                        LogBL.RegistrarInfo(string.Format("[FR3_SYNC][UPSERT_OK] Filas insertadas/actualizadas en factura_pago: {0}", facturasActualizadas), "FR3_SYNC");
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                as400Records.Add(new {
+                                    OpcSec = reader["opcsec"],
+                                    OpcAer = reader["opcaer"]?.ToString()?.Trim(),
+                                    OpcAno = reader["opcano"]?.ToString()?.Trim(),
+                                    OpcNum = reader["opcnum"]?.ToString()?.Trim(),
+                                    OpcChe = reader["opcche"]?.ToString()?.Trim(),
+                                    OpcObs = reader["opcobs"]?.ToString()?.Trim(),
+                                    Ruc = reader["ruc"]?.ToString()?.Trim(),
+                                    Cia = reader["opccol"]?.ToString()?.Trim(),
+                                    Total = reader["opcgra"] != DBNull.Value ? Convert.ToDecimal(reader["opcgra"]) : 0m,
+                                    Fecha = reader["opcda4"],
+                                    Hora = reader["opch01"]
+                                });
+                            }
+                        }
                     }
 
-                    // 2. Actualizar aocr_or_orden con los datos del espejo
-                    const string sqlUpdateOrdenes = @"
-                        UPDATE aocr_or_orden o
-                        SET
-                            numero_fr3 = TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano),
-                            fecha_fr3 = CASE
-                                WHEN f.opcda4 IS NOT NULL AND f.opcda4 > 0 
-                                THEN TO_TIMESTAMP(f.opcda4::text || ' ' || LPAD(COALESCE(f.opch01, 0)::text, 6, '0'), 'YYYYMMDD HH24MISS')
-                                ELSE NOW()
-                            END,
-                            estado = CASE
-                                WHEN UPPER(COALESCE(o.estado, '')) = 'FACTURADA' THEN 'COMPLETADA'
-                                ELSE o.estado
-                            END,
-                            fecha_actualizacion = NOW()
-                        FROM mirror_raw.opcar5 f
-                        LEFT JOIN aocr_tb_factura_pago fp ON (
-                            (TRIM(fp.numero_factura) = TRIM(f.opcnum::text)
-                             AND TRIM(fp.numero_factura) <> ''
-                             AND TRIM(fp.numero_factura) <> '0'
-                             AND TRIM(f.opcnum::text) <> ''
-                             AND TRIM(f.opcnum::text) <> '0')
-                            OR
-                            (TRIM(fp.numero_factura) = TRIM(f.opcche)
-                             AND TRIM(fp.numero_factura) <> ''
-                             AND TRIM(fp.numero_factura) <> '0'
-                             AND TRIM(f.opcche) <> ''
-                             AND TRIM(f.opcche) <> '0')
-                        )
-                        WHERE (
-                            (f.opcobs LIKE '%' || o.numero_orden || '%')
-                            OR (f.opcobs LIKE '%ORD:' || o.id::text || '%')
-                            OR (fp.orden_id = o.id)
-                        )
-                        AND f.opcsec IS NOT NULL
-                        AND f.opcsec > 0
-                        AND (o.numero_fr3 IS NULL OR o.numero_fr3 <> TRIM(f.opcsec::text || '-' || f.opcaer || '-' || f.opcano))";
+                    int totalProcesados = 0, exactos = 0, ambiguos = 0, huerfanos = 0, yaSincronizados = 0;
 
-                    int ordenesActualizadas = 0;
-                    using (var cmdOrdenes = new NpgsqlCommand(sqlUpdateOrdenes, conn))
+                    // 2. Iterar sobre cada registro AS400 para reconciliar
+                    foreach (var as400 in as400Records)
                     {
-                        ordenesActualizadas = cmdOrdenes.ExecuteNonQuery();
+                        totalProcesados++;
+                        string numeroFr3As400 = $"{as400.OpcSec}-{as400.OpcAer}-{as400.OpcAno}";
+                        
+                        // Buscar candidatos en DB local (solo consideramos los que no tienen este numero_fr3 o están incompletos)
+                        var sqlCandidatos = @"
+                            SELECT o.id as orden_id, o.numero_orden, o.estado as estado_orden, o.numero_fr3, 
+                                   fp.id as pago_id, fp.numero_factura, fp.fr3_numero, fp.fr3_estado,
+                                   o.ruc_cedula, o.compania, o.total
+                            FROM aocr_or_orden o
+                            LEFT JOIN aocr_tb_factura_pago fp ON fp.orden_id = o.id
+                            WHERE 
+                               (fp.numero_factura = @opcnum AND @opcnum <> '' AND @opcnum <> '0') OR
+                               (fp.numero_factura = @opcche AND @opcche <> '' AND @opcche <> '0') OR
+                               (@opcobs <> '' AND (
+                                  @opcobs LIKE '%' || o.numero_orden || '%' OR
+                                  @opcobs LIKE '%ORD:' || o.id::text || '%' OR
+                                  @opcobs LIKE '%SOL:' || o.codigo_solicitud::text || '%'
+                               )) OR
+                               (o.ruc_cedula = @ruc AND @ruc <> '' AND 
+                                (o.compania = @cia OR o.compania LIKE '%' || @cia || '%') AND 
+                                o.total = @total AND @total > 0)
+                            ";
+                        
+                        var candidatos = new List<dynamic>();
+                        using (var cmdCand = new NpgsqlCommand(sqlCandidatos, conn))
+                        {
+                            cmdCand.Parameters.AddWithValue("@opcnum", as400.OpcNum ?? "");
+                            cmdCand.Parameters.AddWithValue("@opcche", as400.OpcChe ?? "");
+                            cmdCand.Parameters.AddWithValue("@opcobs", as400.OpcObs ?? "");
+                            cmdCand.Parameters.AddWithValue("@ruc", as400.Ruc ?? "");
+                            cmdCand.Parameters.AddWithValue("@cia", as400.Cia ?? "");
+                            cmdCand.Parameters.AddWithValue("@total", as400.Total);
+
+                            using (var rd = cmdCand.ExecuteReader())
+                            {
+                                while (rd.Read())
+                                {
+                                    candidatos.Add(new {
+                                        OrdenId = rd["orden_id"],
+                                        NumeroOrden = rd["numero_orden"]?.ToString(),
+                                        EstadoOrden = rd["estado_orden"]?.ToString(),
+                                        NumeroFr3 = rd["numero_fr3"]?.ToString(),
+                                        PagoId = rd["pago_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["pago_id"]),
+                                        NumeroFactura = rd["numero_factura"]?.ToString(),
+                                        Fr3Numero = rd["fr3_numero"]?.ToString(),
+                                        Fr3Estado = rd["fr3_estado"]?.ToString()
+                                    });
+                                }
+                            }
+                        }
+
+                        if (candidatos.Count == 0)
+                        {
+                            huerfanos++;
+                            LogBL.RegistrarAdvertencia($"[FR3_SYNC][HUERFANO] FR3 AS400 {numeroFr3As400} no tiene orden candidata en PostgreSQL.", "FR3_SYNC");
+                            continue;
+                        }
+
+                        // Agrupar por OrdenId por si el LEFT JOIN duplica
+                        var candidatosUnicos = candidatos.GroupBy(c => c.OrdenId).Select(g => g.First()).ToList();
+
+                        if (candidatosUnicos.Count > 1)
+                        {
+                            ambiguos++;
+                            string list = string.Join(", ", candidatosUnicos.Select(c => c.NumeroOrden));
+                            LogBL.RegistrarAdvertencia($"[FR3_SYNC][AMBIGUO] FR3 AS400 {numeroFr3As400} tiene múltiples candidatos locales: {list}. Requiere intervención manual.", "FR3_SYNC");
+                            continue;
+                        }
+
+                        var match = candidatosUnicos[0];
+                        bool yaSincronizado = match.NumeroFr3 == numeroFr3As400 && match.Fr3Estado == "FR3_GENERADO";
+
+                        if (yaSincronizado)
+                        {
+                            yaSincronizados++;
+                            continue;
+                        }
+
+                        // Verificar si el candidato local YA tiene OTRO FR3 distinto asignado (evitar sobrescribir sin conflicto)
+                        if (!string.IsNullOrWhiteSpace(match.Fr3Numero) && match.Fr3Numero != numeroFr3As400 && match.Fr3Estado == "FR3_GENERADO")
+                        {
+                            ambiguos++;
+                            LogBL.RegistrarAdvertencia($"[FR3_SYNC][CONFLICTO] Orden {match.NumeroOrden} ya tiene FR3 local {match.Fr3Numero} pero AS400 dice {numeroFr3As400}.", "FR3_SYNC");
+                            continue;
+                        }
+
+                        // Realizar la actualización segura transaccionalmente
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            try
+                            {
+                                DateTime? as400Date = null;
+                                if (as400.Fecha != null && as400.Fecha != DBNull.Value && Convert.ToDecimal(as400.Fecha) > 0)
+                                {
+                                    string dateStr = as400.Fecha.ToString() + " " + (as400.Hora != null && as400.Hora != DBNull.Value ? as400.Hora.ToString().PadLeft(6, '0') : "000000");
+                                    if (DateTime.TryParseExact(dateStr, "yyyyMMdd HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime parsed))
+                                    {
+                                        as400Date = parsed;
+                                    }
+                                }
+                                DateTime fechaFr3 = as400Date ?? DateTime.Now;
+
+                                if (match.PagoId != null)
+                                {
+                                    var sqlUpdatePago = @"UPDATE aocr_tb_factura_pago 
+                                                          SET fr3_estado = 'FR3_GENERADO', fr3_numero = @fr3, 
+                                                              fr3_secuencial = @sec, fr3_aeropuerto = @aer, fr3_anio = @ano,
+                                                              fr3_generado_en = @fec, updated_at = NOW()
+                                                          WHERE id = @pagoId";
+                                    using (var cmdU = new NpgsqlCommand(sqlUpdatePago, conn, tx))
+                                    {
+                                        cmdU.Parameters.AddWithValue("@fr3", numeroFr3As400);
+                                        cmdU.Parameters.AddWithValue("@sec", as400.OpcSec);
+                                        cmdU.Parameters.AddWithValue("@aer", as400.OpcAer);
+                                        cmdU.Parameters.AddWithValue("@ano", as400.OpcAno);
+                                        cmdU.Parameters.AddWithValue("@fec", fechaFr3);
+                                        cmdU.Parameters.AddWithValue("@pagoId", match.PagoId);
+                                        cmdU.ExecuteNonQuery();
+                                    }
+                                }
+
+                                string nuevoEstadoOrden = match.EstadoOrden?.ToString().ToUpper() == "FACTURADA" ? "COMPLETADA" : match.EstadoOrden?.ToString();
+                                var sqlUpdateOrden = @"UPDATE aocr_or_orden 
+                                                       SET numero_fr3 = @fr3, fecha_fr3 = @fec, estado = @est, fecha_actualizacion = NOW()
+                                                       WHERE id = @ordenId";
+                                using (var cmdU = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
+                                {
+                                    cmdU.Parameters.AddWithValue("@fr3", numeroFr3As400);
+                                    cmdU.Parameters.AddWithValue("@fec", fechaFr3);
+                                    cmdU.Parameters.AddWithValue("@est", nuevoEstadoOrden ?? "E");
+                                    cmdU.Parameters.AddWithValue("@ordenId", match.OrdenId);
+                                    cmdU.ExecuteNonQuery();
+                                }
+
+                                // Marcar outbox como COMPLETADO si existia algo PENDIENTE_FR3 o ERROR
+                                var sqlOutbox = @"UPDATE aocr_fr3_outbox 
+                                                  SET estado = 'COMPLETADO', last_error = NULL, updated_at = NOW()
+                                                  WHERE orden_id = @ordenId AND estado NOT IN ('COMPLETADO')";
+                                using (var cmdOut = new NpgsqlCommand(sqlOutbox, conn, tx))
+                                {
+                                    cmdOut.Parameters.AddWithValue("@ordenId", match.OrdenId);
+                                    cmdOut.ExecuteNonQuery();
+                                }
+
+                                // Sync log
+                                var sqlSyncLog = @"INSERT INTO aocr_tb_sync_log (orden_id, estado, operacion, creado_por, created_at, request_payload, response_payload)
+                                                   VALUES (@ordenId, 'EXITO', 'RECONCILIACION_AS400', 'SISTEMA', NOW(), @req, @res)";
+                                using (var cmdSync = new NpgsqlCommand(sqlSyncLog, conn, tx))
+                                {
+                                    cmdSync.Parameters.AddWithValue("@ordenId", match.OrdenId);
+                                    cmdSync.Parameters.AddWithValue("@req", "AS400 Sync: " + numeroFr3As400);
+                                    cmdSync.Parameters.AddWithValue("@res", "Reconciliado con exito desde SincronizarFr3DesdeEspejo");
+                                    cmdSync.ExecuteNonQuery();
+                                }
+
+                                tx.Commit();
+                                exactos++;
+                                LogBL.RegistrarInfo($"[FR3_SYNC][UPSERT_OK] Asociada Orden {match.NumeroOrden} con FR3 AS400 {numeroFr3As400}.", "FR3_SYNC");
+                            }
+                            catch (Exception ex)
+                            {
+                                tx.Rollback();
+                                LogBL.RegistrarError($"[FR3_SYNC][ERROR_TX] Error al actualizar la orden {match.NumeroOrden} con FR3 {numeroFr3As400}.", ex.ToString(), "FR3_SYNC");
+                            }
+                        }
                     }
 
-                    LogBL.RegistrarInfo(string.Format("[FR3_SYNC][ORDEN_UPDATE_OK] Filas actualizadas en orden_recaudacion: {0}", ordenesActualizadas), "FR3_SYNC");
+                    LogBL.RegistrarInfo($"[FR3_SYNC][RESUMEN] Total AS400: {totalProcesados}, Sincronizados ahora: {exactos}, Ya estaban listos: {yaSincronizados}, Ambiguos/Conflictos: {ambiguos}, Huérfanos: {huerfanos}", "FR3_SYNC");
 
-                    // 3. Consultar y registrar logs detallados de las órdenes asociadas
-                    const string sqlDetalleCambios = @"
-                        SELECT o.numero_orden, o.numero_fr3, o.ruc_cedula, o.total
+                    // 3. Revisar si hay ordenes locales atascadas en PostgreSQL que deberian tener FR3 pero AS400 no lo tiene
+                    var sqlAtascadas = @"
+                        SELECT o.numero_orden, o.estado, fp.fr3_estado, fp.fr3_numero
                         FROM aocr_or_orden o
-                        WHERE o.fecha_actualizacion >= NOW() - INTERVAL '5 seconds'
-                          AND o.numero_fr3 IS NOT NULL 
-                          AND TRIM(o.numero_fr3) <> ''";
-
-                    using (var cmdDetalle = new NpgsqlCommand(sqlDetalleCambios, conn))
-                    using (var reader = cmdDetalle.ExecuteReader())
+                        LEFT JOIN aocr_tb_factura_pago fp ON fp.orden_id = o.id
+                        WHERE o.estado IN ('FACTURADA', 'EN_REVISION_FINANCIERA', 'COMPLETADA')
+                          AND (fp.fr3_estado IN ('ERROR_FINAL', 'ERROR_REINTENTABLE', 'PENDIENTE_FR3', 'EN_PROCESO') OR fp.fr3_estado IS NULL)
+                          AND o.activo = TRUE";
+                    
+                    int atascadas = 0;
+                    using (var cmdA = new NpgsqlCommand(sqlAtascadas, conn))
                     {
-                        bool matchesFound = false;
-                        while (reader.Read())
+                        using (var rd = cmdA.ExecuteReader())
                         {
-                            matchesFound = true;
-                            var numOrden = reader.GetString(0);
-                            var numFr3 = reader.GetString(1);
-                            var ruc = reader.IsDBNull(2) ? "N/D" : reader.GetString(2);
-                            var total = reader.IsDBNull(3) ? 0m : reader.GetDecimal(3);
-                            
-                            LogBL.RegistrarInfo(string.Format(
-                                "[FR3_SYNC][UPSERT_OK] Asociada Orden: {0} con FR3: {1}. RUC: {2}, Monto: {3:C}", 
-                                numOrden, numFr3, ruc, total), "FR3_SYNC");
-                        }
-
-                        if (!matchesFound && facturasActualizadas == 0 && ordenesActualizadas == 0)
-                        {
-                            LogBL.RegistrarInfo("[FR3_SYNC][NO_MATCH] No se encontraron nuevas asociaciones entre órdenes locales y el espejo.", "FR3_SYNC");
+                            while (rd.Read())
+                            {
+                                atascadas++;
+                                string ord = rd["numero_orden"]?.ToString();
+                                string est = rd["fr3_estado"]?.ToString() ?? "NULL";
+                                LogBL.RegistrarAdvertencia($"[FR3_SYNC][ATASCADO] Orden local {ord} en estado {rd["estado"]} tiene fr3_estado = {est}. No se encontró reconciliación AS400.", "FR3_SYNC");
+                            }
                         }
                     }
+                    LogBL.RegistrarInfo($"[FR3_SYNC][RESUMEN] Órdenes locales atascadas sin FR3 en AS400: {atascadas}", "FR3_SYNC");
                 }
             }
             catch (Exception ex)

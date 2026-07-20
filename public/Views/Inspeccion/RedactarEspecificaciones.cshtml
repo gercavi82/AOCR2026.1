@@ -1,6 +1,6 @@
 @{
     ViewBag.Title = "Redactar Especificaciones de Operación";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var inspeccionId = ViewBag.InspeccionId;
     var contenidoBase64 = ViewBag.ContenidoBase64;
 }
@@ -24,6 +24,7 @@
 <div class="aocr-card">
     <div class="aocr-card-body">
         <form action="@Url.Action("GuardarEspecificaciones", "Inspeccion")" method="post">
+            @Html.AntiForgeryToken()
             <input type="hidden" name="inspeccionId" value="@inspeccionId" />
             
             <div class="form-group">

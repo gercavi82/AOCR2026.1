@@ -41,12 +41,7 @@
     var tieneFacturaDescargable = facturaPago != null && !string.IsNullOrWhiteSpace(facturaPago.FilePath);
     var abrirModalPago = Model != null && Model.AbrirModalPago;
     var abrirModalPagoJs = (abrirModalPago && puedeSubirComprobante) ? "true" : "false";
-    var numeroOrdenVinculadaGop = CapaNegocio.Services.OrdenRecaudacionService.ConstruirNumeroOrdenDesdeNumeroSolicitud(
-        orden.NumeroSolicitud,
-        orden.FechaCreacion != default(DateTime) ? orden.FechaCreacion.Year : DateTime.Now.Year);
-    var numeroOrdenReferencia = !string.IsNullOrWhiteSpace(numeroOrdenVinculadaGop)
-        ? numeroOrdenVinculadaGop
-        : orden.NumeroOrden;
+    var numeroOrdenReferencia = orden.NumeroOrden;
 
     // Calcular total pagado
     // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)

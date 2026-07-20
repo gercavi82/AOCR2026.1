@@ -23,40 +23,40 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>07/18/2026 22:41:07</publishTime>
+      <publishTime>07/19/2026 12:28:10</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>07/18/2026 22:41:07</publishTime>
+      <publishTime>07/19/2026 12:28:10</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
-      <publishTime>07/17/2026 13:47:07</publishTime>
+      <publishTime>07/19/2026 09:30:09</publishTime>
     </File>
     <File Include="bin/CapaModelo.pdb">
-      <publishTime>07/17/2026 13:47:07</publishTime>
+      <publishTime>07/19/2026 09:30:09</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>07/18/2026 22:41:08</publishTime>
+      <publishTime>07/19/2026 12:28:11</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>07/18/2026 22:41:08</publishTime>
+      <publishTime>07/19/2026 12:28:11</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>07/18/2026 23:31:16</publishTime>
+      <publishTime>07/19/2026 12:28:12</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>07/18/2026 23:31:16</publishTime>
+      <publishTime>07/19/2026 12:28:12</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
-      <publishTime>07/17/2026 13:21:02</publishTime>
+      <publishTime>07/19/2026 07:59:03</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.pdb">
-      <publishTime>07/17/2026 13:21:02</publishTime>
+      <publishTime>07/19/2026 07:59:03</publishTime>
     </File>
     <File Include="bin/ClosedXML.dll">
       <publishTime>07/18/2024 09:16:16</publishTime>
@@ -7856,7 +7856,7 @@
       <publishTime>01/26/2026 21:21:22</publishTime>
     </File>
     <File Include="Scripts/firma-aocr.js">
-      <publishTime>06/30/2026 09:40:01</publishTime>
+      <publishTime>07/19/2026 12:08:18</publishTime>
     </File>
     <File Include="Scripts/jquery-3.6.4.js">
       <publishTime>01/27/2026 12:12:46</publishTime>
@@ -8084,7 +8084,7 @@
       <publishTime>03/17/2026 09:32:01</publishTime>
     </File>
     <File Include="Views/FirmaAocr/Index.cshtml">
-      <publishTime>07/14/2026 10:05:30</publishTime>
+      <publishTime>07/19/2026 12:08:34</publishTime>
     </File>
     <File Include="Views/Hallazgo/Crear.cshtml">
       <publishTime>03/11/2026 10:52:44</publishTime>
@@ -8156,7 +8156,7 @@
       <publishTime>07/14/2026 10:19:49</publishTime>
     </File>
     <File Include="Views/Inspeccion/PendientesEmisionAocr.cshtml">
-      <publishTime>07/16/2026 21:10:14</publishTime>
+      <publishTime>07/19/2026 10:42:37</publishTime>
     </File>
     <File Include="Views/Inspeccion/PendientesFirmaDirdac.cshtml">
       <publishTime>07/14/2026 10:05:30</publishTime>
@@ -8165,7 +8165,7 @@
       <publishTime>05/12/2026 08:47:33</publishTime>
     </File>
     <File Include="Views/Inspeccion/RedactarEspecificaciones.cshtml">
-      <publishTime>07/16/2026 21:10:44</publishTime>
+      <publishTime>07/19/2026 10:42:37</publishTime>
     </File>
     <File Include="Views/Inspeccion/_CoordinadorPanel.cshtml">
       <publishTime>07/14/2026 15:48:36</publishTime>
@@ -8495,7 +8495,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>07/18/2026 23:32:09</publishTime>
+      <publishTime>07/19/2026 14:19:19</publishTime>
     </File>
   </ItemGroup>
 </Project>

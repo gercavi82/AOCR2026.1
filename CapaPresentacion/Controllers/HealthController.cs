@@ -102,6 +102,28 @@ namespace CapaPresentacion.Controllers
                 checks["email_queue"] = new { healthy = true, message = "Not available: " + ex.Message };
             }
 
+            // 5. Verificar configuración FR3
+            try
+            {
+                var fr3ConfigProvider = new Fr3ConfigurationProvider();
+                var fr3Config = fr3ConfigProvider.GetConfiguration();
+                checks["fr3_config"] = new
+                {
+                    healthy = true,
+                    mode = fr3Config.Mode.ToString(),
+                    transaction_required = fr3Config.TransactionRequired,
+                    automatic_retry = fr3Config.AutomaticRetryEnabled,
+                    max_intentos = fr3Config.MaxIntentos,
+                    base_backoff_sec = fr3Config.BaseBackoffSeconds,
+                    lease_duration_sec = fr3Config.LeaseDurationSeconds
+                };
+            }
+            catch (Exception ex)
+            {
+                checks["fr3_config"] = new { healthy = false, message = "Error leyendo config FR3: " + ex.Message };
+                overallHealthy = false;
+            }
+
             var result = new
             {
                 status = overallHealthy ? "healthy" : "unhealthy",

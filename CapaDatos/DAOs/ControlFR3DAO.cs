@@ -11,6 +11,10 @@ namespace CapaDatos.DAOs
     /// <summary>
     /// Data Access Object para Control FR3 (vuelos charter/especiales)
     /// Migrado desde CD_ControlFR3 (DB2/AS400) a PostgreSQL
+    /// IMPORTANTE: Este es un módulo EXCLUSIVAMENTE MANUAL migrado desde AS400.
+    /// NO se debe mezclar con el facturador automático (FASE 4) y sus 
+    /// secuencias no deben afectar a aocr_tb_factura_pago.
+    /// NO ELIMINAR SIN AUTORIZACIÓN.
     /// </summary>
     public class ControlFR3DAO
     {
@@ -280,25 +284,33 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = @"SELECT COALESCE(MAX(secuencial), 0) + 1 
-                                FROM aocr_control_fr3 
-                                WHERE aeropuerto = @aeropuerto AND activo = TRUE";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
-                        var result = cmd.ExecuteScalar();
-                        if (result != null && result != DBNull.Value)
-                        {
-                            secuencial = Convert.ToDecimal(result);
-                        }
-                    }
+                    secuencial = ObtenerSiguienteSecuencialInterno(conn, null, aeropuerto);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error en ObtenerSiguienteSecuencial");
                 throw;
+            }
+
+            return secuencial;
+        }
+
+        private decimal ObtenerSiguienteSecuencialInterno(NpgsqlConnection conn, NpgsqlTransaction tx, string aeropuerto)
+        {
+            decimal secuencial = 1;
+            var sql = @"SELECT COALESCE(MAX(secuencial), 0) + 1 
+                        FROM aocr_control_fr3 
+                        WHERE aeropuerto = @aeropuerto AND activo = TRUE";
+
+            using (var cmd = tx != null ? new NpgsqlCommand(sql, conn, tx) : new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
+                var result = cmd.ExecuteScalar();
+                if (result != null && result != DBNull.Value)
+                {
+                    secuencial = Convert.ToDecimal(result);
+                }
             }
 
             return secuencial;
@@ -388,8 +400,6 @@ namespace CapaDatos.DAOs
 
             try
             {
-                // Asignar secuencial automático
-                control.Secuencial = ObtenerSiguienteSecuencial(control.Aeropuerto);
                 control.FechaCreacion = DateTime.Now;
                 control.FechaCr = DateTime.Now.ToString("yyyyMMdd");
                 control.HoraCr = DateTime.Now.ToString("HHmmss");
@@ -401,6 +411,17 @@ namespace CapaDatos.DAOs
                     {
                         try
                         {
+                            // 1. Bloqueo transaccional de concurrencia usando advisory locks.
+                            // Esto evita que dos peticiones simultáneas calculen el mismo secuencial.
+                            using (var cmdLock = new NpgsqlCommand("SELECT pg_advisory_xact_lock(hashtext('FR3_SEQ_'), hashtext(@aeropuerto))", conn, tran))
+                            {
+                                cmdLock.Parameters.AddWithValue("@aeropuerto", control.Aeropuerto ?? "");
+                                cmdLock.ExecuteNonQuery();
+                            }
+
+                            // 2. Asignar secuencial automático asegurado
+                            control.Secuencial = ObtenerSiguienteSecuencialInterno(conn, tran, control.Aeropuerto);
+
                             // Insertar cabecera
                             var sql = @"INSERT INTO aocr_control_fr3 (
                                 secuencial, aeropuerto, anio, fecha_control_vuelo, tipo_operacion, 

@@ -83,6 +83,26 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index");
         }
 
+        // POST: /SyncAdmin/RunFr3OutboxWorker
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RunFr3OutboxWorker()
+        {
+            try
+            {
+                var worker = new Fr3OutboxWorkerService();
+                var result = worker.ProcesarPendientes();
+                TempData["SyncOK"] = "Worker FR3 ejecutado. Resultado: " + result;
+                _logger.LogInfo("SyncAdmin.RunFr3OutboxWorker ejecutado: " + result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { Controller = "SyncAdmin", Action = "RunFr3OutboxWorker" });
+                TempData["SyncError"] = "Error ejecutando Worker FR3: " + ex.Message;
+            }
+            return RedirectToAction("Index");
+        }
+
         // POST: /SyncAdmin/RunTable
         [HttpPost]
         [ValidateAntiForgeryToken]

@@ -1,17 +1,17 @@
 @model CapaPresentacion.Models.ViewModels.PendienteEmisionAocrViewModel
 
 @{
-    ViewBag.Title = "Bandeja Emisión AOCR y Condiciones";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "Generar AOCR y Condiciones";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
 <div class="aocr-page-header">
     <div class="row align-items-center">
-        <div class="col-md-8">
+        <div class="col-md-9">
             <h1 class="aocr-page-title text-success">
-                <i class="fas fa-file-signature mr-2"></i> Bandeja Emisión AOCR y Condiciones
+                <i class="fas fa-certificate mr-2"></i> Generar AOCR y Condiciones
             </h1>
-            <p class="aocr-page-subtitle">Redacción de especificaciones de operación y generación de certificado.</p>
+            <p class="aocr-page-subtitle">Expedientes aprobados por DIRDAC que requieren preparar sus documentos finales.</p>
         </div>
     </div>
 </div>
@@ -22,11 +22,14 @@
             <table class="table aocr-table aocr-table-hover mb-0">
                 <thead>
                     <tr>
+                        <th>SOLICITUD</th>
                         <th>COMPAÑÍA</th>
-                        <th>NRO. TRÁMITE</th>
-                        <th>FECHA ASIGNACIÓN</th>
-                        <th>ESTADO</th>
-                        <th>ESPECIFICACIONES</th>
+                        <th>INSPECCIÓN</th>
+                        <th>TIPO DE TRÁMITE</th>
+                        <th>INSPECTOR ASIGNADO</th>
+                        <th>APROBACIÓN DIRDAC</th>
+                        <th>ESTADO AOCR</th>
+                        <th>ESTADO CONDICIONES</th>
                         <th class="text-right">ACCIONES</th>
                     </tr>
                 </thead>
@@ -37,45 +40,48 @@
                         {
                             <tr>
                                 <td>
+                                    <span class="font-weight-bold">@fila.NumeroSolicitud</span>
+                                </td>
+                                <td>
                                     <div class="font-weight-bold">@fila.CompaniaNombre</div>
                                     <div class="text-muted small">RUC: @fila.CompaniaRuc</div>
                                 </td>
+                                <td>@fila.NumeroInspeccion</td>
+                                <td><span class="badge badge-light border">@fila.TipoTramite</span></td>
+                                <td>@fila.InspectorAsignado</td>
+                                <td>@(fila.FechaAprobacionDirdac.HasValue ? fila.FechaAprobacionDirdac.Value.ToString("dd/MM/yyyy HH:mm") : "Sin fecha")</td>
                                 <td>
-                                    <span class="badge badge-light border border-secondary text-dark">
-                                        @fila.TramiteAocr
-                                    </span>
-                                </td>
-                                <td>@fila.FechaAsignacion.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>
-                                    <span class="badge badge-success">@fila.EstadoNormalizado</span>
-                                </td>
-                                <td>
-                                    @if (fila.CondicionesRedactadas)
+                                    @if (fila.GenerarAocr)
                                     {
-                                        <span class="text-success"><i class="fas fa-check-circle"></i> Redactadas</span>
+                                        <span class="badge badge-info">@fila.EstadoAocr</span>
                                     }
                                     else
                                     {
-                                        <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Pendientes</span>
+                                        <span class="badge badge-secondary">NO APLICA</span>
                                     }
                                 </td>
-                                <td class="text-right">
-                                    <a href="@Url.Action("RedactarEspecificaciones", "Inspeccion", new { inspeccionId = fila.InspeccionId })" class="btn btn-sm btn-outline-primary" title="Redactar Especificaciones de Operación">
-                                        <i class="fas fa-edit"></i> Redactar Especificaciones
-                                    </a>
-                                    
-                                    @if (fila.PuedeGenerarAocr && fila.CondicionesRedactadas)
+                                <td>
+                                    @if (fila.GenerarCondiciones)
                                     {
-                                        <a href="@Url.Action("GenerarAOCR", "SolicitudAOCR", new { id = fila.SolicitudId })" class="btn btn-sm btn-success ml-1" title="Generar AOCR">
-                                            <i class="fas fa-certificate"></i> Generar AOCR
+                                        <span class="badge badge-info">@fila.EstadoCondiciones</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">NO APLICA</span>
+                                    }
+                                </td>
+                                <td class="text-right text-nowrap">
+                                    @if (fila.GenerarCondiciones)
+                                    {
+                                        <a href="@Url.Action("RedactarEspecificaciones", "Inspeccion", new { inspeccionId = fila.InspeccionId })"
+                                           class="btn btn-sm btn-outline-primary" title="Redactar Condiciones y Limitaciones">
+                                            <i class="fas fa-edit"></i> Redactar
                                         </a>
                                     }
-                                    else
-                                    {
-                                        <button class="btn btn-sm btn-secondary ml-1" disabled="disabled" title="@(fila.CondicionesRedactadas ? fila.MotivoBloqueoAocr : "Debe redactar las Especificaciones antes de generar AOCR.")">
-                                            <i class="fas fa-certificate"></i> Generar AOCR
-                                        </button>
-                                    }
+                                    <a href="@Url.Action("Index", "FirmaAocr", new { solicitudId = fila.SolicitudId })"
+                                       class="btn btn-sm btn-success ml-1" title="Gestionar documentos finales">
+                                        <i class="fas fa-file-signature"></i> Gestionar documentos
+                                    </a>
                                 </td>
                             </tr>
                         }
@@ -83,9 +89,9 @@
                     else
                     {
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="9" class="text-center text-muted py-4">
                                 <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
-                                No hay trámites pendientes de emisión AOCR.
+                                No hay expedientes aprobados pendientes de documentos finales.
                             </td>
                         </tr>
                     }

@@ -66,6 +66,23 @@ namespace CapaNegocio.Services
                 return true;
             }
 
+            var config = new Fr3ConfigurationProvider().GetConfiguration();
+            if (config.Mode == CapaModelo.Common.Fr3ProcessingMode.Outbox)
+            {
+                try 
+                {
+                    var outboxDao = new CapaDatos.DAOs.Fr3OutboxDAO();
+                    outboxDao.EncolarOReactivar(ordenId, factura.PagoId, factura.NumeroFactura);
+                    mensaje = "Evento FR3 encolado en Outbox para procesamiento asíncrono.";
+                    return true;
+                } 
+                catch (Exception ex) 
+                {
+                    mensaje = "Error al encolar en Outbox: " + ex.Message;
+                    return false;
+                }
+            }
+
             return TryRegistrarFactura(
                 ordenId,
                 factura.PagoId,
@@ -77,6 +94,41 @@ namespace CapaNegocio.Services
                 factura.Total,
                 factura.Observaciones,
                 usuario,
+                out mensaje);
+        }
+
+        public bool TryRegistrarDesdeWorker(int ordenId, string workerUser, out string mensaje)
+        {
+            mensaje = null;
+            if (!IsEnabled())
+            {
+                mensaje = "Facturación AS400 deshabilitada por configuración.";
+                return false;
+            }
+            var ordenDao = new OrdenRecaudacionDAO();
+            var factura = ordenDao.ObtenerFacturaPagoPorOrden(ordenId);
+            if (factura == null)
+            {
+                mensaje = "No existe factura registrada localmente para la orden " + ordenId;
+                return false;
+            }
+            if (string.Equals(factura.Fr3Estado, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(factura.Fr3Numero))
+            {
+                mensaje = "FR3 ya generado: " + factura.Fr3Numero;
+                return true;
+            }
+            return TryRegistrarFactura(
+                ordenId,
+                factura.PagoId,
+                factura.NumeroFactura,
+                factura.AutorizacionFactura,
+                factura.FechaEmision,
+                factura.Subtotal,
+                factura.Iva,
+                factura.Total,
+                factura.Observaciones,
+                workerUser,
                 out mensaje);
         }
 
