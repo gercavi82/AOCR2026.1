@@ -185,8 +185,8 @@
                                 </div>
                             }
 
-                            <div class="card">
-                                <div class="card-body">
+                             <div class="card">
+                                 <div class="card-body">
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label">Concepto</label>
@@ -205,8 +205,8 @@
                                             </select>
                                         </div>
 
-                                        <div class="col-md-4">
-                                            <label class="form-label">Cantidad</label>
+                                        <div class="col-md-4" id="grupoCantidad">
+                                            <label class="form-label" id="labelCantidad">Cantidad</label>
                                             <input type="number" id="Cantidad" class="form-control" value="1" min="1" step="1" />
                                         </div>
 
@@ -216,11 +216,76 @@
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
+                                 </div>
+                             </div>
 
-                        </div>
-                    </div>
+                             <!-- Lugar de inspeccion (visible cuando aplica INSPECCION_EXT) -->
+                             <div class="mt-4" id="seccionViaticos" style="display: none;">
+                                 <h5><i class="fas fa-plane-departure me-2 text-primary"></i>Detalles de Inspección</h5>
+                                 <div class="card bg-light">
+                                     <div class="card-body row g-3">
+                                         <div class="col-12">
+                                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                 <label class="form-label fw-bold mb-0">Lugares de Inspección <span class="text-danger">*</span></label>
+                                                 <span class="badge rounded-pill lugar-inspeccion-badge"><i class="fas fa-layer-group me-1"></i>Selección múltiple</span>
+                                             </div>
+                                             <input type="hidden" id="LugarInspeccion" name="LugarInspeccion" value="@Model.LugarInspeccion" />
+                                             <div class="row g-2" id="opcionesLugarInspeccion">
+                                                 <div class="col-12 col-sm-6 col-xl-3">
+                                                     <label class="lugar-inspeccion-opcion">
+                                                         <input type="checkbox" class="lugar-inspeccion-check" name="LugaresInspeccion" value="QUITO" />
+                                                         <span class="lugar-inspeccion-marca"><i class="fas fa-check"></i></span>
+                                                         <span class="lugar-inspeccion-texto"><strong>Quito</strong><small>Sin viáticos</small></span>
+                                                     </label>
+                                                 </div>
+                                                 <div class="col-12 col-sm-6 col-xl-3">
+                                                     <label class="lugar-inspeccion-opcion">
+                                                         <input type="checkbox" class="lugar-inspeccion-check" name="LugaresInspeccion" value="LATACUNGA" />
+                                                         <span class="lugar-inspeccion-marca"><i class="fas fa-check"></i></span>
+                                                         <span class="lugar-inspeccion-texto"><strong>Latacunga</strong><small>Sin viáticos</small></span>
+                                                     </label>
+                                                 </div>
+                                                 <div class="col-12 col-sm-6 col-xl-3">
+                                                     <label class="lugar-inspeccion-opcion">
+                                                         <input type="checkbox" class="lugar-inspeccion-check" name="LugaresInspeccion" value="GUAYAQUIL" />
+                                                         <span class="lugar-inspeccion-marca"><i class="fas fa-check"></i></span>
+                                                         <span class="lugar-inspeccion-texto"><strong>Guayaquil</strong><small>Permite viáticos</small></span>
+                                                     </label>
+                                                 </div>
+                                                 <div class="col-12 col-sm-6 col-xl-3">
+                                                     <label class="lugar-inspeccion-opcion">
+                                                         <input type="checkbox" class="lugar-inspeccion-check" name="LugaresInspeccion" value="MANTA" />
+                                                         <span class="lugar-inspeccion-marca"><i class="fas fa-check"></i></span>
+                                                         <span class="lugar-inspeccion-texto"><strong>Manta</strong><small>Permite viáticos</small></span>
+                                                     </label>
+                                                 </div>
+                                                 <div class="col-12 col-md-6">
+                                                     <label class="lugar-inspeccion-opcion">
+                                                         <input type="checkbox" class="lugar-inspeccion-check" name="LugaresInspeccion" value="OTRA_PROVINCIA" />
+                                                         <span class="lugar-inspeccion-marca"><i class="fas fa-check"></i></span>
+                                                         <span class="lugar-inspeccion-texto"><strong>Otra provincia/localidad</strong><small>Especifique el destino</small></span>
+                                                     </label>
+                                                 </div>
+                                             </div>
+                                             <small class="text-muted d-block mt-2"><i class="fas fa-info-circle me-1"></i>Puede seleccionar todos los lugares que sean necesarios.</small>
+                                         </div>
+                                         <div class="col-md-6" id="divProvinciaInspeccion" style="display: none;">
+                                             <label class="form-label fw-bold">Provincia / localidad <span class="text-danger">*</span></label>
+                                             @Html.TextBoxFor(m => m.ProvinciaInspeccion, new { @class = "form-control", placeholder = "Ingrese la provincia o localidad real", maxlength = "150" })
+                                         </div>
+                                     </div>
+                                     <div class="row g-3 mt-1" id="mensajeViaticosLugar" style="display: none;">
+                                         <div class="col-12">
+                                             <div class="alert alert-info mb-0 py-2">
+                                                 <i class="fas fa-info-circle me-2"></i><span id="textoMensajeViaticosLugar"></span>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+
+                         </div>
+                     </div>
 
                     <!-- Tabla de detalles -->
                     <div class="row mb-4">
@@ -233,7 +298,8 @@
                                         <tr>
                                             <th>Código</th>
                                             <th>Concepto</th>
-                                            <th style="width: 110px;">Cantidad</th>
+                                            <th style="width: 120px;" id="encabezadoCantidad">Cantidad</th>
+                                            <th style="width: 150px; display: none;" id="encabezadoNumeroDias">NÚMERO DE DÍAS</th>
                                             <th class="text-end">Valor Unit.</th>
                                             <th class="text-end">% Admin</th>
                                             <th class="text-end">Administración</th>
@@ -244,13 +310,13 @@
                                     <tbody></tbody>
                                     <tfoot class="table-light">
                                         <tr>
-                                            <td colspan="5" class="text-end fw-bold">TOTALES:</td>
+                                            <td colspan="5" class="text-end fw-bold" id="colspanTotales">TOTALES:</td>
                                             <td class="text-end fw-bold" id="admin">$0.00</td>
                                             <td class="text-end fw-bold" id="total">$0.00</td>
                                             <td></td>
                                         </tr>
                                         <tr>
-                                            <td colspan="6" class="text-end fw-bold">SUBTOTAL:</td>
+                                            <td colspan="6" class="text-end fw-bold" id="colspanSubtotal">SUBTOTAL:</td>
                                             <td class="text-end fw-bold" id="subtotal">$0.00</td>
                                             <td></td>
                                         </tr>
@@ -262,37 +328,6 @@
                     </div>
 
                     @Html.Partial("_PanelSolicitudInspeccionesExt", Model.SolicitudInspeccionPanel)
-
-                    <!-- Viáticos (Oculto por defecto) -->
-                    <div class="row mb-4" id="seccionViaticos" style="display: none;">
-                        <div class="col-md-12">
-                            <h5><i class="fas fa-plane-departure me-2 text-primary"></i>Detalles de Inspección (Viáticos)</h5>
-                            <div class="card bg-light">
-                                <div class="card-body row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Lugar de Inspección <span class="text-danger">*</span></label>
-                                        <select id="LugarInspeccion" name="LugarInspeccion" class="form-select">
-                                            <option value="">Seleccione...</option>
-                                            <option value="QUITO">Quito</option>
-                                            <option value="LATACUNGA">Latacunga</option>
-                                            <option value="OTRA_PROVINCIA">Otra Provincia</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6" id="divProvinciaInspeccion" style="display: none;">
-                                        <label class="form-label fw-bold">Provincia / Detalles <span class="text-danger">*</span></label>
-                                        @Html.TextBoxFor(m => m.ProvinciaInspeccion, new { @class = "form-control", placeholder = "Especifique provincia..." })
-                                    </div>
-                                </div>
-                                <div class="row g-3 mt-1" id="mensajeViaticosLugar" style="display: none;">
-                                    <div class="col-12">
-                                        <div class="alert alert-info mb-0 py-2">
-                                            <i class="fas fa-info-circle me-2"></i><span id="textoMensajeViaticosLugar"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Observaciones -->
                     <div class="row mb-4">
@@ -340,10 +375,100 @@
             background-color: #f8fbff;
         }
 
-        .badge-concepto-obligatorio {
-            font-size: 0.7rem;
-            vertical-align: middle;
-        }
+         .badge-concepto-obligatorio {
+             font-size: 0.7rem;
+             vertical-align: middle;
+         }
+
+         .lugar-inspeccion-badge {
+             color: #0b5ed7;
+             background: #eaf3ff;
+             border: 1px solid #b7d3f5;
+             font-weight: 700;
+         }
+
+         .lugar-inspeccion-opcion {
+             position: relative;
+             display: flex;
+             align-items: center;
+             gap: .75rem;
+             width: 100%;
+             min-height: 68px;
+             padding: .75rem .9rem;
+             border: 1px solid #cbd8e6;
+             border-radius: .65rem;
+             background: #fff;
+             cursor: pointer;
+             transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+         }
+
+         .lugar-inspeccion-opcion:hover {
+             border-color: #75a8e8;
+             background: #f8fbff;
+             transform: translateY(-1px);
+         }
+
+         .lugar-inspeccion-opcion:focus-within {
+             outline: 3px solid rgba(13, 110, 253, .18);
+             outline-offset: 1px;
+         }
+
+         .lugar-inspeccion-opcion.seleccionada {
+             border-color: #0d6efd;
+             background: #eef6ff;
+             box-shadow: 0 5px 14px rgba(13, 110, 253, .12);
+         }
+
+         .lugar-inspeccion-check {
+             position: absolute;
+             width: 1px;
+             height: 1px;
+             opacity: 0;
+             pointer-events: none;
+         }
+
+         .lugar-inspeccion-marca {
+             display: inline-flex;
+             align-items: center;
+             justify-content: center;
+             flex: 0 0 26px;
+             width: 26px;
+             height: 26px;
+             border: 2px solid #9fb3c8;
+             border-radius: 50%;
+             color: transparent;
+             background: #fff;
+             transition: all .16s ease;
+         }
+
+         .lugar-inspeccion-marca i {
+             font-size: .72rem;
+         }
+
+         .lugar-inspeccion-opcion.seleccionada .lugar-inspeccion-marca {
+             color: #fff;
+             border-color: #0d6efd;
+             background: #0d6efd;
+         }
+
+         .lugar-inspeccion-texto {
+             display: flex;
+             flex-direction: column;
+             min-width: 0;
+             line-height: 1.2;
+         }
+
+         .lugar-inspeccion-texto strong {
+             color: #17324d;
+             font-size: .94rem;
+         }
+
+         .lugar-inspeccion-texto small {
+             margin-top: .22rem;
+             color: #6c7f92;
+             font-size: .76rem;
+             font-weight: 500;
+         }
 
         @@media (max-width: 576px) {
             .solicitud-inspeccion-actions .btn,
@@ -356,22 +481,32 @@
                         $(function () {
 
                             var detalles = [];
-                            var CODIGO_CONCEPTO_OBLIGATORIO = '@(ViewBag.ConceptoObligatorioCodigo ?? "INSPECCION_EXT")';
-                            var CONCEPTO_OBLIGATORIO_ENCONTRADO = @((ViewBag.ConceptoObligatorioEncontrado == true) ? "true" : "false");
-                            var agregandoConceptoObligatorio = false;
+                             var CODIGO_CONCEPTO_OBLIGATORIO = '@(ViewBag.ConceptoObligatorioCodigo ?? "INSPECCION_EXT")';
+                             var CONCEPTO_OBLIGATORIO_ENCONTRADO = @((ViewBag.ConceptoObligatorioEncontrado == true) ? "true" : "false");
+                             var LUGAR_INSPECCION_INICIAL = '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(Model.LugarInspeccion ?? string.Empty))';
+                             var agregandoConceptoObligatorio = false;
+                             $('#AeropuertosSolicitados').prop('readonly', true).addClass('bg-light');
+
+                             function obtenerCodigoTramite() {
+                                 var codigoTramite = null;
+                                 detalles.forEach(function (d) {
+                                     var codigo = (d.ConceptoCodigo || '').toString().trim().toUpperCase();
+                                     if (codigo === 'EMI_AOCR' || codigo === 'REN_AOCR' || codigo === 'MOD_AOCR_INC') {
+                                         codigoTramite = codigo;
+                                     }
+                                 });
+                                 return codigoTramite;
+                             }
+
+                             function requiereInspeccionExterna() {
+                                 return !!obtenerCodigoTramite();
+                             }
 
                             function esConceptoObligatorio(codigo) {
                                 var cod = (codigo || '').toString().trim().toUpperCase();
                                 if (cod !== CODIGO_CONCEPTO_OBLIGATORIO) return false;
                                 
-                                var codigoTramite = null;
-                                detalles.forEach(function (d) {
-                                    if (d.ConceptoCodigo && d.ConceptoCodigo.endsWith('_AOCR')) {
-                                        codigoTramite = d.ConceptoCodigo;
-                                    }
-                                });
-                                
-                                return (codigoTramite === 'EMI_AOCR' || codigoTramite === 'REN_AOCR' || codigoTramite === 'MOD_AOCR_INC');
+                                 return requiereInspeccionExterna();
                             }
 
                             function obtenerOpcionConceptoObligatorio() {
@@ -396,40 +531,50 @@
                                 alert(mensaje);
                             }
 
-                            function crearDetalleDesdeOpcion($opt, cantidad) {
+                             function crearDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion) {
                                 var conceptoId = $opt.val();
-                                var codigo = $opt.data('codigo') || '';
+                                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
                                 var nombre = $opt.data('nombre') || $opt.text();
                                 var valor = toNumber($opt.data('valor'));
                                 var porcentaje = toNumber($opt.data('porcentaje'));
+                                var esViatico = codigo === 'VIATICOS_INSPECTOR';
+                                var diasInspeccion = esViatico ? Math.max(parseInt(numeroDiasInspeccion || 1, 10), 1) : null;
 
                                 var detalle = {
                                     ConceptoId: parseInt(conceptoId, 10),
                                     ConceptoCodigo: codigo,
                                     ConceptoNombre: nombre,
-                                    Cantidad: cantidad,
+                                    Cantidad: esViatico ? 1 : cantidad,
+                                    NumeroDiasInspeccion: diasInspeccion,
                                     ValorUnitario: valor,
                                     PorcentajeAdmin: porcentaje,
                                     EsObligatorio: esConceptoObligatorio(codigo)
                                 };
 
-                                detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
+                                 var diasFacturables = esViatico
+                                     ? Math.max(detalle.NumeroDiasInspeccion - 1, 0)
+                                     : detalle.Cantidad;
+                                 detalle.Subtotal = diasFacturables * detalle.ValorUnitario;
                                 detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
                                 detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
                                 return detalle;
                             }
 
-                            function agregarDetalleDesdeOpcion($opt, cantidad) {
+                            function agregarDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion) {
                                 if (!$opt || !$opt.length || cantidad <= 0) {
                                     return false;
                                 }
 
-                                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
-                                if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
-                                    return false;
-                                }
+                                 var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                 var conceptoDuplicado = detalles.some(function (d) {
+                                     return parseInt(d.ConceptoId, 10) === parseInt($opt.val(), 10)
+                                         || (d.ConceptoCodigo || '').toString().trim().toUpperCase() === codigo;
+                                 });
+                                 if (conceptoDuplicado) {
+                                     return false;
+                                 }
 
-                                detalles.push(crearDetalleDesdeOpcion($opt, cantidad));
+                                detalles.push(crearDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion));
                                 return true;
                             }
 
@@ -440,7 +585,11 @@
                                 }
                             }
 
-                            function agregarConceptoObligatorioAutomatico() {
+                             function agregarConceptoObligatorioAutomatico() {
+                                 if (!requiereInspeccionExterna()) {
+                                     return;
+                                 }
+
                                 if (!CONCEPTO_OBLIGATORIO_ENCONTRADO) {
                                     $('#btnGuardar').prop('disabled', true);
                                     return;
@@ -480,22 +629,19 @@
                                 $('#Cantidad').val('1');
                             }
 
-                            function validarDetallesAntesGuardar() {
-                                if (!CONCEPTO_OBLIGATORIO_ENCONTRADO) {
+                             function validarDetallesAntesGuardar() {
+                                 if (requiereInspeccionExterna() && !CONCEPTO_OBLIGATORIO_ENCONTRADO) {
                                     mostrarAlertaInstitucional('No se encontró el concepto obligatorio INSPECCION_EXT. Verifique el catálogo de conceptos antes de continuar.');
                                     return false;
                                 }
 
-                                var codigoTramite = null;
+                                 var codigoTramite = obtenerCodigoTramite();
                                 var tieneViaticos = false;
                                 var tieneInspeccionExt = false;
                                 
                                 detalles.forEach(function (d) {
                                     if (d.ConceptoCodigo) {
-                                        if (d.ConceptoCodigo.endsWith('_AOCR')) {
-                                            codigoTramite = d.ConceptoCodigo;
-                                        }
-                                        if (d.ConceptoCodigo === 'VIATICOS_INSPECTOR' && d.Cantidad > 0) {
+                                        if (d.ConceptoCodigo === 'VIATICOS_INSPECTOR' && d.NumeroDiasInspeccion > 0) {
                                             tieneViaticos = true;
                                         }
                                         if (d.ConceptoCodigo === 'INSPECCION_EXT' && d.Cantidad > 0) {
@@ -505,28 +651,40 @@
                                 });
 
                                 // Regla INSPECCION_EXT
-                                if (codigoTramite === 'EMI_AOCR' || codigoTramite === 'REN_AOCR' || codigoTramite === 'MOD_AOCR_INC') {
+                                 if (codigoTramite === 'EMI_AOCR' || codigoTramite === 'REN_AOCR' || codigoTramite === 'MOD_AOCR_INC') {
                                     if (!tieneInspeccionExt) {
                                         mostrarAlertaInstitucional('El trámite exige obligatoriamente el concepto INSPECCION_EXT.');
                                         return false;
                                     }
-                                }
+                                 }
 
-                                // Regla VIATICOS_INSPECTOR
-                                if (tieneViaticos) {
-                                    var lugarInspeccion = $('#LugarInspeccion').val();
-                                    if (!lugarInspeccion) {
-                                        mostrarAlertaInstitucional('Debe especificar el lugar de la inspección para los viáticos.');
-                                        return false;
-                                    }
-                                    if (lugarInspeccion === 'OTRA_PROVINCIA') {
-                                        var provinciaInspeccion = $('#ProvinciaInspeccion').val();
-                                        if (!provinciaInspeccion) {
-                                            mostrarAlertaInstitucional('Debe especificar la provincia de la inspección.');
-                                            return false;
-                                        }
-                                    }
-                                }
+                                 var requiereDatosInspeccion = requiereInspeccionExterna() || tieneInspeccionExt;
+                                 var lugaresInspeccion = sincronizarLugaresYAeropuertos();
+                                 if (requiereDatosInspeccion && lugaresInspeccion.length === 0) {
+                                     mostrarAlertaInstitucional('Seleccione el lugar o provincia donde se realizará la inspección.');
+                                     return false;
+                                 }
+
+                                 if (lugaresInspeccion.indexOf('OTRA_PROVINCIA') >= 0) {
+                                     var provinciaInspeccion = ($('#ProvinciaInspeccion').val() || '').trim();
+                                     if (!provinciaInspeccion) {
+                                         mostrarAlertaInstitucional('Ingrese la provincia o localidad donde se realizará la inspección.');
+                                         return false;
+                                     }
+                                 }
+
+                                 if (tieneViaticos && lugaresSoloQuitoLatacunga(lugaresInspeccion)) {
+                                     mostrarAlertaInstitucional('Para inspecciones realizadas únicamente en Quito y/o Latacunga no aplica registro de viáticos.');
+                                     return false;
+                                 }
+
+                                 var tieneLugarExterno = lugaresInspeccion.some(function (lugar) {
+                                     return lugar !== 'QUITO' && lugar !== 'LATACUNGA';
+                                 });
+                                 if (requiereDatosInspeccion && tieneLugarExterno && !tieneViaticos) {
+                                     mostrarAlertaInstitucional('No fue posible agregar automáticamente VIATICOS_INSPECTOR. Verifique el catálogo de conceptos.');
+                                     return false;
+                                 }
 
                                 return true;
                             }
@@ -571,6 +729,48 @@
                 return isNaN(n) ? 0 : n;
             }
 
+            function obtenerLugaresSeleccionados() {
+                return $('.lugar-inspeccion-check:checked').map(function () {
+                    return ($(this).val() || '').toString().trim().toUpperCase();
+                }).get().filter(function (valor, indice, lista) {
+                    return valor && lista.indexOf(valor) === indice;
+                });
+            }
+
+            function lugaresSoloQuitoLatacunga(lugares) {
+                return lugares.length > 0 && lugares.every(function (lugar) {
+                    return lugar === 'QUITO' || lugar === 'LATACUNGA';
+                });
+            }
+
+            function sincronizarLugaresYAeropuertos() {
+                var lugares = obtenerLugaresSeleccionados();
+                $('#LugarInspeccion').val(lugares.join(','));
+                $('.lugar-inspeccion-opcion').each(function () {
+                    $(this).toggleClass('seleccionada', $(this).find('.lugar-inspeccion-check').prop('checked'));
+                });
+
+                var nombres = [];
+                lugares.forEach(function (lugar) {
+                    if (lugar === 'OTRA_PROVINCIA') {
+                        var otraLocalidad = ($('#ProvinciaInspeccion').val() || '').trim();
+                        if (otraLocalidad) nombres.push(otraLocalidad);
+                        return;
+                    }
+
+                    var $opcion = $('.lugar-inspeccion-check[value="' + lugar + '"]').first();
+                    var etiqueta = $opcion.closest('.lugar-inspeccion-opcion').find('.lugar-inspeccion-texto strong').first().text().trim();
+                    if (etiqueta) nombres.push(etiqueta);
+                });
+
+                var $aeropuertos = $('#AeropuertosSolicitados');
+                if ($aeropuertos.length) {
+                    $aeropuertos.val(nombres.join(', '));
+                }
+
+                return lugares;
+            }
+
             function actualizarTotales() {
                 var subtotal = 0, admin = 0, total = 0;
 
@@ -589,26 +789,45 @@
                 $('#Total').val(total.toFixed(2));
             }
 
-            function renderTabla() {
-                var $tb = $('#tablaDetalles tbody');
-                $tb.empty();
+             function renderTabla() {
+                 var $tb = $('#tablaDetalles tbody');
+                 $tb.empty();
+
+                 var tablaTieneViaticos = detalles.some(function (d) {
+                     return (d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'VIATICOS_INSPECTOR';
+                 });
+                 $('#encabezadoNumeroDias').toggle(tablaTieneViaticos);
+                 $('#colspanTotales').attr('colspan', tablaTieneViaticos ? 6 : 5);
+                 $('#colspanSubtotal').attr('colspan', tablaTieneViaticos ? 7 : 6);
 
                 detalles.forEach(function (d, i) {
                     var esObligatorio = esConceptoObligatorio(d.ConceptoCodigo);
+                    var esViatico = (d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'VIATICOS_INSPECTOR';
                     var nombreHtml = AOCR.escapeHtml(String(d.ConceptoNombre));
                     if (esObligatorio) {
                         nombreHtml += ' <span class="badge bg-primary badge-concepto-obligatorio ms-1">Obligatorio</span>';
                     }
+                    if (esViatico) {
+                        nombreHtml += ' <span class="badge bg-info text-dark ms-1">Automático</span>';
+                    }
 
-                    var accionesHtml = esObligatorio
-                        ? '<span class="text-muted" title="Concepto obligatorio del proceso AOCR"><i class="fas fa-lock"></i></span>'
+                    var accionesHtml = esObligatorio || esViatico
+                        ? '<span class="text-muted" title="' + (esViatico ? 'Concepto automático según el lugar de inspección' : 'Concepto obligatorio del proceso AOCR') + '"><i class="fas fa-lock"></i></span>'
                         : '<button type="button" class="btn btn-danger btn-sm btnEliminarDetalle" data-index="' + AOCR.escapeHtml(String(i)) + '"><i class="fas fa-trash"></i></button>';
 
+                    var celdaNumeroDias = '';
+                    if (tablaTieneViaticos) {
+                        celdaNumeroDias = esViatico
+                            ? '<td><input type="number" class="form-control form-control-sm numero-dias-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.NumeroDiasInspeccion || 1)) + '" min="1" step="1" aria-label="Número de días de inspección"></td>'
+                            : '<td class="text-center text-muted">-</td>';
+                    }
+
                     var tr = ''
-                        + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '"' + (esObligatorio ? ' class="detalle-obligatorio"' : '') + '>'
+                        + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '"' + (esObligatorio || esViatico ? ' class="detalle-obligatorio"' : '') + '>'
                         + '<td>' + AOCR.escapeHtml(String(d.ConceptoCodigo)) + '</td>'
                         + '<td>' + nombreHtml + '</td>'
-                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + '></td>'
+                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + (esViatico ? ' readonly aria-label="Cantidad del concepto de viáticos"' : '') + '></td>'
+                        + celdaNumeroDias
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.ValorUnitario.toFixed(2)) + '</td>'
                         + '<td class="text-end">' + AOCR.escapeHtml(d.PorcentajeAdmin.toFixed(2)) + '%</td>'
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.Admin.toFixed(2)) + '</td>'
@@ -619,60 +838,87 @@
                 });
 
                 actualizarPanelSolicitudInspeccion();
-                actualizarReglasInspeccion();
-            }
+                 actualizarReglasInspeccionSeguras();
+             }
 
-            function actualizarReglasInspeccion() {
-                var codigoTramite = null;
-                var tieneViaticos = false;
-                var tieneInspeccionExt = false;
-                
-                detalles.forEach(function (d) {
-                    if (d.ConceptoCodigo) {
-                        if (d.ConceptoCodigo.endsWith('_AOCR')) {
-                            codigoTramite = d.ConceptoCodigo;
-                        }
-                        if (d.ConceptoCodigo === 'VIATICOS_INSPECTOR') {
-                            tieneViaticos = true;
-                        }
-                        if (d.ConceptoCodigo === 'INSPECCION_EXT') {
-                            tieneInspeccionExt = true;
-                        }
-                    }
-                });
-                
-                // Regla INSPECCION_EXT
-                var inspeccionRequerida = false;
-                if (codigoTramite === 'EMI_AOCR' || codigoTramite === 'REN_AOCR' || codigoTramite === 'MOD_AOCR_INC') {
-                    inspeccionRequerida = true;
-                }
-                
-                if (inspeccionRequerida) {
-                    $('#alertConceptoObligatorioInfo').removeClass('d-none');
-                    if (!tieneInspeccionExt) {
-                        var $opt = obtenerOpcionConcepto('INSPECCION_EXT');
-                        if ($opt && $opt.length > 0 && !agregandoConceptoObligatorio) {
-                            agregandoConceptoObligatorio = true;
-                            agregarDetalleDesdeOpcion($opt, 1);
-                            agregandoConceptoObligatorio = false;
-                        }
-                    }
-                } else {
-                    $('#alertConceptoObligatorioInfo').addClass('d-none');
-                }
+             function actualizarReglasInspeccionSeguras() {
+                 var inspeccionRequerida = requiereInspeccionExterna();
+                 var tieneInspeccionExt = detalles.some(function (d) {
+                     return (d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'INSPECCION_EXT';
+                 });
+                 var tieneViaticos = detalles.some(function (d) {
+                     return (d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'VIATICOS_INSPECTOR';
+                 });
 
-                // Regla VIATICOS_INSPECTOR
-                if (tieneViaticos) {
-                    $('#seccionViaticos').slideDown();
-                } else {
-                    $('#seccionViaticos').slideUp();
-                    $('#LugarInspeccion').val('');
-                    $('#divProvinciaInspeccion').hide();
-                    $('#ProvinciaInspeccion').val('');
-                    $('#mensajeViaticosLugar').hide();
-                }
-            }
-            
+                 if (inspeccionRequerida && !tieneInspeccionExt) {
+                     var $inspeccion = obtenerOpcionConcepto('INSPECCION_EXT');
+                     if ($inspeccion && $inspeccion.length && !agregandoConceptoObligatorio) {
+                         agregandoConceptoObligatorio = true;
+                         agregarDetalleDesdeOpcion($inspeccion, 1);
+                         agregandoConceptoObligatorio = false;
+                         renderTabla();
+                         actualizarTotales();
+                         return;
+                     }
+                 }
+
+                 $('#alertConceptoObligatorioInfo').toggleClass('d-none', !inspeccionRequerida);
+
+                 var requiereDatosInspeccion = inspeccionRequerida || tieneInspeccionExt;
+                 $('#seccionViaticos').toggle(requiereDatosInspeccion);
+
+                 var lugares = sincronizarLugaresYAeropuertos();
+                 var lugarSinViaticos = lugaresSoloQuitoLatacunga(lugares);
+                 var permiteViaticos = requiereDatosInspeccion
+                     && lugares.some(function (lugar) { return lugar !== 'QUITO' && lugar !== 'LATACUNGA'; });
+                 var $opcionViaticos = obtenerOpcionConcepto('VIATICOS_INSPECTOR');
+
+                 if ($opcionViaticos && $opcionViaticos.length) {
+                     $opcionViaticos.prop('disabled', true).prop('hidden', true);
+                     if ($('#ConceptoId').val() === $opcionViaticos.val()) {
+                         $('#ConceptoId').val('');
+                     }
+                 }
+
+                 if (permiteViaticos && !tieneViaticos && $opcionViaticos && $opcionViaticos.length) {
+                     agregarDetalleDesdeOpcion($opcionViaticos, 1, 1);
+                     renderTabla();
+                     actualizarTotales();
+                     return;
+                 }
+
+                 if ((!permiteViaticos || !requiereDatosInspeccion) && tieneViaticos) {
+                     detalles = detalles.filter(function (d) {
+                         return (d.ConceptoCodigo || '').toString().trim().toUpperCase() !== 'VIATICOS_INSPECTOR';
+                     });
+                     renderTabla();
+                     actualizarTotales();
+                     return;
+                 }
+
+                 if (!requiereDatosInspeccion) {
+                     $('.lugar-inspeccion-check').prop('checked', false);
+                     $('#LugarInspeccion').val('');
+                     $('#ProvinciaInspeccion').val('');
+                     $('#divProvinciaInspeccion').hide();
+                     $('#mensajeViaticosLugar').hide();
+                     sincronizarLugaresYAeropuertos();
+                 }
+
+                 if (lugarSinViaticos) {
+                     $('#textoMensajeViaticosLugar').text('Para inspecciones realizadas únicamente en Quito y/o Latacunga no aplica registro de viáticos.');
+                     $('#mensajeViaticosLugar').show();
+                 } else {
+                     $('#mensajeViaticosLugar').hide();
+                 }
+
+                 actualizarEtiquetaCantidadSeleccionada();
+             }
+
+             function actualizarEtiquetaCantidadSeleccionada() {
+                 $('#labelCantidad').text('Cantidad');
+             }
+
             function obtenerOpcionConcepto(codigoBuscado) {
                 var $encontrada = null;
                 $('#ConceptoId option').each(function () {
@@ -720,7 +966,11 @@
             function actualizarCamposOcultos() {
                 // SOLO enviar lo mínimo; el servidor recalcula compañía desde sesión (seguridad).
                 var payload = detalles.map(function (d) {
-                    return { ConceptoId: d.ConceptoId, Cantidad: d.Cantidad };
+                    return {
+                        ConceptoId: d.ConceptoId,
+                        Cantidad: d.Cantidad,
+                        NumeroDiasInspeccion: d.NumeroDiasInspeccion
+                    };
                 });
                 $('#DetallesJson').val(JSON.stringify(payload));
 
@@ -754,8 +1004,22 @@
                 if (!conceptoId) { alert('Seleccione un concepto'); return; }
                 if (cantidad <= 0) { alert('Cantidad inválida'); return; }
 
-                var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
-                if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
+                 var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                 var conceptoDuplicado = detalles.some(function (d) {
+                     return parseInt(d.ConceptoId, 10) === parseInt(conceptoId, 10)
+                         || (d.ConceptoCodigo || '').toString().trim().toUpperCase() === codigo;
+                 });
+                 if (conceptoDuplicado) {
+                     alert('El concepto seleccionado ya esta incluido en la orden.');
+                     return;
+                 }
+
+                 if (codigo === 'VIATICOS_INSPECTOR') {
+                     alert('VIATICOS_INSPECTOR se agrega automáticamente al seleccionar Guayaquil, Manta u otra provincia/localidad.');
+                     return;
+                 }
+
+                 if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
                     alert('El concepto INSPECCION_EXT ya está incluido como concepto obligatorio.');
                     seleccionarConceptoObligatorioEnCombo();
                     return;
@@ -773,8 +1037,9 @@
                 } else {
                     seleccionarConceptoObligatorioEnCombo();
                 }
-                $('#Cantidad').val('1');
-            });
+                 $('#Cantidad').val('1');
+                 actualizarEtiquetaCantidadSeleccionada();
+             });
 
             $(document).on('click', '.btnEliminarDetalle', function () {
                 var idx = parseInt($(this).data('index'), 10);
@@ -784,6 +1049,11 @@
 
                 if (esConceptoObligatorio(detalles[idx].ConceptoCodigo)) {
                     alert('El concepto INSPECCION_EXT es obligatorio y no puede eliminarse.');
+                    return;
+                }
+
+                if ((detalles[idx].ConceptoCodigo || '').toString().trim().toUpperCase() === 'VIATICOS_INSPECTOR') {
+                    alert('VIATICOS_INSPECTOR es automático y se retira al desmarcar los lugares externos.');
                     return;
                 }
 
@@ -809,7 +1079,27 @@
                 }
 
                 detalles[idx].Cantidad = cant;
-                detalles[idx].Subtotal = detalles[idx].Cantidad * detalles[idx].ValorUnitario;
+                 detalles[idx].Subtotal = detalles[idx].Cantidad * detalles[idx].ValorUnitario;
+                 detalles[idx].Admin = detalles[idx].Subtotal * (detalles[idx].PorcentajeAdmin / 100.0);
+                detalles[idx].TotalLinea = detalles[idx].Subtotal + detalles[idx].Admin;
+
+                renderTabla();
+                actualizarTotales();
+            });
+
+            $(document).on('change', '.numero-dias-detalle', function () {
+                var idx = parseInt($(this).data('index'), 10);
+                var numeroDias = parseInt($(this).val(), 10);
+                if (!detalles[idx]) return;
+
+                if (!numeroDias || numeroDias < 1) {
+                    numeroDias = 1;
+                    $(this).val('1');
+                }
+
+                detalles[idx].Cantidad = 1;
+                detalles[idx].NumeroDiasInspeccion = numeroDias;
+                detalles[idx].Subtotal = Math.max(numeroDias - 1, 0) * detalles[idx].ValorUnitario;
                 detalles[idx].Admin = detalles[idx].Subtotal * (detalles[idx].PorcentajeAdmin / 100.0);
                 detalles[idx].TotalLinea = detalles[idx].Subtotal + detalles[idx].Admin;
 
@@ -818,11 +1108,13 @@
             });
 
                             function cargarDetallesIniciales() {
-                                var raw = $('#DetallesJson').val();
-                                if (!raw) {
-                                    agregarConceptoObligatorioAutomatico();
-                                    return;
-                                }
+                                 var raw = $('#DetallesJson').val();
+                                 if (!raw) {
+                                     agregarConceptoObligatorioAutomatico();
+                                     renderTabla();
+                                     actualizarTotales();
+                                     return;
+                                 }
 
                                 try {
                                     var iniciales = JSON.parse(raw) || [];
@@ -832,12 +1124,16 @@
                                         var $opt = $('#ConceptoId option[value="' + conceptoId + '"]');
                                         if (!$opt.length || cantidad <= 0) return;
 
-                                        var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
-                                        if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
+                                         var codigo = ($opt.data('codigo') || '').toString().trim().toUpperCase();
+                                         var numeroDiasInspeccion = item.NumeroDiasInspeccion || item.numeroDiasInspeccion || null;
+                                         if (codigo === 'VIATICOS_INSPECTOR' && !numeroDiasInspeccion) {
+                                             numeroDiasInspeccion = cantidad;
+                                         }
+                                         if (esConceptoObligatorio(codigo) && yaExisteConceptoObligatorio()) {
                                             return;
                                         }
 
-                                        agregarDetalleDesdeOpcion($opt, cantidad);
+                                         agregarDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion);
                                     });
 
                                     renderTabla();
@@ -935,34 +1231,34 @@
                                 });
                             });
 
-                            $('#LugarInspeccion').on('change', function () {
-                                var val = $(this).val();
-                                if (val === 'OTRA_PROVINCIA') {
-                                    $('#divProvinciaInspeccion').slideDown();
-                                    $('#mensajeViaticosLugar').hide();
-                                } else if (val === 'QUITO') {
-                                    $('#divProvinciaInspeccion').slideUp();
-                                    $('#ProvinciaInspeccion').val('');
-                                    $('#textoMensajeViaticosLugar').text('Para inspecciones realizadas en Quito no aplica el pago obligatorio de viáticos.');
-                                    $('#mensajeViaticosLugar').slideDown();
-                                } else if (val === 'LATACUNGA') {
-                                    $('#divProvinciaInspeccion').slideUp();
-                                    $('#ProvinciaInspeccion').val('');
-                                    $('#textoMensajeViaticosLugar').text('Para inspecciones realizadas en Latacunga no aplica el pago obligatorio de viáticos.');
-                                    $('#mensajeViaticosLugar').slideDown();
-                                } else {
-                                    $('#divProvinciaInspeccion').slideUp();
-                                    $('#ProvinciaInspeccion').val('');
-                                    $('#mensajeViaticosLugar').hide();
-                                }
-                            });
+                             $(document).on('change', '.lugar-inspeccion-check', function () {
+                                 var lugares = obtenerLugaresSeleccionados();
+                                 var incluyeOtraLocalidad = lugares.indexOf('OTRA_PROVINCIA') >= 0;
+                                 $('#divProvinciaInspeccion').toggle(incluyeOtraLocalidad);
+                                 if (!incluyeOtraLocalidad) {
+                                     $('#ProvinciaInspeccion').val('');
+                                 }
+                                 sincronizarLugaresYAeropuertos();
+                                 actualizarReglasInspeccionSeguras();
+                             });
 
-                            $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);
-                            aplicarSolicitudSeleccionada();
-                            cargarDetallesIniciales();
-                            // Trigger initial place inspection check
-                            $('#LugarInspeccion').trigger('change');
+                             $('#ProvinciaInspeccion').on('input change', sincronizarLugaresYAeropuertos);
 
-                        });
+                             $('#ConceptoId').on('change', actualizarEtiquetaCantidadSeleccionada);
+
+                             $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);
+                             aplicarSolicitudSeleccionada();
+                             if (LUGAR_INSPECCION_INICIAL) {
+                                 LUGAR_INSPECCION_INICIAL.split(',').forEach(function (lugar) {
+                                     var valor = (lugar || '').trim().toUpperCase();
+                                     $('.lugar-inspeccion-check[value="' + valor + '"]').prop('checked', true);
+                                 });
+                                 $('#LugarInspeccion').val(LUGAR_INSPECCION_INICIAL);
+                             }
+                             $('#divProvinciaInspeccion').toggle(obtenerLugaresSeleccionados().indexOf('OTRA_PROVINCIA') >= 0);
+                             sincronizarLugaresYAeropuertos();
+                             cargarDetallesIniciales();
+
+                         });
     </script>
 }

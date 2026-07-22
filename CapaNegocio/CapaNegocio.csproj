@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -213,10 +213,13 @@
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\RevisionDocumentalService.cs" />
     <Compile Include="Services\AocrCompaniaContextService.cs" />
+    <Compile Include="Services\AocrRtFlujoEstadoViewModel.cs" />
+    <Compile Include="Services\AocrRtFlujoService.cs" />
     <Compile Include="Services\CompaniaActivaInfo.cs" />
     <Compile Include="Services\AocrProcesoActivoService.cs" />
     <Compile Include="Services\DocumentoSubsanacionService.cs" />
     <Compile Include="Services\NuevaInspeccionPorNcService.cs" />
+    <Compile Include="Services\AocrExpedienteCompaniaService.cs" />
     <Compile Include="Services\RevisionDocumentalBandejaService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\SolicitudAocrCorreoService.cs" />
@@ -227,6 +230,7 @@
     <Compile Include="Services\FacturacionAS400Service.cs" />
     <Compile Include="Services\RTService.cs" />
     <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
+    <Compile Include="Services\OrdenInspeccionViaticosReglas.cs" />
     <Compile Include="Services\ResultadoOperacion.cs" />
     <Compile Include="Services\SecureConfigurationService.cs" />
     <Compile Include="Services\TecnicoService.cs" />

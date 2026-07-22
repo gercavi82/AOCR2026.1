@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardInspeccionViewModel>
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardInspeccionViewModel>
 @using System
 @using System.Linq
 @using System.Web
@@ -162,10 +162,11 @@
    LEVEL 1 — HERO HEADER
    ============================================================ */
 .di3-hero {
-    background: linear-gradient(135deg, #0e3a5c 0%, #145a82 40%, #0f6a7f 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+    color: #ffffff;
     padding: 28px 32px 24px;
     border-radius: var(--r-xl);
+    box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
     position: relative;
     overflow: hidden;
     margin-bottom: 24px;
@@ -204,36 +205,34 @@
     align-items: center;
     gap: 6px;
     font-size: .78rem;
-    opacity: .7;
     margin-bottom: 8px;
+    color: #ffffff !important;
 }
-.di3-hero__crumb a { color: rgba(255,255,255,.85); text-decoration: none; }
-.di3-hero__crumb a:hover { color: #fff; }
+.di3-hero__crumb a { color: #ffffff !important; text-decoration: none; }
+.di3-hero__crumb a:hover { color: #ffffff !important; text-decoration: underline; }
 .di3-hero__title {
     font-size: 1.55rem;
     font-weight: 800;
     letter-spacing: -.02em;
     margin: 0 0 4px;
     line-height: 1.2;
-    color: #fff !important;
+    color: #ffffff !important;
 }
 .di3-hero__sub {
     font-size: .88rem;
-    opacity: .75;
     margin: 0;
     line-height: 1.4;
-    color: #fff !important;
+    color: #ffffff !important;
 }
 .di3-hero__greeting {
     font-size: .82rem;
-    opacity: .6;
     margin-top: 6px;
-    color: #fff !important;
+    color: #ffffff !important;
 }
 .di3-hero__crumb,
 .di3-hero__crumb span,
 .di3-hero__crumb strong,
-.di3-hero__crumb i { color: rgba(255,255,255,.88) !important; }
+.di3-hero__crumb i { color: #ffffff !important; }
 .di3-hero__actions {
     display: flex;
     gap: 8px;
@@ -1001,6 +1000,231 @@
     .di3-toolbar { padding: 14px 16px; }
     .di3-nav__tab { padding: 10px 14px; font-size: .82rem; }
 }
+
+/* ============================================================
+   NEW HERO & COORDINATION BANNERS
+   ============================================================ */
+.aocr-welcome-banner {
+    background: linear-gradient(135deg, #104F77 0%, #086E88 50%, #12A1B4 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(16, 79, 119, 0.15);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    color: #FFFFFF;
+}
+
+.aocr-welcome-banner::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.aocr-welcome-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px 32px;
+    gap: 20px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+    min-height: 160px;
+}
+
+.aocr-welcome-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.aocr-institution-logo {
+    width: 80px;
+    height: 80px;
+    background: #FFFFFF;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 10px;
+}
+
+.aocr-institution-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.aocr-welcome-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.aocr-welcome-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.aocr-welcome-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+    color: #FFFFFF !important;
+}
+
+.aocr-welcome-desc {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.92);
+    margin: 0 0 12px 0;
+    max-width: 600px;
+    line-height: 1.4;
+}
+
+.aocr-session-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.aocr-session-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.aocr-session-badge--active {
+    background: rgba(46, 204, 113, 0.2);
+    border-color: rgba(46, 204, 113, 0.4);
+    color: #e8f8ef;
+}
+
+.aocr-institution-date-card {
+    background: rgba(5, 65, 94, 0.65);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-width: 260px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+}
+
+.aocr-institution-date-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 4px;
+}
+
+.aocr-institution-date-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 4px;
+}
+
+.aocr-institution-date-text {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.3;
+}
+
+.aocr-coordination-banner {
+    background: linear-gradient(135deg, #0e3a5c 0%, #145a82 50%, #0f6a7f 100%);
+    border-radius: 14px;
+    padding: 24px 30px;
+    margin-bottom: 24px;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(14, 46, 71, 0.1);
+    min-height: 115px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.aocr-coordination-badge {
+    display: inline-block;
+    align-self: flex-start;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    margin-bottom: 12px;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.aocr-coordination-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    color: #FFFFFF !important;
+}
+
+.aocr-coordination-desc {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    max-width: 800px;
+    line-height: 1.4;
+}
+
+@@media (max-width: 991.98px) {
+    .aocr-welcome-inner {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .aocr-welcome-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    .aocr-welcome-copy {
+        align-items: center;
+    }
+    .aocr-session-badges {
+        justify-content: center;
+    }
+    .aocr-institution-date-card {
+        text-align: center;
+    }
+}
+@@media (max-width: 575.98px) {
+    .aocr-welcome-inner {
+        padding: 20px;
+    }
+    .aocr-welcome-title {
+        font-size: 1.4rem;
+    }
+    .aocr-coordination-banner {
+        padding: 20px;
+    }
+    .aocr-coordination-title {
+        font-size: 1.3rem;
+    }
+}
 </style>
 
 @* ================================================================
@@ -1008,33 +1232,36 @@
    ================================================================ *@
 <div class="di3-shell">
 
-    @* ── LEVEL 1: HERO ── *@
-    <div class="di3-hero">
-        <div class="di3-hero__inner">
-            <div>
-                <div class="di3-hero__crumb">
-                    <a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a>
-                    <span>/</span>
-                    <span>Coordinación y Jefatura</span>
-                    <span>/</span>
-                    <strong>Gestión Integral</strong>
+    @* ── LEVEL 1: HERO & WELCOME BANNER ── *@
+    <div class="aocr-welcome-banner">
+        <div class="aocr-welcome-inner">
+            <div class="aocr-welcome-content">
+                <div class="aocr-institution-logo">
+                    <img src="@Url.Content("~/Content/imganes/logo1.png")" alt="Logotipo DAC" />
                 </div>
-                <h1 class="di3-hero__title"><i class="fas fa-tachometer-alt" style="opacity:.7;margin-right:6px;"></i> Gestión Integral AOCR</h1>
-                <p class="di3-hero__sub">Tablero operativo unificado — seguimiento kanban, bandeja de trámites y firma de documentos</p>
-                <p class="di3-hero__greeting">@saludoHora, @nombreUsuario · @hoy.ToString("dddd d 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-EC"))</p>
+                <div class="aocr-welcome-copy">
+                    <div class="aocr-welcome-eyebrow">OPERACIONES DE EXPLOTADORES AÉREOS EXTRANJEROS</div>
+                    <h1 class="aocr-welcome-title">Bienvenido, @nombreUsuario</h1>
+                    <p class="aocr-welcome-desc">Panel institucional para seguimiento operativo, control de procesos y acceso directo al ecosistema AOCR.</p>
+                    <div class="aocr-session-badges">
+                        <span class="aocr-session-badge">Coordinación</span>
+                        <span class="aocr-session-badge aocr-session-badge--active">Sesión activa</span>
+                    </div>
+                </div>
             </div>
-            <div class="di3-hero__actions">
-                <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn"><i class="fas fa-arrow-left"></i> Bandeja documental</a>
-                @if (puedeVerPendientesDirdac)
-                {
-                    <a href="@Url.Action("PendientesDireccion", "Inspeccion")" class="btn"><i class="fas fa-signature"></i> Informes Dirección</a>
-                }
-                @if (puedeValidarAocr)
-                {
-                    <a href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { DocumentoPendiente = "AOCR" })" class="btn btn-primary"><i class="fas fa-stamp"></i> Firma institucional AOCR</a>
-                }
+            <div class="aocr-institution-date-card">
+                <span class="aocr-institution-date-label">FECHA INSTITUCIONAL</span>
+                <strong class="aocr-institution-date-value">@hoy.ToString("dd/MM/yyyy")</strong>
+                <span class="aocr-institution-date-text">Panel habilitado para seguimiento y decisiones rápidas</span>
             </div>
         </div>
+    </div>
+
+    @* ── LEVEL 1.5: COORDINATION BANNER ── *@
+    <div class="aocr-coordination-banner">
+        <span class="aocr-coordination-badge">COORDINACIÓN OPERATIVA</span>
+        <h2 class="aocr-coordination-title">Bandeja de Coordinación</h2>
+        <p class="aocr-coordination-desc">Gestione la asignación y reasignación institucional de inspectores AOCR sin cambiar la ruta heredada /Técnico.</p>
     </div>
 
     @* ── ALERTS ── *@

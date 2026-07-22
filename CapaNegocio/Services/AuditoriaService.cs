@@ -85,5 +85,27 @@ namespace CapaNegocio.Services
                 ip: ip,
                 datosResumen: datosResumen);
         }
+
+        public void RegistrarGeneracionNumeroOrden(
+            int ordenId,
+            string numeroOrden,
+            int? usuarioId,
+            string usuarioNombre,
+            string companiaCodigo,
+            string ip)
+        {
+            RegistrarEvento(
+                modulo: "OrdenRecaudacion",
+                accion: "ORDEN_GENERADA",
+                entidad: "aocr_or_orden",
+                entidadId: ordenId,
+                estadoAnterior: null,
+                estadoNuevo: "GENERADA",
+                usuarioId: usuarioId,
+                usuarioNombre: usuarioNombre,
+                observacion: $"NumeroOrden={numeroOrden}; CompaniaCodigo={companiaCodigo}",
+                ip: ip,
+                datosResumen: $"Generación de número de orden inmutable {numeroOrden}");
+        }
     }
 }

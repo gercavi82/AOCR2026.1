@@ -18,6 +18,7 @@ namespace CapaPresentacion
                 .Include("~/Content/site.css")
                 .Include("~/Content/aocr-institucional.css")
                 .Include("~/Content/aocr-modals.css")
+                .Include("~/Content/css/aocr-contrast-fix.css")
             );
 
             bundles.Add(new StyleBundle("~/bundles/plugins-css").Include(

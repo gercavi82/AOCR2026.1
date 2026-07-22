@@ -32,6 +32,8 @@ namespace CapaNegocio.DTOs
         public int ConceptoId { get; set; }
         public string Descripcion { get; set; }
         public int Cantidad { get; set; }
+        public int? NumeroDiasInspeccion { get; set; }
+        public int? DiasPagadosViatico { get; set; }
         public decimal PrecioUnitario { get; set; }
         public decimal Subtotal { get; set; }
         

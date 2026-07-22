@@ -1,7 +1,9 @@
-@model CapaPresentacion.Models.DashboardInspeccionViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardInspeccionViewModel>
 @using System
 @using System.Linq
 @using System.Web
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaPresentacion.Helpers
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -15,9 +17,9 @@
     var quickFilter = string.IsNullOrWhiteSpace(vm.QuickFilter) ? "TODOS" : vm.QuickFilter;
     var tablero = vm.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
     const int kanbanPreviewLimit = 5;
-    var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones");
-    var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
-    var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica") || User.IsInRole("DirectorGeneral");
+    var puedeGestionarAsignacion = ViewBag.PuedeGestionarAsignacionRolActivo == true;
+    var puedeVerPendientesDirdac = ViewBag.PuedeVerPendientesDirdacRolActivo == true;
+    var puedeValidarAocr = ViewBag.PuedeValidarAocrRolActivo == true;
 
     Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
     {
@@ -160,10 +162,11 @@
    LEVEL 1 — HERO HEADER
    ============================================================ */
 .di3-hero {
-    background: linear-gradient(135deg, #0e3a5c 0%, #145a82 40%, #0f6a7f 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+    color: #ffffff;
     padding: 28px 32px 24px;
     border-radius: var(--r-xl);
+    box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
     position: relative;
     overflow: hidden;
     margin-bottom: 24px;
@@ -202,29 +205,34 @@
     align-items: center;
     gap: 6px;
     font-size: .78rem;
-    opacity: .7;
     margin-bottom: 8px;
+    color: #ffffff !important;
 }
-.di3-hero__crumb a { color: rgba(255,255,255,.85); text-decoration: none; }
-.di3-hero__crumb a:hover { color: #fff; }
+.di3-hero__crumb a { color: #ffffff !important; text-decoration: none; }
+.di3-hero__crumb a:hover { color: #ffffff !important; text-decoration: underline; }
 .di3-hero__title {
     font-size: 1.55rem;
     font-weight: 800;
     letter-spacing: -.02em;
     margin: 0 0 4px;
     line-height: 1.2;
+    color: #ffffff !important;
 }
 .di3-hero__sub {
     font-size: .88rem;
-    opacity: .75;
     margin: 0;
     line-height: 1.4;
+    color: #ffffff !important;
 }
 .di3-hero__greeting {
     font-size: .82rem;
-    opacity: .6;
     margin-top: 6px;
+    color: #ffffff !important;
 }
+.di3-hero__crumb,
+.di3-hero__crumb span,
+.di3-hero__crumb strong,
+.di3-hero__crumb i { color: #ffffff !important; }
 .di3-hero__actions {
     display: flex;
     gap: 8px;
@@ -615,8 +623,8 @@
     background: radial-gradient(circle, rgba(255,255,255,.06), transparent 70%);
     pointer-events: none;
 }
-.di3-panel--kb .di3-panel__title { color: #fff; font-size: 1.15rem; }
-.di3-panel--kb .di3-panel__sub { color: rgba(255,255,255,.6); }
+.di3-panel--kb .di3-panel__title { color: #fff !important; font-size: 1.15rem; }
+.di3-panel--kb .di3-panel__sub { color: rgba(255,255,255,.75) !important; }
 .di3-panel--kb .di3-search input {
     background: rgba(255,255,255,.1);
     border-color: rgba(255,255,255,.18);
@@ -629,7 +637,7 @@
     box-shadow: 0 0 0 3px rgba(255,255,255,.08);
 }
 .di3-panel--kb .di3-search i { color: rgba(255,255,255,.45); }
-.di3-panel--kb .di3-kb-stats { font-size: .78rem; color: rgba(255,255,255,.5); margin-top: 4px; }
+.di3-panel--kb .di3-kb-stats { font-size: .78rem; color: rgba(255,255,255,.72) !important; margin-top: 4px; }
 
 /* Kanban grid */
 .di3-kanban {
@@ -1000,7 +1008,7 @@
 <div class="di3-shell">
 
     @* ── LEVEL 1: HERO ── *@
-    <div class="di3-hero">
+    <div class="di3-hero aocr-bg-dark">
         <div class="di3-hero__inner">
             <div>
                 <div class="di3-hero__crumb">
@@ -1014,16 +1022,23 @@
                 <p class="di3-hero__sub">Tablero operativo unificado — seguimiento kanban, bandeja de trámites y firma de documentos</p>
                 <p class="di3-hero__greeting">@saludoHora, @nombreUsuario · @hoy.ToString("dddd d 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-EC"))</p>
             </div>
-            <div class="di3-hero__actions">
-                <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn"><i class="fas fa-arrow-left"></i> Bandeja documental</a>
-                @if (puedeVerPendientesDirdac)
-                {
-                    <a href="@Url.Action("PendientesDireccion", "Inspeccion")" class="btn"><i class="fas fa-signature"></i> Informes Dirección</a>
-                }
-                @if (puedeValidarAocr)
-                {
-                    <a href="@Url.Action("ValidarAocr", "CoordinacionJefatura")" class="btn btn-primary"><i class="fas fa-stamp"></i> Validar AOCR</a>
-                }
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 16px;">
+                <div class="aocr-header-sidecard" style="text-align: right; min-width: 280px; padding: 1rem;">
+                    <span class="aocr-header-sidecard-label">FECHA INSTITUCIONAL</span>
+                    <strong class="aocr-header-sidecard-value">@hoy.ToString("dd/MM/yyyy")</strong>
+                    <span class="aocr-header-sidecard-text">Resumen habilitado para navegación y seguimiento diario</span>
+                </div>
+                <div class="di3-hero__actions">
+                    <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn"><i class="fas fa-arrow-left"></i> Bandeja documental</a>
+                    @if (puedeVerPendientesDirdac)
+                    {
+                        <a href="@Url.Action("PendientesDireccion", "Inspeccion")" class="btn"><i class="fas fa-signature"></i> Informes Dirección</a>
+                    }
+                    @if (puedeValidarAocr)
+                    {
+                        <a href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { DocumentoPendiente = "AOCR" })" class="btn btn-primary"><i class="fas fa-stamp"></i> Firma institucional AOCR</a>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -1112,11 +1127,11 @@
 
     @* ── LEVEL 4: NAVIGATION TABS ── *@
     <div class="di3-nav" id="diTabs" role="tablist">
-        <button class="di3-nav__tab active" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="true">
-            <i class="fas fa-grip"></i> Tablero <span class="di3-nav__count">@gestionIntegral.Count</span>
+        <button class="di3-nav__tab" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="false">
+            <i class="fas fa-grip"></i> Flujo visual <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
-        <button class="di3-nav__tab" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="false">
-            <i class="fas fa-table-columns"></i> Bandeja <span class="di3-nav__count">@gestionIntegral.Count</span>
+        <button class="di3-nav__tab active" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="true">
+            <i class="fas fa-table-columns"></i> Bandeja operativa <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
         <button class="di3-nav__tab" id="tab-firmas" data-pane="pane-firmas" type="button" role="tab" aria-selected="false">
             <i class="fas fa-signature"></i> Firmas <span class="di3-nav__count">@firmas.Count</span>
@@ -1127,11 +1142,11 @@
     </div>
 
     @* ── PANE: KANBAN ── *@
-    <div class="di3-pane active" id="pane-kanban" role="tabpanel">
+    <div class="di3-pane" id="pane-kanban" role="tabpanel">
         <div class="di3-panel di3-panel--kb">
             <div class="di3-panel__head">
                 <div>
-                    <h3 class="di3-panel__title"><i class="fas fa-grip" style="opacity:.5;margin-right:6px;"></i>Tablero Operativo AOCR</h3>
+                    <h3 class="di3-panel__title"><i class="fas fa-grip" style="opacity:.5;margin-right:6px;"></i>Flujo visual AOCR</h3>
                     <p class="di3-panel__sub">Detecte bloqueos, priorice acciones y visualice el flujo completo</p>
                     <p class="di3-kb-stats">@gestionIntegral.Count trámite@(gestionIntegral.Count != 1 ? "s" : "") · 6 columnas</p>
                 </div>
@@ -1161,12 +1176,12 @@
     </div>
 
     @* ── PANE: BANDEJA (TABLE) ── *@
-    <div class="di3-pane" id="pane-bandeja" role="tabpanel">
+    <div class="di3-pane active" id="pane-bandeja" role="tabpanel">
         <div class="di3-panel">
             <div class="di3-panel__head">
                 <div>
-                    <h3 class="di3-panel__title"><i class="fas fa-table-columns" style="opacity:.5;margin-right:6px;"></i>Bandeja principal AOCR</h3>
-                    <p class="di3-panel__sub">Tabla unificada para auditoría, búsqueda avanzada y trazabilidad</p>
+                    <h3 class="di3-panel__title"><i class="fas fa-table-columns" style="opacity:.5;margin-right:6px;"></i>Bandeja operativa AOCR</h3>
+                    <p class="di3-panel__sub">Vista principal para revisar, filtrar y abrir expedientes sin depender del tablero visual</p>
                 </div>
             </div>
             <div class="di3-panel__body">
@@ -1437,6 +1452,22 @@
         });
     }
 
+    function resolvePaneFromHash() {
+        var hash = (window.location.hash || '').replace('#', '').trim();
+        if (!hash) return 'pane-bandeja';
+        return $('#' + hash).length ? hash : 'pane-bandeja';
+    }
+
+    function syncHashForPane(paneId) {
+        if (!paneId) return;
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, document.title, window.location.pathname + window.location.search + '#' + paneId);
+            return;
+        }
+
+        window.location.hash = paneId;
+    }
+
     function bindEvents() {
         if (bound) return;
         bound = true;
@@ -1446,14 +1477,19 @@
         });
         $('#kanbanSearch').on('input.di', function () { filterKanban($(this).val()); });
         $(document).on('click.di', '.js-open-detail-modal', function () { openModal($(this).attr('data-url'), $(this).attr('data-title')); });
-        $('#diTabs .di3-nav__tab').on('click.di', function () { activateTab($(this).attr('data-pane')); });
+        $('#diTabs .di3-nav__tab').on('click.di', function () {
+            var paneId = $(this).attr('data-pane');
+            activateTab(paneId);
+            syncHashForPane(paneId);
+        });
+        $(window).on('hashchange.di', function () { activateTab(resolvePaneFromHash()); });
         $('#modalDetalleAocr').on('hidden.bs.modal.di hidden.di', function () { $('#modalDetalleAocrFrame').attr('src', 'about:blank'); });
     }
 
     function initState() {
         $('.js-dashboard-table').each(function () { initTable($(this)); });
         $('.di3-col').each(function () { $(this).find('.di3-card').attr('data-match', 'true'); kanbanVisibility($(this), false); });
-        activateTab('pane-kanban');
+        activateTab(resolvePaneFromHash());
     }
 
     $(function () {

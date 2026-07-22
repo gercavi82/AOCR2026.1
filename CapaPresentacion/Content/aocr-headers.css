@@ -1,0 +1,280 @@
+/* ==========================================================================
+   AOCR HEADER SYSTEM - ESTILOS INDEPENDIENTES Y AISLADOS (PRINCIPAL Y SECUNDARIO)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. HEADER PRINCIPAL / TOPBAR (NAVEGACIÓN SUPERIOR INSTITUCIONAL)
+   -------------------------------------------------------------------------- */
+body.aocr-body .main-header.aocr-topbar,
+body.aocr-body .aocr-topbar {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06) !important;
+    min-height: 58px !important;
+    z-index: 1010 !important;
+}
+
+body.aocr-body .aocr-topbar .nav-link {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+
+body.aocr-body .aocr-topbar .nav-link:hover {
+    color: #0f4c81 !important;
+    -webkit-text-fill-color: #0f4c81 !important;
+}
+
+body.aocr-body .aocr-topbar-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    padding: 0 !important;
+}
+
+body.aocr-body .aocr-topbar-brand__icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, #0f4c81 0%, #0c7c86 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 0.95rem !important;
+}
+
+body.aocr-body .aocr-topbar-brand__title {
+    display: block !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    font-size: 0.95rem !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+}
+
+body.aocr-body .aocr-topbar-brand__subtitle {
+    display: block !important;
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+}
+
+body.aocr-body .user-menu #user-display-name {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    font-weight: 700 !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. HEADER SECUNDARIO / HERO BANNER INSTITUCIONAL (_AOCRHeaderHero)
+   -------------------------------------------------------------------------- */
+body.aocr-body .aocr-header-hero,
+body.aocr-body section.aocr-header-hero {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 16px !important;
+    background: linear-gradient(120deg, #0a3d62 0%, #0c5776 42%, #0e7090 72%, #1490ae 100%) !important;
+    box-shadow: 0 10px 25px -5px rgba(10, 61, 98, 0.25), 0 8px 10px -6px rgba(10, 61, 98, 0.1) !important;
+    border: none !important;
+    margin-bottom: 1.25rem !important;
+}
+
+body.aocr-body .aocr-header-hero::before {
+    content: "" !important;
+    position: absolute !important;
+    top: -24% !important;
+    right: -6% !important;
+    width: 240px !important;
+    height: 240px !important;
+    border-radius: 36px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.02)) !important;
+    transform: rotate(24deg) !important;
+    pointer-events: none !important;
+}
+
+body.aocr-body .aocr-header-hero::after {
+    content: "" !important;
+    position: absolute !important;
+    right: 6% !important;
+    bottom: -38% !important;
+    width: 300px !important;
+    height: 300px !important;
+    border-radius: 48px !important;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0)) !important;
+    pointer-events: none !important;
+}
+
+body.aocr-body .aocr-header-hero-body {
+    position: relative !important;
+    z-index: 2 !important;
+    padding: 1.45rem 1.65rem !important;
+}
+
+body.aocr-body .aocr-header-hero-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 1.3rem !important;
+    align-items: center !important;
+}
+
+body.aocr-body .aocr-header-main {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.1rem !important;
+    min-width: 0 !important;
+}
+
+body.aocr-body .aocr-header-logo-wrap {
+    width: 78px !important;
+    height: 78px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.6rem !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 12px 24px rgba(4, 20, 36, 0.2) !important;
+    flex-shrink: 0 !important;
+}
+
+body.aocr-body .aocr-header-logo {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+body.aocr-body .aocr-header-copy {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.3rem !important;
+    min-width: 0 !important;
+}
+
+body.aocr-body .aocr-header-kicker {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.95) !important;
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+}
+
+body.aocr-body .aocr-header-title {
+    margin: 0 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 1.75rem !important;
+    line-height: 1.15 !important;
+    font-weight: 800 !important;
+}
+
+body.aocr-body .aocr-header-subtitle {
+    margin: 0 !important;
+    max-width: 72ch !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.9rem !important;
+    line-height: 1.55 !important;
+}
+
+body.aocr-body .aocr-header-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.55rem !important;
+    margin-top: 0.45rem !important;
+}
+
+body.aocr-body .aocr-header-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    padding: 0.38rem 0.8rem !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.16) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+}
+
+body.aocr-body .aocr-header-badge--soft {
+    background: rgba(6, 24, 44, 0.22) !important;
+    border-color: rgba(186, 230, 253, 0.22) !important;
+}
+
+body.aocr-body .aocr-header-badge--ghost {
+    background: rgba(15, 60, 94, 0.28) !important;
+    border-color: rgba(125, 211, 252, 0.25) !important;
+}
+
+body.aocr-body .aocr-header-badge i {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. SIDECARD DEL HEADER SECUNDARIO (TARJETA DE FECHA/INFORMACIÓN A LA DERECHA)
+   -------------------------------------------------------------------------- */
+body.aocr-body .aocr-header-sidecard,
+body.aocr-body div.aocr-header-sidecard {
+    min-width: 300px !important;
+    padding: 0.9rem 1.15rem !important;
+    border-radius: 14px !important;
+    background: rgba(7, 29, 49, 0.48) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22) !important;
+    text-align: right !important;
+}
+
+body.aocr-body .aocr-header-sidecard-label,
+body.aocr-body span.aocr-header-sidecard-label {
+    display: block !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+}
+
+body.aocr-body .aocr-header-sidecard-value,
+body.aocr-body strong.aocr-header-sidecard-value {
+    display: block !important;
+    margin-top: 0.25rem !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 1.85rem !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+}
+
+body.aocr-body .aocr-header-sidecard-text,
+body.aocr-body span.aocr-header-sidecard-text {
+    display: block !important;
+    margin-top: 0.35rem !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
+    font-size: 0.82rem !important;
+    line-height: 1.4 !important;
+}
+
+/* Responsividad */
+@media (max-width: 991.98px) {
+    body.aocr-body .aocr-header-hero-grid {
+        grid-template-columns: 1fr !important;
+    }
+    body.aocr-body .aocr-header-sidecard {
+        min-width: 100% !important;
+        text-align: left !important;
+    }
+}

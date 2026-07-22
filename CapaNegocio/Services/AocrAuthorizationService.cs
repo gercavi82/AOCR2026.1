@@ -927,7 +927,7 @@ namespace CapaNegocio.Services
                 return false;
             }
 
-            if (_ordenDao.ExisteORGeneradaOPagada(usuario.UserId))
+            if (!string.IsNullOrWhiteSpace(usuario.CompanyCode) && _ordenDao.TieneOrdenHabilitanteAOCR(usuario.UserId, usuario.CompanyCode))
             {
                 return true;
             }
@@ -952,6 +952,7 @@ namespace CapaNegocio.Services
                 }
             }
 
+            motivo = "La Solicitud AOCR se habilitará automáticamente cuando Financiero apruebe el pago de la Orden de Recaudación.";
             return false;
         }
 

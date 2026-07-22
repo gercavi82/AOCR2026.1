@@ -12,11 +12,16 @@ namespace CapaDatos.Models
         public string Descripcion { get; set; }
 
         public decimal Cantidad { get; set; }
+        public int? NumeroDiasInspeccion { get; set; }
+        public int? DiasPagadosViatico { get; set; }
         public decimal ValorUnitario { get; set; }
         public decimal PorcentajeAdmin { get; set; }
 
         public decimal Subtotal { get; set; }
         public decimal Admin { get; set; }
         public decimal TotalLinea { get; set; }
+
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
     }
 }

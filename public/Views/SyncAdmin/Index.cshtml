@@ -84,6 +84,14 @@
                         </button>
                     }
                     <div style="height:8px;"></div>
+                    @using (Html.BeginForm("RunFr3OutboxWorker", "SyncAdmin", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-info btn-block" onclick="return confirm('Ejecutar FR3 Outbox Worker?')">
+                            <span class="glyphicon glyphicon-cog"></span> Ejecutar Outbox Worker
+                        </button>
+                    }
+                    <div style="height:8px;"></div>
                     @Html.ActionLink("Ver FR3 espejo", "Fr3", "SyncAdmin", null, new { @class = "btn btn-default btn-block" })
                 </div>
             </div>

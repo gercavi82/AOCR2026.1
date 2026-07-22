@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardViewModel>
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardViewModel>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -122,6 +122,65 @@
             @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", Model.ResumenTerciarioTitulo }, { "Value", Model.NotificacionesNuevas }, { "Modifier", "success" }, { "Icon", "fas fa-bell" }, { "Caption", Model.ResumenTerciarioCaption } })
         </div>
     </div>
+
+    @if (ViewBag.RtFlujoEstado != null)
+    {
+        var estadoRt = (CapaNegocio.Services.AocrRtFlujoEstadoViewModel)ViewBag.RtFlujoEstado;
+        var urlDestinoRt = Url.Content("~/" + (estadoRt.UrlDestino ?? string.Empty).TrimStart('~', '/'));
+        <div class="card aocr-card mb-4 border-start border-4 @(estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada ? "border-success" : (estadoRt.TieneOrdenVigente ? "border-warning" : "border-primary"))">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle p-3 @(estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada ? "bg-success text-white" : (estadoRt.TieneOrdenVigente ? "bg-warning text-dark" : "bg-primary text-white")) fs-4">
+                            <i class="@(estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada ? "fas fa-check-circle" : (estadoRt.TieneOrdenVigente ? "fas fa-clock" : "fas fa-file-invoice-dollar"))"></i>
+                        </div>
+                        <div>
+                            @if (!estadoRt.TieneOrdenVigente)
+                            {
+                                <h5 class="mb-1 text-primary font-weight-bold">Orden de Recaudación requerida</h5>
+                                <p class="mb-0 text-muted">Para iniciar su trámite AOCR debe generar la Orden de Recaudación correspondiente.</p>
+                            }
+                            else if (estadoRt.SolicitudAocrCreada)
+                            {
+                                <h5 class="mb-1 text-info font-weight-bold">Solicitud AOCR en proceso</h5>
+                                <p class="mb-0 text-muted">Continúe con el registro o seguimiento de su solicitud AOCR.</p>
+                            }
+                            else if (estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada)
+                            {
+                                <h5 class="mb-1 text-success font-weight-bold">Solicitud AOCR habilitada</h5>
+                                <p class="mb-0 text-muted">Su pago fue aprobado. Ya puede completar la Solicitud AOCR.</p>
+                            }
+                            else
+                            {
+                                <h5 class="mb-1 text-warning font-weight-bold">Pago pendiente de aprobación</h5>
+                                <p class="mb-0 text-muted">@estadoRt.MensajeUsuario</p>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <a href="@urlDestinoRt" class="btn @(estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada ? "btn-success" : (estadoRt.TieneOrdenVigente ? "btn-warning" : "btn-primary")) px-4 font-weight-bold">
+                            @if (!estadoRt.TieneOrdenVigente)
+                            {
+                                <span><i class="fas fa-plus-circle me-1"></i> Generar Orden de Recaudación</span>
+                            }
+                            else if (estadoRt.SolicitudAocrCreada)
+                            {
+                                <span><i class="fas fa-arrow-right me-1"></i> Continuar Solicitud AOCR</span>
+                            }
+                            else if (estadoRt.PagoAprobado || estadoRt.SolicitudAocrHabilitada)
+                            {
+                                <span><i class="fas fa-file-signature me-1"></i> Abrir Solicitud AOCR</span>
+                            }
+                            else
+                            {
+                                <span><i class="fas fa-eye me-1"></i> Ver Orden de Recaudación</span>
+                            }
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
     <section class="aocr-home-section">
         <div class="aocr-home-section__header">

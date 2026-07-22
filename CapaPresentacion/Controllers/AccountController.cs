@@ -640,7 +640,7 @@ namespace CapaPresentacion.Controllers
                 TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
                 if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
                 {
-                    return Redirect(returnUrl);
+                    return Redirect(ResolverUrlAplicacion(returnUrl));
                 }
                 return RedirectToAction("Index", "Dashboard");
             }
@@ -654,7 +654,7 @@ namespace CapaPresentacion.Controllers
                 TempData["LoginError"] = "No tiene permisos para cambiar a la compañía seleccionada.";
                 if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
                 {
-                    return Redirect(returnUrl);
+                    return Redirect(ResolverUrlAplicacion(returnUrl));
                 }
                 return RedirectToAction("Index", "Dashboard");
             }
@@ -675,7 +675,7 @@ namespace CapaPresentacion.Controllers
 
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
             {
-                return Redirect(returnUrl);
+                return Redirect(ResolverUrlAplicacion(returnUrl));
             }
 
             return RedirectToAction("Index", "Dashboard");
@@ -715,7 +715,7 @@ namespace CapaPresentacion.Controllers
             var returnUrlPermitido = ResolverReturnUrlPermitido(returnUrl, ObtenerRolesSesion(), out motivo);
             if (!string.IsNullOrWhiteSpace(returnUrlPermitido))
             {
-                return Redirect(returnUrlPermitido);
+                return Redirect(ResolverUrlAplicacion(returnUrlPermitido));
             }
 
             if (!string.IsNullOrWhiteSpace(returnUrl))
@@ -729,6 +729,35 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Index", "Dashboard");
+        }
+
+        private string ResolverUrlAplicacion(string rutaLocal)
+        {
+            var ruta = (rutaLocal ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(ruta))
+            {
+                return Url.Content("~/");
+            }
+
+            if (ruta.StartsWith("~/", StringComparison.Ordinal))
+            {
+                return Url.Content(ruta);
+            }
+
+            var applicationPath = Request != null
+                ? (Request.ApplicationPath ?? string.Empty).TrimEnd('/')
+                : string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(applicationPath)
+                && !string.Equals(applicationPath, "/", StringComparison.Ordinal)
+                && (string.Equals(ruta, applicationPath, StringComparison.OrdinalIgnoreCase)
+                    || ruta.StartsWith(applicationPath + "/", StringComparison.OrdinalIgnoreCase)
+                    || ruta.StartsWith(applicationPath + "?", StringComparison.OrdinalIgnoreCase)))
+            {
+                return ruta;
+            }
+
+            return Url.Content("~/" + ruta.TrimStart('~', '/'));
         }
 
         [Authorize]
@@ -1921,7 +1950,7 @@ namespace CapaPresentacion.Controllers
                     returnUrl ?? string.Empty,
                     returnUrlPermitido,
                     motivoReturnUrl));
-                return Redirect(returnUrlPermitido);
+                return Redirect(ResolverUrlAplicacion(returnUrlPermitido));
             }
 
             if (!string.IsNullOrWhiteSpace(returnUrl))
@@ -1955,34 +1984,29 @@ namespace CapaPresentacion.Controllers
             }
 
             // ============================
-            // VERIFICACIÓN DE ORDEN
+            // VERIFICACIÓN DE ORDEN POR COMPAÑÍA ACTIVA
             // ============================
-            var ordenDAO = new OrdenRecaudacionDAO();
+            var companiaCodigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            var companiaNombre = CompaniaActivaSessionHelper.ObtenerNombre(Session);
 
-            bool tieneOrdenGeneradaOPagada = ordenDAO.TieneOrdenHabilitanteAOCR(usuarioId);
-            bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuarioId);
-            bool tieneOrdenPendiente = ordenDAO.TieneOrdenActivaEnProceso(usuarioId);
-            bool tieneOrdenPendienteComprobante = ordenDAO.TieneOrdenPendienteComprobante(usuarioId);
+            var flujoRtService = new CapaNegocio.Services.AocrRtFlujoService();
+            var estadoFlujo = flujoRtService.ObtenerEstadoFlujoRt(usuarioId, companiaCodigo, companiaNombre);
 
-            Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
-            Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
-            Session["TieneOrdenPendienteProceso"] = tieneOrdenPendiente;
-            Session["TieneOrdenPendienteComprobante"] = tieneOrdenPendienteComprobante;
+            Session["TieneOrdenGenerada"] = estadoFlujo.PagoAprobado || estadoFlujo.SolicitudAocrHabilitada;
+            Session["TieneOrdenBorrador"] = estadoFlujo.TieneOrdenVigente && string.Equals(estadoFlujo.EstadoOrden, "BORRADOR", StringComparison.OrdinalIgnoreCase);
+            Session["TieneOrdenPendienteProceso"] = estadoFlujo.TieneOrdenVigente && !estadoFlujo.PagoAprobado;
+            Session["TieneOrdenPendienteComprobante"] = estadoFlujo.TieneOrdenVigente && !estadoFlujo.TieneComprobante;
 
-            if (tieneOrdenGeneradaOPagada)
-            {
-                _logger.LogInfo(string.Format(
-                    "[AUTH][LOGIN_REDIRECT] Destino solicitante con orden habilitante. UsuarioId={0}; Destino=Dashboard/Index",
-                    usuarioId));
-                return RedirectToAction("Index", "Dashboard");
-            }
+            var urlDestinoAplicacion = ResolverUrlAplicacion(estadoFlujo.UrlDestino);
 
-            if (tieneOrdenPendiente || tieneOrdenBorrador)
-            {
-                return RedirectToAction("Index", "OrdenRecaudacion");
-            }
+            _logger.LogInfo(string.Format(
+                "[AUTH][LOGIN_REDIRECT] UsuarioId={0}; Compania={1}; Destino={2}; Paso={3}",
+                usuarioId,
+                companiaCodigo ?? "N/A",
+                urlDestinoAplicacion,
+                estadoFlujo.SiguientePaso));
 
-            return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+            return Redirect(urlDestinoAplicacion);
         }
 
         private ActionResult LogLoginResult(ActionResult result, Stopwatch stopwatch, string mensaje)

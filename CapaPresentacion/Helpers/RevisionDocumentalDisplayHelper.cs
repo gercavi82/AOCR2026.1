@@ -58,11 +58,7 @@ namespace CapaPresentacion.Helpers
             var normalized = NormalizeDocumentTypeKey(tipoDocumento);
             switch (canonical)
             {
-                case "SOLICITUD_INSPECCION_EXT":
-                case "SOLICITUD_INSPECCIONES_FIRMADA":
-                case "COMPROBANTE_PAGO":
                 case "ORDEN_RECAUDACION":
-                case "FACTURA":
                 case "COMPROBANTE_AS400":
                 case "DOCUMENTO_GENERADO_SISTEMA":
                 case "AOCR_GENERADO":
@@ -76,17 +72,8 @@ namespace CapaPresentacion.Helpers
 
             switch (normalized)
             {
-                case "SOLICITUD_INSPECCION_EXT":
-                case "SOLICITUD_DE_INSPECCIONES":
-                case "SOLICITUD_INSPECCIONES":
-                case "SOLICITUD_INSPECCION_FIRMADA":
-                case "SOLICITUD_INSPECCIONES_FIRMADA":
-                case "SOLICITUD_DE_INSPECCIONES_FIRMADA":
                 case "ORDEN_RECAUDACION":
-                case "FACTURA":
                 case "COMPROBANTE_AS400":
-                case "COMPROBANTE_PAGO":
-                case "COMPROBANTE_DE_PAGO":
                 case "DOCUMENTO_GENERADO_SISTEMA":
                 case "AOCR_GENERADO":
                 case "AOCR_FIRMADO":

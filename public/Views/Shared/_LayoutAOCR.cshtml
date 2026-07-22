@@ -54,6 +54,8 @@
         }
         var aocrSidebarCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-sidebar.css");
         var aocrContrastCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-contrast.css");
+        var aocrContrastFixCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/css/aocr-contrast-fix.css");
+        var aocrHeadersCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-headers.css");
         var aocrPdfViewerCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css");
         var jqueryLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery-3.6.4.min.js");
         var dataTablesInitUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-datatables.js");
@@ -112,6 +114,8 @@
         <link href="@aocrModalsCssHref" rel="stylesheet" type="text/css" />
     }
     <link href="@aocrSidebarCssHref" rel="stylesheet" />
+    <link href="@aocrContrastFixCssHref" rel="stylesheet" />
+    <link href="@aocrHeadersCssHref" rel="stylesheet" />
     <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->

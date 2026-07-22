@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage
+@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -749,6 +749,13 @@
                 }
             });
         }
+
+        // Solución a advertencia de accesibilidad (aria-hidden) al cerrar el modal
+        $('#modalFormulario').on('hide.bs.modal', function () {
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+        });
     });
     </script>
 }

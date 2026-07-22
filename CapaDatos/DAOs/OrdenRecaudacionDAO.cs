@@ -346,7 +346,9 @@ namespace CapaDatos.DAOs
                                     valor_unitario,
                                     total_linea,
                                     lugar_inspeccion,
-                                    provincia_inspeccion
+                                    provincia_inspeccion,
+                                    numero_dias_inspeccion,
+                                    dias_pagados_viatico
                                 ) VALUES (
                                     @OrdenId,
                                     @ConceptoId,
@@ -355,7 +357,9 @@ namespace CapaDatos.DAOs
                                     @ValorUnitario,
                                     @TotalLinea,
                                     @LugarInspeccion,
-                                    @ProvinciaInspeccion
+                                    @ProvinciaInspeccion,
+                                    @NumeroDiasInspeccion,
+                                    @DiasPagadosViatico
                                 )";
                             
                             foreach (var detalle in orden.Detalles)
@@ -369,7 +373,9 @@ namespace CapaDatos.DAOs
                                     detalle.ValorUnitario,
                                     detalle.TotalLinea,
                                     detalle.LugarInspeccion,
-                                    detalle.ProvinciaInspeccion
+                                    detalle.ProvinciaInspeccion,
+                                    detalle.NumeroDiasInspeccion,
+                                    detalle.DiasPagadosViatico
                                 }, trans);
                             }
                         }
@@ -412,11 +418,11 @@ namespace CapaDatos.DAOs
             var sql = @"INSERT INTO aocr_or_orden_detalle 
                         (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
                          cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea,
-                         lugar_inspeccion, provincia_inspeccion)
+                         lugar_inspeccion, provincia_inspeccion, numero_dias_inspeccion, dias_pagados_viatico)
                         VALUES 
                         (@ordenId, @conceptoId, @conceptoCodigo, @conceptoNombre, @descripcion,
                          @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea,
-                         @lugarInspeccion, @provinciaInspeccion)";
+                          @lugarInspeccion, @provinciaInspeccion, @numeroDiasInspeccion, @diasPagadosViatico)";
 
             using (var cmd = new NpgsqlCommand(sql, conn))
             {
@@ -433,6 +439,8 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
                 cmd.Parameters.AddWithValue("@lugarInspeccion", (object)detalle.LugarInspeccion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@provinciaInspeccion", (object)detalle.ProvinciaInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@numeroDiasInspeccion", (object)detalle.NumeroDiasInspeccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@diasPagadosViatico", (object)detalle.DiasPagadosViatico ?? DBNull.Value);
 
                 cmd.ExecuteNonQuery();
             }
@@ -452,7 +460,7 @@ namespace CapaDatos.DAOs
                     var sql = @"UPDATE aocr_or_orden SET
                                 codigo_usuario = @codigoUsuario,
                                 codigo_solicitud = @codigoSolicitud,
-                                numero_orden = @numeroOrden,
+                                -- numero_orden EXCLUIDO: Inmutable una vez generado
                                 estado = @estado,
                                 observacion = @observacion,
                                 subtotal = @subtotal,
@@ -476,7 +484,6 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@id", orden.Id);
                         cmd.Parameters.AddWithValue("@codigoUsuario", (object)orden.CodigoUsuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", (object)orden.CodigoSolicitud ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@numeroOrden", (object)orden.NumeroOrden ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@estado", (object)orden.Estado ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@observacion", (object)orden.Observacion ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@subtotal", (object)orden.Subtotal ?? DBNull.Value);
@@ -832,6 +839,12 @@ namespace CapaDatos.DAOs
 
                 int idxProvincia = reader.GetOrdinal("provincia_inspeccion");
                 if (!reader.IsDBNull(idxProvincia)) detalle.ProvinciaInspeccion = reader.GetString(idxProvincia);
+
+                int idxNumeroDias = reader.GetOrdinal("numero_dias_inspeccion");
+                if (!reader.IsDBNull(idxNumeroDias)) detalle.NumeroDiasInspeccion = reader.GetInt32(idxNumeroDias);
+
+                int idxDiasPagados = reader.GetOrdinal("dias_pagados_viatico");
+                if (!reader.IsDBNull(idxDiasPagados)) detalle.DiasPagadosViatico = reader.GetInt32(idxDiasPagados);
             }
             catch (IndexOutOfRangeException)
             {
@@ -1179,11 +1192,15 @@ namespace CapaDatos.DAOs
                 ConceptoNombre = detalle.ConceptoNombre,
                 Descripcion = detalle.Descripcion,
                 Cantidad = detalle.Cantidad,
+                NumeroDiasInspeccion = detalle.NumeroDiasInspeccion,
+                DiasPagadosViatico = detalle.DiasPagadosViatico,
                 ValorUnitario = detalle.ValorUnitario,
                 PorcentajeAdmin = detalle.PorcentajeAdmin,
                 Subtotal = detalle.Subtotal,
                 Admin = detalle.Admin,
-                TotalLinea = detalle.TotalLinea
+                TotalLinea = detalle.TotalLinea,
+                LugarInspeccion = detalle.LugarInspeccion,
+                ProvinciaInspeccion = detalle.ProvinciaInspeccion
             };
         }
 
@@ -1227,11 +1244,15 @@ namespace CapaDatos.DAOs
                         ConceptoNombre = d.ConceptoNombre,
                         Descripcion = d.Descripcion,
                         Cantidad = (int)d.Cantidad,
+                        NumeroDiasInspeccion = d.NumeroDiasInspeccion,
+                        DiasPagadosViatico = d.DiasPagadosViatico,
                         ValorUnitario = d.ValorUnitario,
                         PorcentajeAdmin = d.PorcentajeAdmin,
                         Subtotal = d.Subtotal,
                         Admin = d.Admin,
-                        TotalLinea = d.TotalLinea
+                        TotalLinea = d.TotalLinea,
+                        LugarInspeccion = d.LugarInspeccion,
+                        ProvinciaInspeccion = d.ProvinciaInspeccion
                     });
                 }
             }
@@ -4321,31 +4342,87 @@ namespace CapaDatos.DAOs
 
         public bool TieneOrdenPendienteComprobante(int codigoUsuario)
         {
-            if (codigoUsuario <= 0)
+            return TieneOrdenPendienteComprobante(codigoUsuario, null);
+        }
+
+        public bool TieneOrdenHabilitanteAOCR(int codigoUsuario, string companiaId)
+        {
+            if (codigoUsuario <= 0) return false;
+            if (string.IsNullOrWhiteSpace(companiaId)) return TieneOrdenHabilitanteAOCR(codigoUsuario);
+
+            try
             {
+                var ordenes = ListarPorUsuario(codigoUsuario, null, companiaId);
+                if (ordenes != null && ordenes.Any(o => EstadoOrden.EsPagado(o.Estado) || EstadoOrden.EsOrdenCerradaPostAprobacionFinanciera(o.Estado)))
+                {
+                    return true;
+                }
                 return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneOrdenHabilitanteAOCR con companiaId");
+                return false;
+            }
+        }
+
+        public bool TieneOrdenActivaEnProceso(int codigoUsuario, string companiaId)
+        {
+            if (codigoUsuario <= 0) return false;
+            if (string.IsNullOrWhiteSpace(companiaId)) return TieneOrdenActivaEnProceso(codigoUsuario);
+
+            try
+            {
+                var ordenes = ListarPorUsuario(codigoUsuario, null, companiaId);
+                return ordenes != null && ordenes.Any(o => !EstadoOrden.EsEstadoFinal(o.Estado) && !string.Equals(EstadoOrden.NormalizarEstado(o.Estado), EstadoOrden.Borrador, StringComparison.OrdinalIgnoreCase));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneOrdenActivaEnProceso con companiaId");
+                return false;
+            }
+        }
+
+        public bool TieneOrdenPendienteComprobante(int codigoUsuario, string companiaId)
+        {
+            if (codigoUsuario <= 0) return false;
+            if (string.IsNullOrWhiteSpace(companiaId))
+            {
+                try
+                {
+                    using (var conn = new NpgsqlConnection(_connectionString))
+                    {
+                        conn.Open();
+                        const string sql = @"SELECT COUNT(*)
+                                             FROM aocr_or_orden
+                                             WHERE codigo_usuario::text = @codigoUsuario
+                                               AND UPPER(TRIM(COALESCE(estado, ''))) IN ('PENDIENTE', 'GENERADA', 'DEVUELTA')";
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en TieneOrdenPendienteComprobante");
+                    return false;
+                }
             }
 
             try
             {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    const string sql = @"SELECT COUNT(*)
-                                         FROM aocr_or_orden
-                                         WHERE codigo_usuario::text = @codigoUsuario
-                                           AND UPPER(TRIM(COALESCE(estado, ''))) IN ('PENDIENTE', 'GENERADA', 'DEVUELTA')";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
-                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
-                    }
-                }
+                var ordenes = ListarPorUsuario(codigoUsuario, null, companiaId);
+                return ordenes != null && ordenes.Any(o => {
+                    var est = EstadoOrden.NormalizarEstado(o.Estado);
+                    return est == EstadoOrden.Pendiente || est == EstadoOrden.Generada || est == EstadoOrden.Devuelta;
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en TieneOrdenPendienteComprobante");
+                _logger.LogError(ex, "Error en TieneOrdenPendienteComprobante con companiaId");
                 return false;
             }
         }
@@ -4507,30 +4584,49 @@ namespace CapaDatos.DAOs
 
         public bool ExisteORMinima(int codigoUsuario)
         {
+            return ExisteORMinima(codigoUsuario, null);
+        }
+
+        public bool ExisteORMinima(int codigoUsuario, string companiaId)
+        {
             if (codigoUsuario <= 0)
             {
                 return false;
             }
 
-            try
+            if (string.IsNullOrWhiteSpace(companiaId))
             {
-                using (var conn = new NpgsqlConnection(_connectionString))
+                try
                 {
-                    conn.Open();
-                    var sql = @"SELECT COUNT(*) FROM aocr_or_orden
-                                WHERE codigo_usuario::text = @codigoUsuario
-                                AND estado = 'BORRADOR'";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var conn = new NpgsqlConnection(_connectionString))
                     {
-                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
-                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                        conn.Open();
+                        var sql = @"SELECT COUNT(*) FROM aocr_or_orden
+                                    WHERE codigo_usuario::text = @codigoUsuario
+                                    AND estado = 'BORRADOR'";
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en ExisteORMinima");
+                    return false;
+                }
+            }
+
+            try
+            {
+                var ordenes = ListarPorUsuario(codigoUsuario, "BORRADOR", companiaId);
+                return ordenes != null && ordenes.Any();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en ExisteORMinima");
+                _logger.LogError(ex, "Error en ExisteORMinima con companiaId");
                 return false;
             }
         }
@@ -4979,6 +5075,8 @@ namespace CapaDatos.DAOs
                             CodigoConcepto = d.ConceptoCodigo,
                             NombreConcepto = d.ConceptoNombre,
                             Cantidad = d.Cantidad,
+                            NumeroDiasInspeccion = d.NumeroDiasInspeccion,
+                            DiasPagadosViatico = d.DiasPagadosViatico,
                             ValorUnitario = d.ValorUnitario,
                             PorcentajeAdmin = d.PorcentajeAdmin,
                             SubtotalLinea = d.Subtotal,

@@ -1,0 +1,362 @@
+/* AOCR contrast fix: mejora legibilidad sin cambiar fondos existentes */
+
+:root {
+--aocr-text-dark: #1f2937;
+--aocr-text-light: #ffffff;
+--aocr-text-muted-safe: #4b5563;
+--aocr-link-safe: #0f4c81;
+--aocr-link-light: #eaf6ff;
+--aocr-warning-text: #5c3b00;
+--aocr-success-text: #0b3d1f;
+--aocr-danger-text: #5f1111;
+--aocr-info-text: #073b4c;
+}
+
+/* FASE 6 — CORREGIR TEXTOS SOBRE FONDOS OSCUROS */
+.aocr-bg-dark,
+.aocr-card-dark,
+.sidebar,
+.navbar-dark,
+.bg-primary,
+.bg-dark,
+.panel-dark,
+.header-dark,
+.sol-header,
+.aocr-module-header,
+.aocr-page-header {
+--aocr-ink-900: #ffffff;
+}
+
+.aocr-bg-dark,
+.aocr-bg-dark *,
+.aocr-card-dark,
+.aocr-card-dark *,
+.sidebar,
+.sidebar *,
+.navbar-dark,
+.navbar-dark *,
+.bg-primary,
+.bg-primary *,
+.bg-dark,
+.bg-dark *,
+.panel-dark,
+.panel-dark *,
+.header-dark,
+.header-dark *,
+.sol-header,
+.sol-header *,
+.aocr-module-header,
+.aocr-module-header *,
+.aocr-page-header,
+.aocr-page-header * {
+color: #ffffff !important;
+}
+
+.sidebar a,
+.navbar-dark a,
+.bg-primary a,
+.bg-dark a,
+.sol-header a,
+.aocr-module-header a,
+.aocr-page-header a {
+color: var(--aocr-link-light) !important;
+}
+
+.sidebar a:hover,
+.navbar-dark a:hover,
+.bg-primary a:hover,
+.bg-dark a:hover,
+.sol-header a:hover,
+.aocr-module-header a:hover,
+.aocr-page-header a:hover {
+color: #ffffff !important;
+text-decoration: underline !important;
+}
+
+/* FASE 7 — CORREGIR TEXTOS SOBRE FONDOS CLAROS */
+.card,
+.panel,
+.aocr-card,
+.table,
+.modal-content,
+.form-section {
+color: var(--aocr-text-dark);
+}
+
+.card .text-muted,
+.panel .text-muted,
+.aocr-card .text-muted {
+color: var(--aocr-text-muted-safe) !important;
+}
+
+/* FASE 8 — CORREGIR ALERTAS */
+.alert-success {
+color: var(--aocr-success-text);
+}
+
+.alert-info {
+color: var(--aocr-info-text);
+}
+
+.alert-warning {
+color: var(--aocr-warning-text);
+}
+
+.alert-danger {
+color: var(--aocr-danger-text);
+}
+
+.alert-success a,
+.alert-info a,
+.alert-warning a,
+.alert-danger a {
+font-weight: 600;
+text-decoration: underline;
+}
+
+/* FASE 9 — CORREGIR BADGES Y ESTADOS */
+.badge,
+.label {
+font-weight: 600;
+}
+
+.badge-success,
+.label-success {
+color: #ffffff;
+}
+
+.badge-info,
+.label-info {
+color: #ffffff;
+}
+
+.badge-warning,
+.label-warning {
+color: #212529;
+}
+
+.badge-danger,
+.label-danger {
+color: #ffffff;
+}
+
+.badge-secondary,
+.label-default {
+color: #ffffff;
+}
+
+.bg-warning {
+color: #212529 !important;
+}
+
+.bg-info,
+.bg-success,
+.bg-danger,
+.bg-primary,
+.bg-secondary,
+.bg-dark {
+color: #ffffff !important;
+}
+
+/* FASE 10 — CORREGIR BOTONES */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-dark {
+color: #ffffff;
+}
+
+.btn-warning,
+.btn-light {
+color: #212529;
+}
+
+.btn-outline-primary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-secondary {
+font-weight: 600;
+}
+
+.btn i,
+.btn .fa,
+.btn .glyphicon {
+color: inherit;
+}
+
+/* FASE 11 — CORREGIR TABLAS */
+.table thead th {
+color: inherit;
+}
+
+.table-dark th,
+.table-dark td,
+.thead-dark th,
+.aocr-table-header th {
+color: #ffffff;
+}
+
+.table-light th,
+.table-light td {
+color: #1f2937;
+}
+
+.table td,
+.table th {
+vertical-align: middle;
+}
+
+tr.table-success td {
+color: var(--aocr-success-text);
+}
+
+tr.table-warning td {
+color: var(--aocr-warning-text);
+}
+
+tr.table-danger td {
+color: var(--aocr-danger-text);
+}
+
+/* FASE 12 — CORREGIR FORMULARIOS */
+label,
+.form-label,
+.control-label {
+color: var(--aocr-text-dark);
+font-weight: 600;
+}
+
+.form-control,
+.form-select,
+input,
+select,
+textarea {
+color: var(--aocr-text-dark);
+}
+
+.form-control::placeholder,
+input::placeholder,
+textarea::placeholder {
+color: #6b7280;
+opacity: 1;
+}
+
+.form-text,
+.help-block,
+.text-help {
+color: var(--aocr-text-muted-safe);
+}
+
+.text-danger,
+.field-validation-error,
+.validation-summary-errors {
+color: #b91c1c;
+font-weight: 600;
+}
+
+/* FASE 13 — CORREGIR SIDEBAR Y MENÚ */
+.sidebar .nav-link,
+.sidebar a,
+.sidebar .menu-item,
+.sidebar .submenu a {
+color: rgba(255, 255, 255, 0.92);
+}
+
+.sidebar .nav-link:hover,
+.sidebar a:hover,
+.sidebar .menu-item:hover {
+color: #ffffff;
+}
+
+.sidebar .active,
+.sidebar .nav-link.active,
+.sidebar .menu-item.active {
+color: #ffffff;
+font-weight: 700;
+}
+
+.sidebar .badge {
+color: #ffffff;
+}
+
+/* FASE 14 — CORREGIR MODALES */
+.modal-header {
+color: inherit;
+}
+
+.modal-title {
+color: var(--aocr-text-dark);
+font-weight: 700;
+}
+
+.modal-body {
+color: var(--aocr-text-dark);
+}
+
+.modal-footer .btn {
+font-weight: 600;
+}
+
+.modal-header.bg-primary,
+.modal-header.bg-dark,
+.modal-header.bg-danger,
+.modal-header.bg-success {
+color: #ffffff;
+}
+
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-success .modal-title {
+color: #ffffff;
+}
+
+/* FASE 15 — CORREGIR TARJETAS DE ESTADO / RECORRIDO */
+.aocr-estado-card {
+color: var(--aocr-text-dark);
+}
+
+.aocr-estado-card .estado-actual {
+font-weight: 700;
+}
+
+.aocr-recorrido-table th {
+color: var(--aocr-text-dark);
+}
+
+.aocr-recorrido-table .estado-badge {
+font-weight: 600;
+}
+
+.aocr-estado-card.bg-primary,
+.aocr-estado-card.bg-dark {
+color: #ffffff;
+}
+
+.aocr-estado-card.bg-primary *,
+.aocr-estado-card.bg-dark * {
+color: inherit;
+}
+
+/* FASE 16 — CORREGIR LINKS */
+a {
+color: var(--aocr-link-safe);
+}
+
+a:hover {
+color: #08345c;
+}
+
+.bg-primary a,
+.bg-dark a,
+.sidebar a,
+.navbar-dark a {
+color: var(--aocr-link-light);
+}
+
+.bg-primary a:hover,
+.bg-dark a:hover,
+.sidebar a:hover,
+.navbar-dark a:hover {
+color: #ffffff;
+}

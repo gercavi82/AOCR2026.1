@@ -135,11 +135,16 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 16px;
+        background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
         margin-bottom: 18px;
     }
 
     .fin-dashboard-title {
         margin: 0;
+        color: #ffffff;
         font-size: 1.9rem;
         font-weight: 800;
         letter-spacing: -0.03em;
@@ -147,7 +152,7 @@
 
     .fin-dashboard-subtitle {
         margin: 6px 0 0;
-        color: var(--fin-muted);
+        color: rgba(255, 255, 255, 0.85);
         font-size: 0.98rem;
     }
 
@@ -497,7 +502,7 @@
 </style>
 
 <div class="fin-dashboard">
-    <div class="fin-dashboard-header">
+    <div class="fin-dashboard-header aocr-bg-dark">
         <div>
             <h2 class="fin-dashboard-title">Dashboard Financiero</h2>
             <p class="fin-dashboard-subtitle">Panel de control para validación de órdenes, seguimiento de facturación FR3 y estado operativo del área financiera.</p>

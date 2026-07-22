@@ -33,7 +33,7 @@ namespace CapaDatos.Entidades
         public string Estado { get; set; }
 
         [Column("lugar_inspeccion")]
-        [StringLength(50)]
+        [StringLength(200)]
         public string LugarInspeccion { get; set; }
 
         [Column("provincia_inspeccion")]
@@ -49,6 +49,12 @@ namespace CapaDatos.Entidades
 
         [Column("cantidad")]
         public int Cantidad { get; set; }
+
+        [Column("numero_dias_inspeccion")]
+        public int? NumeroDiasInspeccion { get; set; }
+
+        [Column("dias_pagados_viatico")]
+        public int? DiasPagadosViatico { get; set; }
 
         [Column("valor_unitario")]
         public decimal ValorUnitario { get; set; }

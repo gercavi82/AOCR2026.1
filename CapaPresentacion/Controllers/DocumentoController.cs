@@ -1524,7 +1524,19 @@ namespace CapaPresentacion.Controllers
             var tipoDocumento = (documento.TipoDocumento ?? string.Empty).Trim();
             if (!string.IsNullOrWhiteSpace(tipoDocumento))
             {
-                return tipoDocumento.ToUpperInvariant();
+                var tipoUpper = tipoDocumento.ToUpperInvariant();
+                
+                // Si es un tipo de documento que permite múltiples archivos (certificados), 
+                // NO los agrupamos por tipo de documento, para que se visualicen todos.
+                if (tipoUpper == "CERTIFICADO_RUIDO" || 
+                    tipoUpper == "CERTIFICADO_AERONAVEGABILIDAD" ||
+                    tipoUpper == "CERTIFICADO_RUIDO_AERONAVES_EAE" ||
+                    tipoUpper == "CERTIFICADO_AERONAVEGABILIDAD_AERONAVES_EAE")
+                {
+                    return "__DOC_" + documento.CodigoDocumento;
+                }
+                
+                return tipoUpper;
             }
 
             return "__DOC_" + documento.CodigoDocumento;

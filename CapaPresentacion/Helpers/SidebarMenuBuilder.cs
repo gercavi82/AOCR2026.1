@@ -601,15 +601,21 @@ namespace CapaPresentacion.Helpers
                     context.PuedeAbrirFormularioEmisionRt = true;
                     context.SolicitudRtFormularioEditable = true;
                 }
-                else if (ordenDao.ExisteORGeneradaOPagada(context.UserId))
+                else
                 {
-                    if (solicitudOrden == null
-                        || solicitudOrden.CodigoSolicitud <= 0
-                        || EstadoSolicitud.PermiteEdicionFormularioEmision(solicitudOrden.Estado))
+                    var flujoService = new CapaNegocio.Services.AocrRtFlujoService();
+                    var estadoFlujo = flujoService.ObtenerEstadoFlujoRt(context.UserId, context.CodigoCompaniaActiva, context.NombreCompaniaActiva);
+
+                    if (estadoFlujo.PagoAprobado)
                     {
-                        context.PuedeAbrirFormularioEmisionRt = true;
-                        context.SolicitudRtFormularioEditable = solicitudOrden != null
-                            && EstadoSolicitud.PermiteEdicionFormularioEmision(solicitudOrden.Estado);
+                        if (solicitudOrden == null
+                            || solicitudOrden.CodigoSolicitud <= 0
+                            || EstadoSolicitud.PermiteEdicionFormularioEmision(solicitudOrden.Estado))
+                        {
+                            context.PuedeAbrirFormularioEmisionRt = true;
+                            context.SolicitudRtFormularioEditable = solicitudOrden != null
+                                && EstadoSolicitud.PermiteEdicionFormularioEmision(solicitudOrden.Estado);
+                        }
                     }
                 }
 

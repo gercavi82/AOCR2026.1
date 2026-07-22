@@ -6,10 +6,22 @@ namespace CapaPresentacion.Models.ViewModels
 {
     public class OrdenRecaudacionPDFDetalleModel
     {
+        public string ConceptoCodigo { get; set; }
         public string Concepto { get; set; }
+        public int Cantidad { get; set; }
+        public int NumeroDiasInspeccion { get; set; }
+        public int DiasPagadosViatico { get; set; }
+        public decimal ValorUnitario { get; set; }
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
         public decimal Subtotal { get; set; }
         public decimal Admin { get; set; }
         public decimal TotalLinea { get; set; }
+
+        public bool EsViatico
+        {
+            get { return string.Equals(ConceptoCodigo, "VIATICOS_INSPECTOR", StringComparison.OrdinalIgnoreCase); }
+        }
     }
 
     public class OrdenRecaudacionPDFModel
@@ -44,6 +56,19 @@ namespace CapaPresentacion.Models.ViewModels
         public decimal TotalAdmin { get; set; }
         public decimal TotalGeneral { get; set; }
         public List<OrdenRecaudacionPDFDetalleModel> Detalles { get; set; } = new List<OrdenRecaudacionPDFDetalleModel>();
+
+        public string LugarInspeccion { get; set; }
+        public string ProvinciaInspeccion { get; set; }
+        public bool MostrarNumeroDias
+        {
+            get
+            {
+                return Detalles != null && Detalles.Any(d =>
+                    d.EsViatico
+                    && d.NumeroDiasInspeccion > 0
+                    && Math.Abs(d.Subtotal - (Math.Max(d.NumeroDiasInspeccion - 1, 0) * d.ValorUnitario)) <= 0.01m);
+            }
+        }
 
         public string Referencia { get; set; }
 

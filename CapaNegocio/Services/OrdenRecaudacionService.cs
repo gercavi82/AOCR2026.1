@@ -57,81 +57,125 @@ namespace CapaNegocio.Services
                 throw new InvalidOperationException("No existe una conexión PostgreSQL configurada para generar números de orden.");
             }
 
-            using (var conn = new NpgsqlConnection(_connectionString))
+            _logger.LogInfo(string.Format(CultureInfo.InvariantCulture, "[ORDEN][NUMERACION_IN] Anio={0};", anio));
+
+            for (var intento = 1; intento <= 10; intento++)
             {
-                conn.Open();
-
-                AsegurarSecuenciaOrden(conn, anio);
-
-                for (var intentos = 0; intentos < 20; intentos++)
+                try
                 {
-                    int siguiente;
-                    using (var cmd = new NpgsqlCommand("SELECT nextval('public.seq_aocr_orden_recaudacion');", conn))
+                    using (var conn = new NpgsqlConnection(_connectionString))
                     {
-                        var scalar = cmd.ExecuteScalar();
-                        siguiente = Convert.ToInt32(scalar);
-                    }
+                        conn.Open();
 
-                    _logger.LogInfo(string.Format(
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            const string sqlInit = @"
+                                CREATE TABLE IF NOT EXISTS public.aocr_correlativo_orden (
+                                    anio integer PRIMARY KEY,
+                                    ultimo_numero integer NOT NULL,
+                                    fecha_actualizacion timestamp without time zone DEFAULT now()
+                                );
+                                INSERT INTO public.aocr_correlativo_orden (anio, ultimo_numero)
+                                VALUES (@anio, 0)
+                                ON CONFLICT (anio) DO NOTHING;";
+
+                            using (var cmdInit = new NpgsqlCommand(sqlInit, conn, tx))
+                            {
+                                cmdInit.Parameters.AddWithValue("@anio", anio);
+                                cmdInit.ExecuteNonQuery();
+                            }
+
+                            const string sqlInc = @"
+                                UPDATE public.aocr_correlativo_orden
+                                SET ultimo_numero = GREATEST(
+                                        ultimo_numero + 1,
+                                        COALESCE((
+                                            SELECT MAX(
+                                                CASE 
+                                                    WHEN numero_orden ~ '^DGAC-OR-\d{4}-AOCR\d+$' 
+                                                    THEN NULLIF(SUBSTRING(numero_orden FROM 'AOCR(\d+)'), '')::integer 
+                                                    ELSE 0 
+                                                END
+                                            ) + 1
+                                            FROM public.aocr_or_orden
+                                            WHERE numero_orden LIKE 'DGAC-OR-' || @anio || '%'
+                                        ), 1)
+                                    ),
+                                    fecha_actualizacion = NOW()
+                                WHERE anio = @anio
+                                RETURNING ultimo_numero;";
+
+                            int correlativo;
+                            using (var cmdInc = new NpgsqlCommand(sqlInc, conn, tx))
+                            {
+                                cmdInc.Parameters.AddWithValue("@anio", anio);
+                                var scalar = cmdInc.ExecuteScalar();
+                                correlativo = Convert.ToInt32(scalar);
+                            }
+
+                            tx.Commit();
+
+                            var numeroOrden = string.Format(
+                                CultureInfo.InvariantCulture,
+                                "DGAC-OR-{0}-AOCR{1}",
+                                anio,
+                                correlativo.ToString("D3", CultureInfo.InvariantCulture));
+
+                            if (!_ordenDao.ExisteNumeroOrden(numeroOrden))
+                            {
+                                _logger.LogInfo(string.Format(
+                                    CultureInfo.InvariantCulture,
+                                    "[ORDEN][NUMERACION_GENERADA] Anio={0}; Correlativo={1}; NumeroOrden={2}; Intento={3}",
+                                    anio,
+                                    correlativo,
+                                    numeroOrden,
+                                    intento));
+
+                                return numeroOrden;
+                            }
+                            else
+                            {
+                                _logger.LogWarning(string.Format(
+                                    CultureInfo.InvariantCulture,
+                                    "[ORDEN][NUMERACION_DUPLICADA_DENY] NumeroOrden={0}; Motivo=Existe en BD; Intento={1}",
+                                    numeroOrden,
+                                    intento));
+                            }
+                        }
+                    }
+                }
+                catch (PostgresException pgEx) when (pgEx.SqlState == "23505")
+                {
+                    _logger.LogWarning(string.Format(
                         CultureInfo.InvariantCulture,
-                        "[ORDEN_NUM][NEXTVAL] Anio={0}; Consecutivo={1}",
-                        anio,
-                        siguiente));
-
-                    var numeroOrden = string.Format(CultureInfo.InvariantCulture, "DGAC-OR-{0}-AOCR{1}", anio, siguiente.ToString("D3", CultureInfo.InvariantCulture));
-                    if (!_ordenDao.ExisteNumeroOrden(numeroOrden))
-                    {
-                        _logger.LogInfo(string.Format(
-                            CultureInfo.InvariantCulture,
-                            "[ORDEN_NUM][GENERATED] Anio={0}; Consecutivo={1}; NumeroOrden={2}",
-                            anio,
-                            siguiente,
-                            numeroOrden));
-                        return numeroOrden;
-                    }
+                        "[ORDEN][NUMERACION_CONCURRENCY_RETRY] Unique violation en intento {0}: {1}",
+                        intento,
+                        pgEx.Message));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex);
                 }
             }
 
-            _logger.LogWarning("OrdenRecaudacionService.GenerarNumeroOrdenInstitucional: se agotaron los intentos para generar un número único.");
-            return string.Format(CultureInfo.InvariantCulture, "DGAC-OR-{0}-AOCR{1}", anio, (DateTime.Now.Ticks % 1000L).ToString("D3", CultureInfo.InvariantCulture));
-        }
-
-        private void AsegurarSecuenciaOrden(NpgsqlConnection conn, int anio)
-        {
-            const string sql = @"
-                CREATE SEQUENCE IF NOT EXISTS public.seq_aocr_orden_recaudacion
-                    START WITH 1
-                    INCREMENT BY 1
-                    NO MINVALUE
-                    NO MAXVALUE
-                    CACHE 1;
-
-                WITH maximo AS (
-                    SELECT COALESCE(
-                        MAX(CAST(regexp_replace(numero_orden, '.*AOCR', '') AS INTEGER)),
-                        0
-                    ) AS valor
-                    FROM public.aocr_or_orden
-                    WHERE numero_orden ~ ('^DGAC-OR-' || @anio::text || '-AOCR[0-9]+$')
-                )
-                SELECT setval(
-                    'public.seq_aocr_orden_recaudacion',
-                    GREATEST(
-                        (SELECT valor FROM maximo),
-                        (SELECT last_value FROM public.seq_aocr_orden_recaudacion)
-                    ),
-                    true
-                );";
-
-            using (var cmd = new NpgsqlCommand(sql, conn))
-            {
-                cmd.Parameters.AddWithValue("@anio", anio);
-                cmd.ExecuteNonQuery();
-            }
+            throw new InvalidOperationException("No fue posible generar la orden en este momento. Intente nuevamente.");
         }
 
         public string GenerarNumeroOrdenAocr(int anio)
         {
+            return GenerarNumeroOrdenInstitucional(anio);
+        }
+
+        public string GenerarNumeroOrdenAocr(int anio, int companiaId, int usuarioId, int? solicitudId)
+        {
+            _logger.LogInfo(string.Format(
+                CultureInfo.InvariantCulture,
+                "[ORDEN][NUMERACION_IN] UsuarioId={0}; CompaniaId={1}; Anio={2}; SolicitudId={3};",
+                usuarioId,
+                companiaId,
+                anio,
+                solicitudId));
+
             return GenerarNumeroOrdenInstitucional(anio);
         }
 
@@ -140,7 +184,7 @@ namespace CapaNegocio.Services
             var vinculada = ConstruirNumeroOrdenDesdeNumeroSolicitud(numeroSolicitudGop, anio);
             if (!string.IsNullOrWhiteSpace(vinculada))
             {
-                if (!_ordenDao.ExisteNumeroOrden(vinculada) || OrdenPerteneceASolicitud(vinculada, codigoSolicitud))
+                if (!_ordenDao.ExisteNumeroOrden(vinculada))
                 {
                     _logger.LogInfo(string.Format(
                         CultureInfo.InvariantCulture,

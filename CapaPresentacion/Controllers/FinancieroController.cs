@@ -107,6 +107,8 @@ namespace CapaPresentacion.Controllers
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
+            CapaNegocio.LogBL.RegistrarInfo($"[FINANCIERO][ORDEN_READONLY] OrdenId={orden.Id}; NumeroOrden={orden.NumeroOrden};", "FinancieroController");
+
             var estado = EstadoOrden.NormalizarEstado(orden.Estado);
             if (estado != EstadoOrden.EnRevisionFinanciera)
             {

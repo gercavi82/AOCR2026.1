@@ -385,6 +385,12 @@ namespace CapaNegocio
             }
 
             var tipoDocumento = ObtenerGrupoDocumentoRevision(documento.TipoDocumento);
+            
+            if (tipoDocumento == "CERTIFICADO_AERONAVEGABILIDAD" || tipoDocumento == "CERTIFICADO_RUIDO_AERONAVES_EAE")
+            {
+                return tipoDocumento + "_" + documento.CodigoDocumento;
+            }
+
             return !string.IsNullOrWhiteSpace(tipoDocumento)
                 ? tipoDocumento
                 : "__DOC_" + documento.CodigoDocumento;
@@ -395,11 +401,8 @@ namespace CapaNegocio
             var canonical = ObtenerTipoDocumentoCanonicoRevision(tipoDocumento);
             switch (canonical)
             {
-                case "SOLICITUD_INSPECCION_EXT":
-                case "SOLICITUD_INSPECCIONES_FIRMADA":
                 case "COMPROBANTE_PAGO":
                 case "ORDEN_RECAUDACION":
-                case "FACTURA":
                 case "COMPROBANTE_AS400":
                 case "DOCUMENTO_GENERADO_SISTEMA":
                 case "AOCR_GENERADO":

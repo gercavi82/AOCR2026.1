@@ -150,19 +150,18 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            if (BuscarSolicitudRtHabilitadaReutilizable(codigoUsuario, ObtenerCompaniaActivaCodigo(), null) != null)
+            var companiaCodigo = ObtenerCompaniaActivaCodigo();
+            var companiaNombre = ObtenerCompaniaActivaNombre();
+            
+            var flujoService = new CapaNegocio.Services.AocrRtFlujoService();
+            var estadoFlujo = flujoService.ObtenerEstadoFlujoRt(codigoUsuario, companiaCodigo, companiaNombre);
+
+            if (estadoFlujo.SolicitudAocrHabilitada || estadoFlujo.PagoAprobado)
             {
                 return false;
             }
 
-            if (_ordenRecaudacionDAO.TieneOrdenHabilitanteAOCR(codigoUsuario))
-            {
-                return false;
-            }
-
-            if (_ordenRecaudacionDAO.TieneOrdenActivaEnProceso(codigoUsuario)
-                || _ordenRecaudacionDAO.TieneOrdenPendienteComprobante(codigoUsuario)
-                || _ordenRecaudacionDAO.ExisteORGeneradaOPagada(codigoUsuario))
+            if (estadoFlujo.TieneOrdenVigente)
             {
                 mensaje = "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago correspondiente.";
                 return true;

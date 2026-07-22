@@ -84,7 +84,14 @@ namespace CapaPresentacion.Controllers
                 MostrarAprobacionRt = puedeAprobarUsuarios
             };
 
-            AplicarResumenOperativo(model, esAdministrador, esSolicitanteRol, esTecnicaRol, esFinancieroRol, esLegalRol, esDireccionRol);
+            if (esSolicitanteRol)
+            {
+                int idUsuario;
+                _userContext.TryGetUserId(Session, out idUsuario);
+                var companiaCodigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+                var companiaNombre = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+                ViewBag.RtFlujoEstado = new AocrRtFlujoService().ObtenerEstadoFlujoRt(idUsuario, companiaCodigo, companiaNombre);
+            }
 
             model.AccesosDashboards = ConstruirDashboards(model);
             model.AccionesInstitucionales = ConstruirAcciones(model, esAdministrador);

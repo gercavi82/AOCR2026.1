@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.InspeccionInformeTecnico>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.InspeccionInformeTecnico>>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using CapaModelo
@@ -24,19 +24,23 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 16px;
+            background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+            padding: 1.5rem 2rem;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
             margin: 12px 0 18px;
         }
 
         .informes-title h2 {
-            color: #102f46;
+            color: #ffffff;
             font-size: 1.55rem;
-            font-weight: 700;
+            font-weight: 800;
             line-height: 1.2;
             margin: 0;
         }
 
         .informes-title p {
-            color: #64748b;
+            color: rgba(255, 255, 255, 0.85);
             margin: 6px 0 0;
         }
 
@@ -281,7 +285,7 @@
         @Html.AntiForgeryToken()
     </div>
 
-    <div class="informes-header">
+    <div class="informes-header aocr-bg-dark">
         <div class="informes-title">
             <h2><i class="fas fa-file-alt mr-2"></i>Gestión de Informes</h2>
             <p>Seguimiento de informes técnicos generados, firmados y revisados.</p>

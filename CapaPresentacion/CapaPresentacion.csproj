@@ -391,7 +391,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\aocr-institucional.css" />
+    <Content Include="Content\aocr-headers.css" />
     <Content Include="Content\aocr-contrast.css" />
+    <Content Include="Content\css\aocr-contrast-fix.css" />
     <Content Include="Content\aocr-datatables.css" />
     <Content Include="Content\aocr-informe-tecnico.css" />
     <Content Include="Content\aocr-responsive.css" />

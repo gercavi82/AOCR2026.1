@@ -1,0 +1,482 @@
+/* AOCR contrast fix: mejora legibilidad sin cambiar fondos existentes */
+
+:root {
+--aocr-text-dark: #1f2937;
+--aocr-text-light: #ffffff;
+--aocr-text-muted-safe: #4b5563;
+--aocr-link-safe: #0f4c81;
+--aocr-link-light: #eaf6ff;
+--aocr-warning-text: #5c3b00;
+--aocr-success-text: #0b3d1f;
+--aocr-danger-text: #5f1111;
+--aocr-info-text: #073b4c;
+}
+
+/* FASE 6 — CORREGIR TEXTOS SOBRE FONDOS OSCUROS */
+.aocr-bg-dark,
+.aocr-card-dark,
+.sidebar,
+.navbar-dark,
+.bg-primary,
+.bg-dark,
+.panel-dark,
+.header-dark,
+.sol-header,
+.aocr-module-header,
+.aocr-page-header {
+    --aocr-ink-900: #ffffff;
+}
+
+.aocr-bg-dark,
+.aocr-bg-dark *:not(.dropdown-menu):not(.dropdown-menu *),
+.aocr-card-dark,
+.aocr-card-dark *:not(.dropdown-menu):not(.dropdown-menu *),
+.sidebar:not(.dropdown-menu),
+.navbar-dark:not(.dropdown-menu),
+.bg-primary:not(.dropdown-menu),
+.bg-dark:not(.dropdown-menu),
+.panel-dark:not(.dropdown-menu),
+.header-dark:not(.dropdown-menu),
+.sol-header:not(.dropdown-menu),
+.aocr-module-header:not(.dropdown-menu),
+.aocr-page-header:not(.dropdown-menu) {
+    color: #ffffff;
+}
+
+.sidebar a:not(.dropdown-item),
+.navbar-dark a:not(.dropdown-item),
+.bg-primary a:not(.dropdown-item),
+.bg-dark a:not(.dropdown-item),
+.sol-header a:not(.dropdown-item),
+.aocr-module-header a:not(.dropdown-item),
+.aocr-page-header a:not(.dropdown-item) {
+    color: var(--aocr-link-light);
+}
+
+.sidebar a:not(.dropdown-item):hover,
+.navbar-dark a:not(.dropdown-item):hover,
+.bg-primary a:not(.dropdown-item):hover,
+.bg-dark a:not(.dropdown-item):hover,
+.sol-header a:not(.dropdown-item):hover,
+.aocr-module-header a:not(.dropdown-item):hover,
+.aocr-page-header a:not(.dropdown-item):hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* FASE 7 — CORREGIR TEXTOS SOBRE FONDOS CLAROS */
+.card,
+.panel,
+.aocr-card,
+.table,
+.modal-content,
+.form-section {
+color: var(--aocr-text-dark);
+}
+
+.card .text-muted,
+.panel .text-muted,
+.aocr-card .text-muted {
+color: var(--aocr-text-muted-safe) !important;
+}
+
+/* FASE 8 — CORREGIR ALERTAS */
+.alert-success {
+color: var(--aocr-success-text);
+}
+
+.alert-info {
+color: var(--aocr-info-text);
+}
+
+.alert-warning {
+color: var(--aocr-warning-text);
+}
+
+.alert-danger {
+color: var(--aocr-danger-text);
+}
+
+.alert-success a,
+.alert-info a,
+.alert-warning a,
+.alert-danger a {
+font-weight: 600;
+text-decoration: underline;
+}
+
+/* FASE 9 — CORREGIR BADGES Y ESTADOS */
+.badge,
+.label {
+font-weight: 600;
+}
+
+.badge-success,
+.label-success {
+color: #ffffff;
+}
+
+.badge-info,
+.label-info {
+color: #ffffff;
+}
+
+.badge-warning,
+.label-warning {
+color: #212529;
+}
+
+.badge-danger,
+.label-danger {
+color: #ffffff;
+}
+
+.badge-secondary,
+.label-default {
+color: #ffffff;
+}
+
+.bg-warning {
+color: #212529 !important;
+}
+
+.bg-info,
+.bg-success,
+.bg-danger,
+.bg-primary,
+.bg-secondary,
+.bg-dark {
+color: #ffffff !important;
+}
+
+/* FASE 10 — CORREGIR BOTONES */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-dark {
+color: #ffffff;
+}
+
+.btn-warning,
+.btn-light,
+.dropdown-menu .dropdown-item,
+.aocr-dropdown-header {
+    color: #212529 !important;
+    -webkit-text-fill-color: #212529 !important;
+}
+
+.btn-outline-primary,
+.btn-outline-success,
+.btn-outline-danger,
+.btn-outline-secondary {
+font-weight: 600;
+}
+
+.btn i,
+.btn .fa,
+.btn .glyphicon {
+color: inherit;
+}
+
+/* FASE 11 — CORREGIR TABLAS */
+.table thead th {
+color: inherit;
+}
+
+.table-dark th,
+.table-dark td,
+.thead-dark th,
+.aocr-table-header th {
+color: #ffffff;
+}
+
+.table-light th,
+.table-light td {
+color: #1f2937;
+}
+
+.table td,
+.table th {
+vertical-align: middle;
+}
+
+tr.table-success td {
+color: var(--aocr-success-text);
+}
+
+tr.table-warning td {
+color: var(--aocr-warning-text);
+}
+
+tr.table-danger td {
+color: var(--aocr-danger-text);
+}
+
+/* FASE 12 — CORREGIR FORMULARIOS */
+label,
+.form-label,
+.control-label {
+color: var(--aocr-text-dark);
+font-weight: 600;
+}
+
+.form-control,
+.form-select,
+input,
+select,
+textarea {
+color: var(--aocr-text-dark);
+}
+
+.form-control::placeholder,
+input::placeholder,
+textarea::placeholder {
+color: #6b7280;
+opacity: 1;
+}
+
+.form-text,
+.help-block,
+.text-help {
+color: var(--aocr-text-muted-safe);
+}
+
+.text-danger,
+.field-validation-error,
+.validation-summary-errors {
+color: #b91c1c;
+font-weight: 600;
+}
+
+/* FASE 13 — CORREGIR SIDEBAR Y MENÚ */
+.sidebar .nav-link,
+.sidebar a,
+.sidebar .menu-item,
+.sidebar .submenu a {
+color: rgba(255, 255, 255, 0.92);
+}
+
+.sidebar .nav-link:hover,
+.sidebar a:hover,
+.sidebar .menu-item:hover {
+color: #ffffff;
+}
+
+.sidebar .active,
+.sidebar .nav-link.active,
+.sidebar .menu-item.active {
+color: #ffffff;
+font-weight: 700;
+}
+
+.sidebar .badge {
+color: #ffffff;
+}
+
+/* FASE 14 — CORREGIR MODALES */
+.modal-header {
+color: inherit;
+}
+
+.modal-title {
+color: var(--aocr-text-dark);
+font-weight: 700;
+}
+
+.modal-body {
+color: var(--aocr-text-dark);
+}
+
+.modal-footer .btn {
+font-weight: 600;
+}
+
+.modal-header.bg-primary,
+.modal-header.bg-dark,
+.modal-header.bg-danger,
+.modal-header.bg-success {
+color: #ffffff;
+}
+
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-dark .modal-title,
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-success .modal-title {
+color: #ffffff;
+}
+
+/* FASE 15 — CORREGIR TARJETAS DE ESTADO / RECORRIDO */
+.aocr-estado-card {
+color: var(--aocr-text-dark);
+}
+
+.aocr-estado-card .estado-actual {
+font-weight: 700;
+}
+
+.aocr-recorrido-table th {
+color: var(--aocr-text-dark);
+}
+
+.aocr-recorrido-table .estado-badge {
+font-weight: 600;
+}
+
+.aocr-estado-card.bg-primary,
+.aocr-estado-card.bg-dark {
+color: #ffffff;
+}
+
+.aocr-estado-card.bg-primary *,
+.aocr-estado-card.bg-dark * {
+color: inherit;
+}
+
+/* FASE 16 — CORREGIR LINKS */
+a {
+color: var(--aocr-link-safe);
+}
+
+a:hover {
+color: #08345c;
+}
+
+.bg-primary a:not(.dropdown-item),
+.bg-dark a:not(.dropdown-item),
+.sidebar a:not(.dropdown-item),
+.navbar-dark a:not(.dropdown-item) {
+color: var(--aocr-link-light);
+}
+
+.bg-primary a:not(.dropdown-item):hover,
+.bg-dark a:not(.dropdown-item):hover,
+.sidebar a:not(.dropdown-item):hover,
+.navbar-dark a:not(.dropdown-item):hover {
+color: #ffffff;
+}
+
+/* FASE 17 — ESTILOS DE DESPLEGABLES (DROPDOWNS) E ICONOS */
+.dropdown-menu,
+.dropdown-menu *,
+.sol-header .dropdown-menu,
+.sol-header .dropdown-menu *,
+.bg-primary .dropdown-menu,
+.bg-primary .dropdown-menu *,
+.bg-dark .dropdown-menu,
+.bg-dark .dropdown-menu * {
+    -webkit-text-fill-color: initial;
+}
+
+.dropdown-menu,
+.sol-header .dropdown-menu,
+.bg-primary .dropdown-menu,
+.bg-dark .dropdown-menu {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    padding: 0.5rem 0 !important;
+    z-index: 1050 !important;
+}
+
+.dropdown-menu .dropdown-item,
+.dropdown-menu a.dropdown-item,
+.sol-header .dropdown-menu .dropdown-item,
+.sol-header .dropdown-menu a.dropdown-item,
+.bg-primary .dropdown-menu .dropdown-item,
+.bg-dark .dropdown-menu .dropdown-item {
+    color: #212529 !important;
+    -webkit-text-fill-color: #212529 !important;
+    background-color: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+}
+
+.dropdown-menu .dropdown-item:hover,
+.dropdown-menu .dropdown-item:focus,
+.sol-header .dropdown-menu .dropdown-item:hover,
+.sol-header .dropdown-menu .dropdown-item:focus {
+    color: #0f4c81 !important;
+    -webkit-text-fill-color: #0f4c81 !important;
+    background-color: #f8f9fa !important;
+    text-decoration: none !important;
+}
+
+.dropdown-menu .aocr-dropdown-header,
+.dropdown-menu .dropdown-header,
+.sol-header .dropdown-menu .aocr-dropdown-header,
+.sol-header .dropdown-menu .dropdown-header {
+    color: #6c757d !important;
+    -webkit-text-fill-color: #6c757d !important;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    padding: 0.5rem 1rem 0.25rem 1rem !important;
+}
+
+/* Forzar visibilidad y margen de íconos en desplegables */
+.dropdown-menu i,
+.dropdown-menu .fas,
+.dropdown-menu .far,
+.dropdown-menu .fab,
+.dropdown-menu .fa,
+.sol-header .dropdown-menu i,
+.sol-header .dropdown-menu .fas,
+.sol-header .dropdown-menu .far,
+.sol-header .dropdown-menu .fab,
+.sol-header .dropdown-menu .fa {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin-right: 0.5rem !important;
+}
+
+/* Clases utilitarias de colores para textos e íconos */
+.text-primary,
+.dropdown-menu .text-primary,
+.sol-header .dropdown-menu .text-primary {
+    color: #0d6efd !important;
+    -webkit-text-fill-color: #0d6efd !important;
+}
+
+.text-info,
+.dropdown-menu .text-info,
+.sol-header .dropdown-menu .text-info {
+    color: #0dcaf0 !important;
+    -webkit-text-fill-color: #0dcaf0 !important;
+}
+
+.text-warning,
+.dropdown-menu .text-warning,
+.sol-header .dropdown-menu .text-warning {
+    color: #ffc107 !important;
+    -webkit-text-fill-color: #ffc107 !important;
+}
+
+.text-danger,
+.dropdown-menu .text-danger,
+.sol-header .dropdown-menu .text-danger {
+    color: #dc3545 !important;
+    -webkit-text-fill-color: #dc3545 !important;
+}
+
+.text-success,
+.dropdown-menu .text-success,
+.sol-header .dropdown-menu .text-success {
+    color: #198754 !important;
+    -webkit-text-fill-color: #198754 !important;
+}
+
+.text-secondary,
+.text-muted,
+.dropdown-menu .text-secondary,
+.dropdown-menu .text-muted,
+.sol-header .dropdown-menu .text-secondary,
+.sol-header .dropdown-menu .text-muted {
+    color: #6c757d !important;
+    -webkit-text-fill-color: #6c757d !important;
+}

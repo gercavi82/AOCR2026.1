@@ -58,6 +58,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Unit\AocrModificationAuthorizationTests.cs" />
+    <Compile Include="Unit\ApplicationVirtualPathTests.cs" />
     <Compile Include="Mocks\MockRepositories.cs" />
     <Compile Include="Unit\OrdenRecaudacionOrchestratorTests.cs" />
     <Compile Include="Unit\ValidacionesTests.cs" />
@@ -79,6 +80,8 @@
     <Compile Include="Unit\FinancialOrderStateHelperTests.cs" />
     <Compile Include="Integration\FinancieroAprobacionPagoIntegrationTest.cs" />
     <Compile Include="Unit\OrdenRecaudacionOperativaHelperTests.cs" />
+    <Compile Include="Unit\OrdenInspeccionViaticosReglasTests.cs" />
+    <Compile Include="Unit\OrdenViaticosDetalleContractTests.cs" />
     <Compile Include="Unit\GateDNoConformidadTests.cs" />
     <Compile Include="Unit\GateHDcavFlowTests.cs" />
     <Compile Include="Unit\DocumentosFinalesWorkflowTests.cs" />

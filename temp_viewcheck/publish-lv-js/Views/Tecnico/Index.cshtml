@@ -1,11 +1,12 @@
-﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.SolicitudAOCR>>
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.SolicitudAOCR>>
 @using System
 @using System.Linq
 @using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaModelo
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.Title = "Asignacion de inspectores";
+    ViewBag.Title = "Bandeja de Coordinación - Asignación de Inspector";
 }
 @functions {
     public string NumeroSolicitud(SolicitudAOCR solicitud)
@@ -142,9 +143,17 @@
     }
 }
 <style>
-    .tecnico-index-hero { background:#183b59; color:#fff; border-radius:20px; padding:24px; margin-bottom:24px; }
-    .tecnico-index-hero h1 { margin:8px 0 10px; font-size:30px; font-weight:800; }
-    .tecnico-index-eyebrow { display:inline-block; padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.15); font-size:12px; font-weight:700; text-transform:uppercase; }
+    .tecnico-index-hero {
+        background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+        color: #ffffff;
+        border-radius: 18px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
+    }
+    .tecnico-index-hero h1 { margin: 8px 0 10px; font-size: 30px; font-weight: 800; color: #ffffff; }
+    .tecnico-index-hero p { color: rgba(255, 255, 255, 0.85); margin: 0; }
+    .tecnico-index-eyebrow { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); font-size: 12px; font-weight: 700; text-transform: uppercase; color: #ffffff; }
     .tecnico-index-card { background:#fff; border:1px solid rgba(24,59,89,.12); border-radius:20px; box-shadow:0 14px 32px rgba(15,45,64,.08); overflow:hidden; }
     .tecnico-index-card-head { padding:20px 24px; border-bottom:1px solid rgba(24,59,89,.08); display:flex; justify-content:space-between; gap:16px; align-items:center; }
     .tecnico-index-card-head h2 { margin:0 0 4px; font-size:22px; font-weight:800; color:#19354c; }
@@ -161,15 +170,17 @@
     .tecnico-index-actions { display:flex; flex-wrap:wrap; gap:8px; }
     .tecnico-index-actions a { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; text-decoration:none; font-weight:700; }
     .tecnico-index-primary { background:#1b4f72; color:#fff; }
+    .tecnico-index-primary span, .tecnico-index-primary i { color:#fff; }
     .tecnico-index-primary:hover, .tecnico-index-primary:focus { color:#fff; background:#153d58; text-decoration:none; }
     .tecnico-index-secondary { background:#eef5f9; color:#1b4f72; }
+    .tecnico-index-secondary span, .tecnico-index-secondary i { color:#1b4f72; }
     .tecnico-index-secondary:hover, .tecnico-index-secondary:focus { color:#153d58; background:#e2edf4; text-decoration:none; }
 </style>
-<div class="container-fluid">
-    <section class="tecnico-index-hero">
-        <span class="tecnico-index-eyebrow"><i class="fas fa-user-check"></i> Modulo coordinador</span>
-        <h1>Asignacion standalone de inspectores</h1>
-        <p>Esta bandeja mantiene la asignacion y reasignacion de inspectores AOCR como una accion separada del flujo de revision.</p>
+<div class="tecnico-index-shell">
+    <section class="tecnico-index-hero aocr-bg-dark">
+        <span class="tecnico-index-eyebrow"><i class="fas fa-user-check"></i> Coordinación operativa</span>
+        <h1>Bandeja de Coordinación</h1>
+        <p>Gestione la asignación y reasignación institucional de inspectores AOCR sin cambiar la ruta heredada /Técnico.</p>
     </section>
 
     @if (TempData["Success"] != null)
@@ -188,8 +199,8 @@
     <section class="tecnico-index-card">
         <div class="tecnico-index-card-head">
             <div>
-                <h2>Solicitudes pendientes de asignacion</h2>
-                <p>Abra la solicitud y gestione al inspector principal o de apoyo desde una bandeja dedicada.</p>
+                <h2>Gestion de asignaciones</h2>
+                <p>Abra la solicitud y designe el inspector principal o de apoyo desde la bandeja de coordinacion.</p>
             </div>
             <span class="tecnico-index-badge"><i class="fas fa-list-check"></i> @(ViewBag.TotalPendientes is int ? (int)ViewBag.TotalPendientes : (Model == null ? 0 : Model.Count())) registros</span>
         </div>
@@ -225,7 +236,7 @@
                             <tr>
                                 <td>
                                     <span class="tecnico-index-numero">@NumeroSolicitud(item)</span>
-                                    <span class="tecnico-index-sub">Codigo @item.CodigoSolicitud</span>
+                                    <span class="tecnico-index-sub">ID @item.CodigoSolicitud</span>
                                 </td>
                                 <td>
                                     <strong>@Operador(item)</strong>

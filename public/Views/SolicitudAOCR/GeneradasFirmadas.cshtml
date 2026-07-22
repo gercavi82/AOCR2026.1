@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<AocrGeneradasFirmadasViewModel>
+@inherits System.Web.Mvc.WebViewPage<AocrGeneradasFirmadasViewModel>
 @using System
 @using CapaPresentacion.Models.ViewModels
 @using System.Web.Mvc
@@ -16,27 +16,27 @@
     }
 
     .aocr-tray-hero {
-        border-radius: 20px;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #0b2d48 0%, #155b79 58%, #d9eef5 100%);
-        color: #fff;
-        box-shadow: 0 24px 48px rgba(11, 45, 72, 0.16);
+        border-radius: 18px;
+        padding: 1.5rem 2rem;
+        background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+        color: #ffffff;
+        box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
     }
 
     .aocr-tray-hero h2 {
         margin: 0 0 .45rem;
         font-size: 1.85rem;
-        font-weight: 700;
+        font-weight: 800;
     }
 
     .aocr-tray-hero p {
         margin: 0;
         max-width: 960px;
-        opacity: .92;
+        color: rgba(255, 255, 255, 0.85);
     }
 
     .aocr-tray-role-caption {
-        opacity: .95;
+        color: rgba(255, 255, 255, 0.75);
     }
 
     .aocr-tray-summary {
@@ -222,7 +222,7 @@
 </style>
 
 <div class="container-fluid aocr-tray-shell">
-    <section class="aocr-tray-hero">
+    <section class="aocr-tray-hero aocr-bg-dark">
         <h2>AOCR Generadas y Firmadas</h2>
         <p>Consulta consolidada de expedientes AOCR y de Condiciones y Limitaciones ya generados, en revisión, enviados para firma, firmados o finalizados, sin excluir filas por ausencia de PDF o por dependencias incompletas.</p>
         <div class="aocr-tray-role-caption mt-2">

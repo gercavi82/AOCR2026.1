@@ -19,7 +19,12 @@ namespace CapaPresentacion.Models
 
         public string DetallesJson { get; set; }
 
+        [StringLength(200, ErrorMessage = "Maximo 200 caracteres")]
         public string LugarInspeccion { get; set; }
+
+        public List<string> LugaresInspeccion { get; set; } = new List<string>();
+
+        [StringLength(150, ErrorMessage = "Maximo 150 caracteres")]
         public string ProvinciaInspeccion { get; set; }
 
         [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
@@ -52,7 +57,6 @@ namespace CapaPresentacion.Models
             [Required(ErrorMessage = "El RUC/Cédula es requerido")]
             [StringLength(13, MinimumLength = 10, ErrorMessage = "Entre 10 y 13 caracteres")]
             [Display(Name = "RUC/Cédula")]
-            [RucCedulaValidation(ErrorMessage = "RUC/Cédula inválido")]
             public string RucCedula { get; set; }
 
             [Required(ErrorMessage = "El nombre del contribuyente es requerido")]

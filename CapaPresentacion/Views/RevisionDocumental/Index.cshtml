@@ -25,18 +25,23 @@
             gap: 1rem;
             align-items: flex-start;
             flex-wrap: wrap;
+            background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+            padding: 1.5rem 2rem;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
+            margin-bottom: 1rem;
         }
 
         .rd-header__title {
             margin: 0;
-            color: #16354b;
+            color: #ffffff;
             font-weight: 800;
             letter-spacing: -.02em;
         }
 
         .rd-header__subtitle {
             margin: .35rem 0 0;
-            color: #5b7283;
+            color: rgba(255, 255, 255, 0.85);
             max-width: 58rem;
         }
 
@@ -300,7 +305,7 @@
 }
 
 <div class="rd-shell">
-    <div class="rd-header">
+    <div class="rd-header aocr-bg-dark">
         <div>
             <h2 class="rd-header__title">Bandeja de revisión documental</h2>
             <p class="rd-header__subtitle">Gestión documental sincronizada con la consulta del expediente y con el detalle de inspección. Desde aquí el Inspector revisa documentos habilitantes, registra observaciones y habilita el avance a la fase operativa.</p>

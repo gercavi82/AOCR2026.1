@@ -355,7 +355,7 @@
                             <i class="fas fa-globe-americas"></i> 3. Operaciones EAE
                         </a>
                         <a class="list-group-item list-group-item-action wizard-step" id="list-anexos-list" data-bs-toggle="list" href="#anexos" role="tab" aria-controls="anexos">
-                            <i class="fas fa-paperclip"></i> 4. Comprobante / Anexos
+                            <i class="fas fa-paperclip"></i> 4. Documentación / Anexos
                         </a>
                     </div>
                 </div>
@@ -397,13 +397,13 @@
                                                     <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante técnico" value="@AocrTextoPlano(nombreRepresentanteTecnico)" >
                                                 </div>
                                                 <div class="form-group col-md-6">
-                                                    <label for="rucRepresentante">Cédula / RUC</label>
+                                                    <label for="rucRepresentante">Cédula</label>
                                                     <input type="text" class="form-control" id="rucRepresentante" placeholder="Cédula o RUC del usuario" value="@AocrTextoPlano(identificacionUsuario)" readonly>
                                                 </div>
                                             </div>
 
                                             <div class="form-group">
-                                                <label for="direccionEcuador">Direccion en Ecuador</label>
+                                                <label for="direccionEcuador">Dirección de Residencia</label>
                                                 <div class="input-group">
                                                     <div class="input-group-prepend">
                                                         <span class="input-group-text"><i class="fas fa-home"></i></span>
@@ -414,7 +414,7 @@
 
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
-                                                    <label for="telefonoEcuador">Telefono en Ecuador</label>
+                                                    <label for="telefonoEcuador">Teléfono</label>
                                                     <input type="text" class="form-control" id="telefonoEcuador" placeholder="Ingrese telefono en Ecuador" value="@AocrTextoPlano(sol != null ? sol.Telefono : "")" inputmode="numeric" pattern="[0-9]*" maxlength="15" >
                                                 </div>
                                                 <div class="form-group col-md-6">
@@ -1153,9 +1153,9 @@
     Usar document.write aqui destruye el documento actual cuando Bootstrap o Swal aun no terminan de cargar. *@
 
 <script>
-    const modoSubsanacionObservada = @Html.Raw(modoSubsanacionObservada ? "true" : "false");
-    const restringirAnexosPorSubsanacion = @Html.Raw(restringirAnexosPorSubsanacion ? "true" : "false");
-    const documentosPendientesSubsanacionInputIds = @Html.Raw(documentosPendientesInputIdsJson);
+    var modoSubsanacionObservada = @Html.Raw(modoSubsanacionObservada ? "true" : "false");
+    var restringirAnexosPorSubsanacion = @Html.Raw(restringirAnexosPorSubsanacion ? "true" : "false");
+    var documentosPendientesSubsanacionInputIds = @Html.Raw(documentosPendientesInputIdsJson);
 
     function obtenerInputsArchivosFormulario() {
         return [

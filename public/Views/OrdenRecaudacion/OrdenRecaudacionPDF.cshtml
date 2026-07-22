@@ -3,8 +3,6 @@
     Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
 }
 
-
-
 <div class="pdf-title">
     DIRECCION DE CERTIFICACION AERONAUTICA<br />
     Y VIGILANCIA CONTINUA<br />
@@ -35,14 +33,32 @@
         <td class="pdf-section-title">Número telefónico de contacto:</td>
         <td>@Model.Telefono</td>
     </tr>
+    @if (!string.IsNullOrWhiteSpace(Model.LugarInspeccion))
+    {
+        <tr>
+            <td class="pdf-section-title">Lugar de inspección:</td>
+            <td>
+                @Model.LugarInspeccion
+                @if (!string.IsNullOrWhiteSpace(Model.ProvinciaInspeccion))
+                {
+                    <text> - @Model.ProvinciaInspeccion</text>
+                }
+            </td>
+        </tr>
+    }
 </table>
 
 <table class="pdf-table">
     <tr>
-        <th colspan="4" class="pdf-section-title">DETALLE DEL SERVICIO OTORGADO (DERECHOS POR:)</th>
+        <th colspan="@(Model.MostrarNumeroDias ? 6 : 5)" class="pdf-section-title">DETALLE DEL SERVICIO OTORGADO (DERECHOS POR:)</th>
     </tr>
     <tr>
         <th>Concepto</th>
+        <th>CANTIDAD</th>
+        @if (Model.MostrarNumeroDias)
+        {
+            <th>NÚMERO DE DÍAS</th>
+        }
         <th>Subtotal</th>
         <th>Admin</th>
         <th>Total</th>
@@ -53,6 +69,11 @@
         {
             <tr>
                 <td>@item.Concepto</td>
+                <td style="text-align:center;">@item.Cantidad</td>
+                @if (Model.MostrarNumeroDias)
+                {
+                    <td style="text-align:center;">@(item.EsViatico ? item.NumeroDiasInspeccion.ToString() : "-")</td>
+                }
                 <td style="text-align:right;">USD$ @item.Subtotal.ToString("N2")</td>
                 <td style="text-align:right;">USD$ @item.Admin.ToString("N2")</td>
                 <td style="text-align:right;">USD$ @item.TotalLinea.ToString("N2")</td>
@@ -63,6 +84,11 @@
     {
         <tr>
             <td>@Model.ConceptoPrincipal</td>
+            <td style="text-align:center;">1</td>
+            @if (Model.MostrarNumeroDias)
+            {
+                <td style="text-align:center;">-</td>
+            }
             <td style="text-align:right;">USD$ @Model.ValorBase.ToString("N2")</td>
             <td style="text-align:right;">USD$ @Model.TotalAdmin.ToString("N2")</td>
             <td style="text-align:right;">USD$ @Model.Total.ToString("N2")</td>
@@ -70,11 +96,29 @@
     }
     <tr class="totales">
         <td style="text-align:right;">TOTALES:</td>
+        <td></td>
+        @if (Model.MostrarNumeroDias)
+        {
+            <td></td>
+        }
         <td style="text-align:right;">USD$ @Model.TotalSubtotal.ToString("N2")</td>
         <td style="text-align:right;">USD$ @Model.TotalAdmin.ToString("N2")</td>
         <td style="text-align:right;">USD$ @Model.TotalGeneral.ToString("N2")</td>
     </tr>
 </table>
+
+@if (Model.MostrarNumeroDias)
+{
+    foreach (var viatico in Model.Detalles.Where(d => d.EsViatico))
+    {
+        <div style="margin-top:8px; font-size:11px;">
+            Número de días de inspección: @viatico.NumeroDiasInspeccion &nbsp;|
+            Días pagados de viático: @viatico.DiasPagadosViatico &nbsp;|
+            Valor diario: USD$ @viatico.ValorUnitario.ToString("N2") &nbsp;|
+            Subtotal viáticos: USD$ @viatico.Subtotal.ToString("N2")
+        </div>
+    }
+}
 
 <div class="ref">@Model.Referencia</div>
 

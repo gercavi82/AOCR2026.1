@@ -163,6 +163,8 @@ namespace CapaModelo.DTOs
         public string NombreConcepto { get; set; }
 
         public int Cantidad { get; set; }
+        public int? NumeroDiasInspeccion { get; set; }
+        public int? DiasPagadosViatico { get; set; }
         public decimal ValorUnitario { get; set; }
         public decimal PorcentajeAdmin { get; set; }
 

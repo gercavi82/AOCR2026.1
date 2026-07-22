@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
 @using CapaDatos.Constants
 @using CapaModelo
 @using CapaNegocio.Services
@@ -135,11 +135,16 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 16px;
+        background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
         margin-bottom: 18px;
     }
 
     .fin-dashboard-title {
         margin: 0;
+        color: #ffffff;
         font-size: 1.9rem;
         font-weight: 800;
         letter-spacing: -0.03em;
@@ -147,7 +152,7 @@
 
     .fin-dashboard-subtitle {
         margin: 6px 0 0;
-        color: var(--fin-muted);
+        color: rgba(255, 255, 255, 0.85);
         font-size: 0.98rem;
     }
 
@@ -440,6 +445,34 @@
         color: #4a6778;
     }
 
+    .fin-modal .modal-content {
+        background: #ffffff;
+        color: #173042;
+    }
+
+    .fin-modal .modal-header,
+    .fin-modal .modal-body,
+    .fin-modal .modal-footer {
+        background: #ffffff;
+    }
+
+    .fin-modal .modal-title,
+    .fin-modal .modal-body,
+    .fin-modal .modal-body strong,
+    .fin-modal .form-label {
+        color: #173042 !important;
+    }
+
+    .fin-modal .text-muted {
+        color: #64748b !important;
+    }
+
+    .fin-modal .alert-info {
+        background: #d9edf7;
+        border-color: #bce8f1;
+        color: #0c4a5a !important;
+    }
+
     @@media (max-width: 1200px) {
         .fin-kpi-grid,
         .fin-chart-grid {
@@ -469,7 +502,7 @@
 </style>
 
 <div class="fin-dashboard">
-    <div class="fin-dashboard-header">
+    <div class="fin-dashboard-header aocr-bg-dark">
         <div>
             <h2 class="fin-dashboard-title">Dashboard Financiero</h2>
             <p class="fin-dashboard-subtitle">Panel de control para validación de órdenes, seguimiento de facturación FR3 y estado operativo del área financiera.</p>
@@ -729,7 +762,7 @@
                 var orden = item.Orden;
                 var pago = item.Pago;
                 var estadoNorm = orden != null ? normalizarEstado(orden.Estado) : string.Empty;
-                var puedeGestionarPorEstado = estadoNorm == EstadoOrden.EnRevisionFinanciera;
+                var puedeGestionarPorEstado = item.PuedeGestionarPago;
         <tr>
             <td>@Html.Encode(i)</td>
             <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
@@ -827,7 +860,7 @@
                                     data-orden-id="@orden.Id"
                                     data-pago-id="@(pago != null ? pago.CodigoPago.ToString() : string.Empty)"
                                     data-numero-orden="@Html.Encode(orden.NumeroOrden)"
-                                    data-monto="@((orden.Total).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))">
+                                    data-monto="@((orden.Total).ToString("N2"))">
                                 <i class="fas fa-check"></i>
                             </button>
 
@@ -855,15 +888,6 @@
                 i++;
             }
         }
-        else
-        {
-            <tr>
-                <td colspan="9" class="text-center aocr-no-results">
-                    <i class="fas fa-inbox" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.4;"></i>
-                    No hay registros para el estado seleccionado.
-                </td>
-            </tr>
-        }
     </tbody>
 </table>
 </div>
@@ -871,7 +895,7 @@
 </div>
 
 
-<div class="modal fade" id="modalRechazarOrden" tabindex="-1" aria-hidden="true">
+<div class="modal fade fin-modal" id="modalRechazarOrden" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -898,11 +922,11 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
+<div class="modal fade fin-modal" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Aprobar y Enviar AS400</h5>
+                <h5 class="modal-title">Aprobar Orden de Recaudación</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formAprobarPagoFactura" method="post">
@@ -922,13 +946,13 @@
 
                     <div class="alert alert-info py-2" role="alert">
                         <i class="fas fa-info-circle me-1"></i>
-                        Se aprobara la orden y se enviara la facturacion FR3 al AS400 solo despues de validar el comprobante de pago.
+                        Se aprobará la orden de recaudación y se emitirá la factura correspondiente solo después de validar el comprobante de pago.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" id="btnAprobarConFactura" class="btn btn-success">
-                        <i class="fas fa-paper-plane me-1"></i>Enviar AS400
+                        <i class="fas fa-check-circle me-1"></i>Aprobar Orden
                     </button>
                 </div>
             </form>
@@ -1100,7 +1124,7 @@
         submitButton.disabled = val;
         submitButton.innerHTML = val
             ? '<i class="fas fa-spinner fa-spin me-1"></i>Procesando...'
-            : '<i class="fas fa-paper-plane me-1"></i>Enviar AS400';
+            : '<i class="fas fa-check-circle me-1"></i>Aprobar Orden';
     }
 
     function setInFlight(value) {
@@ -1293,7 +1317,7 @@
             var finalMessage = payload.warning
                 ? (payload.message + ' ' + payload.warning)
                 : payload.message;
-            showAlert('success', finalMessage || 'Enviado a AS400 correctamente.');
+            showAlert('success', finalMessage || 'Orden aprobada y enviada a facturación correctamente.');
             shouldUnlock = false;
 
             setTimeout(function () {
