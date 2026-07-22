@@ -1528,7 +1528,8 @@ namespace CapaPresentacion.Controllers
                 
                 // Si es un tipo de documento que permite múltiples archivos (certificados), 
                 // NO los agrupamos por tipo de documento, para que se visualicen todos.
-                if (tipoUpper == "CERTIFICADO_RUIDO" || 
+                if (RevisionDocumentalDisplayHelper.AllowsMultipleActiveDocuments(tipoDocumento) ||
+                    tipoUpper == "CERTIFICADO_RUIDO" ||
                     tipoUpper == "CERTIFICADO_AERONAVEGABILIDAD" ||
                     tipoUpper == "CERTIFICADO_RUIDO_AERONAVES_EAE" ||
                     tipoUpper == "CERTIFICADO_AERONAVEGABILIDAD_AERONAVES_EAE")

@@ -17,7 +17,7 @@ namespace AOCR.Tests.Unit
             AssertRoleKeys(body, "inspector-", 3);
             Assert.AreEqual(1, Regex.Matches(body, "\"ins-certificados\"").Count);
             AssertRoleKeys(body, "financiero-", 3);
-            AssertRoleKeys(body, "coordinador-", 3);
+            AssertRoleKeys(body, "coordinador-", 4);
             AssertRoleKeys(body, "dirdac-", 3);
             AssertRoleKeys(body, "dcav-", 2);
         }
@@ -33,6 +33,19 @@ namespace AOCR.Tests.Unit
             Assert.IsFalse(dcav.Contains("DocumentoAocr"));
             StringAssert.Contains(dirdac, "DocumentoAocr");
             Assert.IsFalse(dirdac.Contains("DocumentoCondiciones"));
+        }
+
+        [TestMethod]
+        public void CoordinadorTieneGestionCompletaDeUsuariosRt()
+        {
+            var body = RoleMatrixBody();
+            var controller = Read("CapaPresentacion/Controllers/UsuarioController.cs");
+
+            StringAssert.Contains(body, "\"coordinador-usuarios-rt\"");
+            StringAssert.Contains(body, "\"Gestión de Usuarios RT\"");
+            StringAssert.Contains(body, "\"Usuario\", \"RevisarDesignaciones\"");
+            StringAssert.Contains(controller, "Administrador,Coordinacion,Coordinador,CoordinadorInspecciones");
+            Assert.AreEqual(10, Regex.Matches(controller, "Authorize\\(Roles = RolesGestionUsuariosRt\\)").Count);
         }
 
         [TestMethod]

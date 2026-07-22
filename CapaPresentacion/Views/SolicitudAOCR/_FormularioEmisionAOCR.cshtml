@@ -932,7 +932,17 @@
                                             <label class="font-weight-bold text-dark"> Otros / Adicionales</label>
                                             <i class="fas fa-folder-plus text-primary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoOtro" accept=".pdf,.jpg,.jpeg,.png" onchange="validarArchivo('archivoOtro')">
+                                        <input type="file" class="d-none" id="archivoOtro" name="archivoOtro" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="validarArchivo('archivoOtro')">
+                                        <div class="upload-dropzone mt-2" id="dropzoneArchivoOtro" onclick="abrirSelectorArchivos('archivoOtro')">
+                                            <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoOtro');">
+                                                <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
+                                            </button>
+                                            <p class="upload-help">o arrastre y suelte aquí</p>
+                                            <small class="text-muted d-block mt-1" id="infoArchivoOtro"></small>
+                                        </div>
+                                        <ul class="upload-file-list mb-2" id="listaArchivoOtro">
+                                            <li class="text-muted">Sin archivos seleccionados.</li>
+                                        </ul>
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkOtro" onchange="toggleCaptura('archivoOtro', 'capturaOtro', this)">
                                             <label class="custom-control-label text-muted" for="chkOtro"><small>Supera tamano permitido</small></label>
@@ -1469,8 +1479,10 @@
         $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
         inicializarDropzoneCarga('archivoCertificadoRuido', 'dropzoneArchivoCertificadoRuido');
         inicializarDropzoneCarga('archivoCertificadoAeronavegabilidad', 'dropzoneArchivoCertificadoAeronavegabilidad');
+        inicializarDropzoneCarga('archivoOtro', 'dropzoneArchivoOtro');
         actualizarResumenArchivos('archivoCertificadoRuido');
         actualizarResumenArchivos('archivoCertificadoAeronavegabilidad');
+        actualizarResumenArchivos('archivoOtro');
         aplicarModoSubsanacionObservada();
     });
     function abrirSelectorArchivos(idInput) {
@@ -2482,7 +2494,7 @@
     formData.append('Solicitud.CompaniasSeleccionadas', vm.Solicitud.CompaniasSeleccionadas || '');
 
         const inputsArchivos = obtenerInputsArchivosActivos();
-    const inputsMultiples = ['archivoCertificadoRuido', 'archivoCertificadoAeronavegabilidad'];
+    const inputsMultiples = ['archivoCertificadoRuido', 'archivoCertificadoAeronavegabilidad', 'archivoOtro'];
     inputsArchivos.forEach(function (inputId) {
       const input = document.getElementById(inputId);
       if (input && input.files && input.files.length > 0) {

@@ -27,6 +27,8 @@ namespace CapaPresentacion.Controllers
     [AllowAnonymous]
     public class UsuarioController : Controller
     {
+        private const string RolesGestionUsuariosRt = "Administrador,Coordinacion,Coordinador,CoordinadorInspecciones,CoordinacionLegal,CoordinadorLegal,JefaturaTecnica";
+
         [Authorize]
         public ActionResult MiPerfil()
         {
@@ -1201,7 +1203,7 @@ namespace CapaPresentacion.Controllers
         // REVISIÓN DE DESIGNACIONES RT POR COORDINADOR
         // =====================================================
         [HttpGet]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         public ActionResult RevisarDesignaciones()
         {
             var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
@@ -1239,7 +1241,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         public ActionResult GestionarCompaniasRT(int id)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
@@ -1282,7 +1284,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult GestionarCompaniasRT(GestionCompaniasRTViewModel model)
         {
@@ -1342,7 +1344,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         public ActionResult DescargarDesignacionRT(int id)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
@@ -1361,7 +1363,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         public ActionResult DescargarConstanciaRT(int id)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
@@ -1386,7 +1388,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult AceptarDesignacion(int id)
         {
@@ -1945,7 +1947,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult RechazarDesignacion(int id, string observacion)
         {
@@ -2032,7 +2034,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult InactivarUsuarioRT(int id)
         {
@@ -2046,7 +2048,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult ActivarUsuarioRT(int id)
         {
@@ -2060,7 +2062,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
         public ActionResult EliminarUsuarioRT(int id)
         {

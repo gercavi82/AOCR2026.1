@@ -699,6 +699,11 @@ namespace CapaPresentacion.Controllers
             }
 
             var tipoDocumento = (documento.TipoDocumento ?? string.Empty).Trim();
+            if (RevisionDocumentalDisplayHelper.AllowsMultipleActiveDocuments(tipoDocumento))
+            {
+                return "__DOC_" + documento.CodigoDocumento;
+            }
+
             return !string.IsNullOrWhiteSpace(tipoDocumento)
                 ? tipoDocumento.ToUpperInvariant()
                 : "__DOC_" + documento.CodigoDocumento;

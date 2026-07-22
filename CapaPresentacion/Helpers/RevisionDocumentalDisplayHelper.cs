@@ -41,7 +41,7 @@ namespace CapaPresentacion.Helpers
             new TipoDocumentoOrdenDef("COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "Copia certificada del poder del representante en Ecuador", 7,
                 "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "PODER_REPRESENTANTE_ECUADOR", "COPIA_CERTIFICADA_PODER_REPRESENTANTE", "PODER_REPRESENTANTE"),
             new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 8,
-                "CERTIFICADO_AERONAVEGABILIDAD"),
+                "CERTIFICADO_AERONAVEGABILIDAD", "CERTIFICADO_AERONAVEGABILIDAD_AERONAVES_EAE"),
             new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 9,
                 "CERTIFICADO_RUIDO_AERONAVES_EAE", "CERTIFICADO_RUIDO", "CERTIFICADO_RUIDO_AERONAVES")
         };
@@ -50,6 +50,21 @@ namespace CapaPresentacion.Helpers
         {
             var canonical = GetCanonicalDocumentType(tipoDocumento);
             return !EsDocumentoSoloConsulta(canonical);
+        }
+
+        public static bool AllowsMultipleActiveDocuments(string tipoDocumento)
+        {
+            var canonical = GetCanonicalDocumentType(tipoDocumento);
+            if (string.Equals(canonical, "CERTIFICADO_AERONAVEGABILIDAD", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonical, "CERTIFICADO_RUIDO_AERONAVES_EAE", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var normalized = NormalizeDocumentTypeKey(tipoDocumento);
+            return string.Equals(normalized, "OTRO", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "OTROS", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "OTROS_ADICIONALES", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsDocumentoSoloConsulta(string tipoDocumento)
