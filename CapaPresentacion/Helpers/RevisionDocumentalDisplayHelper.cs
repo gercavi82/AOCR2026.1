@@ -28,6 +28,8 @@ namespace CapaPresentacion.Helpers
                 "COMPROBANTE_PAGO", "COMPROBANTE_DE_PAGO"),
             new TipoDocumentoOrdenDef("SOLICITUD_INSPECCION_EXT", "Solicitud de inspecciones generada", 98,
                 "SOLICITUD_INSPECCION_EXT", "SOLICITUD_DE_INSPECCIONES", "SOLICITUD_INSPECCIONES"),
+            new TipoDocumentoOrdenDef("OFICIO_ACEPTACION_REVISION_DOCUMENTAL", "Oficio de aceptaciÃ³n y designaciÃ³n de inspector", 97,
+                "OFICIO_ACEPTACION_REVISION_DOCUMENTAL", "OFICIO_REVISION_DOCUMENTAL"),
             new TipoDocumentoOrdenDef("SOLICITUD_INSPECCIONES_FIRMADA", "Solicitud de inspecciones firmada", 2,
                 "SOLICITUD_INSPECCIONES_FIRMADA", "SOLICITUD_DE_INSPECCIONES_FIRMADA"),
             new TipoDocumentoOrdenDef("COPIA_AOC_VALIDA", "Copia AOC válida", 3,
@@ -80,6 +82,7 @@ namespace CapaPresentacion.Helpers
                 case "AOCR_FIRMADO":
                 case "CONDICIONES_LIMITACIONES":
                 case "CONSTANCIA":
+                case "OFICIO_ACEPTACION_REVISION_DOCUMENTAL":
                     return true;
                 default:
                     break;
@@ -94,6 +97,7 @@ namespace CapaPresentacion.Helpers
                 case "AOCR_FIRMADO":
                 case "CONDICIONES_LIMITACIONES":
                 case "CONSTANCIA":
+                case "OFICIO_ACEPTACION_REVISION_DOCUMENTAL":
                     return true;
                 default:
                     return false;

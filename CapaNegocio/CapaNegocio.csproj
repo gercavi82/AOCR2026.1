@@ -212,6 +212,7 @@
     <Compile Include="Services\SolicitudAocrService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\RevisionDocumentalService.cs" />
+    <Compile Include="Services\RevisionDocumentalCoordinadorService.cs" />
     <Compile Include="Services\AocrCompaniaContextService.cs" />
     <Compile Include="Services\AocrRtFlujoEstadoViewModel.cs" />
     <Compile Include="Services\AocrRtFlujoService.cs" />

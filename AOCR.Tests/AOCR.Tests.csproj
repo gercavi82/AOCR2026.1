@@ -83,6 +83,8 @@
     <Compile Include="Unit\OrdenInspeccionViaticosReglasTests.cs" />
     <Compile Include="Unit\OrdenViaticosDetalleContractTests.cs" />
     <Compile Include="Unit\SolicitudAocrOtrosMulticargaTests.cs" />
+    <Compile Include="Unit\RevisionDocumentalCoordinadorFlowTests.cs" />
+    <Compile Include="Unit\BreadcrumbContrastTests.cs" />
     <Compile Include="Unit\GateDNoConformidadTests.cs" />
     <Compile Include="Unit\GateHDcavFlowTests.cs" />
     <Compile Include="Unit\DocumentosFinalesWorkflowTests.cs" />

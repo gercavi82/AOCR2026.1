@@ -6264,13 +6264,9 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            var cierre = CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
-            var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
-            if (estadoRevisionDocumental.TotalDocumentosVigentes > 0 && !estadoRevisionDocumental.DocumentacionAprobada)
+            if (!_revisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv(inspeccion, solicitud))
             {
-                mensaje = string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
-                    ? ObtenerMensajeBloqueoRevisionDocumentalInspector()
-                    : estadoRevisionDocumental.MensajeBloqueoDocumental;
+                mensaje = _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitud);
                 _logger.LogWarning(
                     "[LV_EAE][OPEN_BLOCKED] SolicitudId=" + inspeccion.CodigoSolicitud +
                     "; Motivo=" + mensaje + ";");
@@ -6298,17 +6294,19 @@ namespace CapaPresentacion.Controllers
             lista = null;
             mensaje = string.Empty;
 
-            if (inspeccion != null)
+            if (inspeccion == null)
             {
-                CerrarRevisionDocumentalAutomaticamenteSiCorresponde(inspeccion);
-                var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
-                if (estadoRevisionDocumental.TotalDocumentosVigentes > 0 && !estadoRevisionDocumental.DocumentacionAprobada)
-                {
-                    mensaje = string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
-                        ? ObtenerMensajeBloqueoRevisionDocumentalInspector()
-                        : estadoRevisionDocumental.MensajeBloqueoDocumental;
-                    return false;
-                }
+                mensaje = "No existe inspeccion asociada para elaborar el Informe Tecnico.";
+                return false;
+            }
+
+            if (!_revisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv(inspeccion, solicitud))
+            {
+                mensaje = _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitud);
+                _logger.LogWarning(
+                    "[INFORME_TECNICO][OPEN_BLOCKED] SolicitudId=" + inspeccion.CodigoSolicitud +
+                    "; Motivo=" + mensaje + ";");
+                return false;
             }
 
             if (!UsaFlujoListaVerificacionOperacionalEae(solicitud))

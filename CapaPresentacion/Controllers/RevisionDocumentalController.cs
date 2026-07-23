@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Web.Mvc;
@@ -14,6 +15,7 @@ using CapaPresentacion.Filters;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models.ViewModels;
+using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
@@ -31,6 +33,7 @@ namespace CapaPresentacion.Controllers
         private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly InspectorIdentityService _inspectorIdentityService;
         private readonly IAocrEstadoService _estadoService;
+        private readonly RevisionDocumentalCoordinadorService _coordinadorRevisionService;
 
         public RevisionDocumentalController()
         {
@@ -44,6 +47,7 @@ namespace CapaPresentacion.Controllers
             _revisionDocumentalService = new RevisionDocumentalService();
             _inspectorIdentityService = new InspectorIdentityService();
             _estadoService = new AocrEstadoService();
+            _coordinadorRevisionService = new RevisionDocumentalCoordinadorService();
         }
 
         public ActionResult Index()
@@ -424,25 +428,85 @@ namespace CapaPresentacion.Controllers
             var pendientes = documentosCierre.Count - aceptados - devueltos;
             var siguienteEstado = solicitud.Estado;
 
-            if (pendientes <= 0)
+            if (pendientes <= 0 && request.Finalizar)
             {
-                var decisionCierre = _revisionDocumentalService.CrearDecisionCierreFinal(
-                    devueltos > 0,
-                    ConstruirResumenRevisionDocumental(documentosCierre, revisionesResumen, true));
+                request.ObservacionRevisionDocumental =
+                    RevisionDocumentalCoordinadorService.NormalizarObservacion(request.ObservacionRevisionDocumental);
+                if (request.ObservacionRevisionDocumental == null)
+                {
+                    return JsonRevisionError(400, "La observacion general no puede contener HTML ni superar 2000 caracteres.", solicitud.CodigoSolicitud, "Observacion general invalida");
+                }
 
-                if (!_solicitudDao.CambiarEstado(solicitud.CodigoSolicitud, decisionCierre.EstadoDestino, usuarioId, decisionCierre.ObservacionCierre))
+                if (devueltos > 0 && string.IsNullOrWhiteSpace(request.ObservacionRevisionDocumental))
+                {
+                    return JsonRevisionError(400, "Debe ingresar la observacion general cuando existen documentos observados o rechazados.", solicitud.CodigoSolicitud, "Observacion general obligatoria");
+                }
+
+                var inspeccionAsignada = inspecciones
+                    .Where(i => i != null && i.CodigoInspeccion > 0 && i.CodigoInspector.GetValueOrDefault() > 0)
+                    .OrderByDescending(i => i.CodigoInspeccion)
+                    .FirstOrDefault();
+                if (inspeccionAsignada == null)
+                {
+                    return JsonRevisionError(400, "La solicitud no tiene un inspector asignado para finalizar la revision.", solicitud.CodigoSolicitud, "Inspector no asignado");
+                }
+
+                var finalizacion = _coordinadorRevisionService.FinalizarRevisionDocumentalInspector(
+                    solicitud.CodigoSolicitud,
+                    inspeccionAsignada.CodigoInspector.Value,
+                    request.ObservacionRevisionDocumental);
+                if (!finalizacion.Ok || finalizacion.Registro == null)
+                {
+                    return JsonRevisionError(400, finalizacion.Mensaje, solicitud.CodigoSolicitud, "No se pudo registrar finalizacion de inspector");
+                }
+
+                Trace.TraceInformation("[REV_DOC][OFICIO_GENERAR_IN] SolicitudId=" + solicitud.CodigoSolicitud + ";");
+                var documentoOficioId = finalizacion.Registro.DocumentoOficioId.GetValueOrDefault();
+                if (documentoOficioId <= 0)
+                {
+                    try
+                    {
+                        documentoOficioId = GenerarYPersistirOficioRevisionDocumental(
+                            solicitud,
+                            inspeccionAsignada,
+                            finalizacion.Registro,
+                            documentosCierre,
+                            usuarioRegistro);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.TraceError("[REV_DOC][OFICIO_GENERAR_ERROR] SolicitudId=" + solicitud.CodigoSolicitud + "; Error=" + ex);
+                        return JsonRevisionError(500, "No se pudo generar el oficio institucional. La revision no fue habilitada.", solicitud.CodigoSolicitud, ex.Message);
+                    }
+                }
+
+                if (documentoOficioId <= 0 || !_coordinadorRevisionService.ObtenerPorSolicitud(solicitud.CodigoSolicitud).DocumentoOficioId.HasValue)
+                {
+                    return JsonRevisionError(500, "No se pudo asociar el oficio a la revision documental.", solicitud.CodigoSolicitud, "Documento oficio no asociado");
+                }
+
+                var resumenFinal = ConstruirResumenRevisionDocumental(documentosCierre, revisionesResumen, true);
+                if (!_solicitudDao.CambiarEstado(
+                    solicitud.CodigoSolicitud,
+                    EstadoSolicitud.AceptacionDocumental,
+                    usuarioId,
+                    "Revision finalizada por Inspector y pendiente de decision de Coordinacion. " + resumenFinal))
                 {
                     return JsonRevisionError(400, "No se pudo actualizar el estado de la solicitud tras la revision documental.", solicitud.CodigoSolicitud, "Fallo cambio estado");
                 }
 
-                siguienteEstado = decisionCierre.EstadoDestino;
+                siguienteEstado = EstadoSolicitud.AceptacionDocumental;
                 _solicitudAocrInfraBl.RegistrarEventoHistorialRevision(
                     solicitud.CodigoSolicitud,
                     null,
-                    "REVISION_DOCUMENTAL_FINALIZADA",
-                    decisionCierre.ObservacionCierre,
+                    "PENDIENTE_REVISION_COORDINADOR",
+                    "Revision finalizada por Inspector. Oficio " + finalizacion.Registro.NumeroOficio + " generado. LV e Informe Tecnico bloqueados hasta decision de Coordinacion.",
                     usuarioId,
                     usuarioRegistro);
+
+                Trace.TraceInformation(
+                    "[REV_DOC][BANDEJA_COORDINADOR_OK] SolicitudId=" + solicitud.CodigoSolicitud +
+                    "; CoordinadorId=0;");
             }
             else
             {
@@ -450,7 +514,9 @@ namespace CapaPresentacion.Controllers
                     solicitud.CodigoSolicitud,
                     null,
                     "REVISION_DOCUMENTAL_GUARDADA_PARCIAL",
-                    "Revision documental guardada parcialmente. Pendientes=" + pendientes + ".",
+                    request.Finalizar
+                        ? "Revision documental no finalizada. Pendientes=" + pendientes + "."
+                        : "Revision documental guardada sin finalizar. Pendientes=" + pendientes + ".",
                     usuarioId,
                     usuarioRegistro);
             }
@@ -471,7 +537,9 @@ namespace CapaPresentacion.Controllers
                 "; SiguienteEstado=" + siguienteEstado);
 
             return JsonRevisionOk(
-                "Revision documental guardada correctamente.",
+                request.Finalizar
+                    ? "Revision documental finalizada y enviada a Coordinacion. LV e Informe Tecnico permanecen bloqueados."
+                    : "Revision documental guardada correctamente. Use Finalizar revision documental cuando concluya.",
                 new
                 {
                     aceptados,
@@ -480,6 +548,123 @@ namespace CapaPresentacion.Controllers
                     siguienteEstado,
                     redirectUrl = Url.Action("Lista", "Documento", new { solicitudId = solicitud.CodigoSolicitud, modo = "revision", origen = "revision-documental" })
                 });
+        }
+
+        private int GenerarYPersistirOficioRevisionDocumental(
+            SolicitudAOCR solicitud,
+            Inspeccion inspeccion,
+            RevisionDocumentalCoordinadorRegistro registro,
+            IEnumerable<Documento> documentos,
+            string usuarioRegistro)
+        {
+            if (solicitud == null || inspeccion == null || registro == null)
+            {
+                throw new InvalidOperationException("No existe informacion suficiente para generar el oficio.");
+            }
+
+            var oficioExistente = (_documentoBl.ObtenerPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Documento>())
+                .Where(d => d != null
+                    && d.CodigoDocumento > 0
+                    && string.Equals(d.TipoDocumento, "OFICIO_ACEPTACION_REVISION_DOCUMENTAL", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(d => d.CodigoDocumento)
+                .FirstOrDefault();
+            ViewBag.AceptacionNumeroOficio = registro.NumeroOficio;
+            ViewBag.AceptacionFechaFirma = registro.FechaFinalizacionInspector ?? DateTime.Now;
+            ViewBag.AceptacionFirmante = "Pendiente de firma de Coordinacion";
+            ViewBag.AceptacionEstado = EstadoRevisionDocumentalCoordinador.PendienteCoordinador;
+            ViewBag.AceptacionInspector = string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
+                ? solicitud.TecnicoResponsableNombre
+                : inspeccion.InspectorPrincipalNombre;
+            ViewBag.AceptacionObservacion = registro.ObservacionInspector;
+            ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(x => x.Trim())
+                .Where(x => x.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            ViewBag.AceptacionDocumentos = (documentos ?? Enumerable.Empty<Documento>())
+                .Where(d => d != null && d.CodigoDocumento > 0)
+                .Select(ObtenerEtiquetaDocumento)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var nombre = "Oficio_Aceptacion_Revision_Documental_" + solicitud.CodigoSolicitud + ".pdf";
+            var pdf = new ViewAsPdf("~/Views/SolicitudAOCR/AceptacionDocumentalPdf.cshtml", solicitud)
+            {
+                FileName = nombre,
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                PageMargins = new Rotativa.Options.Margins(16, 18, 18, 18),
+                CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+            };
+            var bytes = pdf.BuildFile(ControllerContext);
+            if (bytes == null || bytes.Length == 0)
+            {
+                throw new InvalidOperationException("El motor PDF no genero contenido.");
+            }
+
+            var carpetaRelativa = "~/App_Data/Documentos/RevisionDocumental/" + solicitud.CodigoSolicitud;
+            var carpetaFisica = Server.MapPath(carpetaRelativa);
+            Directory.CreateDirectory(carpetaFisica);
+            var rutaFisica = Path.Combine(carpetaFisica, nombre);
+            System.IO.File.WriteAllBytes(rutaFisica, bytes);
+            var rutaRelativa = carpetaRelativa.TrimStart('~').Replace('\\', '/') + "/" + nombre;
+
+            int documentoId;
+            if (oficioExistente != null)
+            {
+                oficioExistente.NombreArchivo = nombre;
+                oficioExistente.RutaGuardada = rutaRelativa;
+                oficioExistente.Extension = ".pdf";
+                oficioExistente.TamanoBytes = bytes.LongLength;
+                oficioExistente.Estado = "PENDIENTE";
+                oficioExistente.Validado = false;
+                oficioExistente.FechaValidacion = null;
+                oficioExistente.ValidadoPor = null;
+                oficioExistente.Observaciones = "Oficio regenerado al finalizar la revision documental. Pendiente de decision de Coordinacion.";
+                oficioExistente.UsuarioRegistro = string.IsNullOrWhiteSpace(usuarioRegistro) ? "sistema" : usuarioRegistro;
+                if (!_documentoDao.Actualizar(oficioExistente))
+                {
+                    throw new InvalidOperationException("No fue posible actualizar el oficio existente.");
+                }
+                documentoId = oficioExistente.CodigoDocumento;
+            }
+            else
+            {
+                documentoId = _documentoDao.Crear(new Documento
+                {
+                    CodigoSolicitud = solicitud.CodigoSolicitud,
+                    TipoDocumento = "OFICIO_ACEPTACION_REVISION_DOCUMENTAL",
+                    NombreArchivo = nombre,
+                    NombreArchivoOriginal = nombre,
+                    NombreArchivoVisible = "Oficio de aceptacion y designacion de inspector",
+                    NombreArchivoFisico = nombre,
+                    RutaGuardada = rutaRelativa,
+                    Extension = ".pdf",
+                    TamanoBytes = bytes.LongLength,
+                    Estado = "PENDIENTE",
+                    Validado = false,
+                    FechaCarga = DateTime.Now,
+                    Observaciones = "Oficio generado al finalizar la revision documental. Pendiente de decision de Coordinacion.",
+                    Version = 1,
+                    UsuarioRegistro = string.IsNullOrWhiteSpace(usuarioRegistro) ? "sistema" : usuarioRegistro
+                });
+            }
+
+            if (documentoId <= 0 || !_coordinadorRevisionService.ObtenerPorSolicitud(solicitud.CodigoSolicitud).DocumentoOficioId.GetValueOrDefault().Equals(documentoId))
+            {
+                var dao = new RevisionDocumentalCoordinadorDAO();
+                if (documentoId <= 0 || !dao.AsociarOficio(solicitud.CodigoSolicitud, documentoId))
+                {
+                    throw new InvalidOperationException("No fue posible asociar el oficio generado al flujo coordinador.");
+                }
+            }
+
+            Trace.TraceInformation(
+                "[REV_DOC][OFICIO_GENERADO_OK] SolicitudId=" + solicitud.CodigoSolicitud +
+                "; DocumentoId=" + documentoId + ";");
+            return documentoId;
         }
 
         private RevisionDocumentalSolicitudRowViewModel ConstruirFilaRevisionDocumental(SolicitudAOCR solicitud, EstadoRevisionDocumental estadoRevision)
@@ -1099,6 +1284,8 @@ namespace CapaPresentacion.Controllers
         public int SolicitudId { get; set; }
         public string Modo { get; set; }
         public string Origen { get; set; }
+        public bool Finalizar { get; set; }
+        public string ObservacionRevisionDocumental { get; set; }
         public List<DecisionDocumentoRequest> Decisiones { get; set; }
     }
 

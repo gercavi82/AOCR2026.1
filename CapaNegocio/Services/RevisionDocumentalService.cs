@@ -59,12 +59,14 @@ namespace CapaNegocio.Services
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly SolicitudAOCRDAO _solicitudDao;
         private readonly AocrPostPagoWorkflowService _postPagoWorkflowService;
+        private readonly RevisionDocumentalCoordinadorService _coordinadorService;
 
         public RevisionDocumentalService(CapaDatos.Interfaces.IUsuarioAS400DAO usuarioAs400Dao = null, CapaDatos.Interfaces.IEmpresaAS400DAO empresaAs400Dao = null)
         {
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL(usuarioAs400Dao, empresaAs400Dao);
             _solicitudDao = new SolicitudAOCRDAO();
             _postPagoWorkflowService = new AocrPostPagoWorkflowService();
+            _coordinadorService = new RevisionDocumentalCoordinadorService();
         }
 
         public RevisionDocumentalSubsanacionResult EnviarSubsanacionAlInspector(
@@ -313,7 +315,18 @@ namespace CapaNegocio.Services
                 return false;
             }
 
-            return EstaFaseDocumentalAprobada(inspeccion.CodigoSolicitud);
+            if (!EstaFaseDocumentalAprobada(inspeccion.CodigoSolicitud))
+            {
+                return false;
+            }
+
+            // Compatibilidad: los expedientes cerrados antes de este flujo no tienen registro
+            // coordinador y conservan su comportamiento. Todo expediente nuevo que sí lo tenga
+            // queda bloqueado hasta la aceptación y confirmación explícita del inspector.
+            return !_coordinadorService.RequiereAceptacionCoordinador(inspeccion.CodigoSolicitud)
+                || _coordinadorService.EstaAceptadaParaInspector(
+                    inspeccion.CodigoSolicitud,
+                    inspeccion.CodigoInspector.GetValueOrDefault());
         }
 
         /// <summary>
@@ -341,8 +354,10 @@ namespace CapaNegocio.Services
 
         public bool PuedeInspectorAbrirFaseOperativaLv(Inspeccion inspeccion, SolicitudAOCR solicitud = null)
         {
+            var requiereCoordinador = inspeccion != null
+                && _coordinadorService.RequiereAceptacionCoordinador(inspeccion.CodigoSolicitud);
             return EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitud)
-                && InspectorConfirmoCierreDocumental(inspeccion);
+                && (requiereCoordinador || InspectorConfirmoCierreDocumental(inspeccion));
         }
 
         public bool EsEstadoSolicitudCompatibleInspeccion(string estadoSolicitud)
@@ -370,6 +385,14 @@ namespace CapaNegocio.Services
             if (solicitudInspeccion != null && !EsEstadoSolicitudCompatibleInspeccion(solicitudInspeccion.Estado))
             {
                 return MensajeBloqueoPredeterminado;
+            }
+
+            if (_coordinadorService.RequiereAceptacionCoordinador(inspeccion.CodigoSolicitud)
+                && !_coordinadorService.EstaAceptadaParaInspector(
+                    inspeccion.CodigoSolicitud,
+                    inspeccion.CodigoInspector.GetValueOrDefault()))
+            {
+                return "La revision documental esta pendiente de aceptacion por Coordinacion y confirmacion del inspector. LV e Informe Tecnico permanecen bloqueados.";
             }
 
             return ObtenerMensajeBloqueo(inspeccion.CodigoSolicitud);

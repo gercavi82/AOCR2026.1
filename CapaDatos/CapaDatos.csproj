@@ -284,6 +284,7 @@
     <Compile Include="DAOs\SolicitudAOCRDAO.cs" />
     <Compile Include="DAOs\SolicitudDAO.cs" />
     <Compile Include="DAOs\RevisionDocumentalDAO.cs" />
+    <Compile Include="DAOs\RevisionDocumentalCoordinadorDAO.cs" />
     <Compile Include="DAOs\SubsanacionDAO.cs" />
     <Compile Include="DAOs\ViaticoDAO.cs" />
     <Compile Include="DAOs\UsuarioRolDAO.cs" />
@@ -363,6 +364,7 @@
     <Compile Include="Models\AsignacionRTRegistro.cs" />
     <Compile Include="Models\TecnicoInternoDisponible.cs" />
     <Compile Include="Models\UsuarioInternoRTRegistro.cs" />
+    <Compile Include="Models\RevisionDocumentalCoordinadorRegistro.cs" />
     <Compile Include="Models\InspectorAs400Record.cs" />
     <Compile Include="Models\UbicacionUsuarioRecord.cs" />
     <Compile Include="Models\CorreoInstitucionalModel.cs" />

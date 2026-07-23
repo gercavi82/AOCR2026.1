@@ -1945,6 +1945,15 @@
         @if (puedeRevisarDocumentos && !string.IsNullOrWhiteSpace(urlGuardarRevisionDocumental))
         {
             <div class="p-3 border-top bg-light aocr-review-footer">
+                <div class="mb-3">
+                    <label for="ObservacionRevisionDocumental" class="form-label fw-bold">Observaci&oacute;n general de la revisi&oacute;n documental</label>
+                    <textarea id="ObservacionRevisionDocumental"
+                              class="form-control"
+                              rows="4"
+                              maxlength="2000"
+                              placeholder="Ingrese observaciones generales de la revisi&oacute;n documental si aplica."></textarea>
+                    <div class="form-text">Obligatoria al finalizar si existe al menos un documento observado o rechazado. No se permite HTML.</div>
+                </div>
                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                     <div class="text-muted small">
                         Seleccione la decisión por documento. La observación es obligatoria al devolver u observar.
@@ -1952,7 +1961,7 @@
                     <form id="frmGuardarRevisionDocumental"
                           method="post"
                           action="@urlGuardarRevisionDocumental"
-                          class="m-0"
+                          class="m-0 d-flex flex-column flex-sm-row gap-2"
                           data-solicitud-id="@(tieneSolicitudId ? solicitudIdNumero.ToString() : "0")"
                           data-modo="@Html.AttributeEncode(string.IsNullOrWhiteSpace(modoDocumentos) ? "revision" : modoDocumentos)"
                           data-origen="@Html.AttributeEncode(string.IsNullOrWhiteSpace(origenDocumentos) ? "revision-documental" : origenDocumentos)">
@@ -1960,6 +1969,9 @@
                         <input type="hidden" name="revisionesJson" id="revisionesJsonGuardar" value="" />
                         <button type="button" class="btn btn-primary btn-lg w-100 w-lg-auto aocr-review-save-btn" id="btnGuardarRevisionDocumental">
                             <i class="fas fa-save me-1"></i> Guardar revisión documental
+                        </button>
+                        <button type="button" class="btn btn-success btn-lg w-100 w-lg-auto" id="btnFinalizarRevisionDocumental">
+                            <i class="fas fa-paper-plane me-1"></i> Finalizar revisi&oacute;n documental
                         </button>
                     </form>
                 </div>
@@ -2708,6 +2720,8 @@
             }
 
             var btnGuardarRevision = document.getElementById('btnGuardarRevisionDocumental');
+            var btnFinalizarRevision = document.getElementById('btnFinalizarRevisionDocumental');
+            var observacionGeneralRevision = document.getElementById('ObservacionRevisionDocumental');
             var frmGuardarRevision = document.getElementById('frmGuardarRevisionDocumental');
             var revisionesJsonGuardar = document.getElementById('revisionesJsonGuardar');
             var handlerRevisionDocumentalJsonActivo = false;
@@ -2727,6 +2741,8 @@
                         solicitudId: parseInt(frmGuardarRevision.getAttribute('data-solicitud-id') || '0', 10),
                         modo: frmGuardarRevision.getAttribute('data-modo') || 'revision',
                         origen: frmGuardarRevision.getAttribute('data-origen') || 'revision-documental',
+                        finalizar: window.__finalizarRevisionDocumentalActual === true,
+                        observacionRevisionDocumental: observacionGeneralRevision ? (observacionGeneralRevision.value || '').trim() : '',
                         decisiones: payload.revisiones.map(function (item) {
                             return {
                                 documentoId: item.CodigoDocumento,
@@ -2792,6 +2808,9 @@
                 }
 
                 btnGuardarRevision.onclick = async function (event) {
+                    if (event && event.currentTarget === btnGuardarRevision) {
+                        window.__finalizarRevisionDocumentalActual = false;
+                    }
                     if (event) {
                         event.preventDefault();
                         event.stopPropagation();
@@ -2827,6 +2846,22 @@
                     var cantidadDevueltos = payload.revisiones.filter(function (item) {
                         return item.Decision === 'DEVUELTO_INSPECTOR';
                     }).length;
+
+                    if (window.__finalizarRevisionDocumentalActual === true) {
+                        var observacionGeneral = observacionGeneralRevision ? (observacionGeneralRevision.value || '').trim() : '';
+                        if (observacionGeneral.length > 2000 || /[<>]/.test(observacionGeneral)) {
+                            showAlert('warning', 'La observacion general no puede contener HTML ni superar 2000 caracteres.');
+                            window.__guardandoRevisionDocumental = false;
+                            btnGuardarRevision.disabled = false;
+                            return false;
+                        }
+                        if (cantidadDevueltos > 0 && !observacionGeneral) {
+                            showAlert('warning', 'Ingrese la observacion general antes de finalizar porque existen documentos observados o rechazados.');
+                            window.__guardandoRevisionDocumental = false;
+                            btnGuardarRevision.disabled = false;
+                            return false;
+                        }
+                    }
 
                     var ejecutar = async function () {
                         try {
@@ -2878,6 +2913,13 @@
                 };
 
                 handlerRevisionDocumentalJsonActivo = true;
+
+                if (btnFinalizarRevision) {
+                    btnFinalizarRevision.addEventListener('click', function (event) {
+                        window.__finalizarRevisionDocumentalActual = true;
+                        return btnGuardarRevision.onclick(event);
+                    });
+                }
             }
 
             if (!handlerRevisionDocumentalJsonActivo && btnGuardarRevision && frmGuardarRevision && revisionesJsonGuardar) {

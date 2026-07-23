@@ -50,6 +50,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
 
         private readonly RevisionDocumentalService _revisionDocumentalService;
+        private readonly RevisionDocumentalCoordinadorService _revisionDocumentalCoordinadorService;
         private readonly DocumentoSubsanacionService _documentoSubsanacionService;
         private readonly AocrFinalWorkflowService _aocrFinalWorkflowService;
         private readonly AocrModificationWorkflowService _aocrModificationWorkflowService;
@@ -58,6 +59,7 @@ namespace CapaPresentacion.Controllers
         {
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL(usuarioAs400Dao, empresaAs400Dao);
             _revisionDocumentalService = new RevisionDocumentalService(usuarioAs400Dao, empresaAs400Dao);
+            _revisionDocumentalCoordinadorService = new RevisionDocumentalCoordinadorService();
             _documentoSubsanacionService = new DocumentoSubsanacionService(usuarioAs400Dao, empresaAs400Dao);
             _aocrFinalWorkflowService = new AocrFinalWorkflowService();
             _aocrModificationWorkflowService = new AocrModificationWorkflowService();
@@ -5338,6 +5340,19 @@ namespace CapaPresentacion.Controllers
 
             ViewBag.AsignacionActiva = _solicitudAocrInfraBL.ObtenerAsignacionActiva(id);
             ViewBag.HistorialAsignaciones = _solicitudAocrInfraBL.ObtenerHistorialAsignacion(id);
+            var revisionCoordinador = _revisionDocumentalCoordinadorService.ObtenerPorSolicitud(id);
+            ViewBag.RevisionDocumentalCoordinador = revisionCoordinador;
+            if (revisionCoordinador != null
+                && string.Equals(revisionCoordinador.Estado, CapaDatos.Models.EstadoRevisionDocumentalCoordinador.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion") || User.IsInRole("Administrador")))
+            {
+                ViewBag.InspectoresRevisionCoordinador = UsuarioInternoRTBL.ListarInspectoresAsignables(null)
+                    ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
+            }
+            else
+            {
+                ViewBag.InspectoresRevisionCoordinador = new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
+            }
             var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
             var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
             EnriquecerDocumentosRevisionDocumental(documentosRevision, solicitud, revisionesDocumentales, inspeccionesSolicitud);
@@ -5412,7 +5427,12 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "FirmarAceptacionDocumental", CodigoSolicitudParameter = "id")]
         [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Coordinacion,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult FirmarAceptacionDocumental(int id, string observacion = "")
+        public ActionResult FirmarAceptacionDocumental(
+            int id,
+            string observacion = "",
+            string decisionCoordinador = "ACEPTAR",
+            string opcionInspector = "MANTENER",
+            int? inspectorNuevoId = null)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
             if (solicitud == null)
@@ -5440,15 +5460,56 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            var usuarioRegistroFirmante = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
+            var flujoCoordinador = _revisionDocumentalCoordinadorService.ObtenerPorSolicitud(id);
+            if (flujoCoordinador != null)
+            {
+                var decision = (decisionCoordinador ?? string.Empty).Trim().ToUpperInvariant();
+                _logger.LogInfo("[COORD][REV_DOC_DECISION_IN] SolicitudId=" + id + "; Decision=" + decision + ";");
+                if (decision == "OBSERVAR")
+                {
+                    var observada = _revisionDocumentalCoordinadorService.Observar(id, usuarioFirmante, observacion);
+                    if (!observada.Ok)
+                    {
+                        TempData["NotificacionTipo"] = "warning";
+                        TempData["NotificacionMensaje"] = observada.Mensaje;
+                        return RedirectToAction("Detalle", new { id });
+                    }
+
+                    _solicitudDAO.CambiarEstado(id, EstadoSolicitud.EnRevision, usuarioFirmante, observada.Mensaje + " " + observacion);
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        id, null, "OBSERVADA_POR_COORDINADOR", observacion, usuarioFirmante, usuarioRegistroFirmante);
+                    try
+                    {
+                        _solicitudAocrCorreoService.NotificarEvento(solicitud, "REVISION_DOCUMENTAL_OBSERVADA_COORDINADOR", observacion);
+                    }
+                    catch (Exception exNotificacion)
+                    {
+                        _logger.LogWarning("[NOTIF][REV_DOC_OBSERVADA] SolicitudId=" + id + "; Error=" + exNotificacion.Message);
+                    }
+
+                    TempData["NotificacionTipo"] = "success";
+                    TempData["NotificacionMensaje"] = observada.Mensaje;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (decision != "ACEPTAR")
+                {
+                    TempData["NotificacionTipo"] = "warning";
+                    TempData["NotificacionMensaje"] = "Seleccione una decision valida del Coordinador.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+            }
             var revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
             var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
-            var usuarioRegistroFirmante = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
-            var documentosAutocompletados = RegistrarAceptacionesPendientesParaRevisionFinal(
-                id,
-                documentosRevision,
-                revisiones,
-                usuarioFirmante,
-                usuarioRegistroFirmante);
+            var documentosAutocompletados = flujoCoordinador == null
+                ? RegistrarAceptacionesPendientesParaRevisionFinal(
+                    id,
+                    documentosRevision,
+                    revisiones,
+                    usuarioFirmante,
+                    usuarioRegistroFirmante)
+                : 0;
             if (documentosAutocompletados > 0)
             {
                 revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
@@ -5494,6 +5555,51 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            if (flujoCoordinador != null)
+            {
+                var asignarNuevo = string.Equals((opcionInspector ?? string.Empty).Trim(), "REASIGNAR", StringComparison.OrdinalIgnoreCase);
+                var inspectorConfirmadoId = asignarNuevo
+                    ? inspectorNuevoId.GetValueOrDefault()
+                    : flujoCoordinador.InspectorOriginalId.GetValueOrDefault();
+                var aceptada = _revisionDocumentalCoordinadorService.Aceptar(id, usuarioFirmante, inspectorConfirmadoId, observacion);
+                if (!aceptada.Ok)
+                {
+                    _solicitudDAO.CambiarEstado(id, EstadoSolicitud.AceptacionDocumental, usuarioFirmante, "Se revirtio el avance porque no fue posible confirmar al inspector: " + aceptada.Mensaje);
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = aceptada.Mensaje + " LV e Informe Tecnico permanecen bloqueados.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                    id,
+                    flujoCoordinador.DocumentoOficioId,
+                    asignarNuevo ? "INSPECTOR_REASIGNADO" : "INSPECTOR_CONFIRMADO",
+                    aceptada.Mensaje,
+                    usuarioFirmante,
+                    usuarioRegistroFirmante);
+                var oficio = flujoCoordinador.DocumentoOficioId.HasValue
+                    ? _documentoDAO.ObtenerPorId(flujoCoordinador.DocumentoOficioId.Value)
+                    : null;
+                if (oficio != null)
+                {
+                    oficio.Estado = EstadoDocumentoInstitucional.Aceptado;
+                    oficio.Validado = true;
+                    oficio.FechaValidacion = DateTime.Now;
+                    oficio.ValidadoPor = usuarioRegistroFirmante;
+                    oficio.Observaciones = "Oficio aceptado por Coordinacion. " + (observacion ?? string.Empty).Trim();
+                    _documentoDAO.Actualizar(oficio);
+                    try
+                    {
+                        ActualizarPdfOficioAceptado(solicitud, oficio, aceptada.Registro, usuarioRegistroFirmante, observacion);
+                    }
+                    catch (Exception exPdf)
+                    {
+                        _logger.LogWarning("[REV_DOC][OFICIO_ACTUALIZAR_WARNING] SolicitudId=" + id + "; Error=" + exPdf.Message);
+                    }
+                }
+                _logger.LogInfo("[NOTIF][REV_DOC_ACEPTADA_RT_INSPECTOR] SolicitudId=" + id + ";");
+            }
+
             var solicitudPostCambio = _solicitudDAO.ObtenerPorId(id);
             var estadoNuevoPersistido = solicitudPostCambio != null ? EstadoSolicitud.Normalizar(solicitudPostCambio.Estado) : string.Empty;
             _logger.LogInfo(
@@ -5521,6 +5627,57 @@ namespace CapaPresentacion.Controllers
                 ? "La aceptación documental fue firmada. La solicitud quedó pendiente de asignación de inspector en la bandeja de coordinación."
                 : "La aceptación documental fue firmada por coordinación. Continúe el flujo institucional según el tipo de trámite.";
             return RedirectToAction("Detalle", new { id });
+        }
+
+        private void ActualizarPdfOficioAceptado(
+            SolicitudAOCR solicitud,
+            Documento oficio,
+            CapaDatos.Models.RevisionDocumentalCoordinadorRegistro registro,
+            string firmante,
+            string observacion)
+        {
+            if (solicitud == null || oficio == null || registro == null || string.IsNullOrWhiteSpace(oficio.RutaGuardada)) return;
+
+            var inspeccion = (_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>())
+                .OrderByDescending(i => i.CodigoInspeccion)
+                .FirstOrDefault();
+            var documentos = ObtenerDocumentosVigentesParaRevision(solicitud.CodigoSolicitud);
+            ViewBag.AceptacionNumeroOficio = registro.NumeroOficio;
+            ViewBag.AceptacionFechaFirma = registro.FechaDecisionCoordinador ?? DateTime.Now;
+            ViewBag.AceptacionFirmante = string.IsNullOrWhiteSpace(firmante) ? "Coordinacion AOCR" : firmante;
+            ViewBag.AceptacionEstado = CapaDatos.Models.EstadoRevisionDocumentalCoordinador.AceptadaCoordinador;
+            ViewBag.AceptacionInspector = inspeccion != null
+                ? (inspeccion.InspectorPrincipalNombre ?? solicitud.TecnicoResponsableNombre)
+                : solicitud.TecnicoResponsableNombre;
+            ViewBag.AceptacionObservacion = string.IsNullOrWhiteSpace(observacion) ? registro.ObservacionInspector : observacion.Trim();
+            ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            ViewBag.AceptacionDocumentos = documentos
+                .Where(d => d != null && !string.Equals(d.TipoDocumento, "OFICIO_ACEPTACION_REVISION_DOCUMENTAL", StringComparison.OrdinalIgnoreCase))
+                .Select(ObtenerEtiquetaDocumento)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var pdf = new ViewAsPdf("~/Views/SolicitudAOCR/AceptacionDocumentalPdf.cshtml", solicitud)
+            {
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                PageMargins = new Rotativa.Options.Margins(16, 18, 18, 18),
+                CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+            };
+            var bytes = pdf.BuildFile(ControllerContext);
+            var ruta = oficio.RutaGuardada;
+            var rutaFisica = Path.IsPathRooted(ruta) ? ruta : Server.MapPath(ruta.StartsWith("~") ? ruta : "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
+            if (bytes == null || bytes.Length == 0 || string.IsNullOrWhiteSpace(rutaFisica))
+            {
+                throw new InvalidOperationException("El motor PDF no genero el oficio aceptado.");
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(rutaFisica));
+            System.IO.File.WriteAllBytes(rutaFisica, bytes);
         }
 
         private int RegistrarAceptacionesPendientesParaRevisionFinal(
@@ -5559,6 +5716,49 @@ namespace CapaPresentacion.Controllers
             }
 
             return total;
+        }
+
+        [Authorize]
+        public ActionResult DescargarOficioRevisionDocumental(int id, bool vistaPrevia = false)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            var flujo = _revisionDocumentalCoordinadorService.ObtenerPorSolicitud(id);
+            if (solicitud == null || flujo == null || flujo.DocumentoOficioId.GetValueOrDefault() <= 0)
+            {
+                return HttpNotFound("No existe oficio de revision documental para la solicitud.");
+            }
+
+            var usuarioId = ObtenerUsuarioActualId();
+            var aceptada = string.Equals(
+                flujo.Estado,
+                CapaDatos.Models.EstadoRevisionDocumentalCoordinador.AceptadaCoordinador,
+                StringComparison.OrdinalIgnoreCase);
+            var esCoordinacion = EsAdmin() || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion");
+            var esInspectorRelacionado = usuarioId > 0
+                && (flujo.InspectorOriginalId.GetValueOrDefault() == usuarioId
+                    || flujo.InspectorConfirmadoId.GetValueOrDefault() == usuarioId);
+            var esRtPropietario = aceptada && usuarioId > 0 && solicitud.CodigoUsuario == usuarioId;
+            if (!esCoordinacion && !esInspectorRelacionado && !esRtPropietario)
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para consultar este oficio.");
+            }
+
+            var documento = _documentoDAO.ObtenerPorId(flujo.DocumentoOficioId.Value);
+            if (documento == null || string.IsNullOrWhiteSpace(documento.RutaGuardada))
+            {
+                return HttpNotFound("El archivo del oficio no se encuentra registrado.");
+            }
+
+            var ruta = documento.RutaGuardada;
+            var rutaFisica = Path.IsPathRooted(ruta) ? ruta : Server.MapPath(ruta.StartsWith("~") ? ruta : "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound("El archivo fisico del oficio no esta disponible.");
+            }
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, documento.NombreArchivo ?? ("Oficio_Revision_Documental_" + id + ".pdf"));
+            return File(System.IO.File.ReadAllBytes(rutaFisica), "application/pdf");
         }
 
         public ActionResult DescargarAceptacionDocumental(int id, bool vistaPrevia = false)
@@ -5600,6 +5800,18 @@ namespace CapaPresentacion.Controllers
                 : (User != null && User.Identity != null ? User.Identity.Name : "Coordinación AOCR");
             ViewBag.AceptacionFechaFirma = firmaCoordinacion != null ? firmaCoordinacion.FechaCambio : (solicitud.UpdatedAt ?? DateTime.Now);
             ViewBag.AceptacionObservacion = firmaCoordinacion != null ? firmaCoordinacion.Observaciones : "Aceptación documental firmada por coordinación.";
+            var flujoOficio = _revisionDocumentalCoordinadorService.ObtenerPorSolicitud(id);
+            ViewBag.AceptacionNumeroOficio = flujoOficio != null && !string.IsNullOrWhiteSpace(flujoOficio.NumeroOficio)
+                ? flujoOficio.NumeroOficio
+                : "DGAC-AOCR-" + (solicitud.UpdatedAt ?? DateTime.Now).Year + "-" + id.ToString("D4") + "-O";
+            ViewBag.AceptacionEstado = CapaDatos.Models.EstadoRevisionDocumentalCoordinador.AceptadaCoordinador;
+            ViewBag.AceptacionInspector = solicitud.TecnicoResponsableNombre;
+            ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             ViewBag.AceptacionDocumentos = documentosRevision
                 .Where(d => ObtenerDecisionRevisionDocumental(d, revisiones) == "ACEPTADO")
                 .Select(ObtenerEtiquetaDocumento)

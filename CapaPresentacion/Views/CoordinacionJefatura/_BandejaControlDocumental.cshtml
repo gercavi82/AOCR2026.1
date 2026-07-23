@@ -31,6 +31,8 @@ else
                 <tr>
                     <th>Solicitud</th>
                     <th>Operador</th>
+                    <th>RT</th>
+                    <th>Inspector actual</th>
                     <th>Estado</th>
                     <th>Fecha</th>
                     <th class="text-end">Acciones</th>
@@ -46,7 +48,9 @@ else
                             <small class="text-muted">Código @item.CodigoSolicitud</small>
                         </td>
                         <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
-                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.RepresentanteLegal) ? "No registrado" : item.RepresentanteLegal)</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.TecnicoResponsableNombre) ? "Sin asignar" : item.TecnicoResponsableNombre)</td>
+                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", CapaDatos.Constants.EstadoSolicitud.Normalizar(item.Estado) == CapaDatos.Constants.EstadoSolicitud.AceptacionDocumental ? "Pendiente revision Coordinador" : item.Estado } })</td>
                         <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">

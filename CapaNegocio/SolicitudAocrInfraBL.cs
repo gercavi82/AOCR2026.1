@@ -264,111 +264,26 @@ namespace CapaNegocio
                 return resultado;
             }
 
-            var inspecciones = ListarInspeccionesPorSolicitud(solicitudId) ?? new List<Inspeccion>();
-            var inspeccionesPendientes = inspecciones
-                .Where(i => i != null && i.CodigoInspeccion > 0 && !EstadoDocumentalCerrado(i.EstadoDocumental))
-                .ToList();
-
-            var estadoSolicitudAnterior = EstadoSolicitud.Normalizar(solicitud.Estado);
-            resultado.EstadoAnterior = estadoSolicitudAnterior;
-            resultado.EstadoNuevo = EstadoSolicitud.AceptacionDocumental;
-
-            var historial = ObtenerHistorialEstadosPorSolicitud(solicitudId) ?? new List<HistorialEstado>();
-            var yaTieneHistorialCierre = historial.Any(h =>
-                h != null
-                && !string.IsNullOrWhiteSpace(h.Observaciones)
-                && h.Observaciones.IndexOf("Revisión documental cerrada automáticamente", StringComparison.OrdinalIgnoreCase) >= 0);
-
-            if (inspeccionesPendientes.Count == 0 && yaTieneHistorialCierre)
-            {
-                resultado.Ok = true;
-                resultado.YaCerrada = true;
-                resultado.HabilitaLv = true;
-                resultado.Mensaje = "La revisión documental ya estaba cerrada automáticamente.";
-                System.Diagnostics.Trace.TraceInformation(
-                    "[REV_DOC][CIERRE_AUTO_SKIP] SolicitudId={0}; Motivo=Ya cerrada;",
-                    solicitudId);
-                return resultado;
-            }
-
-            foreach (var inspeccion in inspeccionesPendientes)
-            {
-                inspeccion.EstadoDocumental = "ACEPTADA";
-                if (string.IsNullOrWhiteSpace(inspeccion.Comentarios))
-                {
-                    inspeccion.Comentarios = "Revisión documental cerrada automáticamente al aceptar todos los documentos requeridos.";
-                }
-                else if (inspeccion.Comentarios.IndexOf("Revisión documental cerrada automáticamente", StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    inspeccion.Comentarios += " | Revisión documental cerrada automáticamente al aceptar todos los documentos requeridos.";
-                }
-
-                inspeccion.UpdatedBy = inspectorId;
-                inspeccion.UpdatedAt = DateTime.Now;
-                _inspeccionDao.Actualizar(inspeccion);
-            }
-
-            if (!EstadoSolicitudEsPosteriorACierreDocumental(estadoSolicitudAnterior))
-            {
-                _solicitudDao.CambiarEstado(
-                    solicitudId,
-                    EstadoSolicitud.AceptacionDocumental,
-                    inspectorId,
-                    "Revisión documental cerrada automáticamente al aceptar todos los documentos requeridos.");
-            }
-
-            if (!yaTieneHistorialCierre)
-            {
-                _historialEstadoDao.Insertar(new HistorialEstado
-                {
-                    CodigoSolicitud = solicitudId,
-                    EstadoAnterior = estadoSolicitudAnterior,
-                    EstadoNuevo = EstadoSolicitud.AceptacionDocumental,
-                    CodigoUsuario = inspectorId,
-                    Observaciones = "Revisión documental cerrada automáticamente al aceptar todos los documentos requeridos.",
-                    FechaCambio = DateTime.Now
-                });
-            }
-
+            // La aprobación individual de documentos ya no debe cerrar la fase ni habilitar
+            // LV/Informe. El cierre se realiza únicamente con finalización expresa del Inspector
+            // y aceptación posterior de Coordinación. Los expedientes históricos ya cerrados no
+            // pasan por este método para modificar su estado consolidado.
             resultado.Ok = true;
-            resultado.Cerrada = true;
-            resultado.HabilitaLv = true;
-            resultado.Mensaje = "Documentación aceptada. LV/EAE habilitada.";
-
+            resultado.Cerrada = false;
+            resultado.HabilitaLv = false;
+            resultado.EstadoAnterior = EstadoSolicitud.Normalizar(solicitud.Estado);
+            resultado.EstadoNuevo = resultado.EstadoAnterior;
+            resultado.MotivoSkip = "Pendiente de finalización expresa y aceptación de Coordinación.";
+            resultado.Mensaje = "Documentación revisada. Finalice la revisión para enviarla a Coordinación; LV e Informe Técnico permanecen bloqueados.";
             System.Diagnostics.Trace.TraceInformation(
-                "[REV_DOC][CIERRE_AUTO_OK] SolicitudId={0}; EstadoNuevo={1};",
-                solicitudId,
-                resultado.EstadoNuevo);
-
+                "[REV_DOC][CIERRE_AUTO_SKIP] SolicitudId={0}; Motivo=Requiere aceptación de Coordinación;",
+                solicitudId);
             return resultado;
         }
 
         public bool RegistrarEventoHistorialRevision(int codigoSolicitud, int? codigoDocumento, string tipoEvento, string observacion, int usuarioId, string usuarioRegistro)
         {
             return _revisionDocumentalDao.RegistrarEventoHistorial(codigoSolicitud, codigoDocumento, tipoEvento, observacion, usuarioId, usuarioRegistro);
-        }
-
-        private static bool EstadoDocumentalCerrado(string estadoDocumental)
-        {
-            var estado = (estadoDocumental ?? string.Empty).Trim().ToUpperInvariant();
-            return string.Equals(estado, "EN_REVISION", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, "ACEPTADA", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, "APROBADO", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, "DOCUMENTACION_ACEPTADA", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool EstadoSolicitudEsPosteriorACierreDocumental(string estadoSolicitud)
-        {
-            var estado = EstadoSolicitud.Normalizar(estadoSolicitud);
-            return string.Equals(estado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase);
         }
 
         public HashSet<int> ObtenerDocumentosConEventoHistorial(int codigoSolicitud, string tipoEvento)
