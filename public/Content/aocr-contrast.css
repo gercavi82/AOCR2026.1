@@ -439,3 +439,71 @@ body.aocr-body .aocr-page :where(
     background-color: rgba(13, 110, 253, 0.22) !important;
     color: inherit !important;
 }
+
+/* ============================================================
+   Breadcrumb institucional - contraste sobre capsula clara
+
+   Los encabezados oscuros aplican color blanco a sus descendientes.
+   Esta regla se carga al final para que la capsula conserve siempre
+   texto, enlaces, iconos y separadores legibles sobre fondo blanco.
+   ============================================================ */
+body.aocr-body .aocr-breadcrumb,
+body.aocr-body .aocr-page-breadcrumb {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    text-shadow: none !important;
+    --bs-breadcrumb-divider-color: #64748b;
+    --bs-breadcrumb-item-active-color: #0f172a;
+}
+
+body.aocr-body .aocr-breadcrumb > li,
+body.aocr-body .aocr-breadcrumb .breadcrumb-item,
+body.aocr-body .aocr-page-breadcrumb > li,
+body.aocr-body .aocr-page-breadcrumb .breadcrumb-item {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-breadcrumb a,
+body.aocr-body .aocr-breadcrumb a:visited,
+body.aocr-body .aocr-page-breadcrumb a,
+body.aocr-body .aocr-page-breadcrumb a:visited,
+body.aocr-body .aocr-breadcrumb a i,
+body.aocr-body .aocr-page-breadcrumb a i {
+    color: #0f4c81 !important;
+    -webkit-text-fill-color: #0f4c81 !important;
+    text-decoration: none;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-breadcrumb a:hover,
+body.aocr-body .aocr-breadcrumb a:focus-visible,
+body.aocr-body .aocr-page-breadcrumb a:hover,
+body.aocr-body .aocr-page-breadcrumb a:focus-visible {
+    color: #083b66 !important;
+    -webkit-text-fill-color: #083b66 !important;
+    text-decoration: underline;
+}
+
+body.aocr-body .aocr-breadcrumb > li.active,
+body.aocr-body .aocr-breadcrumb .breadcrumb-item.active,
+body.aocr-body .aocr-page-breadcrumb > li.active,
+body.aocr-body .aocr-page-breadcrumb .breadcrumb-item.active {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    font-weight: 700;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-breadcrumb > li + li::before,
+body.aocr-body .aocr-breadcrumb .breadcrumb-item + .breadcrumb-item::before,
+body.aocr-body .aocr-page-breadcrumb > li + li::before,
+body.aocr-body .aocr-page-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}

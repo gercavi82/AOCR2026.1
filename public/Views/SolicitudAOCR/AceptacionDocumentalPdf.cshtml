@@ -1,173 +1,128 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@using System
 @using System.Collections.Generic
 @using System.Linq
 
 @{
-    Layout = null;
-    var fechaFirma = ViewBag.AceptacionFechaFirma != null
-        ? (System.DateTime)ViewBag.AceptacionFechaFirma
-        : System.DateTime.Now;
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
+    ViewBag.UseInlinePdfBranding = true;
+    var fecha = ViewBag.AceptacionFechaFirma != null ? (DateTime)ViewBag.AceptacionFechaFirma : DateTime.Now;
+    var numeroOficio = (ViewBag.AceptacionNumeroOficio as string ?? ("DGAC-AOCR-" + (Model != null ? Model.CodigoSolicitud.ToString() : "0"))).Trim();
     var firmante = (ViewBag.AceptacionFirmante as string ?? "Coordinacion AOCR").Trim();
-    var observacion = (ViewBag.AceptacionObservacion as string ?? "Aceptacion documental firmada por coordinación.").Trim();
+    var estado = (ViewBag.AceptacionEstado as string ?? string.Empty).Trim();
+    var observacion = (ViewBag.AceptacionObservacion as string ?? string.Empty).Trim();
+    var inspector = (ViewBag.AceptacionInspector as string ?? (Model != null ? Model.TecnicoResponsableNombre : string.Empty) ?? string.Empty).Trim();
     var documentos = ViewBag.AceptacionDocumentos as IEnumerable<string> ?? Enumerable.Empty<string>();
-    var operador = !string.IsNullOrWhiteSpace(Model != null ? Model.RazonSocial : null)
-        ? Model.RazonSocial
-        : (Model != null ? (Model.NombreOperador ?? Model.NombreComercial) : string.Empty);
+    var estaciones = ViewBag.AceptacionEstaciones as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var operador = Model == null ? string.Empty : (!string.IsNullOrWhiteSpace(Model.RazonSocial) ? Model.RazonSocial : (Model.NombreOperador ?? Model.NombreComercial));
+    var representante = Model == null ? string.Empty : (Model.RepresentanteLegal ?? string.Empty);
+    var numeroSolicitud = Model == null ? string.Empty : (!string.IsNullOrWhiteSpace(Model.NumeroSolicitud) ? Model.NumeroSolicitud : ("AOCR-" + Model.CodigoSolicitud));
+    var aceptada = estado.Equals("ACEPTADA_POR_COORDINADOR", StringComparison.OrdinalIgnoreCase);
 }
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Aceptacion Documental AOCR</title>
+
+@section PdfHead {
     <style>
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            color: #16365f;
-            margin: 32px;
-            font-size: 13px;
-            line-height: 1.45;
-        }
-
-        .header {
-            border-bottom: 2px solid #16365f;
-            padding-bottom: 12px;
-            margin-bottom: 24px;
-        }
-
-        .eyebrow {
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 11px;
-            color: #4f6f92;
-            margin-bottom: 8px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .meta {
-            margin-top: 10px;
-            color: #445b77;
-        }
-
-        .panel {
-            border: 1px solid #d8e2ef;
-            border-radius: 10px;
-            padding: 16px 18px;
-            margin-bottom: 18px;
-        }
-
-        .panel h2 {
-            margin: 0 0 10px;
-            font-size: 16px;
-            color: #16365f;
-        }
-
-        .grid {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .grid td {
-            padding: 6px 0;
-            vertical-align: top;
-        }
-
-        .grid td:first-child {
-            width: 220px;
-            color: #4f6f92;
-            font-weight: bold;
-        }
-
-        ul {
-            margin: 8px 0 0 18px;
-            padding: 0;
-        }
-
-        .signature {
-            margin-top: 28px;
-            padding-top: 18px;
-            border-top: 1px solid #d8e2ef;
-        }
-
-        .signature strong {
-            display: block;
-            margin-top: 28px;
-            font-size: 14px;
-        }
-
-        .footnote {
-            margin-top: 24px;
-            color: #5d7088;
-            font-size: 11px;
-        }
+        .oficio { font-family: Arial, Helvetica, sans-serif; font-size: 11.5px; line-height: 1.52; color: #202020; }
+        .oficio-meta { text-align: right; margin: 2mm 0 8mm; }
+        .oficio-meta strong { display: block; font-size: 12px; }
+        .oficio-asunto { margin: 0 0 7mm; }
+        .oficio-destinatario { margin-bottom: 7mm; }
+        .oficio p { text-align: justify; margin: 0 0 4mm; }
+        .oficio ul { margin: 2mm 0 5mm 7mm; padding-left: 5mm; }
+        .firma { margin-top: 12mm; page-break-inside: avoid; }
+        .firma-espacio { height: 19mm; }
+        .firma strong { display: block; text-transform: uppercase; }
+        .referencia { font-size: 9.5px; margin-top: 9mm; color: #444; }
+        .anexos h3 { font-size: 12px; margin: 0 0 5mm; }
+        .anexos li { margin-bottom: 2mm; }
+        .estado-borrador { border: 1px solid #a5a5a5; background: #f4f4f4; padding: 3mm; margin-bottom: 6mm; font-weight: bold; text-align: center; }
     </style>
-</head>
-<body>
-    <div class="header">
-        <div class="eyebrow">Direccion General de Aviacion Civil del Ecuador</div>
-        <h1>Aceptacion Documental AOCR</h1>
-        <div class="meta">Solicitud #@(Model != null ? Model.CodigoSolicitud.ToString() : "0")</div>
+}
+
+<div class="oficio">
+    <div class="oficio-meta">
+        <strong>Oficio Nro. @numeroOficio</strong>
+        <span>Quito, @fecha.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-EC"))</span>
     </div>
 
-    <div class="panel">
-        <h2>Constancia</h2>
-        <p>
-            Por medio del presente se deja constancia de que la documentacion presentada dentro del tramite AOCR fue revisada
-            y aceptada para cierre de la fase documental.
-        </p>
-        <table class="grid">
-            <tr>
-                <td>Operador / compania</td>
-                <td>@(string.IsNullOrWhiteSpace(operador) ? "No registrado" : operador)</td>
-            </tr>
-            <tr>
-                <td>Numero de solicitud</td>
-                <td>@(Model != null ? (Model.NumeroSolicitud ?? ("AOCR-" + Model.CodigoSolicitud)) : string.Empty)</td>
-            </tr>
-            <tr>
-                <td>Representante tecnico</td>
-                <td>@(Model != null ? (Model.RepresentanteLegal ?? Model.TecnicoResponsableNombre ?? "No registrado") : "No registrado")</td>
-            </tr>
-            <tr>
-                <td>Fecha de firma</td>
-                <td>@fechaFirma.ToString("dd/MM/yyyy HH:mm")</td>
-            </tr>
-        </table>
+    @if (!aceptada)
+    {
+        <div class="estado-borrador">DOCUMENTO PENDIENTE DE REVISION Y FIRMA DE COORDINACION</div>
+    }
+
+    <div class="oficio-asunto"><strong>Asunto:</strong> Aceptacion de revision documental y designacion de inspector para tramite AOCR.</div>
+
+    <div class="oficio-destinatario">
+        <strong>Se&ntilde;or(a)</strong><br />
+        <strong>@(string.IsNullOrWhiteSpace(representante) ? "Representante Tecnico" : representante)</strong><br />
+        @(string.IsNullOrWhiteSpace(operador) ? "Operador Aereo Extranjero" : operador)<br />
+        <strong>En su despacho</strong>
     </div>
 
-    <div class="panel">
-        <h2>Documentos aceptados</h2>
-        @if (documentos.Any())
-        {
-            <ul>
-                @foreach (var documento in documentos)
-                {
-                    <li>@documento</li>
-                }
-            </ul>
-        }
-        else
-        {
-            <p>No se encontraron documentos aceptados registrados para esta constancia.</p>
-        }
-    </div>
+    <p>De mi consideracion:</p>
+    <p>
+        En referencia a la solicitud <strong>@numeroSolicitud</strong>, presentada por el Operador Aereo Extranjero
+        <strong>@(string.IsNullOrWhiteSpace(operador) ? "no registrado" : operador)</strong>, esta Coordinacion informa que la documentacion
+        revisada por el Inspector asignado ha sido verificada conforme al procedimiento aplicable al tramite AOCR.
+    </p>
 
-    <div class="panel">
-        <h2>Observacion de cierre</h2>
-        <p>@(string.IsNullOrWhiteSpace(observacion) ? "Sin observaciones adicionales." : observacion)</p>
-    </div>
+    @if (aceptada)
+    {
+        <p>La revision documental se acoge favorablemente, por lo que se autoriza continuar con la etapa de Lista de Verificacion e Informe Tecnico.</p>
+    }
+    else
+    {
+        <p>La revision fue finalizada por el Inspector y se remite a Coordinacion para su decision. Este documento no habilita la Lista de Verificacion ni el Informe Tecnico mientras no conste la aceptacion correspondiente.</p>
+    }
 
-    <div class="signature">
-        <div>Firmado por coordinación AOCR:</div>
+    <p>Para dicho efecto, se @(aceptada ? "mantiene/designa" : "propone mantener/designar") al inspector <strong>@(string.IsNullOrWhiteSpace(inspector) ? "por confirmar" : inspector)</strong> para continuar con las actividades correspondientes.</p>
+
+    <p>La inspeccion se realizara conforme el siguiente detalle:</p>
+    @if (estaciones.Any())
+    {
+        <ul>
+            @foreach (var estacion in estaciones) { <li>@estacion: fecha conforme planificacion aprobada.</li> }
+        </ul>
+    }
+    else
+    {
+        <p>Las fechas y estaciones seran registradas conforme la planificacion aprobada.</p>
+    }
+
+    <p>Los gastos de traslado aereo y terrestre, asi como los viaticos del inspector cuando correspondan, se gestionaran mediante las ordenes de recaudacion y comprobantes vigentes asociados al tramite.</p>
+
+    @if (!string.IsNullOrWhiteSpace(observacion))
+    {
+        <p><strong>Observacion general de la revision documental:</strong> @observacion</p>
+    }
+
+    <p>Con sentimientos de distinguida consideracion.</p>
+    <div class="firma">
+        <p>Atentamente,</p>
+        <div class="firma-espacio"></div>
         <strong>@firmante</strong>
-        <div>@fechaFirma.ToString("dd/MM/yyyy HH:mm")</div>
+        <span>Coordinacion de Operaciones / AOCR<br />Direccion General de Aviacion Civil</span>
     </div>
 
-    <div class="footnote">
-        Documento generado por el sistema AOCR para descarga del expediente documental.
-    </div>
-</body>
-</html>
+    <div class="referencia"><strong>Referencia:</strong> Solicitud @numeroSolicitud. Documento generado con trazabilidad en el Sistema AOCR.</div>
+
+    @if (documentos.Any())
+    {
+        <div class="page-break anexos">
+            <div class="oficio-meta">
+                <strong>Oficio Nro. @numeroOficio</strong>
+                <span>Quito, @fecha.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-EC"))</span>
+            </div>
+            <h3>Anexos</h3>
+            <ul>
+                @foreach (var documento in documentos) { <li>@documento</li> }
+            </ul>
+            <h3>Copia</h3>
+            <ul>
+                <li>@(string.IsNullOrWhiteSpace(inspector) ? "Inspector asignado" : inspector) - Inspector</li>
+                <li>@(string.IsNullOrWhiteSpace(representante) ? "Representante Tecnico" : representante) - RT</li>
+                <li>Expediente digital AOCR</li>
+            </ul>
+        </div>
+    }
+</div>

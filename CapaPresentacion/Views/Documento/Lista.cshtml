@@ -1722,10 +1722,10 @@
                                     <div class="documentos-actions aocr-actions-icons">
                                         @if (esPdf)
                                         {
-                                            <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                            <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion, vistaPrevia = true })"
                                                 class="btn btn-sm aocr-icon-btn aocr-pdf-open"
-                                               data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                               data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                               data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion, vistaPrevia = true })"
+                                               data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion })"
                                                data-title="@archivoVisible"
                                                data-status="@estadoFilaVisible"
                                                title="Vista previa"
@@ -1734,7 +1734,7 @@
                                                  <i class="fas fa-eye" aria-hidden="true"></i>
                                             </a>
                                         }
-                                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion })"
                                            class="btn btn-sm aocr-icon-btn"
                                            title="Descargar"
                                            aria-label="Descargar @Html.AttributeEncode(archivoVisible)"
@@ -1889,10 +1889,10 @@
                         <div class="aocr-review-card-actions js-doc-actions-card aocr-actions-icons">
                             @if (esPdf)
                             {
-                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion, vistaPrevia = true })"
                                    class="btn btn-sm aocr-icon-btn aocr-pdf-open"
-                                   data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                   data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                   data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion, vistaPrevia = true })"
+                                   data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion })"
                                    data-title="@archivoVisible"
                                    data-status="@estadoFilaVisible"
                                    title="Vista previa"
@@ -1901,7 +1901,7 @@
                                      <i class="fas fa-eye" aria-hidden="true"></i>
                                 </a>
                             }
-                            <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                            <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, solicitudId = solicitudIdNumero, inspeccionId = codigoInspeccion })"
                                class="btn btn-sm aocr-icon-btn"
                                title="Descargar"
                                aria-label="Descargar @Html.AttributeEncode(archivoVisible)"
@@ -2164,6 +2164,10 @@
                     '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
                     '</div>'
                 ].join('');
+
+                if (window.AOCR && typeof window.AOCR.notify === 'function') {
+                    window.AOCR.notify(message || '', type === 'danger' ? 'error' : type);
+                }
             }
 
             function getModalInstance() {
@@ -2764,7 +2768,7 @@
                         return false;
                     }
 
-                    if (!requestPayload.decisiones.length) {
+                    if (!requestPayload.decisiones.length && !requestPayload.finalizar) {
                         showAlert('warning', 'Debe seleccionar al menos una decision documental valida.');
                         return false;
                     }
@@ -2836,7 +2840,7 @@
                         return false;
                     }
 
-                    if (payload.revisiones.length === 0) {
+                    if (payload.revisiones.length === 0 && window.__finalizarRevisionDocumentalActual !== true) {
                         showAlert('warning', 'Debe seleccionar al menos una decisión documental válida.');
                         window.__guardandoRevisionDocumental = false;
                         btnGuardarRevision.disabled = false;

@@ -1,5 +1,6 @@
 @inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
 @using CapaDatos.Constants
+@using CapaDatos.Models
 @using CapaPresentacion.Helpers
 @using CapaModelo
 @using System.Collections.Generic
@@ -195,11 +196,21 @@
         }
     }
     var puedeSubsanar = !procesoCerradoOperativamente && esPropietario && estadoActual == EstadoSolicitud.Observada;
+    var revisionCoordinador = ViewBag.RevisionDocumentalCoordinador as RevisionDocumentalCoordinadorRegistro;
+    var inspectoresRevisionCoordinador = ViewBag.InspectoresRevisionCoordinador as IEnumerable<UsuarioInternoRTRegistro>
+        ?? Enumerable.Empty<UsuarioInternoRTRegistro>();
+    var revisionPendienteCoordinador = revisionCoordinador != null
+        && string.Equals(revisionCoordinador.Estado, EstadoRevisionDocumentalCoordinador.PendienteCoordinador, System.StringComparison.OrdinalIgnoreCase);
     var puedeFirmarAceptacionDocumental =
         !procesoCerradoOperativamente &&
         !esSolicitudModificacion &&
         (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AceptacionDocumental;
+    if (revisionPendienteCoordinador
+        && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion") || User.IsInRole("Administrador")))
+    {
+        puedeFirmarAceptacionDocumental = true;
+    }
     if (flujoDetalle != null && flujoDetalle.PuedeAceptarDocumentacion)
     {
         puedeFirmarAceptacionDocumental = true;
@@ -321,11 +332,16 @@
 
         return "aocr-badge warning";
     };
+
+}
+
+@section Styles {
+    <link rel="stylesheet" href="@AssetVersionHelper.VersionedContent(Url, "~/Content/pages/aocr-solicitud-detalle.css")" />
 }
 
 <style>
     .aocr-detail-shell {
-        padding: clamp(1rem, 2vw, 1.5rem) 0 2rem;
+        padding: 2px 0 8px;
     }
 
     .aocr-detail-card {
@@ -1215,7 +1231,7 @@
 
 </style>
 
-<div class="container-fluid aocr-detail-shell">
+<div class="container-fluid aocr-detail-shell aocr-detail-page">
     @if (!string.IsNullOrWhiteSpace(mensajeExito))
     {
         <div class="alert alert-success mb-4" role="alert">@mensajeExito</div>
@@ -1278,7 +1294,7 @@
         </div>
     }
 
-    <div class="card aocr-detail-card aocr-hero mb-4">
+    <div class="card aocr-detail-card aocr-hero mb-1">
         <div class="card-body">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
                 <div>
@@ -1297,27 +1313,44 @@
 
             <div class="aocr-summary-grid">
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Fecha de solicitud</div>
-                    <div class="aocr-summary-value">@(Model.FechaSolicitud.HasValue ? Model.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "No registrada")</div>
+                    <i class="fas fa-calendar-day aocr-summary-icon" aria-hidden="true"></i>
+                    <div>
+                        <div class="aocr-summary-label">Fecha de solicitud</div>
+                        <div class="aocr-summary-value">@(Model.FechaSolicitud.HasValue ? Model.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "No registrada")</div>
+                    </div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Operador</div>
-                    <div class="aocr-summary-value">@Model.NombreOperador</div>
+                    <i class="fas fa-building aocr-summary-icon" aria-hidden="true"></i>
+                    <div>
+                        <div class="aocr-summary-label">Operador</div>
+                        <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.NombreOperador) ? "No disponible" : Model.NombreOperador)</div>
+                    </div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Tipo de operacion</div>
-                    <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
+                    <i class="fas fa-plane-departure aocr-summary-icon" aria-hidden="true"></i>
+                    <div>
+                        <div class="aocr-summary-label">Tipo de operacion</div>
+                        <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
+                    </div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Inspector asignado</div>
-                    <div class="aocr-summary-value">@inspectorAsignadoDetalle</div>
+                    <i class="fas fa-user aocr-summary-icon" aria-hidden="true"></i>
+                    <div>
+                        <div class="aocr-summary-label">Inspector asignado</div>
+                        <div class="aocr-summary-value">@inspectorAsignadoDetalle</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
-        <div class="col-xl-7">
+    <div class="aocr-primary-layout" id="aocrPrimaryLayout">
+        <main class="aocr-primary-main" id="aocrPrimaryMain"></main>
+        <aside class="aocr-primary-aside" id="aocrPrimaryAside" aria-label="Seguimiento del tr&aacute;mite"></aside>
+    </div>
+
+    <div class="row g-2 mb-2" id="datosOperadorRow">
+        <div class="col-xl-8">
             <div class="card aocr-detail-card h-100">
                 <div class="card-body p-4">
                     <div class="aocr-section-title">
@@ -1350,7 +1383,7 @@
                             <div class="aocr-info-label"><i class="fas fa-map-marker-alt"></i> Direccion</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(direccionCompleta) ? "No registrada" : direccionCompleta)</div>
                         </div>
-                        <div class="aocr-info-item">
+                        <div class="aocr-info-item aocr-info-item--wide">
                             <div class="aocr-info-label"><i class="fas fa-user-tie"></i> Representante legal</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.RepresentanteLegal) ? "No registrado" : Model.RepresentanteLegal + (string.IsNullOrWhiteSpace(Model.CedulaRepresentante) ? string.Empty : " (" + Model.CedulaRepresentante + ")"))</div>
                         </div>
@@ -1359,7 +1392,7 @@
             </div>
         </div>
 
-        <div class="col-xl-5">
+        <div class="col-xl-4">
             <div class="card aocr-detail-card h-100">
                 <div class="card-body p-4">
                     <div class="aocr-section-title">
@@ -1392,7 +1425,7 @@
 
     @if (!string.IsNullOrWhiteSpace(Model.Observaciones))
     {
-        <div class="card border-warning mb-4" style="border-left: 5px solid #ffc107 !important;">
+        <div class="card aocr-detail-card aocr-observations-card mb-3" id="aocrObservationsCard">
             <div class="card-body p-4">
                 <div class="d-flex align-items-start gap-3">
                     <div class="text-warning fs-3"><i class="fas fa-exclamation-triangle"></i></div>
@@ -1400,6 +1433,18 @@
                         <h5 class="fw-bold text-warning mb-1">Observaciones</h5>
                         <p class="mb-0" style="white-space: pre-line;">@normalizeVisibleText(Model.Observaciones)</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card aocr-detail-card aocr-observations-card mb-3" id="aocrObservationsCard">
+            <div class="card-body p-4 d-flex align-items-center gap-3">
+                <div class="text-success fs-4" aria-hidden="true"><i class="fas fa-circle-check"></i></div>
+                <div>
+                    <div class="fw-bold text-success">Observaciones</div>
+                    <div class="text-muted small">No existen observaciones pendientes.</div>
                 </div>
             </div>
         </div>
@@ -1412,7 +1457,7 @@
             || estadoActual == EstadoSolicitud.EnInspeccion
             || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
     {
-        <div class="card aocr-detail-card aocr-review-card warning aocr-linked-inspection-card mb-4">
+        <div class="card aocr-detail-card aocr-review-card warning aocr-linked-inspection-card mb-3" id="aocrLinkedInspectionCard">
             <div class="card-body p-4 p-xl-4">
                 <div class="aocr-linked-inspection-layout">
                     <div>
@@ -1516,7 +1561,7 @@
         </div>
     }
 
-    <div class="card aocr-detail-card aocr-action-card mb-4">
+    <div class="card aocr-detail-card aocr-action-card mb-3" id="aocrDocumentManagementCard">
         <div class="card-body p-4">
             <div class="aocr-section-title">
                 <i class="fas fa-folder-open"></i>
@@ -1564,11 +1609,11 @@
                         || User.IsInRole("DirectorGeneral");
                     if (esFirmaInstitucionalAocr)
                     {
-                        <a class="btn btn-primary aocr-action-btn-full"
+                        <a class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked"
                            href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })"
                            title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Abrir Firma institucional AOCR" : normalizeVisibleText(motivoAocr))">
-                            <i class="fas fa-file-signature"></i>
-                            Firma institucional AOCR
+                            <span class="aocr-action-btn-full__title"><i class="fas fa-file-signature"></i> Firma institucional AOCR</span>
+                            <span class="aocr-action-btn-full__hint">Revise y firme el AOCR en formato oficial.</span>
                         </a>
                     }
                     else
@@ -1577,11 +1622,11 @@
                         {
                             @Html.AntiForgeryToken()
                             <button type="submit"
-                                    class="btn btn-primary aocr-action-btn-full"
+                                    class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked"
                                     onclick="return confirm('¿Confirma la generación automática del documento AOCR para esta solicitud?');"
                                     title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Generar PDF oficial AOCR desde el sistema" : normalizeVisibleText(motivoAocr))">
-                                <i class="fas fa-file-signature"></i>
-                                Generar AOCR
+                                <span class="aocr-action-btn-full__title"><i class="fas fa-file-signature"></i> Generar AOCR</span>
+                                <span class="aocr-action-btn-full__hint">Crear un AOCR en formato oficial.</span>
                             </button>
                         }
                     }
@@ -1589,7 +1634,7 @@
                 else
                 {
                     <button type="button"
-                            class="btn btn-primary aocr-action-btn-full"
+                            class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked"
                             disabled="disabled"
                             title="@(procesoCerradoOperativamente
                                 ? "El expediente está cerrado; solo permanece habilitada la consulta histórica y la Nueva Orden de Recaudación."
@@ -1597,8 +1642,8 @@
                                     ? "Disponible una vez la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector"
                                     : normalizeVisibleText(motivoAocr)))"
                             style="opacity: 0.55; cursor: not-allowed;">
-                        <i class="fas fa-file-signature"></i>
-                        Generar AOCR
+                        <span class="aocr-action-btn-full__title"><i class="fas fa-file-signature"></i> Generar AOCR</span>
+                        <span class="aocr-action-btn-full__hint">Crear un AOCR en formato oficial.</span>
                     </button>
                 }
 
@@ -1607,7 +1652,7 @@
 
             @if (!puedeGenerarAocr && !aocrYaGenerado)
             {
-                <div class="alert alert-info mt-3 mb-0" style="font-size: 0.9em;">
+                <div class="alert alert-info aocr-document-status mt-2 mb-0">
                     <i class="fas fa-info-circle me-1"></i>
                     <strong>AOCR no disponible aún:</strong>
                     @(string.IsNullOrEmpty(motivoAocr)
@@ -1617,7 +1662,7 @@
             }
             else if (aocrYaGenerado)
             {
-                <div class="alert alert-success mt-3 mb-0" style="font-size: 0.9em;">
+                <div class="alert alert-success aocr-document-status mt-2 mb-0">
                     <i class="fas fa-check-circle me-1"></i>
                     La AOCR de esta solicitud ya fue generada automáticamente por el sistema y está disponible en el expediente.
                 </div>
@@ -1893,32 +1938,94 @@
 
     @if (puedeFirmarAceptacionDocumental)
     {
-        <div class="card aocr-detail-card aocr-review-card success mb-4">
+        <div class="card aocr-detail-card aocr-review-card success mb-4" id="revisionFinalCoordinacionCard">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-file-signature"></i>
                     <span>Revision final de Coordinacion</span>
                 </div>
                 <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. Coordinación registra la revisión final del expediente; la firma final institucional se gestiona posteriormente con DIRDAC/DCAV cuando corresponda.</p>
-                <form method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
+                @if (revisionPendienteCoordinador)
+                {
+                    <div class="alert alert-info d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+                        <div>
+                            <strong>Oficio @revisionCoordinador.NumeroOficio</strong><br />
+                            <span>Finalizado por el Inspector el @(revisionCoordinador.FechaFinalizacionInspector.HasValue ? revisionCoordinador.FechaFinalizacionInspector.Value.ToString("dd/MM/yyyy HH:mm") : "sin fecha registrada"). LV e Informe T&eacute;cnico contin&uacute;an bloqueados.</span>
+                        </div>
+                        <a class="btn btn-outline-primary" target="_blank" href="@Url.Action("DescargarOficioRevisionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })">
+                            <i class="fas fa-eye"></i> Ver oficio
+                        </a>
+                    </div>
+                    if (!string.IsNullOrWhiteSpace(revisionCoordinador.ObservacionInspector))
+                    {
+                        <div class="alert alert-light border"><strong>Observaci&oacute;n general del Inspector:</strong> @revisionCoordinador.ObservacionInspector</div>
+                    }
+                }
+                <form id="frmRevisionFinalCoordinacion" method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
+                    @if (revisionPendienteCoordinador)
+                    {
+                        <div class="row g-3 mb-3">
+                            <div class="col-lg-5">
+                                <label class="form-label fw-semibold">Inspector para continuar el tr&aacute;mite</label>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="opcionInspector" id="inspectorMantener" value="MANTENER" checked />
+                                    <label class="form-check-label" for="inspectorMantener">Mantener inspector actual: @inspectorAsignadoDetalle</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="opcionInspector" id="inspectorReasignar" value="REASIGNAR" />
+                                    <label class="form-check-label" for="inspectorReasignar">Asignar nuevo inspector</label>
+                                </div>
+                            </div>
+                            <div class="col-lg-7">
+                                <label class="form-label fw-semibold" for="inspectorNuevoId">Nuevo inspector activo</label>
+                                <select class="form-select" id="inspectorNuevoId" name="inspectorNuevoId" disabled="disabled" aria-disabled="true">
+                                    <option value="">-- Seleccione &uacute;nicamente si reasigna --</option>
+                                    @foreach (var inspector in inspectoresRevisionCoordinador.Where(x => x != null && x.Activo))
+                                    {
+                                        var inspectorId = inspector.UsuarioId.GetValueOrDefault() > 0 ? inspector.UsuarioId.Value : inspector.TecnicoId.GetValueOrDefault();
+                                        if (inspectorId > 0)
+                                        {
+                                            <option value="@inspectorId">@inspector.NombreVisual (@inspector.UsuarioLogin)</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    }
                     <div class="row g-3 align-items-end">
                         <div class="col-md-8">
                             <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de revision final</label>
                             <textarea class="form-control" id="observacionAceptacion" name="observacion" rows="3" placeholder="Constancia interna de la revisión final de Coordinación."></textarea>
                         </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                        <div class="col-md-4 d-flex flex-column gap-2 justify-content-end">
+                            <button type="submit" name="decisionCoordinador" value="ACEPTAR" class="btn btn-success aocr-action-btn w-100">
                                 <i class="fas fa-pen-nib"></i>
-                                Registrar revision final
+                                @(revisionPendienteCoordinador ? "Aceptar y habilitar LV / Informe" : "Registrar revision final")
                             </button>
+                            @if (revisionPendienteCoordinador)
+                            {
+                                <button type="submit" name="decisionCoordinador" value="OBSERVAR" class="btn btn-outline-danger aocr-action-btn w-100">
+                                    <i class="fas fa-undo"></i> Observar y devolver al Inspector
+                                </button>
+                            }
                         </div>
                     </div>
                 </form>
             </div>
         </div>
     }
+
+    <script>
+        (function () {
+            var datosOperador = document.getElementById('datosOperadorRow');
+            var revisionCoordinacion = document.getElementById('revisionFinalCoordinacionCard');
+            if (datosOperador && revisionCoordinacion && datosOperador.parentNode) {
+                datosOperador.parentNode.insertBefore(revisionCoordinacion, datosOperador.nextSibling);
+            }
+        })();
+    </script>
 
     @if (puedeDescargarAceptacionDocumental)
     {
@@ -2486,16 +2593,18 @@
                                     <th>Estado Anterior</th>
                                     <th>Estado Nuevo</th>
                                     <th>Observaciones</th>
+                                    <th>Usuario</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in historial)
+                                @foreach (var item in historial.OrderByDescending(x => x.FechaCambio))
                                 {
                                     <tr>
                                         <td>@Convert.ToDateTime(item.FechaCambio).ToString("yyyy-MM-dd HH:mm")</td>
                                         <td>@Html.Encode(item.EstadoAnterior)</td>
                                         <td>@Html.Encode(item.EstadoNuevo)</td>
                                         <td>@Html.Raw(System.Web.HttpUtility.HtmlEncode(normalizeVisibleText(item.Observaciones ?? string.Empty)).Replace("\n", "<br/>"))</td>
+                                        <td>@Html.Encode(string.IsNullOrWhiteSpace(item.NombreUsuario) ? "No disponible" : item.NombreUsuario)</td>
                                     </tr>
                                 }
                             </tbody>
@@ -2521,7 +2630,85 @@
 
 @section scripts {
     <script>
+        (function organizarResumenPrincipal() {
+            var columnaPrincipal = document.getElementById('aocrPrimaryMain');
+            var columnaSeguimiento = document.getElementById('aocrPrimaryAside');
+
+            if (!columnaPrincipal || !columnaSeguimiento) {
+                return;
+            }
+
+            [
+                document.getElementById('datosOperadorRow'),
+                document.getElementById('revisionFinalCoordinacionCard'),
+                document.getElementById('aocrDocumentManagementCard')
+            ].forEach(function (bloque) {
+                if (bloque) {
+                    columnaPrincipal.appendChild(bloque);
+                }
+            });
+
+            [
+                document.getElementById('aocrObservationsCard'),
+                document.getElementById('aocrLinkedInspectionCard')
+            ].forEach(function (bloque) {
+                if (bloque) {
+                    columnaSeguimiento.appendChild(bloque);
+                }
+            });
+
+            if (!columnaSeguimiento.children.length) {
+                columnaSeguimiento.hidden = true;
+                document.getElementById('aocrPrimaryLayout').classList.add('aocr-primary-layout--single');
+            }
+        })();
+    </script>
+
+    <script>
         (function () {
+            var formRevisionCoordinacion = document.getElementById("frmRevisionFinalCoordinacion");
+            var mantenerInspector = document.getElementById("inspectorMantener");
+            var reasignarInspector = document.getElementById("inspectorReasignar");
+            var selectorInspector = document.getElementById("inspectorNuevoId");
+
+            function sincronizarSelectorInspector() {
+                if (!selectorInspector) {
+                    return;
+                }
+
+                var habilitado = !!(reasignarInspector && reasignarInspector.checked);
+                selectorInspector.disabled = !habilitado;
+                selectorInspector.required = habilitado;
+                selectorInspector.setAttribute("aria-disabled", habilitado ? "false" : "true");
+                if (!habilitado) {
+                    selectorInspector.value = "";
+                }
+            }
+
+            if (mantenerInspector) {
+                mantenerInspector.addEventListener("change", sincronizarSelectorInspector);
+            }
+            if (reasignarInspector) {
+                reasignarInspector.addEventListener("change", sincronizarSelectorInspector);
+            }
+            sincronizarSelectorInspector();
+
+            if (formRevisionCoordinacion) {
+                formRevisionCoordinacion.addEventListener("submit", function (event) {
+                    var submitter = event.submitter || document.activeElement;
+                    var decision = submitter && submitter.name === "decisionCoordinador"
+                        ? submitter.value
+                        : "";
+                    var mensaje = decision === "OBSERVAR"
+                        ? "La revision sera devuelta al Inspector. Desea continuar?"
+                        : "Se aceptara la revision y se habilitaran LV e Informe Tecnico. Desea continuar?";
+
+                    if (!window.confirm(mensaje)) {
+                        event.preventDefault();
+                    }
+                });
+            }
+
             function requiereObservacion(decision) {
                 return decision === "DEVUELTO" || decision === "OBSERVADO";
             }

@@ -5723,41 +5723,87 @@ namespace CapaPresentacion.Controllers
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
             var flujo = _revisionDocumentalCoordinadorService.ObtenerPorSolicitud(id);
-            if (solicitud == null || flujo == null || flujo.DocumentoOficioId.GetValueOrDefault() <= 0)
+            if (solicitud == null)
             {
-                return HttpNotFound("No existe oficio de revision documental para la solicitud.");
+                return HttpNotFound("La solicitud no existe.");
+            }
+
+            var documentosSolicitud = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
+            var documento = flujo != null && flujo.DocumentoOficioId.GetValueOrDefault() > 0
+                ? _documentoDAO.ObtenerPorId(flujo.DocumentoOficioId.Value)
+                : null;
+            if (documento == null)
+            {
+                documento = documentosSolicitud
+                    .Where(d => d != null
+                        && d.CodigoDocumento > 0
+                        && string.Equals(
+                            d.TipoDocumento,
+                            "OFICIO_ACEPTACION_REVISION_DOCUMENTAL",
+                            StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(d => d.CodigoDocumento)
+                    .FirstOrDefault();
             }
 
             var usuarioId = ObtenerUsuarioActualId();
-            var aceptada = string.Equals(
+            var aceptada = flujo != null && string.Equals(
                 flujo.Estado,
                 CapaDatos.Models.EstadoRevisionDocumentalCoordinador.AceptadaCoordinador,
                 StringComparison.OrdinalIgnoreCase);
-            var esCoordinacion = EsAdmin() || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion");
-            var esInspectorRelacionado = usuarioId > 0
+            var contextoBandeja = ConstruirContextoBandeja();
+            var esCoordinacion = contextoBandeja.EsAdministrador
+                || contextoBandeja.EsCoordinacion
+                || contextoBandeja.EsDireccion
+                || User.IsInRole("Coordinador")
+                || User.IsInRole("CoordinadorInspecciones")
+                || User.IsInRole("Coordinacion");
+            var esInspectorRelacionadoFlujo = flujo != null && usuarioId > 0
                 && (flujo.InspectorOriginalId.GetValueOrDefault() == usuarioId
                     || flujo.InspectorConfirmadoId.GetValueOrDefault() == usuarioId);
+            var inspeccionesSolicitud = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>();
+            var identidadInspector = _inspectorIdentityService.ObtenerIdentidadInspector(
+                usuarioId,
+                User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                (Session["CodigoUsuario"] ?? string.Empty).ToString());
+            var asignacionInspector = _inspectorIdentityService.EvaluarInspectorAsignado(
+                id,
+                solicitud,
+                inspeccionesSolicitud,
+                identidadInspector);
+            var esInspectorRelacionado = esInspectorRelacionadoFlujo
+                || (asignacionInspector != null && asignacionInspector.EsInspectorAsignado);
             var esRtPropietario = aceptada && usuarioId > 0 && solicitud.CodigoUsuario == usuarioId;
             if (!esCoordinacion && !esInspectorRelacionado && !esRtPropietario)
             {
                 return new HttpStatusCodeResult(403, "No autorizado para consultar este oficio.");
             }
 
-            var documento = _documentoDAO.ObtenerPorId(flujo.DocumentoOficioId.Value);
-            if (documento == null || string.IsNullOrWhiteSpace(documento.RutaGuardada))
+            var ruta = documento != null
+                ? (documento.RutaArchivo ?? documento.RutaGuardada)
+                : null;
+            if (string.IsNullOrWhiteSpace(ruta))
             {
-                return HttpNotFound("El archivo del oficio no se encuentra registrado.");
+                ruta = "~/App_Data/Documentos/RevisionDocumental/" + id
+                    + "/Oficio_Aceptacion_Revision_Documental_" + id + ".pdf";
             }
 
-            var ruta = documento.RutaGuardada;
-            var rutaFisica = Path.IsPathRooted(ruta) ? ruta : Server.MapPath(ruta.StartsWith("~") ? ruta : "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
+            var rutaFisica = (ruta.StartsWith("~/", StringComparison.Ordinal) || ruta.StartsWith("/", StringComparison.Ordinal))
+                ? Server.MapPath(ruta.StartsWith("~", StringComparison.Ordinal) ? ruta : "~" + ruta)
+                : (Path.IsPathRooted(ruta)
+                    ? ruta
+                    : Server.MapPath("~/" + ruta.TrimStart('/', '\\')));
             if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
             {
                 return HttpNotFound("El archivo fisico del oficio no esta disponible.");
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, documento.NombreArchivo ?? ("Oficio_Revision_Documental_" + id + ".pdf"));
+            PdfFileNameHelper.AplicarContentDispositionPdf(
+                Response,
+                !vistaPrevia,
+                (documento != null ? documento.NombreArchivoVisible : null)
+                    ?? (documento != null ? documento.NombreArchivo : null)
+                    ?? ("Oficio_Revision_Documental_" + id + ".pdf"));
             return File(System.IO.File.ReadAllBytes(rutaFisica), "application/pdf");
         }
 

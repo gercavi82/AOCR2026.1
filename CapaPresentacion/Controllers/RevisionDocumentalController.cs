@@ -214,7 +214,7 @@ namespace CapaPresentacion.Controllers
                 .GroupBy(d => d.DocumentoId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            if (decisionesRecibidas.Count == 0)
+            if (decisionesRecibidas.Count == 0 && !request.Finalizar)
             {
                 return JsonRevisionError(400, "No se recibieron decisiones documentales validas.", request.SolicitudId, "Decisiones vacias");
             }
@@ -331,7 +331,7 @@ namespace CapaPresentacion.Controllers
                 "; DocumentosNoRevisables=" + string.Join(",", documentosNoRevisables.Select(d => d.CodigoDocumento)) +
                 "; Estados=" + string.Join(",", documentosRecibidos.Select(d => (d.Estado ?? string.Empty).Trim()).Distinct(StringComparer.OrdinalIgnoreCase)));
 
-            if (documentosOperacion.Count == 0)
+            if (documentosOperacion.Count == 0 && !(request.Finalizar && decisionesRecibidas.Count == 0))
             {
                 return JsonRevisionError(400, "No existen documentos revisables para guardar.", solicitud.CodigoSolicitud, "Todos los documentos enviados fueron omitidos por no revisables");
             }

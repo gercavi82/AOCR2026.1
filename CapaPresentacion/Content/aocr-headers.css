@@ -278,3 +278,145 @@ body.aocr-body span.aocr-header-sidecard-text {
         text-align: left !important;
     }
 }
+
+/* --------------------------------------------------------------------------
+   4. CABECERA INSTITUCIONAL COMPACTA GLOBAL
+   -------------------------------------------------------------------------- */
+body.aocr-body .aocr-content-shell {
+    padding: 0 6px 8px !important;
+}
+
+body.aocr-body.layout-navbar-fixed .wrapper .content-wrapper,
+body.aocr-body.layout-navbar-fixed .wrapper .aocr-main-wrapper {
+    margin-top: 12px !important;
+}
+
+body.aocr-body .aocr-page {
+    gap: 4px;
+}
+
+body.aocr-body .aocr-header-hero,
+body.aocr-body section.aocr-header-hero {
+    margin-bottom: 0 !important;
+    border-radius: 8px !important;
+}
+
+body.aocr-body .aocr-header-hero::after,
+body.aocr-body section.aocr-header-hero::after {
+    content: "" !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: url("assets/imganes/avion-global-v3.png") 65% top / 35% auto no-repeat !important;
+    filter: none;
+    mix-blend-mode: normal;
+    opacity: .20;
+    transform: none !important;
+    pointer-events: none !important;
+}
+
+body.aocr-body .aocr-header-hero-body {
+    padding: 9px 16px !important;
+}
+
+body.aocr-body .aocr-header-hero-grid,
+body.aocr-body .aocr-header-main {
+    gap: 10px !important;
+}
+
+body.aocr-body .aocr-header-logo-wrap {
+    width: 64px !important;
+    height: 64px !important;
+    padding: 7px !important;
+    border-radius: 10px !important;
+}
+
+body.aocr-body .aocr-header-copy {
+    gap: 2px !important;
+}
+
+body.aocr-body .aocr-header-kicker {
+    font-size: 9px !important;
+}
+
+body.aocr-body .aocr-header-title {
+    font-size: 21px !important;
+}
+
+body.aocr-body .aocr-header-subtitle {
+    max-width: 72ch !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+}
+
+body.aocr-body .aocr-header-badges {
+    gap: 4px !important;
+    margin-top: 3px !important;
+}
+
+body.aocr-body .aocr-header-badge {
+    padding: 4px 10px !important;
+    font-size: 10px !important;
+}
+
+body.aocr-body .aocr-header-sidecard,
+body.aocr-body div.aocr-header-sidecard {
+    width: auto !important;
+    min-width: 260px !important;
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+}
+
+body.aocr-body .aocr-header-sidecard-label,
+body.aocr-body span.aocr-header-sidecard-label {
+    font-size: 9px !important;
+}
+
+body.aocr-body .aocr-header-sidecard-value,
+body.aocr-body strong.aocr-header-sidecard-value {
+    font-size: 24px !important;
+}
+
+body.aocr-body .aocr-header-sidecard-text,
+body.aocr-body span.aocr-header-sidecard-text {
+    font-size: 10px !important;
+}
+
+@media (max-width: 767.98px) {
+    body.aocr-body .aocr-content-shell {
+        padding: 10px 6px 18px !important;
+    }
+
+    body.aocr-body .aocr-header-hero-body {
+        padding: 16px !important;
+    }
+
+    body.aocr-body .aocr-header-logo-wrap {
+        width: 64px !important;
+        height: 64px !important;
+    }
+
+    body.aocr-body .aocr-header-title {
+        font-size: 22px !important;
+    }
+
+    body.aocr-body .aocr-header-subtitle {
+        font-size: 12px !important;
+    }
+
+    body.aocr-body .aocr-header-sidecard,
+    body.aocr-body div.aocr-header-sidecard {
+        width: 100% !important;
+        min-width: 100% !important;
+        padding: 12px 14px !important;
+        text-align: left !important;
+    }
+
+    body.aocr-body .aocr-header-hero::after,
+    body.aocr-body section.aocr-header-hero::after {
+        background-size: 82% auto !important;
+        opacity: .12;
+    }
+}

@@ -28,6 +28,7 @@ namespace AOCR.Tests.Unit
         [TestMethod] public void DocumentoNoRelacionado_RecibeProhibido() { Assert.AreEqual(DocumentoSeguroError.Prohibido,new DocumentoSeguroService(new[]{_root}).Resolver(1,7,8,"x.pdf","x.pdf",Map).Error); }
         [TestMethod] public void DocumentoHistorico_ValidoSigueDisponible() { File.WriteAllBytes(Path.Combine(_root,"hist.pdf"),Pdf()); Assert.IsTrue(Resolve("hist.pdf").EsValido); }
         [TestMethod] public void Auditoria_RegistraDescargaSinRuta() { string audit=null;File.WriteAllBytes(Path.Combine(_root,"a.pdf"),Pdf());new DocumentoSeguroService(new[]{_root},x=>audit=x).Resolver(1,7,7,"a.pdf","a.pdf",Map);StringAssert.Contains(audit,"DESCARGA_DOCUMENTO_OK");Assert.IsFalse(audit.Contains(_root)); }
+        [TestMethod] public void RutaVirtualConSlashInicial_SeResuelveDentroDeRaiz() { File.WriteAllBytes(Path.Combine(_root,"a.pdf"),Pdf()); var result=new DocumentoSeguroService(new[]{_root}).Resolver(1,7,7,"/a.pdf","a.pdf",Map); Assert.IsTrue(result.EsValido,result.MensajePublico); }
         [TestMethod] public void MensajePublico_NoFiltraRutaFisica() { var r=Resolve(Path.Combine(Path.GetTempPath(),"secreto.pdf"));Assert.IsFalse((r.MensajePublico??"").Contains(Path.GetTempPath())); }
 
         private DocumentoSeguroResultado Resolve(string path){return new DocumentoSeguroService(new[]{_root}).Resolver(1,7,7,path,"documento.pdf",Map);}

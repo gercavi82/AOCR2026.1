@@ -110,18 +110,12 @@
 
         if (!pdfjsLoadPromise) {
             var libUrl = getPdfLibUrl();
-            pdfjsLoadPromise = loadScript(libUrl).then(function (loaded) {
-                if (loaded && loaded.getDocument) {
-                    window.pdfjsLib = loaded;
-                    setWorker();
-                    return loaded;
-                }
-
-                return importPdfJsModule(libUrl).then(function (module) {
-                    return module && module.getDocument
-                        ? module
-                        : (module && module.default && module.default.getDocument ? module.default : null);
-                });
+            pdfjsLoadPromise = importPdfJsModule(libUrl).then(function (module) {
+                return module && module.getDocument
+                    ? module
+                    : (module && module.default && module.default.getDocument ? module.default : null);
+            }).catch(function () {
+                return loadScript(libUrl);
             }).then(function (loaded) {
 
                 if (!loaded || !loaded.getDocument) {

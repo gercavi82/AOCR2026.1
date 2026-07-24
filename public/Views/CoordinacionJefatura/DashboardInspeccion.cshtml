@@ -8,7 +8,6 @@
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Gestión Integral AOCR";
-    ViewBag.HideGlobalHeaderHero = true;
 
     var vm = Model ?? new CapaPresentacion.Models.DashboardInspeccionViewModel();
     var gestionIntegral = vm.GestionIntegralAocr ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel>();
@@ -29,9 +28,6 @@
         quickFilter = value
     });
 
-    var hoy = DateTime.Now;
-    var saludoHora = hoy.Hour < 12 ? "Buenos días" : (hoy.Hour < 18 ? "Buenas tardes" : "Buenas noches");
-    var nombreUsuario = (Session["NombreUsuario"] as string ?? "Usuario").Split(' ')[0];
 }
 
 @* ── Kanban column helper (v4 redesign) ── *@
@@ -1001,155 +997,7 @@
     .di3-nav__tab { padding: 10px 14px; font-size: .82rem; }
 }
 
-/* ============================================================
-   NEW HERO & COORDINATION BANNERS
-   ============================================================ */
-.aocr-welcome-banner {
-    background: linear-gradient(135deg, #104F77 0%, #086E88 50%, #12A1B4 100%);
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(16, 79, 119, 0.15);
-    margin-bottom: 24px;
-    position: relative;
-    overflow: hidden;
-    color: #FFFFFF;
-}
-
-.aocr-welcome-banner::after {
-    content: '';
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 250px;
-    height: 250px;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.aocr-welcome-inner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 28px 32px;
-    gap: 20px;
-    flex-wrap: wrap;
-    position: relative;
-    z-index: 1;
-    min-height: 160px;
-}
-
-.aocr-welcome-content {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex: 1;
-    min-width: 300px;
-}
-
-.aocr-institution-logo {
-    width: 80px;
-    height: 80px;
-    background: #FFFFFF;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 10px;
-}
-
-.aocr-institution-logo img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-
-.aocr-welcome-copy {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.aocr-welcome-eyebrow {
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.85);
-    margin-bottom: 6px;
-    text-transform: uppercase;
-}
-
-.aocr-welcome-title {
-    font-size: 1.75rem;
-    font-weight: 800;
-    margin: 0 0 8px 0;
-    line-height: 1.2;
-    color: #FFFFFF !important;
-}
-
-.aocr-welcome-desc {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.92);
-    margin: 0 0 12px 0;
-    max-width: 600px;
-    line-height: 1.4;
-}
-
-.aocr-session-badges {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.aocr-session-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.aocr-session-badge--active {
-    background: rgba(46, 204, 113, 0.2);
-    border-color: rgba(46, 204, 113, 0.4);
-    color: #e8f8ef;
-}
-
-.aocr-institution-date-card {
-    background: rgba(5, 65, 94, 0.65);
-    border-radius: 10px;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    min-width: 260px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(4px);
-}
-
-.aocr-institution-date-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 4px;
-}
-
-.aocr-institution-date-value {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin-bottom: 4px;
-}
-
-.aocr-institution-date-text {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.85);
-    line-height: 1.3;
-}
-
+/* Banner operativo propio de la bandeja de Coordinación. */
 .aocr-coordination-banner {
     background: linear-gradient(135deg, #0e3a5c 0%, #145a82 50%, #0f6a7f 100%);
     border-radius: 14px;
@@ -1192,32 +1040,7 @@
     line-height: 1.4;
 }
 
-@@media (max-width: 991.98px) {
-    .aocr-welcome-inner {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .aocr-welcome-content {
-        flex-direction: column;
-        text-align: center;
-    }
-    .aocr-welcome-copy {
-        align-items: center;
-    }
-    .aocr-session-badges {
-        justify-content: center;
-    }
-    .aocr-institution-date-card {
-        text-align: center;
-    }
-}
 @@media (max-width: 575.98px) {
-    .aocr-welcome-inner {
-        padding: 20px;
-    }
-    .aocr-welcome-title {
-        font-size: 1.4rem;
-    }
     .aocr-coordination-banner {
         padding: 20px;
     }
@@ -1231,31 +1054,6 @@
    HTML
    ================================================================ *@
 <div class="di3-shell">
-
-    @* ── LEVEL 1: HERO & WELCOME BANNER ── *@
-    <div class="aocr-welcome-banner">
-        <div class="aocr-welcome-inner">
-            <div class="aocr-welcome-content">
-                <div class="aocr-institution-logo">
-                    <img src="@Url.Content("~/Content/imganes/logo1.png")" alt="Logotipo DAC" />
-                </div>
-                <div class="aocr-welcome-copy">
-                    <div class="aocr-welcome-eyebrow">OPERACIONES DE EXPLOTADORES AÉREOS EXTRANJEROS</div>
-                    <h1 class="aocr-welcome-title">Bienvenido, @nombreUsuario</h1>
-                    <p class="aocr-welcome-desc">Panel institucional para seguimiento operativo, control de procesos y acceso directo al ecosistema AOCR.</p>
-                    <div class="aocr-session-badges">
-                        <span class="aocr-session-badge">Coordinación</span>
-                        <span class="aocr-session-badge aocr-session-badge--active">Sesión activa</span>
-                    </div>
-                </div>
-            </div>
-            <div class="aocr-institution-date-card">
-                <span class="aocr-institution-date-label">FECHA INSTITUCIONAL</span>
-                <strong class="aocr-institution-date-value">@hoy.ToString("dd/MM/yyyy")</strong>
-                <span class="aocr-institution-date-text">Panel habilitado para seguimiento y decisiones rápidas</span>
-            </div>
-        </div>
-    </div>
 
     @* ── LEVEL 1.5: COORDINATION BANNER ── *@
     <div class="aocr-coordination-banner">

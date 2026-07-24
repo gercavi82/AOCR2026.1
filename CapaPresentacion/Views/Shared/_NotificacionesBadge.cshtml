@@ -165,7 +165,7 @@
         var $badge = $('#badgeNotificaciones');
         var $contador = $('#contadorNotificaciones');
         var $lista = $('#listaNotificaciones');
-        var pollingInterval = 30000;
+        var pollingInterval = 45 * 60 * 1000;
         var contadorTimer = null;
         var currentLoadRequest = null;
 
@@ -338,7 +338,7 @@
             });
         });
 
-        // Auto-refresh cada 30 segundos
+        // Auto-refresh cada 45 minutos
         cargarContador();
         if (contadorTimer) { clearInterval(contadorTimer); }
         contadorTimer = setInterval(cargarContador, pollingInterval);

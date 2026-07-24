@@ -43,7 +43,11 @@ namespace CapaNegocio.Services
             try
             {
                 string candidata;
-                if (Path.IsPathRooted(rutaPersistida)) candidata = rutaPersistida;
+                if ((rutaPersistida.StartsWith("~/", StringComparison.Ordinal)
+                        || rutaPersistida.StartsWith("/", StringComparison.Ordinal))
+                    && resolverVirtual != null)
+                    candidata = resolverVirtual(rutaPersistida);
+                else if (Path.IsPathRooted(rutaPersistida)) candidata = rutaPersistida;
                 else if (resolverVirtual != null) candidata = resolverVirtual(rutaPersistida);
                 else return Error(DocumentoSeguroError.Prohibido, "Documento no disponible.");
 

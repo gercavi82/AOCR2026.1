@@ -495,16 +495,8 @@
             <section class="content aocr-content-shell px-3 pb-4 pt-3">
                 <div class="container-fluid aocr-page">
                     @{
-                        var hideHeaderHero = false;
-                        object hideHeaderHeroRaw = ViewData["HideGlobalHeaderHero"];
-
-                        if (hideHeaderHeroRaw != null)
-                        {
-                            bool.TryParse(hideHeaderHeroRaw.ToString(), out hideHeaderHero);
-                        }
-
-                        var shouldRenderHeaderHero = !hideHeaderHero &&
-                                                     (Session["NombreUsuario"] != null || Session["Rol"] != null);
+                        var shouldRenderHeaderHero =
+                            Session["NombreUsuario"] != null || Session["Rol"] != null;
                     }
 
                     @if (shouldRenderHeaderHero)
