@@ -556,6 +556,69 @@ ORDER BY descripcion;";
             }
         }
 
+        public List<SeguridadRolDTO> ObtenerRolesFuncionalesAocr()
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                var sql = @"
+WITH roles_normalizados AS
+(
+    SELECT
+        codigorol,
+        activo,
+        CASE
+            WHEN UPPER(TRIM(descripcion)) = 'ADMINISTRADOR' THEN 'Administrador'
+            WHEN UPPER(TRIM(descripcion)) IN ('RT', 'SOLICITANTE', 'OPERADOR') THEN 'RT'
+            WHEN UPPER(TRIM(descripcion)) = 'FINANCIERO' THEN 'Financiero'
+            WHEN UPPER(TRIM(descripcion)) IN ('COORDINADOR', 'COORDINADORINSPECCIONES') THEN 'Coordinador'
+            WHEN UPPER(TRIM(descripcion)) IN ('INSPECTOR', 'TECNICO', 'EVALUADORTECNICO') THEN 'Inspector'
+            WHEN UPPER(TRIM(descripcion)) IN ('DGAC', 'DIRDAC', 'DIRECCION', 'DIRECTORGENERAL', 'JEFATURATECNICA') THEN 'DGAC'
+            WHEN UPPER(TRIM(descripcion)) IN ('DCAV', 'DIRECTOR_CERTIFICACIONES_DCAV') THEN 'DCAV'
+            ELSE NULL
+        END AS nombre_canonico,
+        ROW_NUMBER() OVER
+        (
+            PARTITION BY CASE
+                WHEN UPPER(TRIM(descripcion)) = 'ADMINISTRADOR' THEN 'Administrador'
+                WHEN UPPER(TRIM(descripcion)) IN ('RT', 'SOLICITANTE', 'OPERADOR') THEN 'RT'
+                WHEN UPPER(TRIM(descripcion)) = 'FINANCIERO' THEN 'Financiero'
+                WHEN UPPER(TRIM(descripcion)) IN ('COORDINADOR', 'COORDINADORINSPECCIONES') THEN 'Coordinador'
+                WHEN UPPER(TRIM(descripcion)) IN ('INSPECTOR', 'TECNICO', 'EVALUADORTECNICO') THEN 'Inspector'
+                WHEN UPPER(TRIM(descripcion)) IN ('DGAC', 'DIRDAC', 'DIRECCION', 'DIRECTORGENERAL', 'JEFATURATECNICA') THEN 'DGAC'
+                WHEN UPPER(TRIM(descripcion)) IN ('DCAV', 'DIRECTOR_CERTIFICACIONES_DCAV') THEN 'DCAV'
+                ELSE NULL
+            END
+            ORDER BY CASE
+                WHEN UPPER(TRIM(descripcion)) IN ('ADMINISTRADOR', 'RT', 'FINANCIERO', 'COORDINADOR', 'INSPECTOR', 'DGAC', 'DCAV') THEN 0
+                ELSE 1
+            END, codigorol
+        ) AS orden
+    FROM rol
+    WHERE activo = TRUE
+)
+SELECT
+    codigorol AS ""CodigoRol"",
+    nombre_canonico AS ""Descripcion"",
+    activo AS ""Activo""
+FROM roles_normalizados
+WHERE nombre_canonico IS NOT NULL
+  AND orden = 1
+ORDER BY CASE nombre_canonico
+    WHEN 'RT' THEN 1
+    WHEN 'Financiero' THEN 2
+    WHEN 'Coordinador' THEN 3
+    WHEN 'Inspector' THEN 4
+    WHEN 'DGAC' THEN 5
+    WHEN 'DCAV' THEN 6
+    WHEN 'Administrador' THEN 7
+    ELSE 99
+END;";
+
+                return cn.Query<SeguridadRolDTO>(sql).ToList();
+            }
+        }
+
         public List<int> ObtenerRolesUsuario(int idUsuario)
         {
             using (var cn = CrearConexion())
@@ -640,6 +703,8 @@ SELECT
     codigo AS ""Codigo"",
     nombre AS ""Nombre"",
     modulo AS ""Modulo"",
+    tipo_accion AS ""TipoAccion"",
+    COALESCE(NULLIF(descripcion, ''), nombre) AS ""Descripcion"",
     activo AS ""Activo""
 FROM seguridad_permiso
 WHERE (@soloActivos = FALSE OR activo = TRUE)
@@ -667,6 +732,25 @@ WHERE codigorol = @codigoRol
 ORDER BY id_permiso;";
 
                 return cn.Query<int>(sql, new { codigoRol = codigoRol }).ToList();
+            }
+        }
+
+        public DateTime? ObtenerFechaUltimaActualizacionPermisosRol(int codigoRol)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                if (!ExisteTabla(cn, "seguridad_rol_permiso"))
+                {
+                    return null;
+                }
+
+                var sql = @"
+SELECT MAX(actualizado_en)
+FROM seguridad_rol_permiso
+WHERE codigorol = @codigoRol;";
+
+                return cn.Query<DateTime?>(sql, new { codigoRol = codigoRol }).FirstOrDefault();
             }
         }
 
@@ -731,6 +815,187 @@ DO UPDATE SET
                         ip);
 
                     tx.Commit();
+                    return true;
+                }
+            }
+        }
+
+        public bool ActualizarPermisosRolDiferencial(
+            int codigoRol,
+            IEnumerable<int> agregados,
+            IEnumerable<int> retirados,
+            DateTime? versionEsperada,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out bool conflictoVersion,
+            out DateTime? versionActual,
+            out string mensaje)
+        {
+            conflictoVersion = false;
+            versionActual = null;
+            mensaje = string.Empty;
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    if (!ExisteTabla(cn, tx, "seguridad_rol_permiso"))
+                    {
+                        tx.Rollback();
+                        mensaje = "La infraestructura de permisos no está disponible.";
+                        return false;
+                    }
+
+                    var listAgregados = (agregados ?? Enumerable.Empty<int>()).Where(p => p > 0).Distinct().ToList();
+                    var listRetirados = (retirados ?? Enumerable.Empty<int>()).Where(p => p > 0).Distinct().ToList();
+                    if (listAgregados.Intersect(listRetirados).Any())
+                    {
+                        tx.Rollback();
+                        mensaje = "Un permiso no puede agregarse y retirarse en la misma operación.";
+                        return false;
+                    }
+
+                    var rol = cn.QueryFirstOrDefault<SeguridadRolDTO>(@"
+SELECT codigorol AS ""CodigoRol"", descripcion AS ""Descripcion"", activo AS ""Activo""
+FROM rol
+WHERE codigorol = @codigoRol
+  AND activo = TRUE
+FOR UPDATE;",
+                        new { codigoRol = codigoRol },
+                        tx);
+                    if (rol == null)
+                    {
+                        tx.Rollback();
+                        mensaje = "El rol seleccionado no existe o está inactivo.";
+                        return false;
+                    }
+
+                    var idsSolicitados = listAgregados.Concat(listRetirados).Distinct().ToList();
+                    if (idsSolicitados.Any())
+                    {
+                        var idsValidos = cn.Query<int>(
+                            "SELECT id_permiso FROM seguridad_permiso WHERE activo = TRUE AND id_permiso = ANY(@Ids);",
+                            new { Ids = idsSolicitados },
+                            tx).ToList();
+                        if (idsValidos.Count != idsSolicitados.Count)
+                        {
+                            tx.Rollback();
+                            mensaje = "La solicitud contiene permisos inexistentes o inactivos.";
+                            return false;
+                        }
+                    }
+
+                    versionActual = cn.Query<DateTime?>(@"
+SELECT MAX(actualizado_en)
+FROM seguridad_rol_permiso
+WHERE codigorol = @codigoRol;",
+                        new { codigoRol = codigoRol },
+                        tx).FirstOrDefault();
+
+                    var versionNormalizada = versionEsperada.HasValue
+                        ? versionEsperada.Value.ToUniversalTime()
+                        : (DateTime?)null;
+                    var actualNormalizada = versionActual.HasValue
+                        ? versionActual.Value.ToUniversalTime()
+                        : (DateTime?)null;
+                    if (versionNormalizada != actualNormalizada)
+                    {
+                        conflictoVersion = true;
+                        tx.Rollback();
+                        mensaje = "Los permisos fueron modificados por otro usuario. Recargue la configuración.";
+                        return false;
+                    }
+
+                    var esAdministrador = string.Equals(
+                        (rol.Descripcion ?? string.Empty).Trim(),
+                        "Administrador",
+                        StringComparison.OrdinalIgnoreCase);
+                    if (esAdministrador && listRetirados.Any())
+                    {
+                        var retiraPermisoProtegido = cn.ExecuteScalar<int>(@"
+SELECT COUNT(1)
+FROM seguridad_permiso
+WHERE id_permiso = ANY(@Ids)
+  AND UPPER(TRIM(codigo)) = 'ADM_ROLES_PERMISOS';",
+                            new { Ids = listRetirados },
+                            tx) > 0;
+                        if (retiraPermisoProtegido)
+                        {
+                            tx.Rollback();
+                            mensaje = "No se puede retirar al Administrador el permiso protegido para administrar roles y permisos.";
+                            return false;
+                        }
+                    }
+
+                    var permisosAnteriores = cn.Query<int>(@"
+SELECT id_permiso
+FROM seguridad_rol_permiso
+WHERE codigorol = @codigoRol
+  AND activo = TRUE
+ORDER BY id_permiso;",
+                        new { codigoRol = codigoRol },
+                        tx).ToList();
+
+                    if (listRetirados.Any())
+                    {
+                        cn.Execute(
+                            "UPDATE seguridad_rol_permiso SET activo = FALSE, actualizado_en = NOW(), actualizado_por = @actor WHERE codigorol = @codigoRol AND id_permiso = ANY(@Ids);",
+                            new { codigoRol = codigoRol, actor = actorCodigoUsuario, Ids = listRetirados },
+                            tx);
+                    }
+
+                    foreach (var permisoId in listAgregados)
+                    {
+                        cn.Execute(@"
+INSERT INTO seguridad_rol_permiso
+    (codigorol, id_permiso, activo, creado_en, creado_por, actualizado_en, actualizado_por)
+VALUES
+    (@codigoRol, @permisoId, TRUE, NOW(), @actor, NOW(), @actor)
+ON CONFLICT (codigorol, id_permiso)
+DO UPDATE SET
+    activo = TRUE,
+    actualizado_en = NOW(),
+    actualizado_por = EXCLUDED.actualizado_por;",
+                            new
+                            {
+                                codigoRol = codigoRol,
+                                permisoId = permisoId,
+                                actor = actorCodigoUsuario
+                            },
+                            tx);
+                    }
+
+                    var permisosNuevos = permisosAnteriores
+                        .Except(listRetirados)
+                        .Concat(listAgregados)
+                        .Distinct()
+                        .OrderBy(id => id)
+                        .ToList();
+
+                    RegistrarAuditoria(
+                        cn,
+                        tx,
+                        actorUsuarioId,
+                        actorCodigoUsuario,
+                        "ACTUALIZAR_PERMISOS_ROL_DIF",
+                        "ROL",
+                        codigoRol.ToString(),
+                        new
+                        {
+                            CorrelationId = Guid.NewGuid().ToString("N"),
+                            Rol = rol.Descripcion,
+                            Anteriores = permisosAnteriores,
+                            Nuevos = permisosNuevos,
+                            Agregados = listAgregados,
+                            Retirados = listRetirados,
+                            Resultado = "OK"
+                        },
+                        ip);
+
+                    tx.Commit();
+                    versionActual = ObtenerFechaUltimaActualizacionPermisosRol(codigoRol);
                     return true;
                 }
             }

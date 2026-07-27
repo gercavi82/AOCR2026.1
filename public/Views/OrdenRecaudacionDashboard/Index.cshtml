@@ -525,12 +525,6 @@
         initDataTable();
         initEventos();
         cargarDatosIniciales();
-
-        setInterval(function() {
-            if ($('#loadingOrdenes').hasClass('d-none')) {
-                cargarDatosDashboard();
-            }
-        }, 45 * 60 * 1000);
     });
 
     function initDataTable() {

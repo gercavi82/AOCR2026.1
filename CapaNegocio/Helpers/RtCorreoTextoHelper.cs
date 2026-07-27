@@ -10,7 +10,7 @@ namespace CapaNegocio.Helpers
     {
         public static string GetAsuntoDesignacionPendiente()
         {
-            return GetAppSetting("Email:RT:AsuntoDesignacion", "Cuenta creada - Sistema AOCR (pendiente de aprobación)");
+            return GetAppSetting("Email:RT:AsuntoDesignacion", "Solicitud de cuenta - Sistema AOCR (pendiente de aceptación)");
         }
 
         public static string GetAsuntoDeclaracionAceptada()
@@ -32,7 +32,7 @@ namespace CapaNegocio.Helpers
         {
             var texto = GetAppSetting(
                 "Email:RT:TextoDesignacion",
-                "Su cuenta en el Sistema AOCR ha sido creada exitosamente. Su solicitud de designación como Responsable Técnico (RT) se encuentra en proceso de revisión y aprobación por la DGAC.");
+                "Su solicitud de cuenta en el Sistema AOCR ha sido registrada exitosamente. Su solicitud de designación como Responsable Técnico (RT) se encuentra pendiente de aceptación por la DGAC.");
 
             return ReplaceTokens(texto, tokens);
         }

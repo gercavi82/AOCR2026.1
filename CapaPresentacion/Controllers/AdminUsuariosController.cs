@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -105,7 +105,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
-        public ActionResult Index(string filtro, bool? activo, string tipo, string perfil)
+        public ActionResult Index(string filtro, bool? activo, string tipo, string perfil, string tab, string rolFiltro)
         {
             var usuarios = AdminUsuariosBL.BuscarUsuarios(filtro, activo) ?? new List<SeguridadUsuarioDTO>();
 
@@ -126,6 +126,7 @@ namespace CapaPresentacion.Controllers
 
             var vm = new AdminUsuariosIndexViewModel
             {
+                TabActivo = string.IsNullOrWhiteSpace(tab) ? "resumen" : tab.Trim().ToLowerInvariant(),
                 Filtro = filtro,
                 Activo = activo,
                 TipoFiltro = tipo,
@@ -146,7 +147,14 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                vm.RolesActivos = AdminUsuariosBL.ObtenerRolesActivos()?.Count ?? 0;
+                var rolesFuncionales = AdminUsuariosBL.ObtenerRolesFuncionalesAocr();
+                vm.RolesActivos = rolesFuncionales?.Count ?? 0;
+                vm.RolesFiltro = (rolesFuncionales ?? new List<SeguridadRolDTO>()).Select(r => new SelectListItem
+                {
+                    Value = r.Descripcion,
+                    Text = r.Descripcion,
+                    Selected = string.Equals(r.Descripcion, rolFiltro, StringComparison.OrdinalIgnoreCase)
+                }).ToList();
             }
             catch (Exception ex)
             {
@@ -1331,10 +1339,10 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [RequirePermission("ADM_ROLES_PERMISOS")]
+        [RequirePermission("ADM_ROLES_PERMISOS", SoloAdministrador = true)]
         public ActionResult PermisosRol(int? codigoRol)
         {
-            var rolesActivos = AdminUsuariosBL.ObtenerRolesActivos();
+            var rolesActivos = AdminUsuariosBL.ObtenerRolesFuncionalesAocr();
             var rolSeleccionado = codigoRol.GetValueOrDefault(0);
 
             var vm = new AdminRolPermisosViewModel
@@ -1357,19 +1365,94 @@ namespace CapaPresentacion.Controllers
                     .Where(r => r.CodigoRol == rolSeleccionado)
                     .Select(r => r.Descripcion)
                     .FirstOrDefault();
+                vm.FechaUltimaActualizacion = AdminUsuariosBL.ObtenerFechaUltimaActualizacionPermisosRol(rolSeleccionado);
             }
 
             return View(vm);
         }
 
+        [HttpGet]
+        [RequirePermission("ADM_ROLES_PERMISOS", SoloAdministrador = true)]
+        public JsonResult ObtenerPermisosPorRol(int codigoRol)
+        {
+            if (codigoRol <= 0)
+            {
+                Response.StatusCode = 400;
+                return Json(new { success = false, message = "Debe seleccionar un rol válido." }, JsonRequestBehavior.AllowGet);
+            }
+
+            var roles = AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>();
+            var rol = roles.FirstOrDefault(r => r.CodigoRol == codigoRol);
+            if (rol == null)
+            {
+                Response.StatusCode = 400;
+                return Json(new { success = false, message = "El rol no pertenece al catálogo administrable." }, JsonRequestBehavior.AllowGet);
+            }
+
+            try
+            {
+                var catalogo = AdminUsuariosBL.ObtenerPermisos(true) ?? new List<SeguridadPermisoDTO>();
+                var seleccionados = AdminUsuariosBL.ObtenerPermisosPorRol(codigoRol) ?? new List<int>();
+                var version = AdminUsuariosBL.ObtenerFechaUltimaActualizacionPermisosRol(codigoRol);
+                var seleccion = new HashSet<int>(seleccionados);
+                var modulos = catalogo
+                    .GroupBy(p => string.IsNullOrWhiteSpace(p.Modulo) ? "Sin módulo" : p.Modulo.Trim())
+                    .OrderBy(g => g.Key)
+                    .Select(g => new
+                    {
+                        nombre = g.Key,
+                        total = g.Count(),
+                        asignados = g.Count(p => seleccion.Contains(p.IdPermiso)),
+                        permisos = g.OrderBy(p => p.TipoAccion).ThenBy(p => p.Nombre).Select(p => new
+                        {
+                            id = p.IdPermiso,
+                            codigo = p.Codigo,
+                            nombre = p.Nombre,
+                            descripcion = p.Descripcion,
+                            accion = p.TipoAccion,
+                            asignado = seleccion.Contains(p.IdPermiso)
+                        })
+                    })
+                    .ToList();
+
+                return Json(new
+                {
+                    success = true,
+                    rol = new { id = rol.CodigoRol, nombre = rol.Descripcion },
+                    version = version.HasValue ? version.Value.ToUniversalTime().ToString("O") : string.Empty,
+                    indicadores = new
+                    {
+                        disponibles = catalogo.Count,
+                        asignados = seleccionados.Count,
+                        modulosHabilitados = modulos.Count(m => m.asignados > 0),
+                        cambiosPendientes = 0
+                    },
+                    modulos = modulos
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[AdminUsuariosController] ObtenerPermisosPorRol error: " + ex);
+                Response.StatusCode = 500;
+                return Json(new { success = false, message = "No fue posible cargar los permisos del rol." }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [RequirePermission("ADM_ROLES_PERMISOS")]
+        [RequirePermission("ADM_ROLES_PERMISOS", SoloAdministrador = true)]
         public ActionResult PermisosRol(AdminRolPermisosViewModel model)
         {
             if (model == null || model.CodigoRolSeleccionado <= 0)
             {
                 TempData["Error"] = "Debe seleccionar un rol.";
+                return RedirectToAction("PermisosRol");
+            }
+
+            if (!(AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>())
+                .Any(r => r.CodigoRol == model.CodigoRolSeleccionado))
+            {
+                TempData["Error"] = "El rol no pertenece al catálogo administrable.";
                 return RedirectToAction("PermisosRol");
             }
 
@@ -1384,6 +1467,90 @@ namespace CapaPresentacion.Controllers
 
             TempData[ok ? "Success" : "Error"] = mensaje;
             return RedirectToAction("PermisosRol", new { codigoRol = model.CodigoRolSeleccionado });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("ADM_ROLES_PERMISOS", SoloAdministrador = true)]
+        public JsonResult GuardarPermisosRolDiferencial(int codigoRol, List<int> agregados, List<int> retirados, string versionEsperada)
+        {
+            if (codigoRol <= 0)
+            {
+                Response.StatusCode = 400;
+                return Json(new { success = false, message = "Debe seleccionar un rol válido." });
+            }
+
+            if (!(AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>())
+                .Any(r => r.CodigoRol == codigoRol))
+            {
+                Response.StatusCode = 400;
+                return Json(new { success = false, message = "El rol no pertenece al catálogo administrable." });
+            }
+
+            var actorId = ObtenerActorId();
+            if (!actorId.HasValue || actorId.Value <= 0)
+            {
+                Response.StatusCode = 401;
+                return Json(new { success = false, message = "La sesión no contiene un usuario válido." });
+            }
+
+            DateTime parsedVersion;
+            DateTime? version = null;
+            if (!string.IsNullOrWhiteSpace(versionEsperada))
+            {
+                if (!DateTime.TryParse(
+                    versionEsperada,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind,
+                    out parsedVersion))
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { success = false, message = "La versión esperada no es válida." });
+                }
+                version = parsedVersion;
+            }
+
+            try
+            {
+                string mensaje;
+                bool conflicto;
+                DateTime? versionActual;
+                var ok = AdminUsuariosBL.ActualizarPermisosRolDiferencial(
+                    codigoRol,
+                    agregados ?? new List<int>(),
+                    retirados ?? new List<int>(),
+                    version,
+                    actorId,
+                    ObtenerActorCodigoUsuario(),
+                    Request != null ? Request.UserHostAddress : null,
+                    out conflicto,
+                    out versionActual,
+                    out mensaje);
+
+                if (conflicto)
+                {
+                    Response.StatusCode = 409;
+                    return Json(new { success = false, message = mensaje });
+                }
+                if (!ok)
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { success = false, message = mensaje });
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    message = mensaje,
+                    version = versionActual.HasValue ? versionActual.Value.ToUniversalTime().ToString("O") : string.Empty
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[AdminUsuariosController] GuardarPermisosRolDiferencial error: " + ex);
+                Response.StatusCode = 500;
+                return Json(new { success = false, message = "No fue posible guardar los permisos. No se aplicaron cambios parciales." });
+            }
         }
 
         [HttpGet]
@@ -2252,7 +2419,7 @@ namespace CapaPresentacion.Controllers
         private IEnumerable<SelectListItem> ObtenerRolesSelectList(IEnumerable<int> seleccionados)
         {
             var seleccion = new HashSet<int>((seleccionados ?? Enumerable.Empty<int>()));
-            return AdminUsuariosBL.ObtenerRolesActivos()
+            return AdminUsuariosBL.ObtenerRolesFuncionalesAocr()
                 .Select(r => new SelectListItem
                 {
                     Value = r.CodigoRol.ToString(),

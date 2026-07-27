@@ -174,9 +174,6 @@ namespace CapaPresentacion.Controllers
                 var esRepresentanteValue = (Request.Form["esRepresentanteLegal"] ?? "").Trim();
                 var esRepresentante = esRepresentanteValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
                                       esRepresentanteValue.Equals("on", StringComparison.OrdinalIgnoreCase);
-                var aceptaDeclaracionValue = (Request.Form["aceptaDeclaracion"] ?? "").Trim();
-                var aceptaDeclaracion = aceptaDeclaracionValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
-                                        aceptaDeclaracionValue.Equals("on", StringComparison.OrdinalIgnoreCase);
 
                 // Companías representadas (nuevo esquema multi-compañía).
                 var companiasFormulario = ExtraerCompaniasFormulario();
@@ -211,20 +208,6 @@ namespace CapaPresentacion.Controllers
                     companiasFormulario.Count == 0 || companiasDeclaracion.Count == 0)
                 {
                     return Json(new { success = false, message = "Debe seleccionar al menos una compañía a representar." });
-                }
-
-                if (!aceptaDeclaracion)
-                {
-                    var tmpDao = new DeclaracionTemporalDAO();
-                    var tmp = tmpDao.GetByEmail((correo ?? string.Empty).Trim().ToLower());
-                    if (tmp != null && tmp.Aceptada)
-                    {
-                        aceptaDeclaracion = true;
-                    }
-                }
-                if (!aceptaDeclaracion)
-                {
-                    return Json(new { success = false, message = "Debe aceptar la declaración de responsabilidad." });
                 }
 
                 // Validar unicidad antes de insertar
@@ -349,13 +332,9 @@ namespace CapaPresentacion.Controllers
                 // Marcar designación RT como pendiente y registrar ruta del documento
                 UsuarioDAO.ActualizarDesignacionRT(usuarioId, rutaDocumento);
 
-                // 5.1 Guardar aceptación de declaración en BD (RT) y notificar por correo
-                bool declaracionRegistrada = false;
-                bool declaracionHistorialRegistrada = false;
-                bool pdfDeclaracionGenerado = false;
-                bool correoDeclaracionEnviado = false;
-                bool documentoRtSincronizado = false;
+                // 5.1 Enviar solicitud RT y notificar
                 bool solicitudRtEnviada = false;
+                bool documentoRtSincronizado = false;
                 try
                 {
                     var nombreEmpresaPrincipal = companiasDeclaracion[0].Nombre;
@@ -382,9 +361,6 @@ namespace CapaPresentacion.Controllers
                         solicitudId = solicitudExistente.Id;
                     }
 
-                    rtService.AceptarDeclaracion(solicitudId, usuarioId, textoDeclaracionFinal);
-                    declaracionRegistrada = true;
-
                     try
                     {
                         rtService.RegistrarDesignacionExistente(
@@ -404,151 +380,17 @@ namespace CapaPresentacion.Controllers
                             exSolicitudRt.ToString(),
                             "UsuarioController");
                     }
-
-                    byte[] pdfDeclaracion = null;
-                    var fechaAceptacion = DateTime.Now;
-                    var nombreAdjunto = string.Format(
-                        "Declaracion_Responsabilidad_RT_{0}_{1:yyyyMMddHHmmss}.pdf",
-                        codigoUsuarioFinal,
-                        fechaAceptacion);
-
-                    try
-                    {
-                        pdfDeclaracion = GenerarPdfDeclaracionResponsabilidad(
-                            nombreCompletoUsuario,
-                            (identificacionFinal ?? string.Empty).Trim(),
-                            companiasDeclaracion,
-                            textoDeclaracionFinal,
-                            fechaAceptacion);
-
-                        pdfDeclaracionGenerado = pdfDeclaracion != null && pdfDeclaracion.Length > 0;
-                    }
-                    catch (Exception exPdf)
-                    {
-                        LogBL.RegistrarError(
-                            "Error generando PDF de declaración de responsabilidad en Usuario/Crear.",
-                            exPdf.ToString(),
-                            "UsuarioController");
-                        pdfDeclaracionGenerado = false;
-                    }
-
-                    try
-                    {
-                        var companiasHtml = ConstruirCompaniasHtmlCorreo(companiasDeclaracion);
-                        var asuntoDecl = RtCorreoTextoHelper.GetAsuntoDeclaracionAceptada();
-                        var textoDeclaracionCorreo = RtCorreoTextoHelper.GetTextoDeclaracionAceptada(new Dictionary<string, string>
-                        {
-                            { "NOMBRE", nombreCompletoUsuario },
-                            { "SOLICITUD", solicitudId.ToString() }
-                        });
-                        var modelDecl = new EmailTemplateModel
-                        {
-                            Titulo = "Declaracion de responsabilidad aceptada",
-                            NombreDestinatario = nombreCompletoUsuario,
-                            MensajePrincipal = textoDeclaracionCorreo,
-                            Resumen = new List<EmailFieldItem>
-                            {
-                                new EmailFieldItem("Tramite", "Solicitud RT #" + solicitudId),
-                                new EmailFieldItem("Fecha de aceptacion", fechaAceptacion.ToString("dd/MM/yyyy HH:mm"))
-                            },
-                            ContenidoHtmlExtra = "<p style='margin:0 0 8px 0; font-size:13px; color:#243746; font-weight:bold;'>Companias declaradas:</p>" + companiasHtml,
-                            TextoCierre = "Su solicitud queda en proceso de validacion por la DGAC.",
-                            Footer = "Este es un correo automatico, por favor no responder."
-                        };
-                        var cuerpoDecl = EmailTemplateRenderer.Render(modelDecl);
-
-                        var servicioCorreoDecl = new EnviarCorreo();
-                        if (pdfDeclaracionGenerado)
-                        {
-                            correoDeclaracionEnviado = servicioCorreoDecl.enviaMensajeCorreoConAdjunto(
-                                correo,
-                                asuntoDecl,
-                                cuerpoDecl,
-                                pdfDeclaracion,
-                                nombreAdjunto,
-                                "application/pdf");
-                        }
-                        else
-                        {
-                            correoDeclaracionEnviado = servicioCorreoDecl.enviaMensajeCorreo(correo, asuntoDecl, cuerpoDecl);
-                        }
-                    }
-                    catch (Exception exCorreoDeclaracion)
-                    {
-                        LogBL.RegistrarError(
-                            "Error enviando correo de declaración de responsabilidad en Usuario/Crear.",
-                            exCorreoDeclaracion.ToString(),
-                            "UsuarioController");
-                        correoDeclaracionEnviado = false;
-                    }
                 }
                 catch (Exception exDeclaracion)
                 {
                     LogBL.RegistrarError(
-                        "Error registrando aceptación de declaración de responsabilidad en Usuario/Crear.",
+                        "Error procesando solicitud RT en Usuario/Crear.",
                         exDeclaracion.ToString(),
                         "UsuarioController");
-                    declaracionRegistrada = false;
+                    solicitudRtEnviada = false;
                 }
 
-                try
-                {
-                    var historialDao = new DeclaracionTemporalDAO();
-                    historialDao.InsertarHistorial(new DeclaracionTemporal
-                    {
-                        Email = (correo ?? string.Empty).Trim().ToLower(),
-                        Identificacion = (identificacionFinal ?? string.Empty).Trim(),
-                        EmpresaCodigo = string.Join(",", codigosCompaniaSeleccionados),
-                        EmpresaNombre = string.Join(" | ", companiasDeclaracion.Select(FormatearCompaniaDeclaracion)),
-                        Nombres = (nombres ?? string.Empty).Trim(),
-                        Apellidos = (apellidos ?? string.Empty).Trim(),
-                        Aceptada = true,
-                        Ip = Request != null ? Request.UserHostAddress : string.Empty,
-                        UserAgent = Request != null ? Request.UserAgent : string.Empty,
-                        FinalizedAt = DateTime.Now
-                    });
-
-                    declaracionHistorialRegistrada = true;
-                    if (!declaracionRegistrada)
-                    {
-                        declaracionRegistrada = true;
-                    }
-                }
-                catch (Exception exHistorial)
-                {
-                    LogBL.RegistrarError(
-                        "Error registrando historial de declaración en Usuario/Crear.",
-                        exHistorial.ToString(),
-                        "UsuarioController");
-                }
-
-                // 5. SI ES REPRESENTANTE LEGAL, PROCESAR ARCHIVOS DE REPRESENTACIÓN (opcional).
-                if (esRepresentante)
-                {
-                    var archivos = new List<string>();
-                    int index = 0;
-                    while (Request.Form[$"Companias[{index}].IdCompania"] != null)
-                    {
-                        var codigoCompania = Request.Form[$"Companias[{index}].IdCompania"];
-                        if (!string.IsNullOrWhiteSpace(codigoCompania))
-                        {
-                            // Procesar archivo asociado
-                            var archivo = Request.Files[$"Companias[{index}].ArchivoRepresentante"];
-                            if (archivo != null && archivo.ContentLength > 0)
-                            {
-                                string rutaArchivo = GuardarArchivoRepresentante(archivo, identificacionFinal, index);
-                                if (!string.IsNullOrEmpty(rutaArchivo))
-                                {
-                                    archivos.Add(rutaArchivo);
-                                }
-                            }
-                        }
-
-                        index++;
-                    }
-                }
-
-                // 6. Enviar correo informativo: la cuenta fue creada, las credenciales llegarán al aprobar RT
+                // 6. Enviar correo informativo: solicitud registrada, pendiente de aceptación
                 var asunto = RtCorreoTextoHelper.GetAsuntoDesignacionPendiente();
                 var textoDesignacionPendiente = RtCorreoTextoHelper.GetTextoDesignacionPendiente(new Dictionary<string, string>
                 {
@@ -558,16 +400,16 @@ namespace CapaPresentacion.Controllers
                 });
                 var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
                 {
-                    Titulo = "Cuenta creada — pendiente de aprobación",
+                    Titulo = "Cuenta solicitada — pendiente de aceptación",
                     NombreDestinatario = $"{nombres} {apellidos}",
                     MensajePrincipal = textoDesignacionPendiente,
                     Resumen = new List<EmailFieldItem>
                     {
                         new EmailFieldItem("Identificación", identificacionFinal),
                         new EmailFieldItem("Correo registrado", correo),
-                        new EmailFieldItem("Estado", "Pendiente de aprobación")
+                        new EmailFieldItem("Estado", "Pendiente de aceptación")
                     },
-                    Observaciones = "Una vez que su designación sea aprobada, recibirá un correo con su usuario y contraseña para acceder al sistema. "
+                    Observaciones = "Una vez que su designación sea aceptada, recibirá un correo con su usuario y contraseña para acceder al sistema. "
                         + "Si usted no solicitó este registro, comuníquese con la DGAC de inmediato.",
                     TextoCierre = "Gracias por registrarse en el Sistema AOCR."
                 });
@@ -583,24 +425,24 @@ namespace CapaPresentacion.Controllers
                     correoEnviado = false;
                 }
 
-                // 7. Notificar al Director que hay un usuario RT pendiente de aprobación
+                // 7. Notificar al Director que hay una solicitud RT pendiente de aceptación
                 try
                 {
                     var destinatarioDireccion = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(CorreoInstitucionalService.DireccionJefatura);
-                    var asuntoDirector = "Usuario RT pendiente de aprobación - Sistema AOCR";
+                    var asuntoDirector = "Solicitud de RT pendiente de aceptación - Sistema AOCR";
                     var cuerpoDirector = EmailTemplateRenderer.Render(new EmailTemplateModel
                     {
-                        Titulo = "Usuario RT pendiente de aprobación",
+                        Titulo = "Solicitud de RT pendiente de aceptación",
                         NombreDestinatario = "Director/a",
-                        MensajePrincipal = "Se ha registrado un nuevo usuario como Responsable Técnico (RT) en el Sistema AOCR y requiere su aprobación.",
+                        MensajePrincipal = "Se ha registrado una nueva solicitud de designación como Responsable Técnico (RT) en el Sistema AOCR y requiere su aceptación.",
                         Resumen = new List<EmailFieldItem>
                         {
                             new EmailFieldItem("Nombre", string.Format("{0} {1}", nombres, apellidos).Trim()),
                             new EmailFieldItem("Identificación", identificacionFinal),
                             new EmailFieldItem("Correo del solicitante", correo),
-                            new EmailFieldItem("Estado", "Pendiente de aprobación")
+                            new EmailFieldItem("Estado", "Pendiente de aceptación")
                         },
-                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Aprobar Usuarios RT' para revisar y aprobar o rechazar esta solicitud.",
+                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Revisar designaciones RT' para aceptar o rechazar esta solicitud.",
                         TextoCierre = "Este es un correo automático del Sistema AOCR."
                     });
 
@@ -627,48 +469,18 @@ namespace CapaPresentacion.Controllers
                         "UsuarioController");
                 }
 
-                var mensajeFinal = "Usuario registrado exitosamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aprobada.";
+                var mensajeFinal = "Solicitud de registro enviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada.";
                 if (!correoEnviado)
                 {
                     mensajeFinal += " No se pudo enviar el correo de confirmación. Verifique configuración SMTP.";
                 }
-                if (!declaracionRegistrada)
+                if (!solicitudRtEnviada)
                 {
-                    mensajeFinal += " No se pudo registrar la aceptación de la declaración en este momento.";
+                    mensajeFinal += " La solicitud fue registrada, pero no se pudo enviar a revisión de coordinación.";
                 }
-                else
+                if (!documentoRtSincronizado)
                 {
-                    if (!pdfDeclaracionGenerado)
-                    {
-                        mensajeFinal += " La aceptación se registró, pero no se pudo generar el PDF de la declaración.";
-                    }
-                    if (!correoDeclaracionEnviado)
-                    {
-                        mensajeFinal += " La aceptación se registró, pero no se pudo enviar el correo de declaración.";
-                    }
-                    if (!documentoRtSincronizado)
-                    {
-                        mensajeFinal += " La cuenta fue creada, pero no se pudo sincronizar el documento en el expediente RT.";
-                    }
-                    if (!solicitudRtEnviada)
-                    {
-                        mensajeFinal += " La cuenta fue creada, pero la solicitud RT no quedó enviada a revisión de coordinación.";
-                    }
-                }
-
-                if (!declaracionHistorialRegistrada)
-                {
-                    mensajeFinal += " No se pudo registrar el historial de declaración para respaldo.";
-                }
-
-                try
-                {
-                    var tmpDao = new DeclaracionTemporalDAO();
-                    tmpDao.DeleteByEmail((correo ?? string.Empty).Trim().ToLower());
-                }
-                catch
-                {
-                    // no bloquear por limpieza temporal
+                    mensajeFinal += " La solicitud fue registrada, pero no se pudo sincronizar el documento en el expediente RT.";
                 }
 
                 return Json(new

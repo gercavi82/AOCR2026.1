@@ -234,6 +234,26 @@ namespace CapaPresentacion.Controllers
                 .Distinct()
                 .ToList();
 
+            var usuarioIds = new Dictionary<int, string>();
+            foreach (var solicitud in pendientesAsignacionPorId.Values)
+            {
+                if (solicitud != null && solicitud.CodigoUsuario > 0 && !usuarioIds.ContainsKey(solicitud.CodigoUsuario))
+                {
+                    try
+                    {
+                        var usuario = UsuarioDAO.ObtenerPorId(solicitud.CodigoUsuario);
+                        if (usuario != null)
+                        {
+                            usuarioIds[solicitud.CodigoUsuario] = usuario.Rol ?? string.Empty;
+                        }
+                    }
+                    catch
+                    {
+                        usuarioIds[solicitud.CodigoUsuario] = string.Empty;
+                    }
+                }
+            }
+
             var items = new List<DashboardGestionIntegralItemViewModel>();
 
             foreach (var codigoSolicitud in solicitudIds)
@@ -343,6 +363,9 @@ namespace CapaPresentacion.Controllers
                     || string.Equals(estadoDocumental, "OBSERVADO", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoInspeccion, "OBSERVADA", StringComparison.OrdinalIgnoreCase);
 
+                var esRt = solicitudPendienteAsignacion != null && EsSolicitudRt(usuarioIds, solicitudPendienteAsignacion.CodigoUsuario);
+                var etapaMostrar = ResolverEtapaMostrar(etapaActual, esRt);
+
                 items.Add(new DashboardGestionIntegralItemViewModel
                 {
                     CodigoSolicitud = codigoSolicitud,
@@ -355,6 +378,7 @@ namespace CapaPresentacion.Controllers
                     EstadoInspeccion = estadoInspeccion,
                     Inspector = inspector,
                     EtapaActual = etapaActual,
+                    EtapaMostrar = etapaMostrar,
                     FirmaInspector = firmaInspector,
                     FirmaDirdac = firmaDirdac,
                     ListoParaFirma = listoParaFirma,
@@ -391,6 +415,24 @@ namespace CapaPresentacion.Controllers
             }
 
             return string.IsNullOrWhiteSpace(valor) ? "OPS" : valor;
+        }
+
+        private static bool EsSolicitudRt(Dictionary<int, string> usuarioRoles, int codigoUsuario)
+        {
+            if (usuarioRoles != null && usuarioRoles.TryGetValue(codigoUsuario, out var rol))
+            {
+                return string.Equals(rol, "Solicitante", StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        private static string ResolverEtapaMostrar(string etapaActual, bool esRt)
+        {
+            if (esRt && string.Equals(etapaActual, "INSPECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                return "ACEPTACION_DE_RT";
+            }
+            return etapaActual;
         }
 
         private static string DeterminarEtapaActual(string estadoDocumental, string estadoInspeccion, bool tieneInspector, bool firmaInspector, bool firmaDirdac, bool listoParaFirma)

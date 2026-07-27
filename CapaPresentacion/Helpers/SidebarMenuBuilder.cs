@@ -7,6 +7,7 @@ using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
+using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaPresentacion.Infrastructure;
@@ -81,6 +82,7 @@ namespace CapaPresentacion.Helpers
             public bool EsDcavRol { get; set; }
             public bool EsDirectorGeneralRol { get; set; }
             public bool PuedeAdministracion { get; set; }
+            public bool PuedeGestionarRolesPermisos { get; set; }
             public bool PuedeAprobarUsuarios { get; set; }
             public bool TieneNavegacionRol { get; set; }
             public bool RequiereOrden { get; set; }
@@ -291,6 +293,10 @@ namespace CapaPresentacion.Helpers
             LoadCompanyState(context);
 
             context.PuedeAdministracion = permission.PuedeAdministracion;
+            context.PuedeGestionarRolesPermisos = SeguridadBL.UsuarioTienePermiso(
+                context.CodigoUsuarioSesion,
+                "ADM_ROLES_PERMISOS",
+                context.RolesRaw);
             context.PuedeAprobarUsuarios = permission.PuedeAprobarUsuarios;
             context.TieneAccesoSolicitudRt = context.TieneOrdenGenerada
                 || (context.EsSolicitanteORT && context.TieneSolicitudRtHabilitada)
@@ -1474,7 +1480,7 @@ namespace CapaPresentacion.Helpers
         {
             var group = NewGroup("administracion", "Administración", "fas fa-user-cog", "Usuarios, roles, parámetros, auditoría funcional y servicios de soporte institucional.", "warning");
             group.Items.Add(CreateItem(context, "admin-usuarios", "Usuarios", "Gestión institucional de usuarios, perfiles y estados AOCR.", "fas fa-users-cog", "AdminUsuarios", "Index", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "Index", "Edit", "Create" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "admin-roles", "Roles y permisos", "Matriz de accesos y perfiles institucionales.", "fas fa-key", "AdminUsuarios", "PermisosRol", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "PermisosRol" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "admin-roles", "Roles y permisos", "Matriz de accesos y perfiles institucionales.", "fas fa-key", "AdminUsuarios", "PermisosRol", null, 0, "neutral", context.PuedeGestionarRolesPermisos, true, string.Empty, new[] { "PermisosRol" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "admin-rt", "Usuarios internos RT", "Catálogo, creación y mantenimiento de inspectores internos RT.", "fas fa-id-badge", "AdminUsuarios", "ListarUsuariosInternosRT", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "ListarUsuariosInternosRT", "CrearUsuarioInternoRT", "EditarUsuarioInternoRT" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "admin-designaciones", "Designaciones RT", "Aprobación institucional de designaciones y constancias RT.", "fas fa-clipboard-check", "Usuario", "RevisarDesignaciones", null, context.Badges.AdminApprovalUsers, "warning", context.PuedeAprobarUsuarios, true, string.Empty, new[] { "RevisarDesignaciones" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "admin-parametros", "Parámetros y catálogos", "Configuración funcional del sistema y catálogos institucionales.", "fas fa-cogs", "Direccion", "ConfiguracionSistema", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "ConfiguracionSistema" }, null, null, string.Empty));
@@ -1886,7 +1892,7 @@ namespace CapaPresentacion.Helpers
         {
             var group = NewGroup("administracion-main", "Administración", "fas fa-user-cog", "Usuarios, roles, catálogos, parámetros, auditoría general y servicios de soporte.", "warning");
             group.Items.Add(CreateItem(context, "adm-usuarios", "Usuarios", "Gestión institucional de usuarios y estados de acceso.", "fas fa-users-cog", "AdminUsuarios", "Index", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "Index", "Edit", "Create" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "adm-roles", "Roles", "Configuración de permisos y perfiles institucionales.", "fas fa-key", "AdminUsuarios", "PermisosRol", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "PermisosRol" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "adm-roles", "Roles", "Configuración de permisos y perfiles institucionales.", "fas fa-key", "AdminUsuarios", "PermisosRol", null, 0, "neutral", context.PuedeGestionarRolesPermisos, true, string.Empty, new[] { "PermisosRol" }, null, null, string.Empty));
             group.Items.Add(CreateDisabledItem(context, "adm-catalogos", "Catálogos", "Catálogos funcionales y tablas maestras del sistema.", "fas fa-list-alt", "Disponible desde los módulos de parametrización y configuración institucional.", context.PuedeAdministracion));
             group.Items.Add(CreateDisabledItem(context, "adm-conceptos", "Conceptos de recaudación", "Administración de conceptos asociados a órdenes y pagos.", "fas fa-money-check-dollar", "Disponible desde la parametrización económica del sistema.", context.PuedeAdministracion));
             group.Items.Add(CreateItem(context, "adm-parametros", "Parámetros del sistema", "Configuración funcional y técnica del entorno AOCR.", "fas fa-cogs", "Direccion", "ConfiguracionSistema", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "ConfiguracionSistema" }, null, null, string.Empty));

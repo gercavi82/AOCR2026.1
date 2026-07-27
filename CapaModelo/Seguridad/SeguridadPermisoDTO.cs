@@ -17,6 +17,12 @@ namespace CapaModelo.Seguridad
         [StringLength(80)]
         public string Modulo { get; set; }
 
+        [StringLength(30)]
+        public string TipoAccion { get; set; }
+
+        [StringLength(300)]
+        public string Descripcion { get; set; }
+
         public bool Activo { get; set; }
     }
 }

@@ -338,10 +338,7 @@
             });
         });
 
-        // Auto-refresh cada 45 minutos
         cargarContador();
-        if (contadorTimer) { clearInterval(contadorTimer); }
-        contadorTimer = setInterval(cargarContador, pollingInterval);
         });
     })();
 </script>

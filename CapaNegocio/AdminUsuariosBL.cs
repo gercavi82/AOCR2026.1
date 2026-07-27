@@ -45,6 +45,11 @@ namespace CapaNegocio
             return _dao.ObtenerRolesActivos();
         }
 
+        public static List<SeguridadRolDTO> ObtenerRolesFuncionalesAocr()
+        {
+            return _dao.ObtenerRolesFuncionalesAocr();
+        }
+
         public static List<SeguridadPermisoDTO> ObtenerPermisos(bool soloActivos)
         {
             return _dao.ObtenerPermisos(soloActivos);
@@ -58,6 +63,16 @@ namespace CapaNegocio
             }
 
             return _dao.ObtenerPermisosPorRol(codigoRol);
+        }
+
+        public static DateTime? ObtenerFechaUltimaActualizacionPermisosRol(int codigoRol)
+        {
+            if (codigoRol <= 0)
+            {
+                return null;
+            }
+
+            return _dao.ObtenerFechaUltimaActualizacionPermisosRol(codigoRol);
         }
 
         public static bool CrearUsuario(
@@ -314,6 +329,50 @@ namespace CapaNegocio
 
             var ok = _dao.ReemplazarPermisosRol(codigoRol, permisosNormalizados, actorUsuarioId, actorCodigoUsuario, ip);
             mensaje = ok ? "Permisos del rol actualizados correctamente." : "No se pudieron actualizar los permisos del rol.";
+            return ok;
+        }
+
+        public static bool ActualizarPermisosRolDiferencial(
+            int codigoRol,
+            IEnumerable<int> agregados,
+            IEnumerable<int> retirados,
+            DateTime? versionEsperada,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out bool conflictoVersion,
+            out DateTime? versionActual,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
+            conflictoVersion = false;
+            versionActual = null;
+
+            if (codigoRol <= 0)
+            {
+                mensaje = "Rol inválido.";
+                return false;
+            }
+
+            var ok = _dao.ActualizarPermisosRolDiferencial(
+                codigoRol,
+                agregados,
+                retirados,
+                versionEsperada,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                out conflictoVersion,
+                out versionActual,
+                out mensaje);
+            if (conflictoVersion)
+            {
+                return false;
+            }
+
+            mensaje = ok
+                ? "Permisos del rol actualizados correctamente."
+                : (string.IsNullOrWhiteSpace(mensaje) ? "No se pudieron actualizar los permisos del rol." : mensaje);
             return ok;
         }
 

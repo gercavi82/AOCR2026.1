@@ -64,7 +64,7 @@
                     var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
                         && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
                         && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
-                    var searchIndex = string.Join(" ", new[] { item.NumeroSolicitud, item.Compania, item.Tipo, item.EstadoGeneral, item.EstadoDocumental, item.EstadoInspeccion, item.Inspector, item.EtapaActual, item.ResumenKanban }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    var searchIndex = string.Join(" ", new[] { item.NumeroSolicitud, item.Compania, item.Tipo, item.EstadoGeneral, item.EstadoDocumental, item.EstadoInspeccion, item.Inspector, item.EtapaActual, item.EtapaMostrar, item.ResumenKanban }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
                     <article class="di3-card di3-card--@item.ColorKanban @(item.EsUrgente ? "di3-card--urgent" : null)"
                              data-search="@searchIndex.ToLowerInvariant()" title="@item.ResumenKanban">
@@ -1244,7 +1244,7 @@
                                         <td><span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span></td>
                                         <td><span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span></td>
                                         <td>@item.Inspector</td>
-                                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })</td>
+                                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaMostrar ?? item.EtapaActual } })</td>
                                         <td>
                                             <div class="di3-sigs-inline">
                                                 <span class="di3-sig"><span class="di3-dot @(item.FirmaInspector ? "di3-dot--ok" : "")"></span> Insp</span>

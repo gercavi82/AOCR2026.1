@@ -66,5 +66,11 @@
         badgeText = "Facturada";
         iconClass = "fas fa-file-invoice-dollar";
     }
+    else if (estadoNorm.Contains("ACEPTACION") || estadoNorm.Contains("ACEPTACION_DE_RT"))
+    {
+        badgeClass = "status-en-revision";
+        badgeText = "Aceptación de RT";
+        iconClass = "fas fa-user-check";
+    }
 }
 <span class="aocr-status-badge @badgeClass"><i class="@iconClass"></i><span>@badgeText</span></span>

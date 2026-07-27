@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Web.Mvc;
 using CapaModelo.Seguridad;
 
 namespace CapaPresentacion.Models.AdminUsuarios
 {
     public class AdminUsuariosIndexViewModel
     {
+        public string TabActivo { get; set; } = "resumen";
         public string Filtro { get; set; }
         public bool? Activo { get; set; }
         public string TipoFiltro { get; set; }
@@ -19,5 +21,6 @@ namespace CapaPresentacion.Models.AdminUsuarios
         public int UsuariosConAccesoReciente { get; set; }
         public IList<SeguridadUsuarioDTO> Usuarios { get; set; } = new List<SeguridadUsuarioDTO>();
         public IList<SeguridadUsuarioDTO> UsuariosRecientes { get; set; } = new List<SeguridadUsuarioDTO>();
+        public IEnumerable<SelectListItem> RolesFiltro { get; set; } = new List<SelectListItem>();
     }
 }

@@ -1,100 +1,554 @@
 @inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminRolPermisosViewModel>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
+@using CapaPresentacion.Models.AdminUsuarios
 
 @{
     ViewBag.Title = "Administracion - Permisos por rol";
+    var acciones = Model.AccionesDisponibles;
 }
 
-<h2>Permisos por rol</h2>
-<p class="text-muted">Asigne permisos granulares a cada rol del sistema.</p>
+<link rel="stylesheet" href="@Url.Content("~/Content/css/role-permissions.css")" />
+
+<div class="permissions-role-page">
+<div class="rp-page-header">
+    <div>
+        <h2 class="rp-page-title">Permisos por rol</h2>
+        <p class="rp-page-subtitle">Asigne y gestione los permisos de cada rol del sistema.</p>
+        <p class="rp-page-note"><i class="fas fa-info-circle"></i> Los cambios afectan el menú y el acceso backend del rol seleccionado.</p>
+    </div>
+</div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success" style="border-radius:8px; padding:10px 14px; font-size:13px;">
+        <i class="fas fa-check-circle mr-1"></i> @TempData["Success"]
+    </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger" style="border-radius:8px; padding:10px 14px; font-size:13px;">
+        <i class="fas fa-exclamation-circle mr-1"></i> @TempData["Error"]
+    </div>
 }
 
 @if (!Model.InfraestructuraPermisosDisponible)
 {
-    <div class="alert alert-warning">
-        La infraestructura de permisos no está disponible. Ejecute primero los scripts de seguridad.
+    <div class="rp-warning-banner">
+        <i class="fas fa-exclamation-triangle"></i>
+        La infraestructura de permisos no esta disponible. Ejecute primero los scripts de seguridad.
     </div>
 }
 
-@using (Html.BeginForm("PermisosRol", "AdminUsuarios", FormMethod.Get, new { @class = "card card-body mb-3" }))
-{
-    <div class="row align-items-end">
-        <div class="col-md-8">
-            <label class="form-label">Rol</label>
-            @Html.DropDownListFor(m => m.CodigoRolSeleccionado, Model.RolesDisponibles, "Seleccione un rol", new { @class = "form-control" })
+<div class="rp-filter-card">
+    <div class="rp-filter-group">
+        <label>Rol</label>
+        <div class="rp-input-wrap">
+            <i class="fas fa-user rp-input-icon"></i>
+            @using (Html.BeginForm("PermisosRol", "AdminUsuarios", FormMethod.Get, new { id = "rp-filter-form", style = "margin:0;" }))
+            {
+                @Html.DropDownList("codigoRol", Model.RolesDisponibles, "Seleccione un rol", new { @class = "", id = "rp-rol-select" })
+            }
         </div>
-        <div class="col-md-4">
-            <button type="submit" class="btn btn-primary w-100">
-                <i class="fas fa-filter mr-1"></i> Cargar permisos
+    </div>
+    <div class="rp-filter-group">
+        <label>Buscar permiso</label>
+        <div class="rp-input-wrap">
+            <i class="fas fa-search rp-input-icon"></i>
+            <input type="search" id="rp-search" placeholder="Buscar por nombre o módulo..." autocomplete="off" />
+        </div>
+    </div>
+    <div class="rp-filter-actions">
+        <button type="button" class="btn btn-rp-clear" onclick="rpClearFilters();">
+            <i class="fas fa-sync-alt"></i> Limpiar filtros
+        </button>
+        <button type="button" class="btn btn-rp-load" onclick="rpLoadPermissions();">
+            <i class="fas fa-filter"></i> Cargar permisos
+        </button>
+    </div>
+</div>
+
+<div class="rp-kpi-row">
+    <div class="rp-kpi-card">
+        <div class="rp-kpi-icon kpi-blue"><i class="fas fa-shield-alt"></i></div>
+        <div class="rp-kpi-info">
+            <div class="kpi-value" id="kpi-asignados">@(Model.CodigoRolSeleccionado > 0 ? Model.PermisosAsignados : 0)</div>
+            <div class="kpi-label">Permisos asignados</div>
+            <div class="kpi-sub">Habilitados para el rol</div>
+        </div>
+    </div>
+    <div class="rp-kpi-card">
+        <div class="rp-kpi-icon kpi-green"><i class="fas fa-check-circle"></i></div>
+        <div class="rp-kpi-info">
+            <div class="kpi-value" id="kpi-disponibles">@(Model.CodigoRolSeleccionado > 0 ? Model.TotalPermisos : 0)</div>
+            <div class="kpi-label">Permisos disponibles</div>
+            <div class="kpi-sub">Total en el sistema</div>
+        </div>
+    </div>
+    <div class="rp-kpi-card">
+        <div class="rp-kpi-icon kpi-amber"><i class="fas fa-lock"></i></div>
+        <div class="rp-kpi-info">
+            <div class="kpi-value" id="kpi-modulos">@(Model.CodigoRolSeleccionado > 0 ? Model.ModulosConAcceso : 0)</div>
+            <div class="kpi-label">Módulos con acceso</div>
+            <div class="kpi-sub">Con al menos un permiso</div>
+        </div>
+    </div>
+    <div class="rp-kpi-card">
+        <div class="rp-kpi-icon kpi-purple"><i class="fas fa-users"></i></div>
+        <div class="rp-kpi-info">
+            <div class="kpi-value kpi-date">@(Model.CodigoRolSeleccionado > 0 ? Model.FechaActualizacionDisplay : "—")</div>
+            <div class="kpi-label">Última actualización</div>
+            <div class="kpi-sub">@(Model.CodigoRolSeleccionado > 0 ? Model.FechaActualizacionSub : "Seleccione un rol")</div>
+        </div>
+    </div>
+</div>
+
+@if (Model.CodigoRolSeleccionado > 0 && Model.InfraestructuraPermisosDisponible)
+{
+    using (Html.BeginForm("PermisosRol", "AdminUsuarios", FormMethod.Post, new { id = "rp-permissions-form" }))
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(m => m.CodigoRolSeleccionado)
+        <input type="hidden" id="rp-version-esperada" value="@Model.VersionEsperada" />
+
+        <div class="rp-matrix-container">
+            <div class="rp-matrix-title">Permisos del rol seleccionado</div>
+
+            @if (Model.ModulosAgrupados != null && Model.ModulosAgrupados.Any())
+            {
+                <table class="rp-matrix-table" id="rp-matrix">
+                    <thead>
+                        <tr>
+                            <th>MODULO</th>
+                            <th>PERMISO</th>
+                            <th>DESCRIPCION</th>
+                            @foreach (var accion in acciones)
+                            {
+                                <th class="rp-action-col">@accion</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var moduleIndex = 0; }
+                        @foreach (var modulo in Model.ModulosAgrupados)
+                        {
+                            var collapseId = $"rp-mod-{moduleIndex}";
+                            var moduleIcon = RpGetModuleIcon(modulo.Nombre);
+                            var iconColor = RpGetModuleColor(modulo.Nombre);
+                            var isFirst = moduleIndex == 0;
+                            var collapsedClass = isFirst ? "" : "collapsed";
+                            var hiddenClass = isFirst ? "" : "hidden";
+
+                            <tr class="rp-module-row" data-module="@collapseId">
+                                <td colspan="@(3 + acciones.Length)">
+                                     <div class="rp-module-header @collapsedClass" role="button" tabindex="0"
+                                          aria-expanded="@(isFirst ? "true" : "false")"
+                                          onclick="rpToggleModule('@collapseId', this);"
+                                          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();rpToggleModule('@collapseId',this);}">
+                                         <div class="mod-icon @iconColor"><i class="@moduleIcon"></i></div>
+                                         <span class="mod-name">@modulo.Nombre</span>
+                                         <span class="mod-badge" data-module-badge="@collapseId">@modulo.PermisosAsignados/@modulo.TotalPermisos activos</span>
+                                         <span class="mod-status" data-module-status="@collapseId">@(modulo.PermisosAsignados == 0 ? "Sin permisos" : modulo.PermisosAsignados == modulo.TotalPermisos ? "Habilitado" : "Parcial")</span>
+                                         <button type="button"
+                                                 class="btn btn-sm btn-outline-primary rp-module-toggle"
+                                                 onclick="event.stopPropagation(); rpToggleAllModule('@collapseId');">
+                                             Seleccionar todos
+                                         </button>
+                                         <span class="mod-chevron"><i class="fas fa-chevron-down"></i></span>
+                                    </div>
+                                </td>
+                            </tr>
+                            foreach (var permiso in modulo.Permisos)
+                            {
+                                var marcado = Model.PermisosSeleccionados.Contains(permiso.IdPermiso);
+                                <tr class="rp-perm-row @hiddenClass" data-module="@collapseId" data-nombre="@((permiso.Nombre ?? string.Empty).ToLowerInvariant()) @((permiso.Codigo ?? string.Empty).ToLowerInvariant()) @((permiso.Modulo ?? string.Empty).ToLowerInvariant()) @((permiso.TipoAccion ?? string.Empty).ToLowerInvariant()) @((permiso.Descripcion ?? string.Empty).ToLowerInvariant())">
+                                    <td></td>
+                                    <td class="rp-td-perm">@permiso.Nombre</td>
+                                    <td class="rp-td-desc">@permiso.Descripcion</td>
+                                    @foreach (var accion in acciones)
+                                    {
+                                        var esAccionActual = string.Equals(permiso.TipoAccion, accion, StringComparison.OrdinalIgnoreCase);
+                                        var isChecked = marcado && esAccionActual;
+                                        <td class="rp-td-action">
+                                            @if (esAccionActual)
+                                            {
+                                                <label class="rp-switch">
+                                                    <input type="checkbox"
+                                                           name="PermisosSeleccionados"
+                                                           value="@permiso.IdPermiso"
+                                                           @(isChecked ? "checked" : null)
+                                                           data-perm-id="@permiso.IdPermiso"
+                                                           data-accion="@accion"
+                                                           data-modulo="@modulo.Nombre"
+                                                           role="switch"
+                                                           aria-checked="@(isChecked ? "true" : "false")"
+                                                           aria-label="Permiso @accion @permiso.Nombre"
+                                                           onchange="rpTrackChange(this);" />
+                                                    <span class="rp-slider"></span>
+                                                </label>
+                                            }
+                                            else
+                                            {
+                                                <label class="rp-switch">
+                                                    <input type="checkbox"
+                                                           disabled
+                                                           role="switch"
+                                                           aria-checked="false"
+                                                           aria-label="Permiso no aplicable" />
+                                                    <span class="rp-slider"></span>
+                                                </label>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                            moduleIndex++;
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="rp-empty-state">
+                    <i class="fas fa-shield-alt"></i>
+                    <p>No hay permisos disponibles para asignar.</p>
+                </div>
+            }
+        </div>
+
+        <div class="rp-footer-actions">
+            <div class="rp-footer-left">
+                <button type="button" class="btn btn-rp-reset" onclick="rpResetToSaved();">
+                    <i class="fas fa-undo"></i> Restablecer permisos
+                </button>
+            </div>
+            <div class="rp-footer-right">
+                <span class="rp-save-info" id="rp-changes-info"></span>
+                <button type="submit" class="btn btn-rp-save" id="btn-guardar" disabled>
+                    <i class="fas fa-save"></i> Guardar cambios
+                </button>
+            </div>
+        </div>
+    }
+}
+else if (Model.CodigoRolSeleccionado > 0 && !Model.InfraestructuraPermisosDisponible)
+{
+    <div class="rp-matrix-container rp-matrix-container--empty">
+        <div class="rp-matrix-title">Permisos del rol seleccionado</div>
+        <div class="rp-empty-state">
+            <i class="fas fa-database"></i>
+            <p>La infraestructura de permisos no está disponible.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="rp-matrix-container rp-matrix-container--empty">
+        <div class="rp-matrix-title">Permisos del rol seleccionado</div>
+        <div class="rp-empty-columns" aria-hidden="true">
+            <span>Módulo</span>
+            <span>Permiso</span>
+            <span>Descripción</span>
+            <span>Acciones</span>
+        </div>
+        <div class="rp-empty-state">
+            <i class="fas fa-hand-pointer"></i>
+            <p>Seleccione un rol para consultar sus permisos.</p>
+        </div>
+    </div>
+    <div class="rp-footer-actions rp-footer-actions--disabled">
+        <div class="rp-footer-left">
+            <button type="button" class="btn btn-rp-reset" disabled>
+                <i class="fas fa-undo"></i> Restablecer permisos
+            </button>
+        </div>
+        <div class="rp-footer-right">
+            <span class="rp-save-info">Los cambios se aplicarán al guardar</span>
+            <button type="button" class="btn btn-rp-save" disabled>
+                <i class="fas fa-save"></i> Guardar cambios
             </button>
         </div>
     </div>
 }
-
-@if (Model.CodigoRolSeleccionado > 0 && Model.InfraestructuraPermisosDisponible)
-{
-    using (Html.BeginForm("PermisosRol", "AdminUsuarios", FormMethod.Post))
-    {
-        @Html.AntiForgeryToken()
-        @Html.HiddenFor(m => m.CodigoRolSeleccionado)
-
-        <div class="card">
-            <div class="card-header">
-                <strong>Permisos del rol:</strong> @Model.NombreRolSeleccionado
-            </div>
-            <div class="card-body">
-                @if (Model.PermisosDisponibles != null && Model.PermisosDisponibles.Any())
-                {
-                    <div class="row">
-                        @foreach (var permiso in Model.PermisosDisponibles)
-                        {
-                            var marcado = Model.PermisosSeleccionados != null &&
-                                          Model.PermisosSeleccionados.Contains(permiso.IdPermiso);
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="border rounded p-2 h-100">
-                                    <div class="form-check">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               name="PermisosSeleccionados"
-                                               id="perm_@permiso.IdPermiso"
-                                               value="@permiso.IdPermiso"
-                                               @(marcado ? "checked" : null) />
-                                        <label class="form-check-label font-weight-bold" for="perm_@permiso.IdPermiso">
-                                            @permiso.Codigo
-                                        </label>
-                                    </div>
-                                    <div class="small text-muted mt-1">@permiso.Nombre</div>
-                                    <div class="small mt-1">
-                                        <span class="badge bg-light text-dark">@permiso.Modulo</span>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="text-muted">No hay permisos disponibles para asignar.</div>
-                }
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-end mt-3">
-            <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Volver</a>
-            <button type="submit" class="btn btn-success">Guardar permisos</button>
-        </div>
-    }
-}
+</div>
 
 @section Scripts {
-    <script src="~/Scripts/admin-usuarios.js"></script>
+    <script src="@Url.Content("~/Scripts/admin-usuarios.js")"></script>
+    <script>
+        var rpInitialStates = {};
+        var searchTimeout = null;
+
+        $(document).ready(function () {
+            // Inicializar estados y boton cargar
+            $('input[name="PermisosSeleccionados"]:not(:disabled)').each(function () {
+                rpInitialStates[$(this).val()] = $(this).prop('checked');
+            });
+            rpUpdateChangeInfo();
+
+            var rolSelect = $('#rp-rol-select');
+            var btnLoad = $('.btn-rp-load');
+            if (!rolSelect.val()) {
+                btnLoad.prop('disabled', true);
+            }
+            rolSelect.on('change', function() {
+                btnLoad.prop('disabled', !$(this).val());
+            });
+
+            // Buscador con debounce
+            $('#rp-search').on('input', function () {
+                var query = $(this).val();
+                if (searchTimeout) clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    rpFilterPerms(query);
+                }, 300);
+            });
+
+            // Submit form via AJAX
+            $('#rp-permissions-form').on('submit', function (e) {
+                e.preventDefault();
+                rpGuardarCambios();
+            });
+
+            $(window).on('beforeunload.rpPermissions', function () {
+                if (rpCountChanges() > 0) {
+                    return 'Existen cambios de permisos sin guardar.';
+                }
+            });
+        });
+
+        function rpLoadPermissions() {
+            var btn = $('.btn-rp-load');
+            btn.prop('disabled', true);
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Cargando...');
+            document.getElementById('rp-filter-form').submit();
+        }
+
+        function rpClearFilters() {
+            document.getElementById('rp-search').value = '';
+            rpFilterPerms('');
+        }
+
+        function rpFilterPerms(query) {
+            var q = (query || '').toLowerCase().trim();
+            $('#rp-matrix .rp-perm-row').each(function () {
+                var nombre = ($(this).data('nombre') || '').toString().toLowerCase();
+                if (!q || nombre.indexOf(q) >= 0) {
+                    $(this).removeClass('hidden');
+                } else {
+                    $(this).addClass('hidden');
+                }
+            });
+        }
+
+        function rpToggleModule(id, header) {
+            var rows = $('#rp-matrix .rp-perm-row[data-module="' + id + '"]');
+            if (header.classList.contains('collapsed')) {
+                header.classList.remove('collapsed');
+                header.setAttribute('aria-expanded', 'true');
+                // Al expandir, mostramos las filas (respetando si estaban ocultas por filtro)
+                var q = ($('#rp-search').val() || '').toLowerCase().trim();
+                rows.each(function() {
+                    var nombre = ($(this).data('nombre') || '').toString().toLowerCase();
+                    if (!q || nombre.indexOf(q) >= 0) {
+                        $(this).removeClass('hidden');
+                    }
+                });
+            } else {
+                header.classList.add('collapsed');
+                header.setAttribute('aria-expanded', 'false');
+                rows.addClass('hidden');
+            }
+        }
+
+        function rpTrackChange(el) {
+            el.setAttribute('aria-checked', el.checked ? 'true' : 'false');
+            rpUpdateChangeInfo();
+        }
+
+        function rpToggleAllModule(moduleId) {
+            var checks = $('#rp-matrix .rp-perm-row[data-module="' + moduleId + '"] input[name="PermisosSeleccionados"]:not(:disabled)');
+            var seleccionar = checks.filter(':not(:checked)').length > 0;
+            checks.prop('checked', seleccionar).each(function () {
+                this.setAttribute('aria-checked', seleccionar ? 'true' : 'false');
+            });
+            rpUpdateChangeInfo();
+        }
+
+        function rpCountChanges() {
+            var changed = 0;
+            $('input[name="PermisosSeleccionados"]:not(:disabled)').each(function () {
+                var id = $(this).val();
+                if ($(this).prop('checked') !== (rpInitialStates[id] || false)) changed++;
+            });
+            return changed;
+        }
+
+        function rpResetToSaved() {
+            // Verificar si hay cambios
+            var changed = 0;
+            $('input[name="PermisosSeleccionados"]:not(:disabled)').each(function () {
+                var id = $(this).val();
+                if ($(this).prop('checked') !== (rpInitialStates[id] || false)) changed++;
+            });
+
+            if (changed === 0) return;
+
+            if (confirm('Se descartaran los cambios realizados en pantalla. Desea continuar?')) {
+                $('input[name="PermisosSeleccionados"]:not(:disabled)').each(function () {
+                    var id = $(this).val();
+                    $(this).prop('checked', rpInitialStates[id] || false);
+                });
+                rpUpdateChangeInfo();
+            }
+        }
+
+        function rpUpdateChangeInfo() {
+            var changed = 0;
+            var asignados = 0;
+            var modulosConAcceso = new Set();
+            var checks = $('input[name="PermisosSeleccionados"]:not(:disabled)');
+
+            checks.each(function () {
+                var id = $(this).val();
+                var isChecked = $(this).prop('checked');
+                if (isChecked !== (rpInitialStates[id] || false)) changed++;
+                if (isChecked) {
+                    asignados++;
+                    var mod = $(this).data('modulo');
+                    if(mod) modulosConAcceso.add(mod);
+                }
+            });
+
+            // Actualizar KPIs
+            var kpiAsignados = document.getElementById('kpi-asignados');
+            var kpiModulos = document.getElementById('kpi-modulos');
+            if (kpiAsignados) kpiAsignados.textContent = asignados;
+            if (kpiModulos) kpiModulos.textContent = modulosConAcceso.size;
+
+            $('#rp-matrix .rp-module-row').each(function () {
+                var moduleId = $(this).data('module');
+                var moduleChecks = $('#rp-matrix .rp-perm-row[data-module="' + moduleId + '"] input[name="PermisosSeleccionados"]:not(:disabled)');
+                var active = moduleChecks.filter(':checked').length;
+                var total = moduleChecks.length;
+                $('[data-module-badge="' + moduleId + '"]').text(active + '/' + total + ' activos');
+                $('[data-module-status="' + moduleId + '"]')
+                    .text(active === 0 ? 'Sin permisos' : (active === total ? 'Habilitado' : 'Parcial'))
+                    .attr('data-state', active === 0 ? 'none' : (active === total ? 'enabled' : 'partial'));
+            });
+
+            var infoEl = document.getElementById('rp-changes-info');
+            var btnEl = document.getElementById('btn-guardar');
+
+            if (!infoEl || !btnEl) return;
+
+            if (changed > 0) {
+                infoEl.textContent = changed + ' cambio(s) sin guardar';
+                btnEl.disabled = false;
+            } else {
+                infoEl.textContent = 'Los cambios se aplicaran al guardar';
+                btnEl.disabled = true;
+            }
+        }
+
+        function rpGuardarCambios() {
+            if (!confirm('Se actualizaran los permisos del rol seleccionado. Los cambios podrian modificar inmediatamente el acceso de los usuarios asociados. Desea continuar?')) {
+                return;
+            }
+
+            var agregados = [];
+            var retirados = [];
+
+            $('input[name="PermisosSeleccionados"]:not(:disabled)').each(function () {
+                var id = $(this).val();
+                var wasChecked = rpInitialStates[id] || false;
+                var isChecked = $(this).prop('checked');
+
+                if (isChecked && !wasChecked) {
+                    agregados.push(id);
+                } else if (!isChecked && wasChecked) {
+                    retirados.push(id);
+                }
+            });
+
+            if (agregados.length === 0 && retirados.length === 0) return;
+
+            var form = $('#rp-permissions-form');
+            var btn = $('#btn-guardar');
+            var originalBtnHtml = btn.html();
+
+            btn.prop('disabled', true);
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+            $.ajax({
+                url: '@Url.Action("GuardarPermisosRolDiferencial", "AdminUsuarios")',
+                type: 'POST',
+                data: {
+                    __RequestVerificationToken: form.find('input[name="__RequestVerificationToken"]').val(),
+                    codigoRol: form.find('input[name="CodigoRolSeleccionado"]').val(),
+                    agregados: agregados,
+                    retirados: retirados,
+                    versionEsperada: $('#rp-version-esperada').val()
+                },
+                success: function (res) {
+                    if (res.success) {
+                        $(window).off('beforeunload.rpPermissions');
+                        // Recargar para obtener el estado fresco desde el servidor
+                        window.location.reload();
+                    } else {
+                        alert(res.message || 'Error al guardar los cambios.');
+                        btn.prop('disabled', false);
+                        btn.html(originalBtnHtml);
+                    }
+                },
+                error: function (xhr) {
+                    var response = xhr.responseJSON || {};
+                    var fallback = xhr.status === 409
+                        ? 'Otro usuario modificó estos permisos. Recargue la configuración.'
+                        : xhr.status === 403
+                            ? 'No tiene autorización para administrar permisos.'
+                            : xhr.status === 401
+                                ? 'La sesión expiró. Inicie sesión nuevamente.'
+                                : 'No fue posible guardar los permisos.';
+                    alert(response.message || fallback);
+                    btn.prop('disabled', false);
+                    btn.html(originalBtnHtml);
+                }
+            });
+        }
+    </script>
+}
+
+@functions {
+    string RpGetModuleIcon(string moduleName)
+    {
+        if (string.IsNullOrWhiteSpace(moduleName)) return "fas fa-puzzle-piece";
+        var lower = moduleName.ToLowerInvariant();
+        if (lower.Contains("orden") || lower.Contains("recaud")) return "fas fa-file-invoice-dollar";
+        if (lower.Contains("solicitud") || lower.Contains("aocr")) return "fas fa-file-alt";
+        if (lower.Contains("revision") || lower.Contains("documental")) return "fas fa-search";
+        if (lower.Contains("lv") || lower.Contains("eae")) return "fas fa-building";
+        if (lower.Contains("informe") || lower.Contains("tecnico")) return "fas fa-clipboard-check";
+        if (lower.Contains("admin") || lower.Contains("gestion")) return "fas fa-cog";
+        if (lower.Contains("seguridad") || lower.Contains("permiso")) return "fas fa-shield-alt";
+        if (lower.Contains("financ") || lower.Contains("pago")) return "fas fa-dollar-sign";
+        if (lower.Contains("legal") || lower.Contains("certific")) return "fas fa-gavel";
+        if (lower.Contains("notific") || lower.Contains("correo")) return "fas fa-envelope";
+        if (lower.Contains("usuario") || lower.Contains("rol")) return "fas fa-users-cog";
+        return "fas fa-puzzle-piece";
+    }
+
+    string RpGetModuleColor(string moduleName)
+    {
+        if (string.IsNullOrWhiteSpace(moduleName)) return "mod-blue";
+        var lower = moduleName.ToLowerInvariant();
+        if (lower.Contains("orden") || lower.Contains("recaud")) return "mod-blue";
+        if (lower.Contains("solicitud") || lower.Contains("aocr")) return "mod-green";
+        if (lower.Contains("revision") || lower.Contains("documental")) return "mod-amber";
+        if (lower.Contains("lv") || lower.Contains("eae")) return "mod-red";
+        if (lower.Contains("informe") || lower.Contains("tecnico")) return "mod-purple";
+        if (lower.Contains("admin") || lower.Contains("gestion")) return "mod-blue";
+        if (lower.Contains("financ")) return "mod-green";
+        if (lower.Contains("legal")) return "mod-amber";
+        return "mod-blue";
+    }
 }

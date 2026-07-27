@@ -112,7 +112,9 @@
     <Compile Include="Unit\UsuarioContextoServiceTests.cs" />
     <Compile Include="Unit\Fr3ConfigurationTests.cs" />
     <Compile Include="Integration\Fr3OutboxIntegrationTests.cs" />
+    <Compile Include="Integration\PermisosRolSchemaIntegrationTests.cs" />
     <Compile Include="Unit\FacturacionAS400DAOTests.cs" />
+    <Compile Include="Unit\PermisosRolManagementTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaModelo\CapaModelo.csproj" />

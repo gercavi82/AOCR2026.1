@@ -547,6 +547,7 @@
     <Content Include="Content\css\dgac-theme.css" />
     <Content Include="Content\css\formulario-aocr.css" />
     <Content Include="Content\css\pagos-mejorados.css" />
+    <Content Include="Content\css\role-permissions.css" />
     <Content Include="Content\dist\css\adminlte.css" />
     <Content Include="Content\dist\css\adminlte.min.css" />
     <Content Include="Content\dist\css\alt\adminlte.components.css" />

@@ -18,6 +18,8 @@ namespace CapaPresentacion.Filters
             _codigoPermiso = (codigoPermiso ?? string.Empty).Trim();
         }
 
+        public bool SoloAdministrador { get; set; }
+
         protected override bool AuthorizeCore(HttpContextBase httpContext)
         {
             if (httpContext == null || httpContext.User == null || !httpContext.User.Identity.IsAuthenticated)
@@ -31,6 +33,11 @@ namespace CapaPresentacion.Filters
             }
 
             var roles = ObtenerRoles(httpContext);
+            if (SoloAdministrador &&
+                !roles.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
             var codigoUsuario = ObtenerCodigoUsuario(httpContext);
 
             return SeguridadBL.UsuarioTienePermiso(codigoUsuario, _codigoPermiso, roles);
@@ -49,7 +56,10 @@ namespace CapaPresentacion.Filters
 
             if (esAjax)
             {
-                filterContext.HttpContext.Response.StatusCode = 403;
+                var autenticado = filterContext.HttpContext.User != null &&
+                                   filterContext.HttpContext.User.Identity != null &&
+                                   filterContext.HttpContext.User.Identity.IsAuthenticated;
+                filterContext.HttpContext.Response.StatusCode = autenticado ? 403 : 401;
                 filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
                 filterContext.Result = new JsonResult
                 {
@@ -70,13 +80,9 @@ namespace CapaPresentacion.Filters
                 return;
             }
 
-            filterContext.Result = new RedirectToRouteResult(
-                new System.Web.Routing.RouteValueDictionary(
-                    new
-                    {
-                        controller = "Error",
-                        action = "AccessDenied"
-                    }));
+            filterContext.HttpContext.Response.StatusCode = 403;
+            filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
+            filterContext.Result = new HttpStatusCodeResult(403, "No tiene permisos para realizar esta accion.");
         }
 
         private static List<string> ObtenerRoles(HttpContextBase httpContext)

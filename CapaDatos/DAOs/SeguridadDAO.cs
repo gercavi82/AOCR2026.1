@@ -18,12 +18,19 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
                 const string sql = @"
-SELECT COUNT(1)
-FROM information_schema.tables
-WHERE table_schema = 'public'
-  AND table_name IN ('seguridad_permiso', 'seguridad_rol_permiso', 'usuario_rol');";
+SELECT
+    (SELECT COUNT(1)
+     FROM information_schema.tables
+     WHERE table_schema = 'public'
+       AND table_name IN ('seguridad_permiso', 'seguridad_rol_permiso', 'usuario_rol')) = 3
+AND
+    (SELECT COUNT(1)
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'seguridad_permiso'
+       AND column_name IN ('tipo_accion', 'descripcion')) = 2;";
 
-                return cn.ExecuteScalar<int>(sql) == 3;
+                return cn.ExecuteScalar<bool>(sql);
             }
         }
 
@@ -108,12 +115,19 @@ ORDER BY p.codigo;";
         private bool InfraestructuraPermisosDisponibleInterno(NpgsqlConnection cn)
         {
             const string sql = @"
-SELECT COUNT(1)
-FROM information_schema.tables
-WHERE table_schema = 'public'
-  AND table_name IN ('seguridad_permiso', 'seguridad_rol_permiso', 'usuario_rol');";
+SELECT
+    (SELECT COUNT(1)
+     FROM information_schema.tables
+     WHERE table_schema = 'public'
+       AND table_name IN ('seguridad_permiso', 'seguridad_rol_permiso', 'usuario_rol')) = 3
+AND
+    (SELECT COUNT(1)
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'seguridad_permiso'
+       AND column_name IN ('tipo_accion', 'descripcion')) = 2;";
 
-            return cn.ExecuteScalar<int>(sql) == 3;
+            return cn.ExecuteScalar<bool>(sql);
         }
     }
 }

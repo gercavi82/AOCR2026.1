@@ -291,7 +291,7 @@
                 <div class="modal-header hero">
                     <div class="hero-content w-100 text-center">
                         <img src="@Url.Content("~/Content/imganes/logo_header.png")" style="width:180px; height:5em;" class="mb-2" />
-                        <h5 class="hero-title mb-0">Registro de Usuario</h5>
+                        <h5 class="hero-title mb-0">Registro de Representante Técnico</h5>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
@@ -509,46 +509,6 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Declaración de responsabilidad -->
-                        <div class="mb-3 row">
-                            <div class="col-sm-12">
-                                <div class="alert alert-info p-3">
-                                    <strong>Declaración de responsabilidad</strong>
-                                    <p class="mb-2 mt-2" style="font-size: 13px; white-space: pre-line;">
-                                        Yo, <span id="nombreDeclaracion">__________________________</span> declaro conocer las políticas y procedimientos técnicos
-                                        y operativos aplicables en las estaciones regulares de Ecuador para las siguientes compañías:
-                                    </p>
-                                    <ul class="mb-2 mt-1 ps-3" id="listaCompaniasDeclaracion" style="font-size: 13px;">
-                                        <li id="empresaDeclaracion">---</li>
-                                    </ul>
-                                    <p class="mb-2 mt-2" style="font-size: 13px; white-space: pre-line;">
-                                        Asumo la responsabilidad como RT de mantener comunicación directa 
-                                        con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, 
-                                        renovación o modificación del AOCR; así como también, de mantener 
-                                        la supervisión de las empresas contratadas para la asistencia técnica 
-                                        en tierra a sus aeronaves en los aeropuertos de Ecuador.
-                                    </p>
-                                    <div class="mb-2">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnVistaPreviaDeclaracion">
-                                            <i class="fas fa-eye me-1"></i> Vista previa
-                                        </button>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnDescargarDeclaracion">
-                                            <i class="fas fa-file-download me-1"></i> Descargar declaración (PDF)
-                                        </button>
-                                    </div>
-                                    <div class="form-check form-check-strong">
-                                        <input class="form-check-input" type="checkbox" id="aceptaDeclaracion" name="aceptaDeclaracion" required />
-                                        <label class="form-check-label" for="aceptaDeclaracion">
-                                            Declaro haber leído y acepto la declaración de responsabilidad
-                                        </label>
-                                    </div>
-                                    <div class="invalid-feedback" id="declaracionError">
-                                        Debe aceptar la declaración de responsabilidad para continuar.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Fin declaración de responsabilidad -->
                     </div>
                     <!-- Campos obligatorios -->
                     <div class="mb-3 row">
@@ -657,13 +617,11 @@
         $(document).off('change', '#EmpresaTexto');
         $(document).on('change', '#EmpresaTexto', function () {
             sincronizarEmpresaDesdeTexto($(this).val());
-            actualizarDeclaracionResponsabilidad();
         });
 
         // Mantener compañía sincronizada con "Empresa Operadora"
         $('#EmpresaCodigo').on('change', function() {
             sincronizarCompaniaTodasFilas();
-            actualizarDeclaracionResponsabilidad();
         });
 
         $('#btnAgregarCompaniaSeleccionada').on('click', function () {
@@ -687,31 +645,20 @@
             if ($input.val() !== upper) {
                 $input.val(upper);
             }
-            actualizarDeclaracionResponsabilidad();
-        });
-        $('#aceptaDeclaracion').on('change', function () {
-            registrarDeclaracionTemporal($(this).is(':checked'));
-        });
-        $('#btnDescargarDeclaracion').on('click', function () {
-            if ($(this).prop('disabled')) return;
-            descargarDeclaracionResponsabilidad(false);
-        });
-        $('#btnVistaPreviaDeclaracion').on('click', function () {
-            if ($(this).prop('disabled')) return;
-            descargarDeclaracionResponsabilidad(true);
         });
 
         $('input[name="TipoIdentificacion"]').change(actualizarValidacionIdentificacion);
         actualizarValidacionIdentificacion();
 
-        // Inicializar texto declaración
-        actualizarDeclaracionResponsabilidad();
+        // Inicializar
         renderCompaniasSeleccionadasRegistro();
 
         // Submit del formulario
         $('#crearForm').submit(registrarUsuario);
 
         $('#modalRegistroUsuario').on('shown.bs.modal', function () {
+            $('#EmpresaCodigo').val('');
+            $('#EmpresaTexto').val('');
             asegurarEmpresasOperadorasCargadas();
             var $modalBody = $('#modalRegistroUsuario .modal-body');
             $modalBody.stop(true, true).scrollTop(0);
@@ -877,6 +824,8 @@
                     logEmpresa('OK: ' + data.length + ' empresas cargadas.');
                     ocultarLogEmpresa(0);
                     renderEmpresasSelect($('#EmpresaTexto').val());
+                    $('#EmpresaCodigo').val('');
+                    $('#EmpresaTexto').val('');
                 } else {
                     $select.append('<option value="">No hay empresas disponibles</option>');
                     console.warn('? No se encontraron empresas en CIAARC');
@@ -887,7 +836,6 @@
                     }
                     ocultarLogEmpresa(0);
                 }
-                actualizarDeclaracionResponsabilidad();
             },
             error: function(xhr, status, error) {
                 $select.empty().prop('disabled', false);
@@ -909,7 +857,6 @@
                 logEmpresa('ERROR: ' + detalle);
                 mostrarErrorModal('No se pudieron cargar las empresas desde el AS/400. Por favor, recargue la página o contacte al administrador.');
                 ocultarLogEmpresa(0);
-                actualizarDeclaracionResponsabilidad();
             },
             complete: function(xhr, status) {
                 window.__registroEmpresasOperadorasLoading = false;
@@ -920,151 +867,6 @@
         });
     }
 
-    function actualizarDeclaracionResponsabilidad() {
-        var nombres = ($('#NombreUsuario').val() || '').trim();
-        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
-        var nombreCompleto = (nombres + ' ' + apellidos).trim();
-        if (nombreCompleto) {
-            nombreCompleto = nombreCompleto.toUpperCase();
-        }
-        var companias = obtenerCompaniasDeclaracion();
-        if (!nombreCompleto) {
-            nombreCompleto = '__________________________';
-        }
-        $('#nombreDeclaracion').text(nombreCompleto);
-        renderListaCompaniasDeclaracion(companias);
-        var habilitarDescarga = nombres.length > 0 && apellidos.length > 0;
-        $('#btnDescargarDeclaracion').prop('disabled', !habilitarDescarga);
-    }
-
-    function obtenerCompaniasDeclaracion() {
-        var resultado = [];
-
-        if (companiasSeleccionadasRegistro && companiasSeleccionadasRegistro.length > 0) {
-            companiasSeleccionadasRegistro.forEach(function (c) {
-                var codigo = ((c && c.codigo) || '').toString().trim();
-                var nombre = ((c && c.nombre) || '').toString().trim();
-                if (!codigo) return;
-                resultado.push({
-                    codigo: codigo,
-                    nombre: nombre || codigo
-                });
-            });
-            return resultado;
-        }
-
-        var $empresa = $('#EmpresaCodigo');
-        if ($empresa.length) {
-            var codigoSeleccionado = (($empresa.val() || '') + '').trim();
-            var nombreSeleccionado = ($empresa.find('option:selected').data('nombre') || $empresa.find('option:selected').text() || '').toString().trim();
-            if (codigoSeleccionado) {
-                resultado.push({
-                    codigo: codigoSeleccionado,
-                    nombre: nombreSeleccionado || codigoSeleccionado
-                });
-            }
-        }
-
-        return resultado;
-    }
-
-    function renderListaCompaniasDeclaracion(companias) {
-        var $lista = $('#listaCompaniasDeclaracion');
-        var $legacy = $('#empresaDeclaracion');
-        if ($lista.length === 0) {
-            if ($legacy.length) {
-                $legacy.text('---');
-            }
-            return;
-        }
-
-        $lista.empty();
-        if (!companias || companias.length === 0) {
-            $lista.append($('<li>').attr('id', 'empresaDeclaracion').text('---'));
-            return;
-        }
-
-        companias.forEach(function (compania, index) {
-            var codigo = ((compania && compania.codigo) || '').toString().trim();
-            var nombre = ((compania && compania.nombre) || '').toString().trim();
-            var etiqueta = codigo ? ('[' + codigo + '] ' + (nombre || codigo)) : (nombre || ('Compañía ' + (index + 1)));
-            $lista.append($('<li>').text(etiqueta));
-        });
-    }
-
-    function obtenerTextoDeclaracionResponsabilidad() {
-        var nombres = ($('#NombreUsuario').val() || '').trim();
-        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
-        var nombreCompleto = (nombres + ' ' + apellidos).trim();
-        var companias = obtenerCompaniasDeclaracion();
-        var textoCompanias = '---';
-        if (companias.length > 0) {
-            textoCompanias = companias.map(function (compania, index) {
-                var codigo = ((compania && compania.codigo) || '').toString().trim();
-                var nombre = ((compania && compania.nombre) || '').toString().trim();
-                if (codigo) {
-                    return (index + 1) + '. [' + codigo + '] ' + (nombre || codigo);
-                }
-                return (index + 1) + '. ' + (nombre || 'Compañía sin nombre');
-            }).join('\n');
-        }
-        return 'Yo, ' + (nombreCompleto || '__________________________') + ' declaro conocer las políticas y procedimientos técnicos y operativos aplicables en las estaciones regulares de Ecuador para las siguientes compañías:\n' +
-               textoCompanias + '\n\n' +
-               'Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.';
-    }
-
-    function asegurarJsPdf(callback) {
-        if (window.jspdf && window.jspdf.jsPDF) {
-            callback();
-            return;
-        }
-        var existing = document.getElementById('jspdf-cdn');
-        if (existing) {
-            existing.addEventListener('load', callback);
-            return;
-        }
-        var script = document.createElement('script');
-        script.id = 'jspdf-cdn';
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        script.onload = callback;
-        document.head.appendChild(script);
-    }
-
-    function descargarDeclaracionResponsabilidad(vistaPrevia) {
-        actualizarDeclaracionResponsabilidad();
-        var nombres = ($('#NombreUsuario').val() || '').trim();
-        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
-        var nombreCompleto = (nombres + ' ' + apellidos).trim();
-        var tipoIdentificacion = $('input[name="TipoIdentificacion"]:checked').val() || '';
-        var identificacion = tipoIdentificacion === 'RUC'
-            ? (($('#RUC').val() || '').trim())
-            : (($('#CedulaIdentificacion').val() || '').trim());
-        var companias = obtenerCompaniasDeclaracion();
-        if (companias.length === 0) {
-            mostrarErrorModal('Debe agregar al menos una compañía antes de descargar la declaración.');
-            return;
-        }
-
-        var token = $('input[name="__RequestVerificationToken"]').first().val() || '';
-        if (!token) {
-            alert('No se pudo validar la solicitud. Recargue la página.');
-            return;
-        }
-
-        var $form = $('<form>', {
-            method: 'post',
-            action: '@Url.Action("DescargarDeclaracionResponsabilidad", "Usuario")',
-            target: '_blank'
-        });
-        $form.append($('<input>', { type: 'hidden', name: '__RequestVerificationToken', value: token }));
-        $form.append($('<input>', { type: 'hidden', name: 'nombreCompleto', value: nombreCompleto }));
-        $form.append($('<input>', { type: 'hidden', name: 'companiasJson', value: JSON.stringify(companias) }));
-        $form.append($('<input>', { type: 'hidden', name: 'identificacion', value: identificacion }));
-        $form.append($('<input>', { type: 'hidden', name: 'vistaPrevia', value: vistaPrevia ? 'true' : 'false' }));
-        $('body').append($form);
-        $form.submit();
-        $form.remove();
-    }
     function actualizarValidacionIdentificacion() {
         const tipo = $('input[name="TipoIdentificacion"]:checked').val();
         const $cedula = $('#CedulaIdentificacion');
@@ -1263,8 +1065,6 @@
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].NombreCompania').val(compania.nombre));
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].Usuoid').val(compania.usuoid || ''));
         });
-
-        actualizarDeclaracionResponsabilidad();
     }
 
     function registrarUsuario(e) {
@@ -1339,12 +1139,6 @@
             valido = false;
         }
 
-        if (!$('#aceptaDeclaracion').is(':checked')) {
-            mostrarErrorCampo('#aceptaDeclaracion', 'Debe aceptar la declaración de responsabilidad');
-            valido = false;
-        } else {
-            removerErrorCampo('#aceptaDeclaracion');
-        }
         // Validar empresa seleccionada
         const empresaCodigo = ($('#EmpresaCodigo').val() || '').trim();
         if (!tieneCompaniasAgregadas && !empresaCodigo) {
@@ -1365,64 +1159,6 @@
         }
 
         return valido;
-    }
-
-    function registrarDeclaracionTemporal(aceptada) {
-        var correo = ($('#Correo').val() || '').trim();
-        var tipoIdentificacion = $('input[name="TipoIdentificacion"]:checked').val() || '';
-        var identificacion = ($('#CedulaIdentificacion').val() || '').trim();
-        var ruc = ($('#RUC').val() || '').trim();
-        var nombres = ($('#NombreUsuario').val() || '').trim();
-        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
-        var companias = obtenerCompaniasDeclaracion();
-        var empresaCodigo = companias.length > 0 ? companias.map(function (c) { return c.codigo; }).join(',') : ($('#EmpresaCodigo').val() || '');
-        var empresaNombre = companias.length > 0
-            ? companias.map(function (c) { return '[' + c.codigo + '] ' + c.nombre; }).join(' | ')
-            : ($('#EmpresaTexto').val() || '').trim();
-        var companiasJson = JSON.stringify(companias);
-
-        if (!correo) {
-            return;
-        }
-
-        var token = $('#crearForm input[name="__RequestVerificationToken"]').val();
-
-        $.ajax({
-            url: '@Url.Action("RegistrarDeclaracionTemporal", "Usuario")',
-            type: 'POST',
-            data: {
-                __RequestVerificationToken: token,
-                correo: correo,
-                tipoIdentificacion: tipoIdentificacion,
-                identificacion: identificacion,
-                ruc: ruc,
-                nombres: nombres,
-                apellidos: apellidos,
-                empresaCodigo: empresaCodigo,
-                empresaNombre: empresaNombre,
-                companiasJson: companiasJson,
-                aceptada: !!aceptada
-            }
-        }).done(function (resp) {
-            if (resp && resp.success === false) {
-                if (typeof mostrarErrorModal === 'function') {
-                    mostrarErrorModal(resp.message || 'No se pudo guardar la declaración temporal.');
-                } else if (typeof mostrarToast === 'function') {
-                    mostrarToast('Advertencia', resp.message || 'No se pudo guardar la declaración temporal.', 'warning');
-                } else {
-                    alert(resp.message || 'No se pudo guardar la declaración temporal.');
-                }
-            }
-        }).fail(function () {
-            var msg = 'No se pudo guardar la declaración temporal. Verifique su conexión.';
-            if (typeof mostrarErrorModal === 'function') {
-                mostrarErrorModal(msg);
-            } else if (typeof mostrarToast === 'function') {
-                mostrarToast('Advertencia', msg, 'warning');
-            } else {
-                alert(msg);
-            }
-        });
     }
 
     function mostrarErrorCampo(selector, mensaje) {

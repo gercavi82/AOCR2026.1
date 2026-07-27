@@ -80,6 +80,7 @@ namespace CapaPresentacion.Models
         public string EstadoInspeccion { get; set; }
         public string Inspector { get; set; }
         public string EtapaActual { get; set; }
+        public string EtapaMostrar { get; set; }
         public bool FirmaInspector { get; set; }
         public bool FirmaDirdac { get; set; }
         public bool ListoParaFirma { get; set; }
