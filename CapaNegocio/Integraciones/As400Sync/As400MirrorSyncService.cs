@@ -91,6 +91,7 @@ namespace CapaNegocio.Integraciones.As400Sync
                 catch (Exception ex)
                 {
                     lastEx = ex;
+                    var bloqueoTransitorioAs400 = EsBloqueoTransitorioAs400(ex);
                     _logger.LogError(ex, new LogContext
                     {
                         Controller = "As400MirrorSync",
@@ -99,13 +100,17 @@ namespace CapaNegocio.Integraciones.As400Sync
                         {
                             ["Table"] = table.Name,
                             ["Attempt"] = attempt,
-                            ["MaxAttempts"] = attempts
+                            ["MaxAttempts"] = attempts,
+                            ["TransientAs400Lock"] = bloqueoTransitorioAs400
                         }
                     });
 
                     if (attempt < attempts)
                     {
-                        Thread.Sleep(Math.Max(250, _options.RetryBackoffMs * attempt));
+                        var espera = bloqueoTransitorioAs400
+                            ? Math.Max(10000, _options.RetryBackoffMs * attempt * 4)
+                            : Math.Max(250, _options.RetryBackoffMs * attempt);
+                        Thread.Sleep(espera);
                     }
                 }
             }
@@ -117,6 +122,23 @@ namespace CapaNegocio.Integraciones.As400Sync
                 Status = "ERROR",
                 Error = lastEx != null ? lastEx.Message : "Error desconocido"
             };
+        }
+
+        private static bool EsBloqueoTransitorioAs400(Exception exception)
+        {
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                var message = current.Message ?? string.Empty;
+                if (message.IndexOf("SQL5019", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("SQL0913", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("objeto en uso", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("object in use", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private SyncBatchResult RunTableInternal(SyncTableDefinition table)

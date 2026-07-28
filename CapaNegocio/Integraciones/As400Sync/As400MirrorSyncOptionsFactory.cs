@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.Data.Odbc;
 using CapaDatos.Services;
@@ -75,6 +75,11 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
             builder["Connection Timeout"] = ParseInt(AppSetting("Sync:As400ConnectionTimeoutSeconds"), 30).ToString();
             builder["Query Timeout"] = commandTimeoutSeconds.ToString();
+            // CommitMode=0 → *NONE: sin control de compromiso para lecturas de mirror sync.
+            // Evita SQL0913 (row/object in use) en tablas con commitment control activo como OPCAR5.
+            // QueryOptimizeGoal=1 → first-row optimization: reduce el tiempo que el cursor mantiene locks.
+            builder["CommitMode"] = "0";
+            builder["QueryOptimizeGoal"] = "1";
             return builder.ConnectionString;
         }
 

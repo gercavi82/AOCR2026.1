@@ -21,6 +21,60 @@ namespace CapaNegocio.Services
             _logger = LoggingServiceFactory.Create();
             var config = System.Configuration.ConfigurationManager.ConnectionStrings["AOCRConnection"];
             _connectionString = config != null ? config.ConnectionString : string.Empty;
+            EnsureTable();
+        }
+
+        /// <summary>
+        /// Crea la tabla aocr_fr3_retry_queue si no existe (idempotente).
+        /// Equivalente al bloque DO$$ del script 20260601_sync_audit_idempotency.sql.
+        /// </summary>
+        private void EnsureTable()
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString)) return;
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"
+                        CREATE TABLE IF NOT EXISTS aocr_fr3_retry_queue (
+                            id                  SERIAL PRIMARY KEY,
+                            orden_id            INTEGER NOT NULL,
+                            pago_id             INTEGER,
+                            numero_factura      VARCHAR(50),
+                            autorizacion        VARCHAR(100),
+                            estado              VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+                            intentos            INTEGER NOT NULL DEFAULT 0,
+                            max_intentos        INTEGER NOT NULL DEFAULT 5,
+                            ultimo_error        TEXT,
+                            proximo_intento     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                            factor_backoff      INTEGER NOT NULL DEFAULT 1,
+                            prioridad           INTEGER NOT NULL DEFAULT 0,
+                            usuario_creacion    VARCHAR(100),
+                            usuario_ultimo      VARCHAR(100),
+                            correlacion_id      VARCHAR(100),
+                            fecha_creacion      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                            fecha_actualizacion TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                            fecha_completado    TIMESTAMP WITH TIME ZONE,
+                            fr3_numero          VARCHAR(50),
+                            fr3_secuencial      NUMERIC(15,0)
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_fr3_retry_estado   ON aocr_fr3_retry_queue(estado);
+                        CREATE INDEX IF NOT EXISTS idx_fr3_retry_proximo  ON aocr_fr3_retry_queue(proximo_intento)
+                            WHERE estado IN ('PENDIENTE', 'EN_PROCESO');
+                        CREATE INDEX IF NOT EXISTS idx_fr3_retry_orden    ON aocr_fr3_retry_queue(orden_id);";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                    _logger.LogInfo("Fr3RetryService: Tabla aocr_fr3_retry_queue verificada/creada.",
+                        new LogContext { Controller = "Fr3RetryService", Action = "EnsureTable" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Fr3RetryService EnsureTable error: " + ex.Message);
+            }
         }
 
         #region Encolar reintentos

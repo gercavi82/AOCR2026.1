@@ -123,7 +123,7 @@
         --fin-accent-4: #f38b63;
         --fin-accent-5: #d98dc5;
         --fin-shadow: 0 14px 34px rgba(24, 44, 62, 0.08);
-        background: var(--fin-bg);
+        background: transparent;
         border: 1px solid var(--fin-border);
         border-radius: 24px;
         padding: 24px;
@@ -482,7 +482,7 @@
 
     @@media (max-width: 768px) {
         .fin-dashboard {
-            padding: 16px;
+            padding: 4px 16px 16px;
             border-radius: 18px;
         }
 
@@ -499,20 +499,181 @@
             grid-template-columns: 1fr;
         }
     }
+    /* Refinamiento ejecutivo: sistema visual unificado */
+    .fin-dashboard {
+        --fin-navy: #073b5c;
+        --fin-blue: #0b5f87;
+        --fin-cyan: #11a8bd;
+        --fin-green: #18a875;
+        --fin-yellow: #e5a623;
+        --fin-red: #dc5a63;
+        --fin-purple: #7c5ce7;
+        --fin-bg: #f3f7fa;
+        --fin-panel: #fff;
+        --fin-border: #dce6ed;
+        --fin-text: #102f45;
+        --fin-muted: #647b8c;
+        --fin-shadow: 0 7px 22px rgba(12,54,80,.065);
+        border: 0;
+        border-radius: 0;
+        padding: 5px 0 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    .fin-dashboard > * { order: 10; }
+    .fin-dashboard > .fin-dashboard-header { order: 1; }
+    .fin-dashboard > .alert { order: 2; }
+    .fin-dashboard > .fin-filters { order: 3; }
+    .fin-dashboard > .fin-table-card { order: 4; margin-top: 0; margin-bottom: 16px; }
+    .fin-dashboard > .fin-kpi-grid { order: 5; }
+    .fin-dashboard > .fin-chart-grid { order: 6; }
+    .fin-dashboard > .fin-modal { order: 20; }
+    .fin-dashboard-header {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 115px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #0e3a5c 0%, #145a82 50%, #0f6a7f 100%);
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(14,46,71,.1);
+        padding: 24px 30px;
+        color: #fff;
+    }
+    .fin-dashboard-header::after { display: none; }
+    .fin-dashboard-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        align-self: flex-start;
+        margin-bottom: 12px;
+        padding: 4px 12px;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 20px;
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+    .fin-dashboard-title {
+        margin: 0 0 8px;
+        color: #fff !important;
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+    .fin-dashboard-subtitle {
+        max-width: 900px;
+        margin: 0;
+        color: rgba(255,255,255,.9);
+        font-size: .9rem;
+        line-height: 1.4;
+    }
+    .fin-dashboard-actions { position: relative; z-index: 1; }
+    .fin-dashboard-actions .btn { color:#fff; border-color:rgba(255,255,255,.48); border-radius:9px; padding:8px 12px; }
+    .fin-dashboard-actions .btn:hover { background:#fff; color:var(--fin-navy); }
+    .fin-dashboard-actions #healthResult { color:rgba(255,255,255,.82)!important; }
+    .fin-filters {
+        background:#fff;
+        border:1px solid var(--fin-border);
+        border-radius:13px;
+        padding:11px 14px;
+        box-shadow:0 3px 12px rgba(12,54,80,.035);
+    }
+    .fin-filter-form .form-select { border-color:#cbd9e2; border-radius:9px; min-height:36px; color:var(--fin-text); }
+    .fin-health-button {
+        margin-left: 8px;
+        border-color: #9fb5c3;
+        border-radius: 8px;
+        color: #476476;
+    }
+    #healthResult { margin-left: 6px; }
+    .fin-kpi-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:16px; }
+    .fin-kpi-card {
+        min-height:154px;
+        padding:20px;
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+        border-top:3px solid var(--kpi-color);
+    }
+    .fin-kpi-top { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+    .fin-kpi-icon {
+        width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+        flex:0 0 auto; color:var(--kpi-color); background:#edf6f8; font-size:1.05rem;
+    }
+    .fin-kpi-card .fin-metric-label { color:#516a7b; font-size:.76rem; }
+    .fin-kpi-card .fin-metric-value { color:var(--fin-text); font-size:clamp(1.65rem,2.2vw,2.25rem); letter-spacing:-.04em; margin-top:9px; }
+    .fin-kpi-card .fin-metric-sub { margin-top:8px; line-height:1.35; }
+    .fin-kpi-progress { height:4px; overflow:hidden; border-radius:99px; background:#edf3f6; margin-top:14px; }
+    .fin-kpi-progress span { display:block; width:var(--progress); max-width:100%; height:100%; border-radius:inherit; background:var(--kpi-color); }
+    .fin-chart-grid { grid-template-columns:1.05fr 1.05fr 1.55fr .85fr; gap:16px; margin-bottom:16px; }
+    .fin-card { border-radius:14px; border-color:var(--fin-border); box-shadow:var(--fin-shadow); padding:18px; }
+    .fin-card::before {
+        content:""; position:absolute; top:0; left:18px; width:34px; height:3px;
+        border-radius:0 0 6px 6px; background:var(--fin-cyan);
+    }
+    .fin-card .fin-metric-label { color:var(--fin-navy); }
+    .fin-section-heading { display:flex; align-items:center; gap:9px; }
+    .fin-section-heading i { color:var(--fin-cyan); }
+    .fin-list li { align-items:center; padding:10px 0; }
+    .fin-list-copy { display:flex; align-items:center; gap:10px; }
+    .fin-list-icon {
+        width:32px; height:32px; border-radius:9px; display:grid; place-items:center;
+        color:var(--state-color); background:#eff5f7; flex:0 0 auto;
+    }
+    .fin-list-value { min-width:30px; text-align:right; color:var(--fin-text); font-size:1rem; }
+    .fin-donut-layout { min-height:175px; display:flex; align-items:center; gap:18px; }
+    .fin-donut {
+        width:122px; height:122px; flex:0 0 auto; border-radius:50%; display:grid; place-items:center;
+        background:conic-gradient(var(--fin-yellow) 0 var(--p1),var(--fin-cyan) var(--p1) var(--p2),var(--fin-red) var(--p2) var(--p3),var(--fin-green) var(--p3) 100%);
+        position:relative;
+    }
+    .fin-donut::after { content:""; width:76px; height:76px; border-radius:50%; background:#fff; position:absolute; }
+    .fin-donut strong { z-index:1; font-size:1.35rem; color:var(--fin-navy); }
+    .fin-donut-legend { flex:1; }
+    .fin-donut-legend li { padding:5px 0; font-size:.8rem; }
+    .fin-line-chart { height:164px; padding:8px 2px 0; background:linear-gradient(180deg,rgba(17,168,189,.05),transparent 70%); border-radius:10px; }
+    .fin-line-area { fill:url(#finAreaGradient); }
+    .fin-flow-card { text-align:center; }
+    .fin-flow-card .fin-ring-wrap { min-height:170px; }
+    .fin-flow-card .fin-ring { --size:138px; --thickness:13px; }
+    .fin-info-grid { grid-template-columns:.9fr 2.1fr; }
+    .fin-empty-state { width:100%; min-height:112px; display:grid; place-items:center; text-align:center; color:var(--fin-muted); }
+    .fin-empty-state i { display:block; margin-bottom:9px; color:#9bb0be; font-size:1.55rem; }
+    .fin-table-card { border-radius:14px; border-color:var(--fin-border); box-shadow:var(--fin-shadow); }
+    .fin-table-header { padding:18px 20px; background:#fff; }
+    .fin-table-header h3 { color:var(--fin-navy); font-size:1.08rem; }
+    .fin-chip { background:#eaf5f7; color:#096d7f; }
+    #tablaGestionOrdenes thead th {
+        background:linear-gradient(180deg,#0a587d,#07496b); border-color:rgba(255,255,255,.12);
+        color:#fff; font-size:.74rem; letter-spacing:.035em; text-transform:uppercase; padding:12px 10px; vertical-align:middle;
+    }
+    #tablaGestionOrdenes tbody td { border-color:#e8eef2; color:#29475b; padding:11px 10px; vertical-align:middle; }
+    #tablaGestionOrdenes tbody tr:hover { background:#f2fafb; }
+    @@media (max-width:1200px) {
+        .fin-kpi-grid,.fin-chart-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .fin-info-grid { grid-template-columns:1fr 2fr; }
+    }
+    @@media (max-width:768px) {
+        .fin-dashboard { padding:4px 0 16px; }
+        .fin-kpi-grid,.fin-chart-grid,.fin-info-grid { grid-template-columns:1fr; }
+        .fin-dashboard-header::after { display:none; }
+        .fin-dashboard-header { padding:20px; }
+        .fin-dashboard-title { font-size:1.3rem; }
+        .fin-donut-layout { justify-content:center; flex-wrap:wrap; }
+    }
 </style>
 
 <div class="fin-dashboard">
-    <div class="fin-dashboard-header aocr-bg-dark">
-        <div>
-            <h2 class="fin-dashboard-title">Dashboard Financiero</h2>
-            <p class="fin-dashboard-subtitle">Panel de control para validación de órdenes, seguimiento de facturación FR3 y estado operativo del área financiera.</p>
-        </div>
-        <div class="fin-dashboard-actions">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHealthPostgres">
-                <i class="fas fa-database me-1"></i> Probar PostgreSQL/DB2
-            </button>
-            <span id="healthResult" class="text-muted small"></span>
-        </div>
+    <div class="fin-dashboard-header">
+        <span class="fin-dashboard-badge"><i class="fas fa-chart-line"></i> Gestión financiera</span>
+        <h2 class="fin-dashboard-title">Dashboard Financiero</h2>
+        <p class="fin-dashboard-subtitle">Valide órdenes, supervise la facturación FR3 y controle el desempeño operativo del área financiera.</p>
     </div>
 
     @if (TempData["Success"] != null)
@@ -534,6 +695,10 @@
         <div>
             <span class="fin-chip"><i class="fas fa-wave-square"></i> AS400 @(as400FacturacionHabilitada ? "habilitado" : "deshabilitado")</span>
             <span class="fin-chip"><i class="fas fa-layer-group"></i> @totalOrdenes órdenes visibles</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm fin-health-button" id="btnHealthPostgres">
+                <i class="fas fa-database me-1"></i> Probar PostgreSQL/DB2
+            </button>
+            <span id="healthResult" class="text-muted small"></span>
         </div>
         <form method="get" class="fin-filter-form">
             <label class="mb-0 aocr-field-label">Estado:</label>
@@ -550,114 +715,93 @@
     </div>
 
     <div class="fin-kpi-grid">
-        <div class="fin-card fin-metric-info">
-            <div class="fin-metric-label">Órdenes Totales</div>
-            <div class="fin-metric-value">@totalOrdenes</div>
-            <div class="fin-metric-sub">Volumen operativo actual del tablero.</div>
-            <span class="fin-stat-accent"></span>
-        </div>
-
-        <div class="fin-card tall">
-            <div class="fin-metric-label">Monto Consolidado</div>
-            <div class="fin-ring-wrap" style="position:relative;">
-                <div class="fin-ring" style="--ring-percent:@porcentajeCompletadas; --ring-color:#9fcb52;"></div>
-                <div class="fin-ring-center">
-                    <strong>@montoTotal.ToString("N2")</strong>
-                    <span>Total USD</span>
-                </div>
-                <ul class="fin-legend">
-                    <li><span><span class="fin-dot" style="background:#9fcb52;"></span>Completadas</span><strong>@completadas</strong></li>
-                    <li><span><span class="fin-dot" style="background:#53b7cf;"></span>Facturadas</span><strong>@facturadas</strong></li>
-                    <li><span><span class="fin-dot" style="background:#f2c94c;"></span>En revisión</span><strong>@enRevision</strong></li>
-                    <li><span><span class="fin-dot" style="background:#f38b63;"></span>Devueltas</span><strong>@devueltas</strong></li>
-                </ul>
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-cyan);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Órdenes Totales</div><div class="fin-metric-value">@totalOrdenes</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-file-invoice-dollar"></i></span>
             </div>
+            <div class="fin-metric-sub">Volumen operativo visible en el tablero.</div>
+            <div class="fin-kpi-progress" style="--progress:100%;"><span></span></div>
         </div>
 
-        <div class="fin-card tall">
-            <div class="fin-metric-label">Cumplimiento FR3</div>
-            <div class="fin-ring-wrap" style="position:relative;">
-                <div class="fin-ring" style="--ring-percent:@porcentajeFr3Ok; --ring-color:#34b44a;"></div>
-                <div class="fin-ring-center">
-                    <strong>@fr3Ok</strong>
-                    <span>FR3 emitidos</span>
-                </div>
-                <ul class="fin-legend">
-                    <li><span><span class="fin-dot" style="background:#34b44a;"></span>Emitidos</span><strong>@fr3Ok</strong></li>
-                    <li><span><span class="fin-dot" style="background:#f2c94c;"></span>Pendientes</span><strong>@fr3Pendiente</strong></li>
-                    <li><span><span class="fin-dot" style="background:#f05a4f;"></span>Error</span><strong>@fr3Error</strong></li>
-                </ul>
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-green);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Monto Consolidado</div><div class="fin-metric-value">$ @montoTotal.ToString("N2")</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-coins"></i></span>
             </div>
+            <div class="fin-metric-sub">Valor total acumulado de las órdenes.</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeCompletadas%;"><span></span></div>
         </div>
 
-        <div class="fin-card fin-metric-soft">
-            <div class="fin-metric-label">Rendimiento</div>
-            <div class="fin-metric-value">@porcentajeFr3Ok%</div>
-            <div class="fin-metric-sub">Cobertura de FR3 sobre las órdenes visibles.</div>
-            <span class="fin-stat-accent"></span>
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-blue);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Cumplimiento FR3</div><div class="fin-metric-value">@porcentajeFr3Ok%</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-clipboard-check"></i></span>
+            </div>
+            <div class="fin-metric-sub">@fr3Ok emitidos · @fr3Pendiente pendientes · @fr3Error con error</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeFr3Ok%;"><span></span></div>
+        </div>
+
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-purple);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Rendimiento</div><div class="fin-metric-value">@porcentajeCompletadas%</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-chart-line"></i></span>
+            </div>
+            <div class="fin-metric-sub">@completadas órdenes completadas del total visible.</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeCompletadas%;"><span></span></div>
         </div>
     </div>
 
     <div class="fin-chart-grid">
         <div class="fin-card">
-            <div class="fin-metric-label">Estados Clave</div>
-            <div class="fin-metric-value">@enRevision</div>
-            <div class="fin-metric-sub">Órdenes que requieren gestión o revisión.</div>
+            <div class="fin-section-heading"><i class="fas fa-list-check"></i><div class="fin-metric-label">Estados Clave</div></div>
             <ul class="fin-list">
-                <li><div><div class="fin-list-title">Generadas</div><div class="fin-list-sub">Ordenes emitidas pendientes de pago</div></div><strong>@generadas</strong></li>
-                <li><div><div class="fin-list-title">En revision financiera</div><div class="fin-list-sub">Carga activa del equipo</div></div><strong>@enRevision</strong></li>
-                <li><div><div class="fin-list-title">Devueltas al RT</div><div class="fin-list-sub">Requieren correccion y reenvio</div></div><strong>@devueltas</strong></li>
-                <li><div><div class="fin-list-title">Anuladas</div><div class="fin-list-sub">Casos cerrados por reverso</div></div><strong>@anuladas</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-yellow);"><i class="fas fa-clock"></i></span><div><div class="fin-list-title">Generadas</div><div class="fin-list-sub">Pendientes de gestión</div></div></div><strong class="fin-list-value">@generadas</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-cyan);"><i class="fas fa-search-dollar"></i></span><div><div class="fin-list-title">En revisión</div><div class="fin-list-sub">Carga activa del equipo</div></div></div><strong class="fin-list-value">@enRevision</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-red);"><i class="fas fa-undo-alt"></i></span><div><div class="fin-list-title">Devueltas al RT</div><div class="fin-list-sub">Requieren corrección</div></div></div><strong class="fin-list-value">@devueltas</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:#8496a3;"><i class="fas fa-ban"></i></span><div><div class="fin-list-title">Anuladas</div><div class="fin-list-sub">Casos cerrados</div></div></div><strong class="fin-list-value">@anuladas</strong></li>
             </ul>
         </div>
 
         <div class="fin-card">
             <div class="d-flex justify-content-between align-items-center">
-                <div class="fin-metric-label">Distribución por Estado</div>
+                <div class="fin-section-heading"><i class="fas fa-chart-pie"></i><div class="fin-metric-label">Distribución por Estado</div></div>
                 <strong class="small text-muted">@totalOrdenes total</strong>
             </div>
             @{
-                var alturaGeneradas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)generadas * 100m / totalOrdenes) : 0);
-                var alturaRevision = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)enRevision * 100m / totalOrdenes) : 0);
-                var alturaDevueltas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)devueltas * 100m / totalOrdenes) : 0);
-                var alturaFacturadas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)facturadas * 100m / totalOrdenes) : 0);
+                var pGeneradas = totalOrdenes > 0 ? (int)Math.Round((decimal)generadas * 100m / totalOrdenes) : 0;
+                var pRevision = pGeneradas + (totalOrdenes > 0 ? (int)Math.Round((decimal)enRevision * 100m / totalOrdenes) : 0);
+                var pDevueltas = pRevision + (totalOrdenes > 0 ? (int)Math.Round((decimal)devueltas * 100m / totalOrdenes) : 0);
             }
-            <div class="fin-bars">
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-generadas" data-height="@alturaGeneradas"></div></div>
-                    <span class="fin-bar-label">Generadas</span>
-                </div>
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-revision" data-height="@alturaRevision"></div></div>
-                    <span class="fin-bar-label">Revision</span>
-                </div>
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-devueltas" data-height="@alturaDevueltas"></div></div>
-                    <span class="fin-bar-label">Devueltas</span>
-                </div>
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-facturadas" data-height="@alturaFacturadas"></div></div>
-                    <span class="fin-bar-label">Facturadas</span>
-                </div>
+            <div class="fin-donut-layout">
+                <div class="fin-donut" style="--p1:@pGeneradas%; --p2:@pRevision%; --p3:@pDevueltas%; @(totalOrdenes == 0 ? "background:#e6eef2;" : "")"><strong>@totalOrdenes</strong></div>
+                <ul class="fin-legend fin-donut-legend">
+                    <li><span><span class="fin-dot" style="background:var(--fin-yellow);"></span>Generadas</span><strong>@generadas</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-cyan);"></span>En revisión</span><strong>@enRevision</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-red);"></span>Devueltas</span><strong>@devueltas</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-green);"></span>Facturadas</span><strong>@facturadas</strong></li>
+                </ul>
             </div>
         </div>
 
         <div class="fin-card">
-            <div class="fin-metric-label">Tendencia Operativa</div>
+            <div class="fin-section-heading"><i class="fas fa-chart-line"></i><div class="fin-metric-label">Tendencia Operativa</div></div>
             <div class="fin-line-chart">
                 <svg viewBox="0 0 300 150" preserveAspectRatio="none" aria-hidden="true">
-                    <line x1="0" y1="128" x2="300" y2="128" stroke="#e8edf1" stroke-width="2"></line>
-                    <polyline fill="none" stroke="#53b7cf" stroke-width="4" points="10,112 55,108 95,62 135,100 175,88 215,42 255,52 290,16"></polyline>
-                    <circle cx="95" cy="62" r="5" fill="#53b7cf"></circle>
-                    <circle cx="215" cy="42" r="5" fill="#53b7cf"></circle>
-                    <circle cx="290" cy="16" r="5" fill="#53b7cf"></circle>
+                    <defs><linearGradient id="finAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#11a8bd" stop-opacity=".22"></stop><stop offset="100%" stop-color="#11a8bd" stop-opacity="0"></stop></linearGradient></defs>
+                    <line x1="0" y1="128" x2="300" y2="128" stroke="#e1e9ee" stroke-width="1"></line>
+                    <path class="fin-line-area" d="M10 112 L55 108 L95 62 L135 100 L175 88 L215 42 L255 52 L290 16 L290 128 L10 128 Z"></path>
+                    <polyline fill="none" stroke="#0b8fa7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="10,112 55,108 95,62 135,100 175,88 215,42 255,52 290,16"></polyline>
+                    <circle cx="95" cy="62" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
+                    <circle cx="215" cy="42" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
+                    <circle cx="290" cy="16" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
                 </svg>
             </div>
             <div class="fin-mini-note"><span>Inicio</span><span>Pico actual de actividad</span></div>
         </div>
 
-        <div class="fin-card">
-            <div class="fin-metric-label">Salud del Flujo</div>
+        <div class="fin-card fin-flow-card">
+            <div class="fin-section-heading"><i class="fas fa-heartbeat"></i><div class="fin-metric-label">Salud del Flujo</div></div>
             <div class="fin-ring-wrap" style="position:relative; justify-content:center;">
                 <div class="fin-ring" style="--ring-percent:@porcentajeCompletadas; --ring-color:#d98dc5;"></div>
                 <div class="fin-ring-center">
@@ -668,9 +812,9 @@
         </div>
     </div>
 
-    <div class="fin-chart-grid">
+    <div class="fin-chart-grid fin-info-grid">
         <div class="fin-card">
-            <div class="fin-metric-label">Top Compañías</div>
+            <div class="fin-section-heading"><i class="fas fa-building"></i><div class="fin-metric-label">Top Compañías</div></div>
             <ul class="fin-list">
                 @if (companias.Any())
                 {
@@ -688,17 +832,14 @@
                 else
                 {
                     <li>
-                        <div>
-                            <div class="fin-list-title">Sin datos</div>
-                            <div class="fin-list-sub">No hay compañías para mostrar en este filtro.</div>
-                        </div>
+                        <div class="fin-empty-state"><div><i class="far fa-building"></i><div class="fin-list-title">Sin compañías para mostrar</div><div class="fin-list-sub">Los resultados aparecerán al registrar actividad.</div></div></div>
                     </li>
                 }
             </ul>
         </div>
 
-        <div class="fin-card" style="grid-column: span 3;">
-            <div class="fin-metric-label">Actividad Reciente</div>
+        <div class="fin-card">
+            <div class="fin-section-heading"><i class="fas fa-history"></i><div class="fin-metric-label">Actividad Reciente</div></div>
             <ul class="fin-list">
                 @if (recientes.Any())
                 {
@@ -720,10 +861,7 @@
                 else
                 {
                     <li>
-                        <div>
-                            <div class="fin-list-title">Sin actividad reciente</div>
-                            <div class="fin-list-sub">Aplique otro filtro o genere nuevas órdenes.</div>
-                        </div>
+                        <div class="fin-empty-state"><div><i class="far fa-clock"></i><div class="fin-list-title">Sin actividad reciente</div><div class="fin-list-sub">Aquí se mostrarán los últimos movimientos financieros.</div></div></div>
                     </li>
                 }
             </ul>
@@ -734,7 +872,7 @@
         <div class="fin-table-header">
             <div>
                 <h3>Gestión de órdenes</h3>
-                <div class="text-muted small">Operación detallada para revisar, aprobar, rechazar o reintentar FR3.</div>
+                <div class="text-muted small">Revise, apruebe y dé seguimiento al ciclo operativo de cada orden.</div>
             </div>
             <span class="fin-chip"><i class="fas fa-table"></i> Vista operativa</span>
         </div>
@@ -743,7 +881,7 @@
     <thead>
         <tr>
             <th>#</th>
-            <th>Órden</th>
+            <th>Orden</th>
             <th>Compañía</th>
             <th>Fecha</th>
             <th>Monto</th>
@@ -963,10 +1101,41 @@
 @section Styles {
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" />
     <style>
-        #tablaGestionOrdenes_wrapper .dt-buttons { margin-bottom: 0.5rem; }
-        #tablaGestionOrdenes_wrapper .dataTables_filter { margin-bottom: 0.5rem; }
-        .fin-table-card .dataTables_wrapper { padding: 12px 18px 18px; }
-        .fin-table-card .dataTables_wrapper .table { margin-top: 0.5rem !important; }
+        #tablaGestionOrdenes_wrapper .dt-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:.75rem; }
+        #tablaGestionOrdenes_wrapper .dt-buttons .btn {
+            margin:0; border-radius:8px; padding:7px 11px; background:#fff;
+            font-weight:700; font-size:.78rem; box-shadow:none;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter { margin-bottom:.75rem; }
+        #tablaGestionOrdenes_wrapper .dataTables_filter label { color:#647b8c; font-size:0; }
+        #tablaGestionOrdenes_wrapper .dataTables_filter label::before {
+            content:"\f002"; font-family:"Font Awesome 5 Free"; font-weight:900;
+            font-size:.8rem; color:#78909f; margin-right:-26px; position:relative; z-index:1;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter input {
+            min-width:240px; min-height:36px; margin-left:0; padding:7px 12px 7px 32px;
+            border:1px solid #cbd9e2; border-radius:9px; color:#29475b; background:#fff;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter input:focus {
+            border-color:#11a8bd; box-shadow:0 0 0 3px rgba(17,168,189,.12); outline:0;
+        }
+        .fin-table-card .dataTables_wrapper { padding:14px 18px 18px; }
+        .fin-table-card .dataTables_wrapper .table { margin-top:.5rem!important; }
+        .fin-table-card .dataTables_info { color:#718696; font-size:.8rem; padding-top:14px; }
+        .fin-table-card .dataTables_paginate { padding-top:10px; }
+        .fin-table-card .pagination { gap:4px; }
+        .fin-table-card .page-link {
+            border:0; border-radius:7px!important; color:#476476; min-width:32px; text-align:center;
+        }
+        .fin-table-card .page-item.active .page-link { background:#0b7894; color:#fff; }
+        #tablaGestionOrdenes .dataTables_empty {
+            padding:44px 15px!important; color:#708696; text-align:center!important;
+            background:linear-gradient(180deg,#fff,#f8fbfc);
+        }
+        @@media(max-width:767px) {
+            #tablaGestionOrdenes_wrapper .dataTables_filter,
+            #tablaGestionOrdenes_wrapper .dataTables_filter input { width:100%; min-width:0; }
+        }
     </style>
 }
 

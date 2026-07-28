@@ -548,6 +548,9 @@
     <Content Include="Content\css\formulario-aocr.css" />
     <Content Include="Content\css\pagos-mejorados.css" />
     <Content Include="Content\css\role-permissions.css" />
+    <Content Include="Content\css\rt-users-admin.css" />
+    <Content Include="Content\css\modules\aocr-test-mail.css" />
+    <Content Include="Scripts\modules\aocr-test-mail.js" />
     <Content Include="Content\dist\css\adminlte.css" />
     <Content Include="Content\dist\css\adminlte.min.css" />
     <Content Include="Content\dist\css\alt\adminlte.components.css" />

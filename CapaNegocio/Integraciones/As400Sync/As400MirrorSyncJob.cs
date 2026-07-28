@@ -13,8 +13,15 @@ namespace CapaNegocio.Integraciones.As400Sync
             var results = svc.RunAllEnabled();
             try
             {
-                var reader = new MirrorReadService();
-                reader.SincronizarFr3DesdeEspejo();
+                var opcar5Ok = results.Any(r =>
+                    r != null &&
+                    string.Equals(r.TableName, "OPCAR5", StringComparison.OrdinalIgnoreCase) &&
+                    (r.Status == "OK" || r.Status == "OK_WITH_REJECTIONS"));
+                if (opcar5Ok)
+                {
+                    var reader = new MirrorReadService();
+                    reader.SincronizarFr3DesdeEspejo();
+                }
             }
             catch (Exception ex)
             {
@@ -27,7 +34,9 @@ namespace CapaNegocio.Integraciones.As400Sync
         {
             var svc = As400MirrorSyncService.CreateDefault();
             var result = svc.RunTable(tableName);
-            if (string.Equals(tableName, "OPCAR5", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(tableName, "OPCAR5", StringComparison.OrdinalIgnoreCase) &&
+                result != null &&
+                (result.Status == "OK" || result.Status == "OK_WITH_REJECTIONS"))
             {
                 try
                 {

@@ -9,20 +9,17 @@
     var activos = Model != null ? Model.Count(u => u != null && u.Activo) : 0;
     var pendientes = Model != null ? Model.Count(u => u != null
         && u.Activo
-        && ((u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "EN_REVISION_COORDINADOR"
-            || (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "ENVIADO"
+        && ((u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "ENVIADO"
             || (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "ENVIADA"
             || string.IsNullOrWhiteSpace(u.EstadoSolicitudRT))) : 0;
     var sinDocumento = Model != null ? Model.Count(u => u != null
         && string.IsNullOrWhiteSpace(u.RutaDocumentoLegal)) : 0;
-    var devueltos = Model != null ? Model.Count(u => u != null
-        && ((u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "DEVUELTO_CON_OBSERVACIONES")
-        || ((u.EstadoDesignacionRT ?? "").Trim().ToLowerInvariant() == "rechazado")) : 0;
+    var enRevisionKpi = Model != null ? Model.Count(u => u != null
+        && u.Activo
+        && (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "EN_REVISION_COORDINADOR") : 0;
 }
 
-<link rel="stylesheet" href="~/Content/css/rt-users-admin.css?v=@DateTime.Now.Ticks" />
-
-<div class="rt-users-shell">
+<div class="aocr-rt-users-page rt-users-shell" data-module="rt-users-admin">
 
     @* ══════ HEADER ══════ *@
     <section class="rt-page-header">
@@ -89,7 +86,7 @@
                 </div>
             </div>
             <div class="rt-kpi-card">
-                <div class="rt-kpi-icon rt-kpi-icon--purple"><i class="fas fa-file-circle-question"></i></div>
+                <div class="rt-kpi-icon rt-kpi-icon--purple"><i class="fas fa-file-alt"></i></div>
                 <div class="rt-kpi-info">
                     <h3>Sin documento</h3>
                     <div class="rt-kpi-value">@sinDocumento</div>
@@ -99,9 +96,9 @@
             <div class="rt-kpi-card">
                 <div class="rt-kpi-icon rt-kpi-icon--red"><i class="fas fa-undo"></i></div>
                 <div class="rt-kpi-info">
-                    <h3>Devueltos</h3>
-                    <div class="rt-kpi-value">@devueltos</div>
-                    <div class="rt-kpi-sub rt-kpi-sub--red">Con observaciones</div>
+                    <h3>En revisión</h3>
+                    <div class="rt-kpi-value">@enRevisionKpi</div>
+                    <div class="rt-kpi-sub rt-kpi-sub--red">Validación coordinador</div>
                 </div>
             </div>
         </div>
@@ -136,14 +133,30 @@
                     <input type="text" id="rtFiltroEmpresa" class="form-control" placeholder="Código" />
                 </div>
                 <div>
+                    <label>Documento</label>
+                    <select id="rtFiltroDocumento" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="CON_DOCUMENTO">Con documento</option>
+                        <option value="SIN_DOCUMENTO">Sin documento</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Fecha desde</label>
+                    <input type="date" id="rtFiltroFechaDesde" class="form-control" />
+                </div>
+                <div>
+                    <label>Fecha hasta</label>
+                    <input type="date" id="rtFiltroFechaHasta" class="form-control" />
+                </div>
+                <div>
                     <label>&nbsp;</label>
-                    <button type="button" class="btn btn-primary rt-filter-btn w-100" onclick="rtAplicarFiltros()">
+                    <button type="button" class="btn btn-primary rt-filter-btn w-100" id="rtAplicarFiltros">
                         <i class="fas fa-search"></i> Filtrar
                     </button>
                 </div>
                 <div>
                     <label>&nbsp;</label>
-                    <button type="button" class="btn btn-outline-secondary rt-filter-btn w-100" onclick="rtLimpiarFiltros()">
+                    <button type="button" class="btn btn-outline-secondary rt-filter-btn w-100" id="rtLimpiarFiltros">
                         <i class="fas fa-times"></i> Limpiar
                     </button>
                 </div>
@@ -207,7 +220,9 @@
                             <tr data-estado-rt="@estadoExpedienteRt"
                                 data-estado-cuenta="@(u.Activo ? "ACTIVO" : "INACTIVO")"
                                 data-empresa="@(u.EmpresaCodigo ?? "")"
-                                data-buscar="@(string.Format("{0} {1} {2} {3}", u.NombreCompleto, u.CodigoUsuario, u.Email, u.EmpresaCodigo).ToLowerInvariant())">
+                                data-documento="@(!string.IsNullOrWhiteSpace(u.RutaDocumentoLegal) ? "CON_DOCUMENTO" : "SIN_DOCUMENTO")"
+                                data-fecha="@(u.FechaCreacion.HasValue ? u.FechaCreacion.Value.ToString("yyyy-MM-dd") : "")"
+                                data-buscar="@(string.Format("{0} {1} {2} {3} {4} {5}", u.NombreCompleto, u.NombreUsuario, u.CodigoUsuario, u.Ruc, u.Email, u.EmpresaCodigo).ToLowerInvariant())">
                                 <td>
                                     <div class="rt-user-cell">
                                         <div class="rt-user-avatar">@ini</div>
@@ -257,7 +272,7 @@
                                         if (!string.IsNullOrWhiteSpace(u.RutaConstanciaRT))
                                         {
                                             <a class="rt-doc-btn rt-doc-btn--const" href="@Url.Action("DescargarConstanciaRT", "Usuario", new { id = u.Id })" title="Descargar constancia" style="margin-top:3px;">
-                                                <i class="fas fa-file-circle-check"></i> Constancia
+                                                <i class="fas fa-file-signature"></i> Constancia
                                             </a>
                                         }
                                     }
@@ -277,7 +292,8 @@
                                                     data-bs-target="#modalAprobarRt"
                                                     data-usuario-id="@u.Id"
                                                     data-usuario-nombre="@Html.Encode(u.NombreCompleto)"
-                                                    data-usuario-empresa="@Html.Encode(u.EmpresaCodigo)">
+                                                    data-usuario-empresa="@Html.Encode(u.EmpresaCodigo)"
+                                                    data-usuario-estado="@Html.Encode(estadoExpedienteRt.Replace("_", " "))">
                                                 <i class="fas fa-check"></i>
                                             </button>
 
@@ -418,7 +434,8 @@
                 <p style="font-size:14px;margin-bottom:12px;">Se devolverá la solicitud del usuario con las siguientes observaciones:</p>
                 <div style="background:#f8fbfd;border-radius:10px;padding:12px;border:1px solid #e2e8f0;margin-bottom:14px;">
                     <div style="font-size:13px;margin-bottom:4px;"><strong>Usuario:</strong> <span id="modalDevolverNombre"></span></div>
-                    <div style="font-size:13px;"><strong>Empresa:</strong> <span id="modalDevolverEmpresa"></span></div>
+                    <div style="font-size:13px;margin-bottom:4px;"><strong>Empresa:</strong> <span id="modalDevolverEmpresa"></span></div>
+                    <div style="font-size:13px;"><strong>Estado actual:</strong> <span id="modalDevolverEstado"></span></div>
                 </div>
                 @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post))
                 {
@@ -484,9 +501,17 @@
     </div>
 </div>
 
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/Content/css/rt-users-admin.css")?v=20260728" />
+}
+
 @section Scripts {
     <script>
     (function () {
+        'use strict';
+        var moduleRoot = document.querySelector('[data-module="rt-users-admin"]');
+        if (!moduleRoot) return;
+
         /* ── Pagination (10 per page) ── */
         var PAGE_SIZE = 10;
         var tbody = document.querySelector('#tablaUsuariosRT tbody');
@@ -510,7 +535,9 @@
             if (infoEl) {
                 var shown = Math.min(end, filteredRows.length) - start;
                 if (filteredRows.length === 0) shown = 0;
-                infoEl.textContent = (start + 1) + '–' + Math.min(end, filteredRows.length) + ' de ' + filteredRows.length;
+                infoEl.textContent = filteredRows.length === 0
+                    ? '0 de 0'
+                    : (start + 1) + '–' + Math.min(end, filteredRows.length) + ' de ' + filteredRows.length;
             }
 
             renderPagination(totalPages);
@@ -548,33 +575,49 @@
         }
 
         /* ── Filters ── */
-        window.rtAplicarFiltros = function () {
+        function aplicarFiltros() {
             var busqueda = (document.getElementById('rtFiltroBuscar').value || '').toLowerCase().trim();
             var estado = (document.getElementById('rtFiltroEstado').value || '').trim().toUpperCase();
             var cuenta = (document.getElementById('rtFiltroCuenta').value || '').trim().toUpperCase();
             var empresa = (document.getElementById('rtFiltroEmpresa').value || '').trim().toUpperCase();
+            var documento = (document.getElementById('rtFiltroDocumento').value || '').trim().toUpperCase();
+            var fechaDesde = (document.getElementById('rtFiltroFechaDesde').value || '').trim();
+            var fechaHasta = (document.getElementById('rtFiltroFechaHasta').value || '').trim();
 
             filteredRows = allRows.filter(function (row) {
                 var matchBusqueda = !busqueda || (row.getAttribute('data-buscar') || '').indexOf(busqueda) !== -1;
                 var matchEstado = !estado || (row.getAttribute('data-estado-rt') || '') === estado;
                 var matchCuenta = !cuenta || (row.getAttribute('data-estado-cuenta') || '') === cuenta;
                 var matchEmpresa = !empresa || (row.getAttribute('data-empresa') || '').toUpperCase().indexOf(empresa) !== -1;
-                return matchBusqueda && matchEstado && matchCuenta && matchEmpresa;
+                var matchDocumento = !documento || (row.getAttribute('data-documento') || '') === documento;
+                var fecha = row.getAttribute('data-fecha') || '';
+                var matchFechaDesde = !fechaDesde || (fecha && fecha >= fechaDesde);
+                var matchFechaHasta = !fechaHasta || (fecha && fecha <= fechaHasta);
+                return matchBusqueda && matchEstado && matchCuenta && matchEmpresa
+                    && matchDocumento && matchFechaDesde && matchFechaHasta;
             });
 
             currentPage = 1;
             renderPage();
-        };
+        }
 
-        window.rtLimpiarFiltros = function () {
+        function limpiarFiltros() {
             document.getElementById('rtFiltroBuscar').value = '';
             document.getElementById('rtFiltroEstado').value = '';
             document.getElementById('rtFiltroCuenta').value = '';
             document.getElementById('rtFiltroEmpresa').value = '';
+            document.getElementById('rtFiltroDocumento').value = '';
+            document.getElementById('rtFiltroFechaDesde').value = '';
+            document.getElementById('rtFiltroFechaHasta').value = '';
             filteredRows = allRows.slice();
             currentPage = 1;
             renderPage();
-        };
+        }
+
+        var btnAplicarFiltros = document.getElementById('rtAplicarFiltros');
+        var btnLimpiarFiltros = document.getElementById('rtLimpiarFiltros');
+        if (btnAplicarFiltros) btnAplicarFiltros.addEventListener('click', aplicarFiltros);
+        if (btnLimpiarFiltros) btnLimpiarFiltros.addEventListener('click', limpiarFiltros);
 
         /* ── Approve modal ── */
         var modalAprobar = document.getElementById('modalAprobarRt');
@@ -601,12 +644,14 @@
                 var idEl = document.getElementById('modalDevolverId');
                 var nombreEl = document.getElementById('modalDevolverNombre');
                 var empresaEl = document.getElementById('modalDevolverEmpresa');
+                var estadoEl = document.getElementById('modalDevolverEstado');
                 var obsEl = document.getElementById('ObservacionDevolucion');
                 var btnConfirm = document.getElementById('btnConfirmarDevolucion');
 
                 if (idEl) idEl.value = src.getAttribute('data-usuario-id') || '';
                 if (nombreEl) nombreEl.textContent = src.getAttribute('data-usuario-nombre') || '';
                 if (empresaEl) empresaEl.textContent = src.getAttribute('data-usuario-empresa') || '';
+                if (estadoEl) estadoEl.textContent = src.getAttribute('data-usuario-estado') || '';
                 if (obsEl) obsEl.value = '';
                 if (btnConfirm) btnConfirm.disabled = false;
             });
@@ -652,19 +697,19 @@
         }
 
         /* ── Confirm delete actions ── */
-        document.addEventListener('submit', function (e) {
-            var form = e.target;
-            if (!form || !form.matches('form')) return;
-            var confirmMsg = form.getAttribute('data-confirm');
-            if (confirmMsg && !window.confirm(confirmMsg)) {
-                e.preventDefault();
-                return;
-            }
-            var submit = form.querySelector('button[type="submit"]');
-            if (submit) {
-                submit.disabled = true;
-                window.setTimeout(function () { submit.disabled = false; }, 2000);
-            }
+        Array.prototype.forEach.call(document.querySelectorAll('form[data-confirm]'), function (form) {
+            form.addEventListener('submit', function (e) {
+                var confirmMsg = form.getAttribute('data-confirm');
+                if (confirmMsg && !window.confirm(confirmMsg)) {
+                    e.preventDefault();
+                    return;
+                }
+                var submit = form.querySelector('button[type="submit"]');
+                if (submit) {
+                    submit.disabled = true;
+                    window.setTimeout(function () { submit.disabled = false; }, 2000);
+                }
+            });
         });
 
         /* ── Initial render ── */

@@ -1,122 +1,240 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CorreoPruebaViewModel>
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CorreoPruebaViewModel>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @{
-    ViewBag.Title = "Correos de Prueba";
+    ViewBag.Title = "Correos de prueba";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="content-wrapper">
-    <section class="content-header">
-        <h1>
-            <i class="fa fa-envelope"></i> Correos de Prueba
-            <small>Envío manual de plantillas reales a un buzón sandbox</small>
-        </h1>
-        <ol class="aocr-breadcrumb breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
-            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Notificacion")">Notificaciones</a></li>
-            <li class="breadcrumb-item active">Correos de prueba</li>
-        </ol>
-    </section>
-
-    <section class="content">
-        <div class="row">
-            <div class="col-md-8">
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title"><i class="fa fa-paper-plane"></i> Enviar correo de prueba</h3>
-                    </div>
-                    <div class="box-body">
-                        @if (Model.ResultadoExitoso.HasValue)
-                        {
-                            <div class="alert @(Model.ResultadoExitoso.Value ? "alert-success" : "alert-danger")">
-                                @Model.ResultadoMensaje
-                            </div>
-                        }
-
-                        @Html.ValidationSummary(false, "Revise la información antes de enviar el correo.", new { @class = "alert alert-warning" })
-
-                        @using (Html.BeginForm("CorreosPrueba", "Notificacion", FormMethod.Post))
-                        {
-                            @Html.AntiForgeryToken()
-
-                            <div class="form-group">
-                                @Html.LabelFor(m => m.Plantilla)
-                                @Html.DropDownListFor(
-                                    m => m.Plantilla,
-                                    Model.PlantillasDisponibles,
-                                    "Seleccione una plantilla",
-                                    new { @class = "form-control" })
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-7">
-                                    <div class="form-group">
-                                        @Html.LabelFor(m => m.CorreoDestino)
-                                        @Html.TextBoxFor(m => m.CorreoDestino, new { @class = "form-control", placeholder = "qa.aocr@dominio.local" })
-                                    </div>
-                                </div>
-                                <div class="col-md-5">
-                                    <div class="form-group">
-                                        @Html.LabelFor(m => m.NombreDestino)
-                                        @Html.TextBoxFor(m => m.NombreDestino, new { @class = "form-control", placeholder = "Usuario QA" })
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        @Html.LabelFor(m => m.SolicitudId)
-                                        @Html.TextBoxFor(m => m.SolicitudId, new { @class = "form-control", type = "number", min = "1", placeholder = "101" })
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        @Html.LabelFor(m => m.InspeccionId)
-                                        @Html.TextBoxFor(m => m.InspeccionId, new { @class = "form-control", type = "number", min = "1", placeholder = "55" })
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        @Html.LabelFor(m => m.OrdenId)
-                                        @Html.TextBoxFor(m => m.OrdenId, new { @class = "form-control", type = "number", min = "1", placeholder = "125" })
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                @Html.LabelFor(m => m.Observacion)
-                                @Html.TextAreaFor(m => m.Observacion, 4, 1, new { @class = "form-control", placeholder = "Observación opcional que se incluirá en la plantilla cuando aplique." })
-                            </div>
-
-                            <div class="form-group">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fa fa-send"></i> Enviar correo de prueba
-                                </button>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="box box-info">
-                    <div class="box-header with-border">
-                        <h3 class="box-title"><i class="fa fa-info-circle"></i> Uso</h3>
-                    </div>
-                    <div class="box-body">
-                        <ul class="mb-0">
-                            <li>Use un correo sandbox para evitar envíos a destinatarios reales.</li>
-                            <li>`Solicitud AOCR` es obligatoria para plantillas `LEGACY`, `GENERIC` y `SOLICITUD`.</li>
-                            <li>`Inspección` es obligatoria para plantillas `INSPECCION`.</li>
-                            <li>`Orden de recaudación` es obligatoria para plantillas `ORDEN`.</li>
-                            <li>Si informa `Nombre destino`, ese nombre se mostrará en el saludo del correo de prueba.</li>
-                            <li>La observación se usa como texto adicional cuando la plantilla la incorpora.</li>
-                        </ul>
-                    </div>
+<div class="aocr-test-mail-page" data-module="test-mail">
+    <header class="aocr-test-mail-heading">
+        <div>
+            <nav aria-label="Ruta de navegación">
+                <ol class="aocr-test-mail-breadcrumb">
+                    <li><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                    <li><a href="@Url.Action("Index", "Notificacion")">Notificaciones</a></li>
+                    <li aria-current="page">Correos de prueba</li>
+                </ol>
+            </nav>
+            <div class="aocr-test-mail-title-row">
+                <span class="aocr-test-mail-title-icon" aria-hidden="true"><i class="fas fa-envelope-open-text"></i></span>
+                <div>
+                    <h1>Correos de prueba</h1>
+                    <p>Valide las plantillas institucionales mediante un envío controlado a un buzón sandbox.</p>
                 </div>
             </div>
         </div>
+        <span class="aocr-test-mail-environment"><i class="fas fa-flask" aria-hidden="true"></i> Entorno sandbox</span>
+    </header>
+
+    <section class="aocr-test-mail-alert" role="note" aria-label="Advertencia de seguridad">
+        <span class="aocr-test-mail-alert-icon" aria-hidden="true"><i class="fas fa-shield-alt"></i></span>
+        <div>
+            <strong>Modo de prueba activo</strong>
+            <span>Los correos enviados desde esta pantalla deben dirigirse únicamente a cuentas sandbox autorizadas.</span>
+        </div>
     </section>
+
+    @if (Model.ResultadoExitoso.HasValue)
+    {
+        <div class="aocr-test-mail-result @(Model.ResultadoExitoso.Value ? "is-success" : "is-error")"
+             role="alert"
+             aria-live="polite">
+            <i class="fas @(Model.ResultadoExitoso.Value ? "fa-check-circle" : "fa-exclamation-circle")" aria-hidden="true"></i>
+            <span>@Model.ResultadoMensaje</span>
+        </div>
+    }
+
+    @Html.ValidationSummary(false, "Revise la información antes de enviar el correo.", new { @class = "aocr-test-mail-validation", role = "alert" })
+
+    <div class="aocr-test-mail-layout">
+        <main class="aocr-test-mail-main">
+            <section class="aocr-test-mail-card">
+                <header class="aocr-test-mail-card-header">
+                    <span class="aocr-test-mail-card-icon" aria-hidden="true"><i class="fas fa-paper-plane"></i></span>
+                    <div>
+                        <h2>Configurar correo de prueba</h2>
+                        <p>Seleccione una plantilla y complete únicamente los datos requeridos para el escenario.</p>
+                    </div>
+                </header>
+
+                @using (Html.BeginForm("CorreosPrueba", "Notificacion", FormMethod.Post, new { id = "aocrTestMailForm" }))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <section class="aocr-form-section aocr-template-section">
+                        <div class="aocr-form-section-heading">
+                            <span>1</span>
+                            <div><h3>Plantilla</h3><p>Seleccione el evento institucional que desea validar.</p></div>
+                        </div>
+                        <div class="aocr-test-mail-field">
+                            @Html.LabelFor(m => m.Plantilla, new { @class = "aocr-test-mail-label" })
+                            <span class="aocr-required-text">Obligatorio</span>
+                            @Html.DropDownListFor(
+                                m => m.Plantilla,
+                                Model.PlantillasDisponibles,
+                                "Seleccione una plantilla",
+                                new { @class = "form-select", required = "required", aria_describedby = "PlantillaAyuda PlantillaError" })
+                            @Html.ValidationMessageFor(m => m.Plantilla, "", new { @class = "aocr-field-error", id = "PlantillaError" })
+                        </div>
+                        <div class="aocr-template-detail" id="aocrTemplateDetail" aria-live="polite">
+                            <span class="aocr-template-detail-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
+                            <div>
+                                <strong id="aocrTemplateName">Seleccione una plantilla</strong>
+                                <p id="aocrTemplateDescription">Aquí verá la categoría y los datos necesarios para realizar la prueba.</p>
+                                <div class="aocr-template-tags" id="aocrTemplateTags"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="aocr-form-section aocr-recipient-section">
+                        <div class="aocr-form-section-heading">
+                            <span>2</span>
+                            <div><h3>Destinatario sandbox</h3><p>Utilice únicamente una dirección autorizada para pruebas.</p></div>
+                        </div>
+                        <div class="aocr-field-grid aocr-field-grid--two">
+                            <div class="aocr-test-mail-field">
+                                @Html.LabelFor(m => m.CorreoDestino, new { @class = "aocr-test-mail-label" })
+                                <span class="aocr-required-text">Obligatorio</span>
+                                @Html.TextBoxFor(m => m.CorreoDestino, new {
+                                    @class = "form-control",
+                                    type = "email",
+                                    required = "required",
+                                    autocomplete = "email",
+                                    placeholder = "sandbox@dominio-autorizado.ec",
+                                    aria_describedby = "CorreoDestinoAyuda CorreoDestinoError"
+                                })
+                                <small id="CorreoDestinoAyuda">El mensaje se enviará a esta dirección.</small>
+                                @Html.ValidationMessageFor(m => m.CorreoDestino, "", new { @class = "aocr-field-error", id = "CorreoDestinoError" })
+                            </div>
+                            <div class="aocr-test-mail-field">
+                                @Html.LabelFor(m => m.NombreDestino, new { @class = "aocr-test-mail-label" })
+                                <span class="aocr-optional-text">Opcional</span>
+                                @Html.TextBoxFor(m => m.NombreDestino, new {
+                                    @class = "form-control",
+                                    autocomplete = "name",
+                                    placeholder = "Nombre para el saludo",
+                                    aria_describedby = "NombreDestinoAyuda"
+                                })
+                                <small id="NombreDestinoAyuda">Se utilizará si la plantilla admite saludo personalizado.</small>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="aocr-form-section aocr-references-section">
+                        <div class="aocr-form-section-heading">
+                            <span>3</span>
+                            <div><h3>Datos relacionados</h3><p>Informe la referencia requerida por la categoría seleccionada.</p></div>
+                        </div>
+                        <div class="aocr-field-grid aocr-field-grid--three">
+                            <div class="aocr-test-mail-field" data-reference-field="SOLICITUD">
+                                @Html.LabelFor(m => m.SolicitudId, new { @class = "aocr-test-mail-label" })
+                                <span class="aocr-field-requirement" aria-live="polite">Según plantilla</span>
+                                @Html.TextBoxFor(m => m.SolicitudId, new {
+                                    @class = "form-control",
+                                    type = "number",
+                                    min = "1",
+                                    inputmode = "numeric",
+                                    placeholder = "Ej.: 101",
+                                    aria_describedby = "SolicitudIdAyuda"
+                                })
+                                <small id="SolicitudIdAyuda">Identificador real de la solicitud.</small>
+                            </div>
+                            <div class="aocr-test-mail-field" data-reference-field="INSPECCION">
+                                @Html.LabelFor(m => m.InspeccionId, new { @class = "aocr-test-mail-label" })
+                                <span class="aocr-field-requirement" aria-live="polite">Según plantilla</span>
+                                @Html.TextBoxFor(m => m.InspeccionId, new {
+                                    @class = "form-control",
+                                    type = "number",
+                                    min = "1",
+                                    inputmode = "numeric",
+                                    placeholder = "Ej.: 55",
+                                    aria_describedby = "InspeccionIdAyuda"
+                                })
+                                <small id="InspeccionIdAyuda">Identificador real de la inspección.</small>
+                            </div>
+                            <div class="aocr-test-mail-field" data-reference-field="ORDEN">
+                                @Html.LabelFor(m => m.OrdenId, new { @class = "aocr-test-mail-label" })
+                                <span class="aocr-field-requirement" aria-live="polite">Según plantilla</span>
+                                @Html.TextBoxFor(m => m.OrdenId, new {
+                                    @class = "form-control",
+                                    type = "number",
+                                    min = "1",
+                                    inputmode = "numeric",
+                                    placeholder = "Ej.: 125",
+                                    aria_describedby = "OrdenIdAyuda"
+                                })
+                                <small id="OrdenIdAyuda">Identificador real de la orden.</small>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="aocr-form-section aocr-observation-section">
+                        <div class="aocr-form-section-heading">
+                            <span>4</span>
+                            <div><h3>Contenido adicional</h3><p>Agregue información complementaria cuando la plantilla la incorpore.</p></div>
+                        </div>
+                        <div class="aocr-test-mail-field">
+                            @Html.LabelFor(m => m.Observacion, new { @class = "aocr-test-mail-label" })
+                            <span class="aocr-optional-text">Opcional</span>
+                            @Html.TextAreaFor(m => m.Observacion, 4, 1, new {
+                                @class = "form-control",
+                                maxlength = "1000",
+                                placeholder = "Ingrese información adicional que deba incorporarse al correo de prueba.",
+                                aria_describedby = "aocrObservationCounter"
+                            })
+                            <div class="aocr-character-counter" id="aocrObservationCounter" aria-live="polite">0 / 1000 caracteres</div>
+                        </div>
+                    </section>
+
+                    <footer class="aocr-form-actions">
+                        <button type="button" class="btn aocr-btn-secondary" id="aocrTestMailClear">
+                            <i class="fas fa-eraser" aria-hidden="true"></i> Limpiar
+                        </button>
+                        <button type="submit" class="btn aocr-btn-primary" id="aocrTestMailSubmit">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                            <span>Enviar correo de prueba</span>
+                        </button>
+                    </footer>
+                    <div class="visually-hidden" id="aocrTestMailLiveStatus" aria-live="assertive"></div>
+                }
+            </section>
+        </main>
+
+        <aside class="aocr-test-mail-sidebar">
+            <section class="aocr-guide-card">
+                <header><i class="fas fa-info-circle" aria-hidden="true"></i><h2>Guía de uso</h2></header>
+                <div class="aocr-guide-list">
+                    <div><i class="fas fa-at"></i><p><strong>Correo sandbox</strong><span>Use una cuenta autorizada y controlada.</span></p></div>
+                    <div><i class="fas fa-folder-open"></i><p><strong>Solicitud AOCR</strong><span>Necesaria para plantillas de solicitud.</span></p></div>
+                    <div><i class="fas fa-clipboard-check"></i><p><strong>Inspección</strong><span>Necesaria para plantillas de inspección.</span></p></div>
+                    <div><i class="fas fa-file-invoice-dollar"></i><p><strong>Orden de recaudación</strong><span>Necesaria para plantillas de orden.</span></p></div>
+                    <div><i class="fas fa-user"></i><p><strong>Nombre del destinatario</strong><span>Se muestra cuando la plantilla lo admite.</span></p></div>
+                    <div><i class="fas fa-comment-alt"></i><p><strong>Observación</strong><span>Solo se incorpora en plantillas compatibles.</span></p></div>
+                </div>
+            </section>
+
+            <section class="aocr-test-summary-card" aria-labelledby="aocrSummaryTitle">
+                <header><i class="fas fa-clipboard-list" aria-hidden="true"></i><h2 id="aocrSummaryTitle">Resumen del envío</h2></header>
+                <dl>
+                    <div><dt>Plantilla</dt><dd id="aocrSummaryTemplate">No seleccionada</dd></div>
+                    <div><dt>Destino</dt><dd id="aocrSummaryDestination">No informado</dd></div>
+                    <div><dt>Solicitud</dt><dd id="aocrSummaryRequest">—</dd></div>
+                    <div><dt>Inspección</dt><dd id="aocrSummaryInspection">—</dd></div>
+                    <div><dt>Orden</dt><dd id="aocrSummaryOrder">—</dd></div>
+                </dl>
+                <div class="aocr-summary-status" id="aocrSummaryStatus" aria-live="polite">
+                    <span></span> Pendiente de configuración
+                </div>
+            </section>
+        </aside>
+    </div>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/Content/css/modules/aocr-test-mail.css")?v=20260728" />
+}
+
+@section Scripts {
+    <script src="@Url.Content("~/Scripts/modules/aocr-test-mail.js")?v=20260728"></script>
+}

@@ -31,9 +31,9 @@
                 {
                     <tr>
                         <td>@p.CodigoParametro</td>
-                        <td>@Html.Encode(p.Clave)</td>
-                        <td>@Html.Encode(p.Valor)</td>
-                        <td>@Html.Encode(p.Descripcion)</td>
+                        <td>@p.Clave</td>
+                        <td>@p.Valor</td>
+                        <td>@p.Descripcion</td>
                         <td>@(p.Activo ? "Activo" : "Inactivo")</td>
                     </tr>
                 }
