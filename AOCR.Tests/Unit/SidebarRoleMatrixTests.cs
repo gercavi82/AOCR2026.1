@@ -83,9 +83,13 @@ namespace AOCR.Tests.Unit
         public void EncabezadoDirdacMantieneContrasteYAdaptacionMovil()
         {
             var view = Read("CapaPresentacion/Views/InformeTecnico/PendientesDireccion.cshtml");
-            StringAssert.Contains(view, ".dirdac-tray-header h2 { color:#fff!important");
-            StringAssert.Contains(view, "@@media (max-width:768px)");
-            StringAssert.Contains(view, ".dirdac-tray-header .btn { width:100%");
+            var css = Read("CapaPresentacion/Content/css/modules/aocr-direction-pending-reports.css");
+            StringAssert.Contains(view, "data-module=\"direction-pending-reports\"");
+            StringAssert.Contains(view, "aocr-direction-pending-reports.css");
+            StringAssert.Contains(css, ".aocr-direction-reports-page .aocr-page-heading h1");
+            StringAssert.Contains(css, "color:#fff");
+            StringAssert.Contains(css, "@media (max-width:760px)");
+            StringAssert.Contains(css, "@media (max-width:520px)");
         }
 
         [TestMethod]

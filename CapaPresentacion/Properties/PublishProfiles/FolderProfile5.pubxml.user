@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>C:\proyectos\AOCR\public</_PublishTargetUrl>
-    <History>True|2026-07-27T21:11:39.1647999Z||;True|2026-07-24T14:42:04.5638178-05:00||;True|2026-07-24T13:58:25.1506468-05:00||;True|2026-07-24T11:25:34.2727730-05:00||;True|2026-07-24T08:33:10.1809939-05:00||;True|2026-07-24T08:15:22.8318840-05:00||;True|2026-07-23T16:44:13.7818472-05:00||;True|2026-07-23T16:29:05.8503011-05:00||;True|2026-07-22T10:31:00.1995867-05:00||;True|2026-07-21T11:30:00.4173463-05:00||;True|2026-07-21T11:09:38.4550788-05:00||;True|2026-07-21T10:48:50.4290284-05:00||;True|2026-07-19T19:36:50.7627135-05:00||;True|2026-07-18T23:32:28.9966259-05:00||;True|2026-07-18T22:53:26.2777588-05:00||;True|2026-07-18T22:42:26.8487966-05:00||;True|2026-07-18T22:30:54.3227583-05:00||;True|2026-07-18T22:15:30.3651071-05:00||;True|2026-07-18T21:47:06.6350783-05:00||;True|2026-07-18T16:16:15.0767052-05:00||;True|2026-07-18T15:34:48.9247580-05:00||;True|2026-07-18T13:27:12.3130620-05:00||;True|2026-07-18T10:06:23.8037009-05:00||;</History>
+    <History>True|2026-07-28T18:53:48.5498213Z||;True|2026-07-27T16:11:39.1647999-05:00||;True|2026-07-24T14:42:04.5638178-05:00||;True|2026-07-24T13:58:25.1506468-05:00||;True|2026-07-24T11:25:34.2727730-05:00||;True|2026-07-24T08:33:10.1809939-05:00||;True|2026-07-24T08:15:22.8318840-05:00||;True|2026-07-23T16:44:13.7818472-05:00||;True|2026-07-23T16:29:05.8503011-05:00||;True|2026-07-22T10:31:00.1995867-05:00||;True|2026-07-21T11:30:00.4173463-05:00||;True|2026-07-21T11:09:38.4550788-05:00||;True|2026-07-21T10:48:50.4290284-05:00||;True|2026-07-19T19:36:50.7627135-05:00||;True|2026-07-18T23:32:28.9966259-05:00||;True|2026-07-18T22:53:26.2777588-05:00||;True|2026-07-18T22:42:26.8487966-05:00||;True|2026-07-18T22:30:54.3227583-05:00||;True|2026-07-18T22:15:30.3651071-05:00||;True|2026-07-18T21:47:06.6350783-05:00||;True|2026-07-18T16:16:15.0767052-05:00||;True|2026-07-18T15:34:48.9247580-05:00||;True|2026-07-18T13:27:12.3130620-05:00||;True|2026-07-18T10:06:23.8037009-05:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
   <ItemGroup>
@@ -47,10 +47,10 @@
       <publishTime>07/27/2026 16:09:54</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>07/27/2026 16:09:58</publishTime>
+      <publishTime>07/28/2026 12:16:13</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>07/27/2026 16:09:58</publishTime>
+      <publishTime>07/28/2026 12:16:13</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>07/21/2026 15:58:54</publishTime>
@@ -1423,11 +1423,26 @@
     <File Include="Content/css/formulario-aocr.css">
       <publishTime>01/19/2026 11:38:21</publishTime>
     </File>
+    <File Include="Content/css/modules/aocr-coordination-dashboard.css">
+      <publishTime>07/28/2026 11:43:38</publishTime>
+    </File>
+    <File Include="Content/css/modules/aocr-direction-pending-reports.css">
+      <publishTime>07/28/2026 09:32:17</publishTime>
+    </File>
+    <File Include="Content/css/modules/aocr-kanban.css">
+      <publishTime>07/28/2026 12:13:30</publishTime>
+    </File>
+    <File Include="Content/css/modules/aocr-test-mail.css">
+      <publishTime>07/28/2026 09:13:49</publishTime>
+    </File>
     <File Include="Content/css/pagos-mejorados.css">
       <publishTime>02/04/2026 20:12:38</publishTime>
     </File>
     <File Include="Content/css/role-permissions.css">
       <publishTime>07/27/2026 11:55:02</publishTime>
+    </File>
+    <File Include="Content/css/rt-users-admin.css">
+      <publishTime>07/28/2026 08:39:53</publishTime>
     </File>
     <File Include="Content/dist/css/adminlte.css">
       <publishTime>01/20/2026 14:59:01</publishTime>
@@ -7903,6 +7918,18 @@
     <File Include="Scripts/modernizr-2.8.3.js">
       <publishTime>01/20/2026 14:59:04</publishTime>
     </File>
+    <File Include="Scripts/modules/aocr-coordination-dashboard.js">
+      <publishTime>07/28/2026 12:11:10</publishTime>
+    </File>
+    <File Include="Scripts/modules/aocr-direction-pending-reports.js">
+      <publishTime>07/28/2026 09:32:17</publishTime>
+    </File>
+    <File Include="Scripts/modules/aocr-kanban.js">
+      <publishTime>07/28/2026 12:15:29</publishTime>
+    </File>
+    <File Include="Scripts/modules/aocr-test-mail.js">
+      <publishTime>07/28/2026 09:13:49</publishTime>
+    </File>
     <File Include="Scripts/ordenes-config.js">
       <publishTime>02/19/2026 10:05:18</publishTime>
     </File>
@@ -7994,7 +8021,7 @@
       <publishTime>07/14/2026 10:05:30</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/DashboardInspeccion.cshtml">
-      <publishTime>07/24/2026 12:20:46</publishTime>
+      <publishTime>07/28/2026 12:11:10</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/DocumentoValidacionAocrNoDisponible.cshtml">
       <publishTime>06/16/2026 12:17:55</publishTime>
@@ -8132,7 +8159,7 @@
       <publishTime>06/05/2026 12:40:30</publishTime>
     </File>
     <File Include="Views/InformeTecnico/PendientesDireccion.cshtml">
-      <publishTime>07/22/2026 20:36:35</publishTime>
+      <publishTime>07/28/2026 09:32:27</publishTime>
     </File>
     <File Include="Views/InformeTecnico/RevisionDireccion.cshtml">
       <publishTime>07/22/2026 20:36:35</publishTime>
@@ -8201,7 +8228,7 @@
       <publishTime>06/05/2026 12:40:30</publishTime>
     </File>
     <File Include="Views/Notificacion/CorreosPrueba.cshtml">
-      <publishTime>07/22/2026 20:36:35</publishTime>
+      <publishTime>07/28/2026 09:14:13</publishTime>
     </File>
     <File Include="Views/Notificacion/Index.cshtml">
       <publishTime>07/22/2026 20:36:35</publishTime>
@@ -8486,7 +8513,7 @@
       <publishTime>02/18/2026 15:34:15</publishTime>
     </File>
     <File Include="Views/Usuario/RevisarDesignaciones.cshtml">
-      <publishTime>07/24/2026 16:13:59</publishTime>
+      <publishTime>07/28/2026 08:39:42</publishTime>
     </File>
     <File Include="Views/Usuario/_FormularioPartial.cshtml">
       <publishTime>01/30/2026 10:06:41</publishTime>
@@ -8507,7 +8534,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>07/27/2026 16:11:12</publishTime>
+      <publishTime>07/28/2026 13:53:06</publishTime>
     </File>
   </ItemGroup>
 </Project>

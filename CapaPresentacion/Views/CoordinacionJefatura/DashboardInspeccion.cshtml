@@ -15,19 +15,12 @@
     var ncs = vm.ObservacionesNc ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionNcItemViewModel>();
     var quickFilter = string.IsNullOrWhiteSpace(vm.QuickFilter) ? "TODOS" : vm.QuickFilter;
     var tablero = vm.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
-    const int kanbanPreviewLimit = 5;
+    const int kanbanPreviewLimit = 3;
     var puedeGestionarAsignacion = ViewBag.PuedeGestionarAsignacionRolActivo == true;
     var puedeVerPendientesDirdac = ViewBag.PuedeVerPendientesDirdacRolActivo == true;
     var puedeValidarAocr = ViewBag.PuedeValidarAocrRolActivo == true;
-
-    Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
-    {
-        compania = vm.CompaniaFiltro,
-        inspector = vm.InspectorFiltro,
-        estado = vm.EstadoFiltro,
-        quickFilter = value
-    });
-
+    var actualizacionTablero = DateTime.Now;
+    var tiposDisponibles = gestionIntegral.Select(x => x.Tipo).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList();
 }
 
 @* ── Kanban column helper (v4 redesign) ── *@
@@ -37,8 +30,8 @@
     var total = itemList.Count;
     var visibleInitial = Math.Min(previewLimit, total);
 
-    <div class="di3-col @accentClass" data-column="@columnKey" data-expanded="false" data-preview-limit="@previewLimit">
-        <div class="di3-col__head">
+    <article class="di3-col aocr-kanban-column @accentClass" id="kanban-stage-@columnKey.ToLowerInvariant()" data-column="@columnKey" data-expanded="false" data-preview-limit="@previewLimit" role="tabpanel">
+        <header class="di3-col__head aocr-kanban-column__header">
             <div class="di3-col__accent"></div>
             <span class="di3-col__icon"><i class="@icon"></i></span>
             <div class="di3-col__htext">
@@ -46,13 +39,14 @@
                 <span class="di3-col__subtitle">@total trámite@(total != 1 ? "s" : "")</span>
             </div>
             <span class="di3-col__badge">@total</span>
-        </div>
-        <div class="di3-col__body">
+        </header>
+        <div class="di3-col__body aocr-kanban-column__content aocr-kanban-column__cards">
             @if (!itemList.Any())
             {
-                <div class="di3-empty">
+                <div class="di3-empty aocr-kanban-empty">
                     <div class="di3-empty__circle"><i class="fas fa-inbox"></i></div>
                     <span>Sin trámites en esta etapa</span>
+                    <small>Los registros aparecerán aquí cuando ingresen a este estado.</small>
                 </div>
             }
             else
@@ -66,31 +60,41 @@
                         && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
                     var searchIndex = string.Join(" ", new[] { item.NumeroSolicitud, item.Compania, item.Tipo, item.EstadoGeneral, item.EstadoDocumental, item.EstadoInspeccion, item.Inspector, item.EtapaActual, item.EtapaMostrar, item.ResumenKanban }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
-                    <article class="di3-card di3-card--@item.ColorKanban @(item.EsUrgente ? "di3-card--urgent" : null)"
-                             data-search="@searchIndex.ToLowerInvariant()" title="@item.ResumenKanban">
+                    <article class="di3-card aocr-kanban-card di3-card--@item.ColorKanban @(item.EsUrgente ? "di3-card--urgent" : null)"
+                             data-search="@searchIndex.ToLowerInvariant()"
+                             data-flow-card
+                             data-stage="@columnKey"
+                             data-company="@((item.Compania ?? string.Empty).ToUpperInvariant())"
+                             data-status="@((item.EstadoGeneral ?? string.Empty).ToUpperInvariant())"
+                             data-inspector="@((item.Inspector ?? string.Empty).ToUpperInvariant())"
+                             data-type="@((item.Tipo ?? string.Empty).ToUpperInvariant())"
+                             data-priority="@(item.EsUrgente ? "URGENTE" : "NORMAL")"
+                             data-date="@(item.Fecha.HasValue ? item.Fecha.Value.ToString("yyyy-MM-dd") : "")"
+                             title="@item.ResumenKanban">
                         <div class="di3-card__head">
-                            <button type="button" class="di3-card__id js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania">@item.NumeroSolicitud</button>
+                            <button type="button" class="di3-card__id aocr-kanban-card__code js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania" title="@item.NumeroSolicitud">@item.NumeroSolicitud</button>
                             <span class="di3-chip">@item.Tipo</span>
                         </div>
-                        <div class="di3-card__company">@item.Compania</div>
+                        <div class="di3-card__company aocr-kanban-card__company" title="@item.Compania">@item.Compania</div>
                         <div class="di3-card__status">
                             <span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span>
                             <span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span>
                         </div>
                         <div class="di3-card__info">
-                            <span class="di3-card__meta-item"><i class="fas fa-user-check"></i> @item.Inspector</span>
+                            <span class="di3-card__meta-item @(string.IsNullOrWhiteSpace(item.Inspector) ? "aocr-kanban-card__warning" : null)"><i class="fas fa-user-check"></i> Responsable: @(string.IsNullOrWhiteSpace(item.Inspector) ? "Inspector no asignado" : item.Inspector)</span>
                             <span class="di3-card__meta-item"><i class="fas fa-calendar-days"></i> @(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "—")</span>
+                            <span class="di3-card__meta-item"><i class="fas fa-route"></i> Área: @(string.IsNullOrWhiteSpace(item.EtapaMostrar) ? item.EtapaActual : item.EtapaMostrar)</span>
                         </div>
                         <div class="di3-card__bottom">
                             <div class="di3-card__sigs">
                                 <span class="di3-sig"><span class="di3-dot @(item.FirmaInspector ? "di3-dot--ok" : "")"></span> Insp</span>
                                 <span class="di3-sig"><span class="di3-dot @(item.FirmaDirdac ? "di3-dot--ok" : "")"></span> DIR</span>
                             </div>
-                            <div class="di3-card__acts">
-                                <button type="button" class="di3-act js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                            <div class="di3-card__acts aocr-kanban-card__actions">
+                                <button type="button" class="di3-act js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania" title="Ver detalle"><i class="fas fa-eye"></i><span>Ver detalle</span></button>
                                 @if (mostrarAccionPrincipal)
                                 {
-                                    <a class="di3-act di3-act--go" href="@item.UrlAccionPrincipal" title="@item.TextoAccionPrincipal"><i class="fas fa-arrow-right"></i></a>
+                                    <a class="di3-act di3-act--go" href="@item.UrlAccionPrincipal" title="@item.TextoAccionPrincipal"><i class="fas fa-arrow-right"></i><span>@item.TextoAccionPrincipal</span></a>
                                 }
                             </div>
                         </div>
@@ -98,11 +102,11 @@
                 }
             }
         </div>
-        <div class="di3-col__foot @(total > previewLimit ? "" : "d-none")">
+        <footer class="di3-col__foot aocr-kanban-column__footer @(total > previewLimit ? "" : "d-none")">
             <span class="di3-col__summary"><strong class="js-kanban-visible">@visibleInitial</strong> de @total</span>
             <button type="button" class="di3-btn-toggle js-kanban-toggle" data-column="@columnKey">Ver más</button>
-        </div>
-    </div>
+        </footer>
+    </article>
 }
 
 @* ================================================================
@@ -1049,18 +1053,28 @@
     }
 }
 </style>
+<link rel="stylesheet" href="@Url.Content("~/Content/css/modules/aocr-coordination-dashboard.css")?v=20260728.5" />
+<link rel="stylesheet" href="@Url.Content("~/Content/css/modules/aocr-kanban.css")?v=20260728.1" />
 
 @* ================================================================
    HTML
    ================================================================ *@
-<div class="di3-shell">
+<div class="di3-shell aocr-coordination-dashboard" data-module="coordination-dashboard">
 
-    @* ── LEVEL 1.5: COORDINATION BANNER ── *@
-    <div class="aocr-coordination-banner">
-        <span class="aocr-coordination-badge">COORDINACIÓN OPERATIVA</span>
-        <h2 class="aocr-coordination-title">Bandeja de Coordinación</h2>
-        <p class="aocr-coordination-desc">Gestione la asignación y reasignación institucional de inspectores AOCR sin cambiar la ruta heredada /Técnico.</p>
-    </div>
+    <header class="aocr-coordination-heading">
+        <div class="aocr-coordination-heading__copy">
+            <span class="aocr-coordination-badge">COORDINACIÓN OPERATIVA</span>
+            <h2 class="aocr-coordination-title">Bandeja de Coordinación</h2>
+            <p class="aocr-coordination-desc">Asigne inspectores, consulte el avance y gestione los trámites AOCR desde una sola bandeja.</p>
+        </div>
+        <div class="aocr-coordination-heading__status">
+            <span><strong>@gestionIntegral.Count</strong> trámite@(gestionIntegral.Count != 1 ? "s" : "")</span>
+            <span><i class="far fa-clock" aria-hidden="true"></i> Última actualización: @actualizacionTablero.ToString("dd/MM/yyyy HH:mm")</span>
+            <a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura", new { compania = vm.CompaniaFiltro, inspector = vm.InspectorFiltro, estado = vm.EstadoFiltro, quickFilter = quickFilter })" class="btn btn-light">
+                <i class="fas fa-sync-alt" aria-hidden="true"></i> Actualizar
+            </a>
+        </div>
+    </header>
 
     @* ── ALERTS ── *@
     <div class="di3-alerts">
@@ -1071,7 +1085,7 @@
     </div>
 
     @* ── LEVEL 2: KPI METRICS ── *@
-    <div class="di3-kpis">
+    <section class="di3-kpis aocr-coordination-kpis" aria-label="Indicadores generales">
         <div class="di3-kpi di3-kpi--total">
             <div class="di3-kpi__number">@vm.TotalTramites</div>
             <div class="di3-kpi__label">Total trámites</div>
@@ -1102,86 +1116,109 @@
             <div class="di3-kpi__label">Finalizadas</div>
             <div class="di3-kpi__icon"><i class="fas fa-circle-check"></i></div>
         </div>
-    </div>
-
-    @* ── LEVEL 3: FILTER TOOLBAR ── *@
-    <div class="di3-toolbar">
-        @using (Html.BeginForm("DashboardInspeccion", "CoordinacionJefatura", FormMethod.Get, new { @class = "di3-toolbar__form" }))
-        {
-            <input type="hidden" name="quickFilter" value="@quickFilter" />
-            <div class="di3-field">
-                <label for="compania">Compañía</label>
-                <select id="compania" name="compania">
-                    <option value="">Todas</option>
-                    @foreach (var c in vm.CompaniasDisponibles) { <option value="@c" @(string.Equals(c, vm.CompaniaFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@c</option> }
-                </select>
-            </div>
-            <div class="di3-field">
-                <label for="inspector">Inspector</label>
-                <select id="inspector" name="inspector">
-                    <option value="">Todos</option>
-                    @foreach (var ins in vm.InspectoresDisponibles) { <option value="@ins" @(string.Equals(ins, vm.InspectorFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@ins</option> }
-                </select>
-            </div>
-            <div class="di3-field">
-                <label for="estado">Estado</label>
-                <select id="estado" name="estado">
-                    <option value="">Todos</option>
-                    @foreach (var e in vm.EstadosDisponibles) { <option value="@e" @(string.Equals(e, vm.EstadoFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@e.Replace("_", " ")</option> }
-                </select>
-            </div>
-            <div class="di3-toolbar__btns">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
-                <a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")" class="btn btn-outline-secondary"><i class="fas fa-rotate-left"></i> Limpiar</a>
-            </div>
-        }
-        <div class="di3-pills">
-            <a class="di3-pill @(quickFilter == "TODOS" ? "active" : null)" href="@quickFilterUrl("TODOS", "Todos")"><i class="fas fa-border-all"></i> Todos</a>
-            <a class="di3-pill @(quickFilter == "PENDIENTES" ? "active" : null)" href="@quickFilterUrl("PENDIENTES", "Pendientes")"><i class="fas fa-hourglass-half"></i> Pendientes</a>
-            <a class="di3-pill @(quickFilter == "EN_PROCESO" ? "active" : null)" href="@quickFilterUrl("EN_PROCESO", "En proceso")"><i class="fas fa-spinner"></i> En proceso</a>
-            <a class="di3-pill @(quickFilter == "OBSERVADOS" ? "active" : null)" href="@quickFilterUrl("OBSERVADOS", "Observados")"><i class="fas fa-triangle-exclamation"></i> Observados</a>
-            <a class="di3-pill @(quickFilter == "LISTOS_FIRMA" ? "active" : null)" href="@quickFilterUrl("LISTOS_FIRMA", "Listos firma")"><i class="fas fa-signature"></i> Listos firma</a>
-        </div>
-    </div>
+    </section>
 
     @* ── LEVEL 4: NAVIGATION TABS ── *@
-    <div class="di3-nav" id="diTabs" role="tablist">
-        <button class="di3-nav__tab" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="false">
+    <nav class="di3-nav aocr-coordination-tabs" id="diTabs" role="tablist" aria-label="Secciones de la bandeja">
+        <button class="di3-nav__tab" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="false" aria-controls="pane-kanban">
             <i class="fas fa-grip"></i> Flujo visual <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
-        <button class="di3-nav__tab active" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="true">
+        <button class="di3-nav__tab active" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="true" aria-controls="pane-bandeja">
             <i class="fas fa-table-columns"></i> Bandeja operativa <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
-        <button class="di3-nav__tab" id="tab-firmas" data-pane="pane-firmas" type="button" role="tab" aria-selected="false">
+        <button class="di3-nav__tab" id="tab-firmas" data-pane="pane-firmas" type="button" role="tab" aria-selected="false" aria-controls="pane-firmas">
             <i class="fas fa-signature"></i> Firmas <span class="di3-nav__count">@firmas.Count</span>
         </button>
-        <button class="di3-nav__tab" id="tab-observaciones" data-pane="pane-observaciones" type="button" role="tab" aria-selected="false">
+        <button class="di3-nav__tab" id="tab-observaciones" data-pane="pane-observaciones" type="button" role="tab" aria-selected="false" aria-controls="pane-observaciones">
             <i class="fas fa-triangle-exclamation"></i> Observaciones <span class="di3-nav__count">@ncs.Count</span>
         </button>
-    </div>
+    </nav>
 
+    <section class="aocr-coordination-content">
     @* ── PANE: KANBAN ── *@
-    <div class="di3-pane" id="pane-kanban" role="tabpanel">
-        <div class="di3-panel di3-panel--kb">
-            <div class="di3-panel__head">
+    <section class="di3-pane aocr-tab-panel" id="pane-kanban" data-panel="flow" role="tabpanel" aria-labelledby="tab-kanban">
+        <section class="aocr-kanban" data-module="aocr-kanban">
+            <header class="aocr-kanban__header">
                 <div>
-                    <h3 class="di3-panel__title"><i class="fas fa-grip" style="opacity:.5;margin-right:6px;"></i>Flujo visual AOCR</h3>
-                    <p class="di3-panel__sub">Detecte bloqueos, priorice acciones y visualice el flujo completo</p>
-                    <p class="di3-kb-stats">@gestionIntegral.Count trámite@(gestionIntegral.Count != 1 ? "s" : "") · 6 columnas</p>
+                    <h3><i class="fas fa-project-diagram" aria-hidden="true"></i> Flujo visual AOCR</h3>
+                    <p>Detecte bloqueos y consulte el avance de los trámites por etapa.</p>
                 </div>
-                <div class="di3-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="kanbanSearch" placeholder="Buscar en tablero…" autocomplete="off" />
+                <div class="aocr-kanban__header-actions">
+                    <a class="aocr-kanban__button aocr-kanban__button--refresh" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura", new { compania = vm.CompaniaFiltro, inspector = vm.InspectorFiltro, estado = vm.EstadoFiltro, quickFilter = quickFilter })#pane-kanban">
+                        <i class="fas fa-sync-alt"></i> Actualizar tablero
+                    </a>
+                    <div class="aocr-kanban__view-toggle" role="group" aria-label="Modo de visualización">
+                        <button type="button" class="is-active" data-view-mode="board"><i class="fas fa-columns"></i> Vista tablero</button>
+                        <button type="button" data-view-mode="compact"><i class="fas fa-list"></i> Vista compacta</button>
+                    </div>
                 </div>
-            </div>
-            <div class="di3-panel__body">
+            </header>
+
+            <section class="aocr-kanban__toolbar" aria-label="Filtros del flujo visual">
+                <button type="button" class="aocr-kanban__filters-toggle" aria-expanded="false" aria-controls="aocrKanbanFilters">
+                    <i class="fas fa-filter" aria-hidden="true"></i> Mostrar filtros
+                </button>
+                <div class="aocr-kanban__filters" id="aocrKanbanFilters">
+                    <div class="aocr-kanban__field aocr-kanban__field--search">
+                        <label for="aocrKanbanSearch">Buscar por código, compañía o trámite</label>
+                        <input type="search" id="aocrKanbanSearch" placeholder="Código, compañía o trámite" autocomplete="off" />
+                    </div>
+                    <div class="aocr-kanban__field">
+                        <label for="aocrKanbanCompany">Compañía</label>
+                        <select id="aocrKanbanCompany">
+                            <option value="">Todas</option>
+                            @foreach (var c in vm.CompaniasDisponibles) { <option value="@c.ToUpperInvariant()">@c</option> }
+                        </select>
+                    </div>
+                    <div class="aocr-kanban__field">
+                        <label for="aocrKanbanInspector">Inspector</label>
+                        <select id="aocrKanbanInspector">
+                            <option value="">Todos</option>
+                            @foreach (var ins in vm.InspectoresDisponibles) { <option value="@ins.ToUpperInvariant()">@ins</option> }
+                        </select>
+                    </div>
+                    <div class="aocr-kanban__field">
+                        <label for="aocrKanbanStatus">Estado</label>
+                        <select id="aocrKanbanStatus">
+                            <option value="">Todos</option>
+                            @foreach (var e in vm.EstadosDisponibles) { <option value="@e.ToUpperInvariant()">@e.Replace("_", " ")</option> }
+                        </select>
+                    </div>
+                    <div class="aocr-kanban__field">
+                        <label for="aocrKanbanPriority">Prioridad</label>
+                        <select id="aocrKanbanPriority"><option value="">Todas</option><option value="URGENTE">Urgente</option><option value="NORMAL">Normal</option></select>
+                    </div>
+                    <div class="aocr-kanban__field">
+                        <label for="aocrKanbanType">Tipo</label>
+                        <select id="aocrKanbanType">
+                            <option value="">Todos</option>
+                            @foreach (var tipoItem in tiposDisponibles) { <option value="@tipoItem.ToUpperInvariant()">@tipoItem</option> }
+                        </select>
+                    </div>
+                    <div class="aocr-kanban__filter-actions">
+                        <button type="button" class="aocr-kanban__button aocr-kanban__button--primary" data-filter-apply><i class="fas fa-filter"></i> Aplicar filtros</button>
+                        <button type="button" class="aocr-kanban__button" data-filter-clear><i class="fas fa-eraser"></i> Limpiar</button>
+                    </div>
+                </div>
+            </section>
+
+            <nav class="aocr-kanban__stage-tabs" role="tablist" aria-label="Etapas del flujo">
+                <button type="button" class="is-active" data-stage="PENDIENTES" role="tab" aria-selected="true" aria-controls="kanban-stage-pendientes"><span>Pendientes</span><strong>@tablero.Pendientes.Count</strong></button>
+                <button type="button" data-stage="EN_REVISION" role="tab" aria-selected="false" aria-controls="kanban-stage-en_revision"><span>En revisión</span><strong>@tablero.EnRevision.Count</strong></button>
+                <button type="button" data-stage="EN_INSPECCION" role="tab" aria-selected="false" aria-controls="kanban-stage-en_inspeccion"><span>En inspección</span><strong>@tablero.EnInspeccion.Count</strong></button>
+                <button type="button" data-stage="OBSERVADOS" role="tab" aria-selected="false" aria-controls="kanban-stage-observados"><span>Observados</span><strong>@tablero.Observados.Count</strong></button>
+                <button type="button" data-stage="LISTOS_FIRMA" role="tab" aria-selected="false" aria-controls="kanban-stage-listos_firma"><span>Listos para firma</span><strong>@tablero.ListosFirma.Count</strong></button>
+                <button type="button" data-stage="FINALIZADOS" role="tab" aria-selected="false" aria-controls="kanban-stage-finalizados"><span>Finalizados</span><strong>@tablero.Finalizados.Count</strong></button>
+            </nav>
+
+            <div class="aocr-kanban__viewport">
                 @if (!gestionIntegral.Any())
                 {
-                    <div class="di3-empty-lg"><i class="fas fa-grip"></i><p>Sin trámites para el tablero con los filtros actuales.</p></div>
+                    <div class="aocr-kanban__empty-board"><i class="fas fa-inbox"></i><strong>Sin trámites para mostrar</strong><span>No existen registros con los filtros actuales.</span></div>
                 }
                 else
                 {
-                    <div class="di3-kanban" id="aocrKanbanBoard">
+                    <div class="aocr-kanban__board" id="aocrKanbanBoard">
                         @RenderKanbanColumn("PENDIENTES", "Pendientes", "fas fa-hourglass-half", "di3-col--gray", tablero.Pendientes, kanbanPreviewLimit)
                         @RenderKanbanColumn("EN_REVISION", "En revisión", "fas fa-magnifying-glass", "di3-col--blue", tablero.EnRevision, kanbanPreviewLimit)
                         @RenderKanbanColumn("EN_INSPECCION", "En inspección", "fas fa-user-check", "di3-col--yellow", tablero.EnInspeccion, kanbanPreviewLimit)
@@ -1189,13 +1226,43 @@
                         @RenderKanbanColumn("LISTOS_FIRMA", "Listos firma", "fas fa-signature", "di3-col--green", tablero.ListosFirma, kanbanPreviewLimit)
                         @RenderKanbanColumn("FINALIZADOS", "Finalizados", "fas fa-circle-check", "di3-col--green", tablero.Finalizados, kanbanPreviewLimit)
                     </div>
+                    <div class="aocr-kanban__compact" hidden>
+                        <div class="table-responsive">
+                            <table>
+                                <thead><tr><th>Trámite</th><th>Compañía</th><th>Estado</th><th>Inspector</th><th>Fecha</th><th>Prioridad</th><th>Acción</th></tr></thead>
+                                <tbody>
+                                @foreach (var item in gestionIntegral)
+                                {
+                                    <tr data-compact-row data-search="@((item.NumeroSolicitud + " " + item.Compania + " " + item.Tipo).ToLowerInvariant())" data-company="@((item.Compania ?? string.Empty).ToUpperInvariant())" data-inspector="@((item.Inspector ?? string.Empty).ToUpperInvariant())" data-status="@((item.EstadoGeneral ?? string.Empty).ToUpperInvariant())" data-priority="@(item.EsUrgente ? "URGENTE" : "NORMAL")" data-type="@((item.Tipo ?? string.Empty).ToUpperInvariant())">
+                                        <td><strong>@item.NumeroSolicitud</strong><small>@item.Tipo</small></td>
+                                        <td>@item.Compania</td><td>@item.EstadoGeneral</td><td>@(string.IsNullOrWhiteSpace(item.Inspector) ? "No asignado" : item.Inspector)</td>
+                                        <td>@(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "—")</td><td>@(item.EsUrgente ? "Urgente" : "Normal")</td>
+                                        <td><button type="button" class="aocr-kanban__table-action js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania">Ver detalle</button></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="aocr-kanban__no-results" hidden><i class="fas fa-filter"></i><strong>Sin coincidencias</strong><span>Modifique o limpie los filtros.</span></div>
                 }
             </div>
-        </div>
-    </div>
+
+            <footer class="aocr-kanban__footer">
+                <strong>Leyenda</strong>
+                <span><i style="--legend:#7b8b9a;"></i>Inicial</span>
+                <span><i style="--legend:#1681c4;"></i>En proceso</span>
+                <span><i style="--legend:#d89b05;"></i>Asignada</span>
+                <span><i style="--legend:#d83b32;"></i>Devuelto / observado</span>
+                <span><i style="--legend:#22a861;"></i>Aprobado</span>
+                <span><i style="--legend:#169651;"></i>Finalizado</span>
+                <small data-live-status aria-live="polite">@gestionIntegral.Count trámites visibles</small>
+            </footer>
+        </section>
+    </section>
 
     @* ── PANE: BANDEJA (TABLE) ── *@
-    <div class="di3-pane active" id="pane-bandeja" role="tabpanel">
+    <section class="di3-pane aocr-tab-panel active" id="pane-bandeja" data-panel="operations" role="tabpanel" aria-labelledby="tab-bandeja">
         <div class="di3-panel">
             <div class="di3-panel__head">
                 <div>
@@ -1234,7 +1301,12 @@
                                     var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
                                         && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
                                         && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
-                                    <tr>
+                                    <tr data-coordination-row
+                                        data-search="@((item.NumeroSolicitud + " " + item.Compania + " " + item.Tipo).ToLowerInvariant())"
+                                        data-status="@((item.EstadoGeneral ?? string.Empty).ToUpperInvariant())"
+                                        data-inspector="@((item.Inspector ?? string.Empty).ToUpperInvariant())"
+                                        data-priority="@(item.EsUrgente ? "URGENTE" : "NORMAL")"
+                                        data-type="@((item.Tipo ?? string.Empty).ToUpperInvariant())">
                                         <td>
                                             <a href="@item.UrlDetalle" class="fw-bold text-primary text-decoration-none">@item.NumeroSolicitud</a>
                                             <div class="text-muted" style="font-size:.72rem;">@(item.CodigoInspeccion.HasValue ? "Insp. " + item.CodigoInspeccion.Value : "Solicitud")</div>
@@ -1277,10 +1349,10 @@
                 }
             </div>
         </div>
-    </div>
+    </section>
 
     @* ── PANE: FIRMAS ── *@
-    <div class="di3-pane" id="pane-firmas" role="tabpanel">
+    <section class="di3-pane aocr-tab-panel" id="pane-firmas" data-panel="signatures" role="tabpanel" aria-labelledby="tab-firmas">
         <div class="di3-panel">
             <div class="di3-panel__head">
                 <div>
@@ -1329,10 +1401,10 @@
                 }
             </div>
         </div>
-    </div>
+    </section>
 
     @* ── PANE: OBSERVACIONES ── *@
-    <div class="di3-pane" id="pane-observaciones" role="tabpanel">
+    <section class="di3-pane aocr-tab-panel" id="pane-observaciones" data-panel="observations" role="tabpanel" aria-labelledby="tab-observaciones">
         <div class="di3-panel">
             <div class="di3-panel__head">
                 <div>
@@ -1381,7 +1453,8 @@
                 }
             </div>
         </div>
-    </div>
+    </section>
+    </section>
 
     @* ── Detail Modal ── *@
     <div class="modal fade di3-modal" id="modalDetalleAocr" tabindex="-1" aria-hidden="true">
@@ -1424,31 +1497,6 @@
         el.DataTable({ pageLength: 5, lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']], order: [], autoWidth: false, language: langConfig(), responsive: true });
     }
 
-    function kanbanVisibility($col, forceExpand) {
-        var limit = parseInt($col.attr('data-preview-limit'), 10) || 5;
-        var expanded = typeof forceExpand === 'boolean' ? forceExpand : $col.attr('data-expanded') === 'true';
-        var $cards = $col.find('.di3-card').filter(function () { return $(this).attr('data-match') !== 'false'; });
-        $col.find('.di3-card').addClass('d-none');
-        if (expanded) { $cards.removeClass('d-none'); } else { $cards.slice(0, limit).removeClass('d-none'); }
-        $col.attr('data-expanded', expanded ? 'true' : 'false');
-        $col.find('.js-kanban-visible').text($cards.length > limit && !expanded ? limit : $cards.length);
-        var $foot = $col.find('.di3-col__foot');
-        if ($cards.length > limit) { $foot.removeClass('d-none'); $foot.find('.js-kanban-toggle').text(expanded ? 'Ver menos' : 'Ver más'); }
-        else { $foot.addClass('d-none'); }
-    }
-
-    function filterKanban(text) {
-        var q = (text || '').toLowerCase().trim();
-        $('.di3-col').each(function () {
-            var $col = $(this);
-            $col.find('.di3-card').each(function () {
-                var match = !q || ($(this).attr('data-search') || '').indexOf(q) >= 0;
-                $(this).attr('data-match', match ? 'true' : 'false');
-            });
-            kanbanVisibility($col);
-        });
-    }
-
     function openModal(url, title) {
         if (!url) return;
         var $m = $('#modalDetalleAocr');
@@ -1459,56 +1507,15 @@
         else if (typeof $m.modal === 'function') { $m.modal('show'); }
     }
 
-    function activateTab(paneId) {
-        if (!paneId) return;
-        $('#diTabs .di3-nav__tab').each(function () {
-            var isActive = $(this).attr('data-pane') === paneId;
-            $(this).toggleClass('active', isActive).attr('aria-selected', isActive ? 'true' : 'false');
-        });
-        $('.di3-pane').each(function () { $(this).toggleClass('active', $(this).attr('id') === paneId); });
-        $('.js-dashboard-table').each(function () {
-            if ($.fn.DataTable && $.fn.DataTable.isDataTable(this)) $(this).DataTable().columns.adjust();
-        });
-    }
-
-    function resolvePaneFromHash() {
-        var hash = (window.location.hash || '').replace('#', '').trim();
-        if (!hash) return 'pane-bandeja';
-        return $('#' + hash).length ? hash : 'pane-bandeja';
-    }
-
-    function syncHashForPane(paneId) {
-        if (!paneId) return;
-        if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, document.title, window.location.pathname + window.location.search + '#' + paneId);
-            return;
-        }
-
-        window.location.hash = paneId;
-    }
-
     function bindEvents() {
         if (bound) return;
         bound = true;
-        $(document).on('click.di', '.js-kanban-toggle', function () {
-            var $col = $('.di3-col[data-column="' + $(this).attr('data-column') + '"]');
-            kanbanVisibility($col, $col.attr('data-expanded') !== 'true');
-        });
-        $('#kanbanSearch').on('input.di', function () { filterKanban($(this).val()); });
         $(document).on('click.di', '.js-open-detail-modal', function () { openModal($(this).attr('data-url'), $(this).attr('data-title')); });
-        $('#diTabs .di3-nav__tab').on('click.di', function () {
-            var paneId = $(this).attr('data-pane');
-            activateTab(paneId);
-            syncHashForPane(paneId);
-        });
-        $(window).on('hashchange.di', function () { activateTab(resolvePaneFromHash()); });
         $('#modalDetalleAocr').on('hidden.bs.modal.di hidden.di', function () { $('#modalDetalleAocrFrame').attr('src', 'about:blank'); });
     }
 
     function initState() {
         $('.js-dashboard-table').each(function () { initTable($(this)); });
-        $('.di3-col').each(function () { $(this).find('.di3-card').attr('data-match', 'true'); kanbanVisibility($(this), false); });
-        activateTab(resolvePaneFromHash());
     }
 
     $(function () {
@@ -1519,4 +1526,6 @@
     });
 })(jQuery);
 </script>
+<script src="@Url.Content("~/Scripts/modules/aocr-coordination-dashboard.js")?v=20260728.5"></script>
+<script src="@Url.Content("~/Scripts/modules/aocr-kanban.js")?v=20260728.1"></script>
 }

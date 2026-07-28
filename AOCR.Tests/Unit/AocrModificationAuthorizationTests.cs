@@ -245,8 +245,12 @@ namespace AOCR.Tests.Unit
         public void DashboardInspeccion_ShouldHonorHashShortcutForNcPane()
         {
             var view = LeerArchivoRepositorio("CapaPresentacion\\Views\\CoordinacionJefatura\\DashboardInspeccion.cshtml");
-            StringAssert.Contains(view, "function resolvePaneFromHash()", "El dashboard de inspección debe poder resolver el pane inicial desde el hash de la URL.");
-            StringAssert.Contains(view, "activateTab(resolvePaneFromHash());", "El dashboard debe activar el tab correcto cuando se abre desde un atajo del sidebar.");
+            var script = LeerArchivoRepositorio("CapaPresentacion\\Scripts\\modules\\aocr-coordination-dashboard.js");
+            StringAssert.Contains(view, "aocr-coordination-dashboard.js", "La vista debe cargar el módulo responsable de la navegación accesible.");
+            StringAssert.Contains(script, "function resolvePane()", "El dashboard de inspección debe poder resolver el pane inicial desde el hash de la URL.");
+            StringAssert.Contains(script, "if (!hash)", "Un hash vacío debe resolverse sin construir el selector inválido '#'.");
+            Assert.IsFalse(script.Contains(".filter('#' + hash)"), "No se debe construir un selector jQuery con un hash controlado por la URL.");
+            StringAssert.Contains(script, "activate(resolvePane(), false);", "El dashboard debe activar el tab correcto cuando se abre desde un atajo del sidebar.");
         }
 
         private static void AssertAuthorizePresent(string relativeControllerPath, string actionName)

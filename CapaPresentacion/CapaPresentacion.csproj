@@ -550,7 +550,13 @@
     <Content Include="Content\css\role-permissions.css" />
     <Content Include="Content\css\rt-users-admin.css" />
     <Content Include="Content\css\modules\aocr-test-mail.css" />
+    <Content Include="Content\css\modules\aocr-direction-pending-reports.css" />
+    <Content Include="Content\css\modules\aocr-coordination-dashboard.css" />
+    <Content Include="Content\css\modules\aocr-kanban.css" />
     <Content Include="Scripts\modules\aocr-test-mail.js" />
+    <Content Include="Scripts\modules\aocr-direction-pending-reports.js" />
+    <Content Include="Scripts\modules\aocr-coordination-dashboard.js" />
+    <Content Include="Scripts\modules\aocr-kanban.js" />
     <Content Include="Content\dist\css\adminlte.css" />
     <Content Include="Content\dist\css\adminlte.min.css" />
     <Content Include="Content\dist\css\alt\adminlte.components.css" />
