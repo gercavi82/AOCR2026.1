@@ -217,7 +217,10 @@ namespace CapaPresentacion.Helpers
                 "JEFATURATECNICA",
                 "DIRECTORGENERAL",
                 "DIRECCIONJEFATURA",
-                "DIRECCIONJEFATURATECNICA"))
+                "DIRECCIONJEFATURATECNICA",
+                "DIRECCIONYJEFATURA",
+                "DIRECCIONYJEFATURATECNICA",
+                "DIRECCIONJEFATURA_TECNICA"))
             {
                 return DireccionJefaturaTecnica;
             }
@@ -225,6 +228,7 @@ namespace CapaPresentacion.Helpers
             if (Matches(normalized,
                 "FINANCIERO",
                 "COORDINADORFINANCIERO",
+                "COORDINACIONFINANCIERA",
                 "DIRECTORFINANCIERO"))
             {
                 return Financiero;
@@ -234,6 +238,8 @@ namespace CapaPresentacion.Helpers
                 "COORDINACION",
                 "COORDINADOR",
                 "COORDINADORINSPECCIONES",
+                "COORDINADORDEINSPECCIONES",
+                "COORDINACIONINSPECCIONES",
                 "COORDINACIONLEGAL",
                 "COORDINADORLEGAL"))
             {

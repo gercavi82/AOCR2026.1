@@ -2443,7 +2443,7 @@ namespace CapaPresentacion.Controllers
                     string nombreAdjunto = null;
                     if (!string.IsNullOrWhiteSpace(comprobanteRuta))
                     {
-                        var rutaFisica = Server.MapPath(comprobanteRuta);
+                        var rutaFisica = FileStorageHelper.ResolvePhysicalPath(comprobanteRuta);
                         if (System.IO.File.Exists(rutaFisica))
                         {
                             comprobanteAdjunto = System.IO.File.ReadAllBytes(rutaFisica);
@@ -3228,23 +3228,7 @@ namespace CapaPresentacion.Controllers
 
         private string ResolverRutaArchivoRegistrado(string rutaArchivo)
         {
-            if (string.IsNullOrWhiteSpace(rutaArchivo))
-            {
-                return null;
-            }
-
-            if (Path.IsPathRooted(rutaArchivo))
-            {
-                return Path.GetFullPath(rutaArchivo);
-            }
-
-            if (rutaArchivo.StartsWith("~"))
-            {
-                return Server.MapPath(rutaArchivo);
-            }
-
-            var basePath = FileStorageHelper.GetPhysicalBasePath(FileStorageHelper.BasePathStorage);
-            return Path.Combine(basePath, rutaArchivo.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar));
+            return FileStorageHelper.ResolvePhysicalPath(rutaArchivo);
         }
 
         private SolicitudInspeccionExtPanelViewModel BuildSolicitudInspeccionPanelViewModel(OrdenRecaudacionModel orden, int idUsuario, out List<CapaDatos.Models.DocumentoModel> documentos)
@@ -5674,7 +5658,7 @@ namespace CapaPresentacion.Controllers
                 string nombreAdjunto = null;
                 if (!string.IsNullOrWhiteSpace(comprobanteRuta))
                 {
-                    var rutaFisica = Server.MapPath(comprobanteRuta);
+                    var rutaFisica = FileStorageHelper.ResolvePhysicalPath(comprobanteRuta);
                     if (System.IO.File.Exists(rutaFisica))
                     {
                         adjunto = System.IO.File.ReadAllBytes(rutaFisica);

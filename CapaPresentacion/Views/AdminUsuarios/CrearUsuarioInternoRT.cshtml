@@ -136,7 +136,7 @@
 
     <div class="card mb-3">
         <div class="card-header">
-            <strong>Configuracion operativa</strong>
+            <strong>Configuración operativa</strong>
         </div>
         <div class="card-body">
             @Html.HiddenFor(m => m.CodigoUsuario, new { id = "CodigoUsuario" })
@@ -161,7 +161,7 @@
                         placeholder = "nombre@aviacioncivil.gob.ec"
                     })
                     @Html.ValidationMessageFor(m => m.CorreoInstitucional, null, new { @class = "text-danger d-block mt-1" })
-                    <small class="text-muted">Ingrese manualmente el correo institucional. Se usara en futuras asignaciones y notificaciones.</small>
+                    <small class="text-muted">Ingrese manualmente el correo institucional. Se usará en futuras asignaciones y notificaciones.</small>
                 </div>
             </div>
 
@@ -177,10 +177,7 @@
                     })
                     @Html.ValidationMessageFor(m => m.Observaciones, null, new { @class = "text-danger d-block mt-1" })
                 </div>
-            </div>
-
-            <div class="row g-3 mt-1">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="form-check mt-4">
                         @Html.CheckBoxFor(m => m.Activo, new { @class = "form-check-input", id = "Activo" })
                         @Html.LabelFor(m => m.Activo, new { @class = "form-check-label" })
@@ -199,7 +196,7 @@
 }
 
 @section Scripts {
-    <script src="~/Scripts/admin-usuarios.js"></script>
+    <script src="@Url.Content("~/Scripts/admin-usuarios.js")"></script>
     <script>
         (function () {
             function byId(id) { return document.getElementById(id); }

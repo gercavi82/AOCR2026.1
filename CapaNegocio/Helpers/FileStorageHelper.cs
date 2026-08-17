@@ -1,8 +1,11 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
+using System.Web.Hosting;
 using CapaUtilidades;
 
 namespace CapaNegocio.Helpers
@@ -32,6 +35,15 @@ namespace CapaNegocio.Helpers
                     return raw.Trim();
                 }
                 return "~/App_Data/AOCR";
+            }
+        }
+
+        public static string FileStorageRoot
+        {
+            get
+            {
+                var raw = ConfigurationManager.AppSettings["RT_FileStorageRoot"];
+                return !string.IsNullOrWhiteSpace(raw) ? raw.Trim() : null;
             }
         }
 
@@ -82,7 +94,7 @@ namespace CapaNegocio.Helpers
             try
             {
                 if (string.IsNullOrWhiteSpace(virtualPath)) return false;
-                var path = ResolvePath(virtualPath);
+                var path = ResolvePhysicalPath(virtualPath);
                 if (File.Exists(path)) File.Delete(path);
                 return true;
             }
@@ -129,17 +141,137 @@ namespace CapaNegocio.Helpers
             }
         }
 
-        private static string ResolvePath(string storedPath)
+        public static string ResolvePhysicalPath(string storedPath)
         {
+            if (string.IsNullOrWhiteSpace(storedPath)) return storedPath;
+
             var normalizedPath = NormalizeStoredPath(storedPath);
-            if (string.IsNullOrWhiteSpace(normalizedPath)) return normalizedPath;
-            if (normalizedPath.StartsWith("~"))
+            if (Path.IsPathRooted(normalizedPath))
             {
-                return HttpContext.Current.Server.MapPath(normalizedPath);
+                return Path.GetFullPath(normalizedPath);
             }
 
-            var baseDir = GetPhysicalBasePath();
-            return Path.Combine(baseDir, normalizedPath.TrimStart('/', '\\'));
+            var rawRoot = FileStorageRoot;
+            if (!string.IsNullOrWhiteSpace(rawRoot) && Path.IsPathRooted(rawRoot))
+            {
+                var root = rawRoot.Trim();
+                string relative = normalizedPath;
+                if (relative.StartsWith("~/App_Data/", StringComparison.OrdinalIgnoreCase))
+                {
+                    relative = relative.Substring("~/App_Data/".Length);
+                }
+                else if (relative.StartsWith("App_Data/", StringComparison.OrdinalIgnoreCase))
+                {
+                    relative = relative.Substring("App_Data/".Length);
+                }
+                else if (relative.StartsWith("~/"))
+                {
+                    relative = relative.Substring(2);
+                }
+                else if (relative.StartsWith("/"))
+                {
+                    relative = relative.Substring(1);
+                }
+
+                var candidate = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                // Fallback a almacenamiento local si existe allí históricamente
+                var local = MapVirtualPath(normalizedPath);
+                if (!string.IsNullOrWhiteSpace(local) && File.Exists(local))
+                {
+                    return local;
+                }
+
+                return candidate;
+            }
+
+            return MapVirtualPath(normalizedPath);
+        }
+
+        private static string MapVirtualPath(string virtualPath)
+        {
+            if (string.IsNullOrWhiteSpace(virtualPath)) return virtualPath;
+            if (HttpContext.Current != null && virtualPath.StartsWith("~"))
+            {
+                try { return HttpContext.Current.Server.MapPath(virtualPath); } catch { }
+            }
+            if (HostingEnvironment.IsHosted && virtualPath.StartsWith("~"))
+            {
+                try { return HostingEnvironment.MapPath(virtualPath); } catch { }
+            }
+            var baseDir = GetPhysicalBasePath(BasePathStorage);
+            return Path.Combine(baseDir, virtualPath.TrimStart('~', '/', '\\').Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        public static IEnumerable<string> GetAllowedStorageRoots()
+        {
+            var roots = new List<string>();
+            var rawRoot = FileStorageRoot;
+            if (!string.IsNullOrWhiteSpace(rawRoot) && Path.IsPathRooted(rawRoot))
+            {
+                roots.Add(Path.GetFullPath(rawRoot.Trim()));
+            }
+
+            if (HttpContext.Current != null)
+            {
+                try { roots.Add(Path.GetFullPath(HttpContext.Current.Server.MapPath("~/App_Data"))); } catch { }
+            }
+            else if (HostingEnvironment.IsHosted)
+            {
+                try { roots.Add(Path.GetFullPath(HostingEnvironment.MapPath("~/App_Data"))); } catch { }
+            }
+
+            return roots.Where(r => !string.IsNullOrWhiteSpace(r)).Distinct(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static string GetPhysicalBasePath(string fallbackVirtualBase)
+        {
+            var raw = FileStorageRoot;
+            if (!string.IsNullOrWhiteSpace(raw) && Path.IsPathRooted(raw))
+            {
+                var root = raw.Trim();
+                if (string.IsNullOrWhiteSpace(fallbackVirtualBase))
+                {
+                    return root;
+                }
+
+                var normalized = fallbackVirtualBase.Replace("\\", "/").Trim();
+                string relative = normalized;
+                if (relative.StartsWith("~/App_Data/", StringComparison.OrdinalIgnoreCase))
+                {
+                    relative = relative.Substring("~/App_Data/".Length);
+                }
+                else if (relative.StartsWith("App_Data/", StringComparison.OrdinalIgnoreCase))
+                {
+                    relative = relative.Substring("App_Data/".Length);
+                }
+                else if (relative.StartsWith("~/"))
+                {
+                    relative = relative.Substring(2);
+                }
+                else if (relative.StartsWith("/"))
+                {
+                    relative = relative.Substring(1);
+                }
+
+                if (string.IsNullOrWhiteSpace(relative))
+                {
+                    return root;
+                }
+
+                return Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+            }
+
+            return MapVirtualPath(fallbackVirtualBase);
+        }
+
+        private static string GetPhysicalBasePath()
+        {
+            return GetPhysicalBasePath(BasePathStorage);
         }
 
         private static FileUploadOptions BuildOptions(string[] allowedExts, int maxSizeMb, string folderRelative, bool validateMagic)
@@ -159,28 +291,6 @@ namespace CapaNegocio.Helpers
         {
             if (string.IsNullOrWhiteSpace(folderRelative)) return string.Empty;
             return folderRelative.TrimStart('~', '/', '\\');
-        }
-
-        public static string GetPhysicalBasePath(string fallbackVirtualBase)
-        {
-            var raw = ConfigurationManager.AppSettings["RT_FileStorageRoot"];
-            if (!string.IsNullOrWhiteSpace(raw) && Path.IsPathRooted(raw))
-            {
-                return raw.Trim();
-            }
-
-            return HttpContext.Current.Server.MapPath(fallbackVirtualBase);
-        }
-
-        private static string GetPhysicalBasePath()
-        {
-            var raw = ConfigurationManager.AppSettings["RT_FileStorageRoot"];
-            if (!string.IsNullOrWhiteSpace(raw) && Path.IsPathRooted(raw))
-            {
-                return raw.Trim();
-            }
-
-            return HttpContext.Current.Server.MapPath(BasePathStorage);
         }
 
         private static string BuildReturnPath(string folderRelative, string storedName)

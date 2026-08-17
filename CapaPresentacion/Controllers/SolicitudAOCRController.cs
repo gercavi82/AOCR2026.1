@@ -6220,11 +6220,12 @@ namespace CapaPresentacion.Controllers
             int solicitudDocumentoId, string rutaPersistida, string nombreDescarga, bool vistaPrevia)
         {
             var usuarioId = ObtenerUsuarioActualId();
-            var servicio = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+            var raices = FileStorageHelper.GetAllowedStorageRoots();
+            var servicio = new DocumentoSeguroService(raices,
                 evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
             var archivo = servicio.Resolver(documentoId, solicitudEsperadaId, solicitudDocumentoId,
                 rutaPersistida, nombreDescarga,
-                ruta => Path.IsPathRooted(ruta) ? ruta : Server.MapPath(ruta.StartsWith("~") ? ruta : "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta)));
+                ruta => FileStorageHelper.ResolvePhysicalPath(ruta));
             if (!archivo.EsValido)
                 return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
                     ? (ActionResult)HttpNotFound(archivo.MensajePublico)

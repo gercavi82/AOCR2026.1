@@ -3111,6 +3111,23 @@
     <Content Include="Scripts\admin-usuarios.js" />
     <Content Include="Scripts\aocr-firma-institucional.js" />
     <Content Include="Scripts\firma-aocr.js" />
+    <Content Include="Content\css\admin-users-compact.css" />
+    <Content Include="Content\css\aocr-contrast-fix.css" />
+    <Content Include="Content\css\dashboard.css" />
+    <Content Include="Content\css\dgac-theme.css" />
+    <Content Include="Content\css\formulario-aocr.css" />
+    <Content Include="Content\css\pagos-mejorados.css" />
+    <Content Include="Content\css\role-permissions.css" />
+    <Content Include="Content\css\rt-users-admin.css" />
+    <Content Include="Content\css\modules\aocr-coordination-dashboard.css" />
+    <Content Include="Content\css\modules\aocr-direction-pending-reports.css" />
+    <Content Include="Content\css\modules\aocr-kanban.css" />
+    <Content Include="Content\css\modules\aocr-test-mail.css" />
+    <Content Include="Content\aocr-firma-aocr.css" />
+    <Content Include="Content\aocr-informe-tecnico.css" />
+    <Content Include="Content\aocr-modals.css" />
+    <Content Include="Content\firma-aocr.css" />
+    <Content Include="Content\pdf-eae-oficial.css" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

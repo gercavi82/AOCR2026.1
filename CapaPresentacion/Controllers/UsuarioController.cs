@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -1165,7 +1165,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound();
             }
 
-            var rutaFisica = Server.MapPath(usuario.RutaDocumentoLegal);
+            var rutaFisica = FileStorageHelper.ResolvePhysicalPath(usuario.RutaDocumentoLegal);
             if (!System.IO.File.Exists(rutaFisica))
             {
                 return HttpNotFound();
@@ -1184,7 +1184,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound();
             }
 
-            var rutaFisica = Server.MapPath(usuario.RutaConstanciaRT);
+            var rutaFisica = FileStorageHelper.ResolvePhysicalPath(usuario.RutaConstanciaRT);
             if (!System.IO.File.Exists(rutaFisica))
             {
                 return HttpNotFound();
@@ -1914,7 +1914,7 @@ namespace CapaPresentacion.Controllers
 
         private string GenerarConstanciaRT(Usuario usuario)
         {
-            string carpeta = Server.MapPath("~/App_Data/ConstanciasRT/");
+            string carpeta = FileStorageHelper.GetPhysicalBasePath("~/App_Data/ConstanciasRT/");
             if (!Directory.Exists(carpeta)) Directory.CreateDirectory(carpeta);
 
             string nombreArchivo = $"Constancia_{usuario.CodigoUsuario}_{DateTime.Now:yyyyMMddHHmmss}.pdf";

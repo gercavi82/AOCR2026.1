@@ -58,18 +58,18 @@ namespace CapaPresentacion.Helpers
             snapshot.EsInspectorRol = RoleGroupingHelper.IsInspectorTecnico(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
             snapshot.EsCoordinadorRol = RoleGroupingHelper.IsCoordinacion(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Coordinacion", "Coordinador", "CoordinadorInspecciones"));
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Coordinacion", "Coordinador", "CoordinadorInspecciones", "Coordinador de Inspecciones"));
             snapshot.EsFinancieroRol = RoleGroupingHelper.IsFinanciero(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "Financiero", "CoordinadorFinanciero", "CoordinacionFinanciera", "Coordinación Financiera", "DirectorFinanciero"));
             snapshot.EsLegalRol = RoleGroupingHelper.IsCoordinacion(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "CoordinacionLegal", "CoordinadorLegal", "Coordinación Legal"));
             snapshot.EsDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
                 && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorGeneral"));
 
             // GATE 8: DIRDAC exclusion of DCAV
             snapshot.EsDirdacRol = RoleGroupingHelper.IsDirdac(snapshot.RolActual)
                 || ((RoleGroupingHelper.IsDireccionJefaturaTecnica(snapshot.RolActual)
-                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral", "DIRECCION_DIRDAC")))
+                && (snapshot.SinRolesRaw || RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral", "DIRECCION_DIRDAC", "Dirección / Jefatura técnica")))
                 && !RoleGroupingHelper.HasAnyRawRole(snapshot.RolesRaw, "DirectorCertificacionesDcav", "DCAV", "DIRECCION_DCAV"));
 
             // GATE 8: DCAV specific role

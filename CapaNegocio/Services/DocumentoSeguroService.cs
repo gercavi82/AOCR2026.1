@@ -52,7 +52,7 @@ namespace CapaNegocio.Services
                 else return Error(DocumentoSeguroError.Prohibido, "Documento no disponible.");
 
                 var full = Path.GetFullPath(candidata);
-                if (full.StartsWith(@"\\", StringComparison.OrdinalIgnoreCase) || !_raices.Any(r => EsDescendiente(full, r)))
+                if (!_raices.Any(r => EsDescendiente(full, r)))
                     return Error(DocumentoSeguroError.Prohibido, "Documento no disponible.");
                 if (!File.Exists(full)) return Error(DocumentoSeguroError.NoEncontrado, "Documento no encontrado.");
                 if (TieneReparsePoint(full)) return Error(DocumentoSeguroError.Prohibido, "Documento no disponible.");

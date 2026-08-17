@@ -425,13 +425,16 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "No tiene permisos para acceder a este documento.");
                 }
 
-                var raicesSeguras = new List<string> { Server.MapPath("~/App_Data") };
-                if (!string.IsNullOrWhiteSpace(_rutaDocumentos)) raicesSeguras.Add(_rutaDocumentos);
+                var raicesSeguras = FileStorageHelper.GetAllowedStorageRoots().ToList();
+                if (!string.IsNullOrWhiteSpace(_rutaDocumentos) && !raicesSeguras.Contains(_rutaDocumentos, StringComparer.OrdinalIgnoreCase))
+                {
+                    raicesSeguras.Add(_rutaDocumentos);
+                }
                 var servicioSeguro = new DocumentoSeguroService(raicesSeguras,
                     evento => Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
                 var documentoSeguro = servicioSeguro.Resolver(doc.CodigoDocumento, solicitud.CodigoSolicitud, doc.CodigoSolicitud,
                     doc.RutaArchivo ?? doc.RutaGuardada, doc.NombreArchivoVisible ?? doc.NombreArchivo,
-                    ruta => ruta.StartsWith("~") ? Server.MapPath(ruta) : Server.MapPath("~" + (ruta.StartsWith("/") ? ruta : "/" + ruta)));
+                    ruta => FileStorageHelper.ResolvePhysicalPath(ruta));
                 if (!documentoSeguro.EsValido)
                     return documentoSeguro.Error == DocumentoSeguroError.NoEncontrado || documentoSeguro.Error == DocumentoSeguroError.Vacio
                         ? (ActionResult)HttpNotFound(documentoSeguro.MensajePublico)
@@ -1358,23 +1361,7 @@ namespace CapaPresentacion.Controllers
         private string ResolverRutaFisicaDocumento(Documento documento)
         {
             var ruta = documento != null ? (documento.RutaArchivo ?? documento.RutaGuardada) : null;
-            if (string.IsNullOrWhiteSpace(ruta))
-            {
-                return null;
-            }
-
-            ruta = ruta.Trim();
-            if (Path.IsPathRooted(ruta))
-            {
-                return ruta;
-            }
-
-            if (ruta.StartsWith("~", StringComparison.OrdinalIgnoreCase))
-            {
-                return Server.MapPath(ruta);
-            }
-
-            return Server.MapPath("~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
+            return FileStorageHelper.ResolvePhysicalPath(ruta);
         }
 
         private bool EsRutaDocumentoPermitida(string rutaFisica)
@@ -1385,17 +1372,11 @@ namespace CapaPresentacion.Controllers
             }
 
             var fullPath = Path.GetFullPath(rutaFisica);
-            var basesPermitidas = new List<string>();
+            var basesPermitidas = FileStorageHelper.GetAllowedStorageRoots().Select(Path.GetFullPath).ToList();
 
-            if (!string.IsNullOrWhiteSpace(_rutaDocumentos))
+            if (!string.IsNullOrWhiteSpace(_rutaDocumentos) && !basesPermitidas.Contains(Path.GetFullPath(_rutaDocumentos), StringComparer.OrdinalIgnoreCase))
             {
                 basesPermitidas.Add(Path.GetFullPath(_rutaDocumentos));
-            }
-
-            var baseAppData = Server != null ? Server.MapPath("~/App_Data") : null;
-            if (!string.IsNullOrWhiteSpace(baseAppData))
-            {
-                basesPermitidas.Add(Path.GetFullPath(baseAppData));
             }
 
             return basesPermitidas

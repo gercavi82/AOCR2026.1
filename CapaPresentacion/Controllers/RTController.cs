@@ -515,26 +515,27 @@ namespace CapaPresentacion.Controllers
             var estado=(nc.Estado??string.Empty).Trim().ToUpperInvariant();
             if(estado!="NOTIFICADA_RT"&&estado!="EN_SUBSANACION"&&estado!="SUBSANADA_RT"&&estado!="SUBSANACION_DEVUELTA"&&estado!="EN_REVISION_INSPECTOR"&&estado!="SUBSANACION_ACEPTADA"&&estado!="CERRADA")return new HttpStatusCodeResult(409);
             var ruta=nc.RutaPdfFirmadoCoordinador??nc.RutaPdfFirmadoInspector??nc.RutaPdf;
-            var servicio=new CapaNegocio.Services.DocumentoSeguroService(new[]{Server.MapPath("~/App_Data")},
-                evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";UsuarioId="+usuarioId));
-            var archivo=servicio.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,solicitud.CodigoSolicitud,ruta,
-                "No_Conformidad_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
-            if(!archivo.EsValido)return archivo.Error==CapaNegocio.Services.DocumentoSeguroError.NoEncontrado||archivo.Error==CapaNegocio.Services.DocumentoSeguroError.Vacio?(ActionResult)HttpNotFound(archivo.MensajePublico):new HttpStatusCodeResult(403,archivo.MensajePublico);
-            return File(archivo.RutaFisica,archivo.Mime,archivo.NombreDescarga);
+            var raices = FileStorageHelper.GetAllowedStorageRoots();
+            var servicio = new CapaNegocio.Services.DocumentoSeguroService(raices,
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
+            var archivo = servicio.Resolver(nc.CodigoNoConformidad, nc.CodigoSolicitud, solicitud.CodigoSolicitud, ruta,
+                "No_Conformidad_" + nc.CodigoNoConformidad + ".pdf", FileStorageHelper.ResolvePhysicalPath);
+            if (!archivo.EsValido) return archivo.Error == CapaNegocio.Services.DocumentoSeguroError.NoEncontrado || archivo.Error == CapaNegocio.Services.DocumentoSeguroError.Vacio ? (ActionResult)HttpNotFound(archivo.MensajePublico) : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            return File(archivo.RutaFisica, archivo.Mime, archivo.NombreDescarga);
         }
 
         [HttpGet]
         [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS + "," + ROL_ADMIN)]
         public ActionResult DescargarSubsanacionNc(int codigoNoConformidad)
         {
-            int usuarioId;if(!TryObtenerUsuarioActualId(out usuarioId))return new HttpStatusCodeResult(401);
-            var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);if(nc==null)return HttpNotFound();
-            if(!EsPropietarioSolicitud(_solicitudDAO.ObtenerPorId(nc.CodigoSolicitud),usuarioId))return new HttpStatusCodeResult(403);
-            var seguro=new CapaNegocio.Services.DocumentoSeguroService(
-                new[]{Path.GetFullPath(Server.MapPath("~/App_Data/SubsanacionesNC"))},
-                evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";UsuarioId="+usuarioId));
-            var archivo=seguro.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,nc.CodigoSolicitud,
-                nc.RutaPdfSubsanacionRt,"Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
+            int usuarioId; if (!TryObtenerUsuarioActualId(out usuarioId)) return new HttpStatusCodeResult(401);
+            var nc = new NoConformidadDAO().ObtenerPorId(codigoNoConformidad); if (nc == null) return HttpNotFound();
+            if (!EsPropietarioSolicitud(_solicitudDAO.ObtenerPorId(nc.CodigoSolicitud), usuarioId)) return new HttpStatusCodeResult(403);
+            var raicesSubsanacion = FileStorageHelper.GetAllowedStorageRoots();
+            var seguro = new CapaNegocio.Services.DocumentoSeguroService(raicesSubsanacion,
+                evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";UsuarioId=" + usuarioId));
+            var archivo = seguro.Resolver(nc.CodigoNoConformidad, nc.CodigoSolicitud, nc.CodigoSolicitud,
+                nc.RutaPdfSubsanacionRt, "Subsanacion_NC_" + nc.CodigoNoConformidad + ".pdf", FileStorageHelper.ResolvePhysicalPath);
             if(!archivo.EsValido)return archivo.Error==CapaNegocio.Services.DocumentoSeguroError.NoEncontrado||archivo.Error==CapaNegocio.Services.DocumentoSeguroError.Vacio? (ActionResult)HttpNotFound(archivo.MensajePublico):new HttpStatusCodeResult(403,archivo.MensajePublico);
             return File(archivo.RutaFisica,archivo.Mime,archivo.NombreDescarga);
         }

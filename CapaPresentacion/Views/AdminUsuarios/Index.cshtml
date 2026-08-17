@@ -65,7 +65,7 @@
     }
 }
 
-<link rel="stylesheet" href="~/Content/css/admin-users-compact.css?v=@DateTime.Now.Ticks" />
+<link rel="stylesheet" href="@Url.Content("~/Content/css/admin-users-compact.css")?v=@DateTime.Now.Ticks" />
 
 <div class="admin-users-shell">
 
@@ -609,7 +609,7 @@
 </div>
 
 @section Scripts {
-    <script src="~/Scripts/admin-usuarios.js?v=@DateTime.Now.Ticks"></script>
+    <script src="@Url.Content("~/Scripts/admin-usuarios.js")?v=@DateTime.Now.Ticks"></script>
     <script>
     (function () {
         /* ── Client-side pagination (8 rows per page) ── */
