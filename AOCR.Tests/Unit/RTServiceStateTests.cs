@@ -12,6 +12,8 @@ namespace AOCR.Tests.Unit
         [DataRow(null, RTService.EstadoBorrador)]
         [DataRow("", RTService.EstadoBorrador)]
         [DataRow("ENVIADA", RTService.EstadoEnviado)]
+        [DataRow("EN REVISION COORDINADOR", RTService.EstadoEnRevisionCoordinador)]
+        [DataRow("EN-REVISION-INSPECTOR", RTService.EstadoEnRevisionInspector)]
         [DataRow("en_revision_coordinador", RTService.EstadoEnRevisionCoordinador)]
         [DataRow("finalizado", RTService.EstadoFinalizado)]
         public void NormalizarEstado_DebeResolverAliasYMayusculas(string entrada, string esperado)

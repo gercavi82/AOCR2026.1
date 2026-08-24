@@ -808,6 +808,34 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
             }
         }
 
+        public static bool AceptarYActivarDesignacionRT(int idUsuario, string rutaConstancia)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
+                {
+                    const string sql = @"UPDATE usuario
+                                         SET estado_designacion_rt = 'aceptado',
+                                             estadoactividad = '1',
+                                             fecha_revision_designacion = NOW(),
+                                             ruta_constancia_rt = @ruta
+                                         WHERE idusuario = @id
+                                           AND COALESCE(LOWER(TRIM(estado_designacion_rt)), '') <> 'rechazado';";
+
+                    var rows = conn.Execute(sql, new { id = idUsuario, ruta = rutaConstancia }, tx);
+                    if (rows <= 0)
+                    {
+                        tx.Rollback();
+                        return false;
+                    }
+
+                    tx.Commit();
+                    return true;
+                }
+            }
+        }
+
         public static void RechazarDesignacionRT(int idUsuario)
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))

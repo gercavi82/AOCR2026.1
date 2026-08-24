@@ -35,5 +35,14 @@ namespace AOCR.Tests.Unit
             Assert.IsFalse(seguro.Contains("<"));
             Assert.IsFalse(seguro.Contains(">"));
         }
+
+        [TestMethod]
+        [Description("La cuenta institucional GEN_COORDINACION no debe quedar bloqueada por RT pendiente.")]
+        public void Login_NoBloqueaCuentaCoordinacionForzada_PorEstadoRtPendiente()
+        {
+            var controller = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\..\..\..\CapaPresentacion\Controllers\AccountController.cs"));
+            StringAssert.Contains(controller, "IsForcedCoordinacionUser(");
+            StringAssert.Contains(controller, "!esUsuarioInstitucionalForzado");
+        }
     }
 }

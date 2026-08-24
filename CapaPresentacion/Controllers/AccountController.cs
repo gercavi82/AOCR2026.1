@@ -208,10 +208,18 @@ namespace CapaPresentacion.Controllers
             }
 
             // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
+            var tieneExpedienteRt = !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT)
+                || !string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal);
             var bypassRtRestriction = !string.IsNullOrWhiteSpace(usuario.Email) &&
+                !tieneExpedienteRt &&
                 (usuario.Email.Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase)
                  || usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase));
+            var esUsuarioInternoSinBloqueoRt = EsUsuarioInternoSinBloqueoRt(
+                roles,
+                !string.IsNullOrWhiteSpace(usuario.NombreUsuario) ? usuario.NombreUsuario : model.Usuario);
+
             if (!bypassRtRestriction &&
+                !esUsuarioInternoSinBloqueoRt &&
                 !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                 !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
             {
@@ -220,10 +228,11 @@ namespace CapaPresentacion.Controllers
                 if (roles != null)
                 {
                     esAdmin = roles.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase));
-                    esRolInterno = roles.Any(r => RolesInternosNoBloqueoDesignacion.Contains((r ?? string.Empty).Trim()));
+                    esRolInterno = roles.Any(r => RolesInternosNoBloqueoDesignacion.Contains((r ?? string.Empty).Trim()))
+                        || roles.Any(r => RoleGroupingHelper.EsRolInstitucional(RoleGroupingHelper.NormalizeSelectedRole(r)));
                 }
 
-                if (!esAdmin && !esRolInterno)
+                if (tieneExpedienteRt || (!esAdmin && !esRolInterno))
                 {
                     var estado = usuario.EstadoDesignacionRT.Trim().ToLowerInvariant();
                     var msg = estado == "rechazado"
@@ -984,6 +993,23 @@ namespace CapaPresentacion.Controllers
             return usuario != null &&
                    !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                    usuario.EstadoDesignacionRT.Trim().Equals("aceptado", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsUsuarioInternoSinBloqueoRt(IEnumerable<string> roles, string nombreUsuario)
+        {
+            if (RoleGroupingHelper.IsForcedCoordinacionUser(nombreUsuario))
+            {
+                return true;
+            }
+
+            var rolesNormalizados = (roles ?? Enumerable.Empty<string>())
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => RoleGroupingHelper.NormalizeSelectedRole(role))
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return rolesNormalizados.Any(role => RoleGroupingHelper.EsRolInstitucional(role));
         }
 
         private bool EsAdministradorSesion(Usuario usuario)

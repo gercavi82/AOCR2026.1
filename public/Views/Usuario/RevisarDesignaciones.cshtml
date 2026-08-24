@@ -2,20 +2,19 @@
 @using System.Linq
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
+@using CapaDatos.Models
 @{
     ViewBag.Title = "Gestión de Usuarios RT";
 
     var totalRt = Model != null ? Model.Count : 0;
     var activos = Model != null ? Model.Count(u => u != null && u.Activo) : 0;
     var pendientes = Model != null ? Model.Count(u => u != null
-        && u.Activo
         && ((u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "ENVIADO"
             || (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "ENVIADA"
             || string.IsNullOrWhiteSpace(u.EstadoSolicitudRT))) : 0;
     var sinDocumento = Model != null ? Model.Count(u => u != null
         && string.IsNullOrWhiteSpace(u.RutaDocumentoLegal)) : 0;
     var enRevisionKpi = Model != null ? Model.Count(u => u != null
-        && u.Activo
         && (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "EN_REVISION_COORDINADOR") : 0;
 }
 
@@ -196,10 +195,11 @@
                             }
 
                             var observacionRt = (u.ObservacionSolicitudRT ?? string.Empty).Trim();
-                            var enRevision = u.Activo
-                                && (estadoExpedienteRt == "EN_REVISION_COORDINADOR"
+                            var esInspector = ViewBag.EsInspector != null && (bool)ViewBag.EsInspector;
+                            var enRevision = (estadoExpedienteRt == "EN_REVISION_COORDINADOR"
                                     || estadoExpedienteRt == "ENVIADO"
                                     || estadoExpedienteRt == "ENVIADA");
+                                var puedeGestionarDesignacion = !esInspector && enRevision;
                             var puedeEliminar = u.PuedeEliminarRT;
                             if (string.IsNullOrWhiteSpace(estadoRt)) { estadoRt = "pendiente"; }
 
@@ -285,6 +285,8 @@
                                     <div class="rt-actions">
                                         @if (enRevision)
                                         {
+                                            if (puedeGestionarDesignacion)
+                                            {
                                             <button type="button"
                                                     class="rt-action-btn rt-action-btn--approve"
                                                     title="Aprobar designación RT"
@@ -296,7 +298,10 @@
                                                     data-usuario-estado="@Html.Encode(estadoExpedienteRt.Replace("_", " "))">
                                                 <i class="fas fa-check"></i>
                                             </button>
+                                            }
 
+                                            if (puedeGestionarDesignacion)
+                                            {
                                             <button type="button"
                                                     class="rt-action-btn rt-action-btn--return"
                                                     title="Devolver con observación"
@@ -307,6 +312,7 @@
                                                     data-usuario-empresa="@Html.Encode(u.EmpresaCodigo)">
                                                 <i class="fas fa-undo"></i>
                                             </button>
+                                            }
                                         }
 
                                         @if (u.Activo)

@@ -28,6 +28,8 @@ namespace CapaModelo
         public int? SolicitudRtId { get; set; }
         public string EstadoSolicitudRT { get; set; }
         public string ObservacionSolicitudRT { get; set; }
+        public string InspectorAsignadoRT { get; set; }
+        public string ResultadoInspeccionRT { get; set; }
 
         // Métricas para gestión RT (evita intentar eliminar usuarios con datos operativos asociados)
         public int OrdenesRecaudacionCount { get; set; }

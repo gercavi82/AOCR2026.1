@@ -118,6 +118,7 @@
     <Compile Include="UsuarioCompaniaRT.cs" />
     <Compile Include="RT\CompaniaModel.cs" />
     <Compile Include="RT\SolicitudRTModel.cs" />
+    <Compile Include="RT\RevisionSolicitudRTModel.cs" />
     <Compile Include="RT\DocumentoModel.cs" />
     <Compile Include="RT\ViewModels\RegistroRTVM.cs" />
     <Compile Include="RT\ViewModels\DeclaracionRTVM.cs" />

@@ -230,10 +230,11 @@ namespace CapaPresentacion.Controllers
                 {
                     return Json(new { success = false, message = "Debe adjuntar el formulario de designación como RT en PDF." });
                 }
-                rutaDocumento = GuardarArchivoDesignacionRT(archivoDesignacion, identificacionFinal);
+                string errorDesignacion;
+                rutaDocumento = GuardarArchivoDesignacionRT(archivoDesignacion, identificacionFinal, out errorDesignacion);
                 if (string.IsNullOrEmpty(rutaDocumento))
                 {
-                    return Json(new { success = false, message = "El formulario de designación debe ser PDF y no superar 2MB." });
+                    return Json(new { success = false, message = errorDesignacion ?? "No se pudo guardar el formulario de designación." });
                 }
 
                 // 4. CREAR USUARIO (con contraseña temporal)
@@ -276,7 +277,7 @@ namespace CapaPresentacion.Controllers
                     Email = correo,
                     NombreCompleto = nombreCompletoUsuario,
                     Contrasena = passwordHash, // Hash de contraseña temporal
-                    Activo = true,
+                    Activo = false,
                     Rol = "Solicitante", // Rol por defecto para usuarios externos
                     EmpresaCodigo = companiasDeclaracion[0].Codigo,
                     RutaDocumentoLegal = rutaDocumento
@@ -442,7 +443,7 @@ namespace CapaPresentacion.Controllers
                             new EmailFieldItem("Correo del solicitante", correo),
                             new EmailFieldItem("Estado", "Pendiente de aceptación")
                         },
-                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Revisar designaciones RT' para aceptar o rechazar esta solicitud.",
+                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Revisar designaciones RT' para asignar un Inspector y continuar la revisión.",
                         TextoCierre = "Este es un correo automático del Sistema AOCR."
                     });
 
@@ -536,13 +537,15 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private string GuardarArchivoDesignacionRT(HttpPostedFileBase archivo, string identificacion)
+        private string GuardarArchivoDesignacionRT(HttpPostedFileBase archivo, string identificacion, out string error)
         {
+            error = null;
             try
             {
                 var ext = Path.GetExtension(archivo.FileName).ToLower();
                 if (ext != ".pdf")
                 {
+                    error = "El archivo debe tener extensión PDF.";
                     return null;
                 }
 
@@ -551,12 +554,11 @@ namespace CapaPresentacion.Controllers
                     BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/DesignacionesRT"),
                     Subfolder = string.Empty,
                     AllowedExtensions = new[] { ".pdf" },
-                    AllowedContentTypes = new[] { "application/pdf" },
+                    AllowedContentTypes = new[] { "application/pdf", "application/octet-stream" },
                     MaxSizeMb = 2,
                     ValidateMagicBytes = true
                 };
 
-                string error;
                 FileUploadResult result;
                 if (!FileUploadService.TrySave(archivo, options, out result, out error))
                 {
@@ -565,8 +567,9 @@ namespace CapaPresentacion.Controllers
 
                 return "~/App_Data/DesignacionesRT/" + result.StoredName;
             }
-            catch
+            catch (Exception ex)
             {
+                error = "No se pudo guardar el formulario de designación: " + ex.Message;
                 return null;
             }
         }
@@ -1021,6 +1024,8 @@ namespace CapaPresentacion.Controllers
             var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
 
             var rtService = new RTService();
+            var revisionDao = new RTRevisionDao();
+            ViewBag.EsInspector = false;
             foreach (var usuario in usuarios)
             {
                 if (usuario == null || usuario.Id <= 0)
@@ -1033,12 +1038,44 @@ namespace CapaPresentacion.Controllers
                     var solicitudRt = rtService.GetSolicitudByUsuario(usuario.Id);
                     if (solicitudRt == null)
                     {
-                        continue;
+                        // Designación legacy aceptada por el flujo antiguo (sin expediente RT nuevo):
+                        // se repara automáticamente solo si ya tiene documento legal cargado y sigue pendiente,
+                        // para habilitar la asignación de inspector desde esta bandeja.
+                        var puedeRepararLegacy = !string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal)
+                            && string.Equals((usuario.EstadoDesignacionRT ?? string.Empty).Trim(), "pendiente", StringComparison.OrdinalIgnoreCase);
+
+                        if (!puedeRepararLegacy)
+                        {
+                            continue;
+                        }
+
+                        solicitudRt = rtService.AsegurarSolicitudLegacyEnRevision(
+                            usuario.Id,
+                            usuario.EmpresaCodigo,
+                            usuario.Email,
+                            usuario.NombreCompleto,
+                            !string.IsNullOrWhiteSpace(usuario.Ruc) ? usuario.Ruc : usuario.CodigoUsuario);
+
+                        if (solicitudRt == null)
+                        {
+                            continue;
+                        }
+
+                        LogBL.RegistrarInfo(
+                            "Expediente RT legacy reparado automáticamente. UsuarioId=" + usuario.Id + "; SolicitudRtId=" + solicitudRt.Id,
+                            "UsuarioController",
+                            ObtenerUsuarioSesionId());
                     }
 
                     usuario.SolicitudRtId = solicitudRt.Id;
                     usuario.EstadoSolicitudRT = rtService.NormalizarEstado(solicitudRt.Estado);
                     usuario.ObservacionSolicitudRT = (solicitudRt.ObservacionCoordinador ?? string.Empty).Trim();
+                    var revision = revisionDao.ObtenerPorSolicitud(solicitudRt.Id);
+                    if (revision != null)
+                    {
+                        usuario.InspectorAsignadoRT = revision.InspectorUsuario;
+                        usuario.ResultadoInspeccionRT = revision.Resultado;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1049,6 +1086,33 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
+            return View("RevisarDesignaciones", usuarios);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Inspector,InspectorTecnico,Tecnico,EvaluadorTecnico,Administrador")]
+        public ActionResult BandejaInspectorRT()
+        {
+            var inspectorUsuario = User != null && User.Identity != null ? User.Identity.Name : null;
+            var revisionDao = new RTRevisionDao();
+            var idsAsignados = revisionDao.ObtenerSolicitudesPorInspector(inspectorUsuario);
+            var rtService = new RTService();
+            var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
+            foreach (var usuario in usuarios)
+            {
+                var solicitud = rtService.GetSolicitudByUsuario(usuario.Id);
+                if (solicitud != null)
+                {
+                    usuario.SolicitudRtId = solicitud.Id;
+                    usuario.EstadoSolicitudRT = rtService.NormalizarEstado(solicitud.Estado);
+                    usuario.ObservacionSolicitudRT = solicitud.ObservacionCoordinador;
+                }
+            }
+            usuarios = usuarios
+                .Where(u => u != null && u.SolicitudRtId.HasValue && idsAsignados.Contains(u.SolicitudRtId.Value))
+                .ToList();
+            ViewBag.EsInspector = true;
+            ViewBag.RtInspectores = new List<UsuarioInternoRTRegistro>();
             return View("RevisarDesignaciones", usuarios);
         }
 
@@ -1202,17 +1266,40 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
-        public ActionResult AceptarDesignacion(int id)
+        public ActionResult AceptarDesignacion(int id, string returnUrl)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
             if (usuario == null)
             {
                 TempData["error"] = "Usuario no encontrado.";
-                return RedirectToAction("RevisarDesignaciones");
+                return RedirigirDespuesRevisionRT(returnUrl);
             }
 
+            if (usuario.Activo && string.Equals(usuario.EstadoDesignacionRT, "aceptado", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["msg"] = "La designación RT ya fue aceptada y el usuario ya está activo.";
+                return RedirigirDespuesRevisionRT(returnUrl);
+            }
+
+            if (string.Equals(usuario.EstadoDesignacionRT, "rechazado", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["error"] = "No se puede aceptar una designación RT rechazada.";
+                return RedirigirDespuesRevisionRT(returnUrl);
+            }
+
+            var solicitudRtParaAceptar = new RTService().GetSolicitudByUsuario(id);
+
             string rutaConstancia = GenerarConstanciaRT(usuario);
-            UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
+            if (!UsuarioDAO.AceptarYActivarDesignacionRT(id, rutaConstancia))
+            {
+                TempData["error"] = "No se pudo aceptar y activar el usuario RT.";
+                return RedirigirDespuesRevisionRT(returnUrl);
+            }
+
+            LogBL.RegistrarInfo(
+                "Activación RT confirmada por Coordinación. UsuarioId=" + id,
+                "UsuarioController",
+                ObtenerUsuarioSesionId());
 
             var daoCompaniasRt = new UsuarioCompaniaRTDAO();
             var companiasAsignadas = daoCompaniasRt.ObtenerCompaniasAsignadas(id);
@@ -1277,6 +1364,26 @@ namespace CapaPresentacion.Controllers
                 TempData["msg"] = "Designación aceptada, constancia generada y correo enviado con clave temporal." + detalleSincronizacion;
             else
                 TempData["msg"] = "Designación aceptada y constancia generada. " + (mensajeCorreo ?? string.Empty) + detalleSincronizacion;
+            return RedirigirDespuesRevisionRT(returnUrl);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
+        [ValidateAntiForgeryToken]
+        public ActionResult AsignarInspectorRT(int? solicitudId, string inspectorUsuario)
+        {
+            TempData["error"] = "La revisión de designaciones RT se gestiona únicamente por Coordinación.";
+
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RolesGestionUsuariosRt)]
+        [ValidateAntiForgeryToken]
+        public ActionResult RegistrarResultadoInspectorRT(int? solicitudId, string resultado, string observacion)
+        {
+            TempData["error"] = "La revisión de designaciones RT se gestiona únicamente por Coordinación.";
+
             return RedirectToAction("RevisarDesignaciones");
         }
 
@@ -1761,20 +1868,20 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = RolesGestionUsuariosRt)]
         [ValidateAntiForgeryToken]
-        public ActionResult RechazarDesignacion(int id, string observacion)
+        public ActionResult RechazarDesignacion(int id, string observacion, string returnUrl)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
             if (usuario == null)
             {
                 TempData["error"] = "Usuario no encontrado.";
-                return RedirectToAction("RevisarDesignaciones");
+                return RedirigirDespuesRevisionRT(returnUrl);
             }
 
             var observacionNormalizada = (observacion ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(observacionNormalizada))
             {
                 TempData["error"] = "Debe ingresar una observación para devolver la designación RT.";
-                return RedirectToAction("RevisarDesignaciones");
+                return RedirigirDespuesRevisionRT(returnUrl);
             }
 
             UsuarioDAO.RechazarDesignacionRT(id);
@@ -1810,7 +1917,8 @@ namespace CapaPresentacion.Controllers
                     var textoDevolucion = RtCorreoTextoHelper.GetTextoDevolucionRt(new Dictionary<string, string>
                     {
                         { "NOMBRE", usuario.NombreCompleto ?? string.Empty },
-                        { "USUARIO", usuario.CodigoUsuario ?? string.Empty }
+                        { "USUARIO", usuario.CodigoUsuario ?? string.Empty },
+                        { "MOTIVO", observacionNormalizada }
                     });
 
                     var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
@@ -1841,7 +1949,17 @@ namespace CapaPresentacion.Controllers
                     "UsuarioController");
             }
 
-                    TempData["msg"] = "Designación rechazada y devuelta para corrección." + detalleSincronizacion;
+            TempData["msg"] = "Designación rechazada y devuelta para corrección." + detalleSincronizacion;
+            return RedirigirDespuesRevisionRT(returnUrl);
+        }
+
+        private ActionResult RedirigirDespuesRevisionRT(string returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url != null && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
             return RedirectToAction("RevisarDesignaciones");
         }
 
@@ -1864,9 +1982,34 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ActivarUsuarioRT(int id)
         {
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            if (!string.Equals(usuario.EstadoDesignacionRT, "aceptado", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["error"] = "El usuario RT debe tener la designación aceptada antes de activarse.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            if (usuario.Activo)
+            {
+                TempData["msg"] = "El usuario RT ya está activo.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
             bool actualizado = UsuarioDAO.ActualizarEstadoActividad(id, true);
             if (actualizado)
+            {
+                LogBL.RegistrarInfo(
+                    "Activación RT manual confirmada por Coordinación. UsuarioId=" + id,
+                    "UsuarioController",
+                    ObtenerUsuarioSesionId());
                 TempData["msg"] = "Usuario activado correctamente.";
+            }
             else
                 TempData["error"] = "No se pudo activar el usuario.";
 

@@ -4,8 +4,8 @@ namespace CapaPresentacion.Models
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "El usuario o correo es obligatorio")]
-        [Display(Name = "Usuario o Correo")]
+        [Required(ErrorMessage = "El usuario es obligatorio")]
+        [Display(Name = "Usuario")]
         public string Usuario { get; set; }
 
         [Required(ErrorMessage = "La contraseña es obligatoria")]

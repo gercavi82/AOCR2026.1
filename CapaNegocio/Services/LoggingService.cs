@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Text;
 using System.Web;
@@ -52,21 +53,48 @@ namespace CapaNegocio.Services
 
         public LoggingService(string logDirectory = null)
         {
-            _logDirectory = logDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
+            _logDirectory = logDirectory ?? ResolverRutaLogsConfigurada();
             try
             {
                 EnsureDirectoryExists();
             }
-            catch (UnauthorizedAccessException)
-            {
-                // Fallback: usar TEMP si App_Data no tiene permisos de escritura
-                _logDirectory = Path.Combine(Path.GetTempPath(), "AOCR_Logs");
-                try { EnsureDirectoryExists(); } catch { /* logging no debe matar el arranque */ }
-            }
             catch (Exception)
             {
-                // logging no debe impedir el arranque de la aplicación
+                // Ruta configurada (ej. recurso de red) no disponible: fallback a App_Data\Logs local
+                _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
+                try
+                {
+                    EnsureDirectoryExists();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Fallback final: usar TEMP si App_Data tampoco tiene permisos de escritura
+                    _logDirectory = Path.Combine(Path.GetTempPath(), "AOCR_Logs");
+                    try { EnsureDirectoryExists(); } catch { /* logging no debe matar el arranque */ }
+                }
+                catch (Exception)
+                {
+                    // logging no debe impedir el arranque de la aplicación
+                }
             }
+        }
+
+        private static string ResolverRutaLogsConfigurada()
+        {
+            try
+            {
+                var raw = ConfigurationManager.AppSettings["AOCR_LogPath"];
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    return raw.Trim();
+                }
+            }
+            catch
+            {
+                // Continuar con la ruta local por defecto
+            }
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
         }
 
         private void EnsureDirectoryExists()

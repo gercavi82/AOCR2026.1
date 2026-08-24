@@ -14,17 +14,17 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 SELECT
-                    id AS Id,
+                    id::integer AS Id,
                     usuario_rt_id AS UsuarioRtId,
-                    compania_id AS CompaniaId,
+                    0 AS CompaniaId,
                     estado AS Estado,
                     declaracion_aceptada AS DeclaracionAceptada,
-                    declaracion_texto AS DeclaracionTexto,
-                    fecha_envio AS FechaEnvio,
-                    observacion_coordinador AS ObservacionCoordinador,
-                    created_at AS CreatedAt,
-                    updated_at AS UpdatedAt
-                FROM aocr_solicitud_rt
+                    COALESCE(observacion_actual, '') AS DeclaracionTexto,
+                    creado_en AS FechaEnvio,
+                    observacion_actual AS ObservacionCoordinador,
+                    creado_en AS CreatedAt,
+                    actualizado_en AS UpdatedAt
+                FROM django_aocr_registro_rt
                 WHERE usuario_rt_id = @usuarioId
                 ORDER BY id DESC
                 LIMIT 1;";
@@ -46,17 +46,17 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 SELECT
-                    id AS Id,
+                    id::integer AS Id,
                     usuario_rt_id AS UsuarioRtId,
-                    compania_id AS CompaniaId,
+                    0 AS CompaniaId,
                     estado AS Estado,
                     declaracion_aceptada AS DeclaracionAceptada,
-                    declaracion_texto AS DeclaracionTexto,
-                    fecha_envio AS FechaEnvio,
-                    observacion_coordinador AS ObservacionCoordinador,
-                    created_at AS CreatedAt,
-                    updated_at AS UpdatedAt
-                FROM aocr_solicitud_rt
+                    COALESCE(observacion_actual, '') AS DeclaracionTexto,
+                    creado_en AS FechaEnvio,
+                    observacion_actual AS ObservacionCoordinador,
+                    creado_en AS CreatedAt,
+                    actualizado_en AS UpdatedAt
+                FROM django_aocr_registro_rt
                 WHERE id = @id;";
 
             using (var cn = CrearConexion())
@@ -74,27 +74,12 @@ namespace CapaDatos.DAOs
 
         public CompaniaModel GetCompaniaById(int companiaId)
         {
-            const string sql = @"
-                SELECT
-                    id AS Id,
-                    razon_social AS RazonSocial,
-                    ruc AS Ruc,
-                    telefono AS Telefono,
-                    email_contacto AS EmailContacto,
-                    area_contable_json::text AS AreaContableJson,
-                    created_at AS CreatedAt
-                FROM aocr_compania
-                WHERE id = @id;";
-
-            using (var cn = CrearConexion())
-            {
-                return cn.QueryFirstOrDefault<CompaniaModel>(sql, new { id = companiaId });
-            }
+            return null;
         }
 
         public bool ExisteRuc(string ruc, int? companiaId)
         {
-            const string sql = @"SELECT id FROM aocr_compania WHERE LOWER(ruc) = LOWER(@ruc) LIMIT 1;";
+            const string sql = @"SELECT id FROM django_aocr_registro_rt WHERE LOWER(identificacion) = LOWER(@ruc) LIMIT 1;";
             using (var cn = CrearConexion())
             {
                 var id = cn.ExecuteScalar<int?>(sql, new { ruc });
@@ -104,7 +89,7 @@ namespace CapaDatos.DAOs
 
         public bool ExisteEmail(string email, int? companiaId)
         {
-            const string sql = @"SELECT id FROM aocr_compania WHERE LOWER(email_contacto) = LOWER(@email) LIMIT 1;";
+            const string sql = @"SELECT id FROM django_aocr_registro_rt WHERE LOWER(email) = LOWER(@email) LIMIT 1;";
             using (var cn = CrearConexion())
             {
                 var id = cn.ExecuteScalar<int?>(sql, new { email });
@@ -114,33 +99,18 @@ namespace CapaDatos.DAOs
 
         public int CreateCompania(CompaniaModel c)
         {
-            const string sql = @"
-                INSERT INTO aocr_compania
-                    (razon_social, ruc, telefono, email_contacto, area_contable_json, created_at)
-                VALUES
-                    (@RazonSocial, @Ruc, @Telefono, @EmailContacto, CAST(@AreaContableJson AS jsonb), NOW())
-                RETURNING id;";
-
-            using (var cn = CrearConexion())
-            {
-                return cn.ExecuteScalar<int>(sql, c);
-            }
+            throw new NotSupportedException("El modelo real de RT no tiene una tabla independiente de compañías.");
         }
 
         public int CreateCompaniaYSolicitudBorrador(int usuarioId, CompaniaModel c, string textoDeclaracion)
         {
-            const string sqlCompania = @"
-                INSERT INTO aocr_compania
-                    (razon_social, ruc, telefono, email_contacto, area_contable_json, created_at)
-                VALUES
-                    (@RazonSocial, @Ruc, @Telefono, @EmailContacto, CAST(@AreaContableJson AS jsonb), NOW())
-                RETURNING id;";
-
             const string sqlSolicitud = @"
-                INSERT INTO aocr_solicitud_rt
-                    (usuario_rt_id, compania_id, estado, declaracion_aceptada, declaracion_texto, created_at, updated_at)
+                INSERT INTO django_aocr_registro_rt
+                    (usuario_rt_id, compania, email, nombre, identificacion, estado,
+                     declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
                 VALUES
-                    (@usuarioId, @companiaId, 'BORRADOR', FALSE, @texto, NOW(), NOW())
+                    (@usuarioId, @RazonSocial, @EmailContacto, @RazonSocial, @Ruc,
+                     'BORRADOR', FALSE, @texto, NOW(), NOW())
                 RETURNING id;";
 
             using (var cn = CrearConexion())
@@ -148,39 +118,32 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 using (var tx = cn.BeginTransaction())
                 {
-                    var companiaId = cn.ExecuteScalar<int>(sqlCompania, c, tx);
-                    var solicitudId = cn.ExecuteScalar<int>(sqlSolicitud, new { usuarioId, companiaId, texto = textoDeclaracion }, tx);
+                    var solicitudId = cn.ExecuteScalar<long>(sqlSolicitud, new
+                    {
+                        usuarioId,
+                        c.RazonSocial,
+                        c.EmailContacto,
+                        c.Ruc,
+                        texto = textoDeclaracion
+                    }, tx);
                     tx.Commit();
-                    return solicitudId;
+                    return checked((int)solicitudId);
                 }
             }
         }
 
         public void UpdateCompania(int companiaId, CompaniaModel c)
         {
-            const string sql = @"
-                UPDATE aocr_compania
-                SET razon_social = @RazonSocial,
-                    ruc = @Ruc,
-                    telefono = @Telefono,
-                    email_contacto = @EmailContacto,
-                    area_contable_json = CAST(@AreaContableJson AS jsonb)
-                WHERE id = @Id;";
-
-            using (var cn = CrearConexion())
-            {
-                c.Id = companiaId;
-                cn.Execute(sql, c);
-            }
+            throw new NotSupportedException("El modelo real de RT guarda los datos de compañía en el expediente.");
         }
 
         public int CreateSolicitudBorrador(int usuarioId, int companiaId, string textoDeclaracion)
         {
             const string sql = @"
-                INSERT INTO aocr_solicitud_rt
-                    (usuario_rt_id, compania_id, estado, declaracion_aceptada, declaracion_texto, created_at, updated_at)
+                INSERT INTO django_aocr_registro_rt
+                    (usuario_rt_id, compania, estado, declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
                 VALUES
-                    (@usuarioId, @companiaId, 'BORRADOR', FALSE, @texto, NOW(), NOW())
+                    (@usuarioId, '', 'BORRADOR', FALSE, @texto, NOW(), NOW())
                 RETURNING id;";
 
             using (var cn = CrearConexion())
@@ -192,10 +155,10 @@ namespace CapaDatos.DAOs
         public void UpdateDeclaracionAceptada(int solicitudId, bool aceptada, string textoDeclaracion = null)
         {
             const string sql = @"
-                UPDATE aocr_solicitud_rt
+                UPDATE django_aocr_registro_rt
                 SET declaracion_aceptada = @aceptada,
-                    declaracion_texto = COALESCE(NULLIF(@textoDeclaracion, ''), declaracion_texto),
-                    updated_at = NOW()
+                    observacion_actual = COALESCE(NULLIF(@textoDeclaracion, ''), observacion_actual),
+                    actualizado_en = NOW()
                 WHERE id = @id;";
 
             using (var cn = CrearConexion())
@@ -207,10 +170,9 @@ namespace CapaDatos.DAOs
         public void UpdateEstadoEnviada(int solicitudId, DateTime fechaEnvio)
         {
             const string sql = @"
-                UPDATE aocr_solicitud_rt
+                UPDATE django_aocr_registro_rt
                 SET estado = 'ENVIADA',
-                    fecha_envio = @fechaEnvio,
-                    updated_at = NOW()
+                    actualizado_en = @fechaEnvio
                 WHERE id = @id;";
 
             using (var cn = CrearConexion())
@@ -222,17 +184,13 @@ namespace CapaDatos.DAOs
         public void UpdateEstado(int solicitudId, string estado, string observacionCoordinador = null, DateTime? fechaEnvio = null)
         {
             const string sql = @"
-                UPDATE aocr_solicitud_rt
+                UPDATE django_aocr_registro_rt
                 SET estado = @estado,
-                    observacion_coordinador = CASE
+                    observacion_actual = CASE
                         WHEN @actualizarObservacion THEN @observacionCoordinador
-                        ELSE observacion_coordinador
+                        ELSE observacion_actual
                     END,
-                    fecha_envio = CASE
-                        WHEN @fechaEnvio IS NULL THEN fecha_envio
-                        ELSE @fechaEnvio
-                    END,
-                    updated_at = NOW()
+                    actualizado_en = COALESCE(@fechaEnvio, actualizado_en)
                 WHERE id = @id;";
 
             using (var cn = CrearConexion())
@@ -248,13 +206,43 @@ namespace CapaDatos.DAOs
             }
         }
 
+        // Backfill para designaciones RT legacy que nunca generaron expediente en django_aocr_registro_rt.
+        public int CrearRegistroLegacyEnRevision(int usuarioId, string compania, string email, string nombre, string identificacion)
+        {
+            const string sql = @"
+                INSERT INTO django_aocr_registro_rt
+                    (usuario_rt_id, compania, email, nombre, identificacion, estado,
+                     declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
+                VALUES
+                    (@usuarioId, @compania, @email, @nombre, @identificacion, 'EN_REVISION_COORDINADOR', TRUE,
+                     'Expediente generado automaticamente para designacion RT legacy pendiente de asignacion de inspector.',
+                     NOW(), NOW())
+                RETURNING id;";
+
+            using (var cn = CrearConexion())
+            {
+                return cn.ExecuteScalar<int>(sql, new
+                {
+                    usuarioId,
+                    compania = compania ?? string.Empty,
+                    email = email ?? string.Empty,
+                    nombre = nombre ?? string.Empty,
+                    identificacion = identificacion ?? string.Empty
+                });
+            }
+        }
+
         public void InsertHistorialEstado(int solicitudId, string estado, int usuarioId, string motivo)
         {
             const string sql = @"
-                INSERT INTO aocr_solicitud_rt_historial
-                    (solicitud_rt_id, estado, motivo, usuario_id, created_at)
-                VALUES
-                    (@solicitudId, @estado, @motivo, @usuarioId, NOW());";
+                INSERT INTO django_aocr_registro_rt_observacion
+                    (rol_snapshot, observacion, tipo, estado_origen, estado_destino,
+                     creado_en, registro_id, usuario_id)
+                SELECT COALESCE(u.rol, 'SISTEMA'), @motivo, 'CAMBIO_ESTADO', r.estado,
+                       @estado, NOW(), r.id, NULLIF(@usuarioId, 0)
+                FROM django_aocr_registro_rt r
+                LEFT JOIN usuario u ON u.idusuario = @usuarioId
+                WHERE r.id = @solicitudId;";
 
             using (var cn = CrearConexion())
             {

@@ -309,6 +309,7 @@
     <Compile Include="DAOs\UsuarioAS400DAO.cs" />
     <Compile Include="DAOs\FacturacionAS400DAO.cs" />
     <Compile Include="DAOs\RTDao.cs" />
+    <Compile Include="DAOs\RTRevisionDao.cs" />
     <Compile Include="DAOs\RolDAO.cs" />
     <Compile Include="ConexionDAO.cs" />
     <Compile Include="DAOs\CertificadoDAO.cs" />

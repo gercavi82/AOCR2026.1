@@ -12,11 +12,15 @@ namespace CapaNegocio.Services
     {
         private readonly RTDao _rtDao = new RTDao();
         private readonly DocumentoRTDao _docDao = new DocumentoRTDao();
+        private readonly RTRevisionDao _revisionDao = new RTRevisionDao();
 
         public const string EstadoBorrador = "BORRADOR";
         public const string EstadoEnviadoLegacy = "ENVIADA";
         public const string EstadoEnviado = "ENVIADO";
         public const string EstadoEnRevisionCoordinador = "EN_REVISION_COORDINADOR";
+        public const string EstadoEnRevisionInspector = "EN_REVISION_INSPECTOR";
+        public const string EstadoPendienteAceptacionCoordinador = "PENDIENTE_ACEPTACION_COORDINADOR";
+        public const string EstadoRechazadaInspector = "RECHAZADA_INSPECTOR";
         public const string EstadoDevueltoConObservaciones = "DEVUELTO_CON_OBSERVACIONES";
         public const string EstadoAprobado = "APROBADO";
         public const string EstadoFirmado = "FIRMADO";
@@ -66,16 +70,37 @@ namespace CapaNegocio.Services
 
         public string NormalizarEstado(string estado)
         {
-            var estadoNormalizado = (estado ?? string.Empty).Trim().ToUpperInvariant();
-
+            var estadoNormalizado = (estado ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(estadoNormalizado))
             {
                 return EstadoBorrador;
             }
 
+            estadoNormalizado = estadoNormalizado.ToUpperInvariant();
+
+            // Normaliza alias y formatos legacy que se exponen en la UI o BD.
+            estadoNormalizado = estadoNormalizado.Replace(" ", "_").Replace("-", "_");
+            estadoNormalizado = estadoNormalizado.Replace("__", "_");
+            estadoNormalizado = estadoNormalizado.Trim('_');
+
             if (estadoNormalizado == EstadoEnviadoLegacy)
             {
                 return EstadoEnviado;
+            }
+
+            if (estadoNormalizado == "EN_REVISION_COORDINADOR_FINAL")
+            {
+                return EstadoEnRevisionCoordinador;
+            }
+
+            if (estadoNormalizado == "PENDIENTE_ACEPTACION_COORDINADOR")
+            {
+                return EstadoPendienteAceptacionCoordinador;
+            }
+
+            if (estadoNormalizado == "DEVUELTO_CON_OBSERVACIONES" || estadoNormalizado == "DEVUELTO_RT_OBSERVACIONES")
+            {
+                return EstadoDevueltoConObservaciones;
             }
 
             return estadoNormalizado;
@@ -232,6 +257,62 @@ namespace CapaNegocio.Services
             _rtDao.UpdateEstado(solicitudId, EstadoEnRevisionCoordinador, null, fechaEnvio);
             _rtDao.InsertHistorialEstado(solicitudId, EstadoEnviado, usuarioId, null);
             _rtDao.InsertHistorialEstado(solicitudId, EstadoEnRevisionCoordinador, usuarioId, null);
+        }
+
+        // Backfill idempotente: repara designaciones RT legacy (aceptadas por el flujo antiguo,
+        // sin expediente en django_aocr_registro_rt) para habilitar la asignación de inspector.
+        public SolicitudRTModel AsegurarSolicitudLegacyEnRevision(int usuarioId, string compania, string email, string nombre, string identificacion)
+        {
+            var existente = _rtDao.GetSolicitudByUsuario(usuarioId);
+            if (existente != null)
+            {
+                return existente;
+            }
+
+            var nuevoId = _rtDao.CrearRegistroLegacyEnRevision(usuarioId, compania, email, nombre, identificacion);
+            _rtDao.InsertHistorialEstado(nuevoId, EstadoEnRevisionCoordinador, usuarioId, "Expediente RT generado automáticamente desde designación legacy pendiente.");
+            return _rtDao.GetSolicitudById(nuevoId);
+        }
+
+        public void AsignarInspector(int solicitudId, string inspectorUsuario, int coordinadorUsuarioId)
+        {
+            var solicitud = _rtDao.GetSolicitudById(solicitudId);
+            if (solicitud == null)
+                throw new InvalidOperationException("Solicitud RT no encontrada.");
+
+            if (!string.Equals(NormalizarEstado(solicitud.Estado), EstadoEnRevisionCoordinador, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("La solicitud RT no está pendiente de asignación al Inspector.");
+
+            if (string.IsNullOrWhiteSpace(inspectorUsuario) || coordinadorUsuarioId <= 0)
+                throw new InvalidOperationException("Inspector o Coordinador inválido.");
+
+            _revisionDao.Asignar(solicitudId, inspectorUsuario.Trim(), coordinadorUsuarioId);
+            _rtDao.UpdateEstado(solicitudId, EstadoEnRevisionInspector, null);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoEnRevisionInspector, coordinadorUsuarioId, "Inspector asignado: " + inspectorUsuario.Trim());
+        }
+
+        public void RegistrarResultadoInspector(int solicitudId, string inspectorUsuario, int inspectorUsuarioId, string resultado, string observacion)
+        {
+            var resultadoNormalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant();
+            if (resultadoNormalizado != "CONFORME" && resultadoNormalizado != "OBSERVADA" && resultadoNormalizado != "RECHAZADA")
+                throw new InvalidOperationException("Resultado de Inspector inválido.");
+
+            if (!_revisionDao.RegistrarResultado(solicitudId, inspectorUsuario, resultadoNormalizado, observacion))
+                throw new InvalidOperationException("La solicitud RT no está asignada a este Inspector o ya fue revisada.");
+
+            var estadoNuevo = resultadoNormalizado == "CONFORME"
+                ? EstadoPendienteAceptacionCoordinador
+                : resultadoNormalizado == "RECHAZADA"
+                    ? EstadoRechazadaInspector
+                    : EstadoDevueltoConObservaciones;
+            _rtDao.UpdateEstado(solicitudId, estadoNuevo, observacion);
+            _rtDao.InsertHistorialEstado(solicitudId, estadoNuevo, inspectorUsuarioId, "Resultado Inspector: " + resultadoNormalizado);
+        }
+
+        public bool TieneResultadoConforme(int solicitudId)
+        {
+            var revision = _revisionDao.ObtenerPorSolicitud(solicitudId);
+            return revision != null && string.Equals(revision.Resultado, "CONFORME", StringComparison.OrdinalIgnoreCase);
         }
 
         public void DevolverConObservaciones(int solicitudId, int usuarioId, string observacion)

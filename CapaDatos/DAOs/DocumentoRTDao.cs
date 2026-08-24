@@ -14,18 +14,17 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 SELECT
                     id AS Id,
-                    solicitud_rt_id AS SolicitudRtId,
-                    tipo AS Tipo,
-                    nombre_archivo AS NombreArchivo,
-                    ruta_storage AS RutaStorage,
-                    tamano_bytes AS TamanoBytes,
-                    hash_sha256 AS HashSha256,
-                    created_at AS CreatedAt
-                FROM aocr_documento
-                WHERE solicitud_rt_id = @solicitudId
-                  AND tipo = 'DESIGNACION_RT'
-                ORDER BY id DESC
-                LIMIT 1;";
+                                        id::integer AS SolicitudRtId,
+                                        'DESIGNACION_RT' AS Tipo,
+                                        formulario_designacion_nombre_original AS NombreArchivo,
+                                        formulario_designacion_archivo AS RutaStorage,
+                                        NULL::bigint AS TamanoBytes,
+                                        formulario_designacion_hash AS HashSha256,
+                                        formulario_designacion_fecha_carga AS CreatedAt
+                                FROM django_aocr_registro_rt
+                                WHERE id = @solicitudId
+                                    AND formulario_designacion_archivo IS NOT NULL
+                                LIMIT 1;";
 
             using (var cn = CrearConexion())
             {
@@ -36,30 +35,18 @@ namespace CapaDatos.DAOs
         public void UpsertDocumentoDesignacion(int solicitudId, DocumentoModel doc)
         {
             const string sqlUpdate = @"
-                UPDATE aocr_documento
-                SET nombre_archivo = @NombreArchivo,
-                    ruta_storage = @RutaStorage,
-                    tamano_bytes = @TamanoBytes,
-                    hash_sha256 = @HashSha256,
-                    created_by = COALESCE(@CreatedBy, created_by),
-                    created_at = NOW()
-                WHERE solicitud_rt_id = @SolicitudRtId
-                  AND tipo = 'DESIGNACION_RT';";
-
-            const string sqlInsert = @"
-                INSERT INTO aocr_documento
-                    (solicitud_rt_id, tipo, nombre_archivo, ruta_storage, tamano_bytes, hash_sha256, created_by, created_at)
-                VALUES
-                    (@SolicitudRtId, 'DESIGNACION_RT', @NombreArchivo, @RutaStorage, @TamanoBytes, @HashSha256, COALESCE(@CreatedBy, 'sistema'), NOW());";
+                UPDATE django_aocr_registro_rt
+                SET formulario_designacion_archivo = @RutaStorage,
+                    formulario_designacion_nombre_original = @NombreArchivo,
+                    formulario_designacion_hash = @HashSha256,
+                    formulario_designacion_fecha_carga = NOW(),
+                    actualizado_en = NOW()
+                WHERE id = @SolicitudRtId;";
 
             using (var cn = CrearConexion())
             {
                 doc.SolicitudRtId = solicitudId;
-                var rows = cn.Execute(sqlUpdate, doc);
-                if (rows == 0)
-                {
-                    cn.Execute(sqlInsert, doc);
-                }
+                cn.Execute(sqlUpdate, doc);
             }
         }
     }

@@ -439,6 +439,7 @@
                             {
                                 var chipTipo = item.TipoUsuario == "Interno" ? "auc-chip--interno" : (item.TipoUsuario == "Externo" ? "auc-chip--externo" : "auc-chip--sinrol");
                                 var familiaPrincipal = ObtenerFamiliaDesdeRol(item.RolesTexto ?? item.RolFallback ?? "");
+                                var esRolRt = string.Equals(familiaPrincipal, "Solicitante / RT", StringComparison.OrdinalIgnoreCase);
                                 <tr>
                                     <td>
                                         <div class="auc-user-cell">
@@ -479,6 +480,33 @@
                                             <a class="auc-action-btn auc-action-btn--danger" href="@Url.Action("TransferirEliminar", "AdminUsuarios", new { id = item.IdUsuario })" title="Transferir / desactivar">
                                                 <i class="fas fa-user-times"></i>
                                             </a>
+
+                                            @if (esRolRt)
+                                            {
+                                                using (Html.BeginForm("AceptarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@item.IdUsuario" />
+                                                    <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+                                                    <button type="submit"
+                                                            class="auc-action-btn auc-action-btn--info"
+                                                            title="Aceptar designación RT"
+                                                            onclick="return confirm('Se activará el RT y se enviará correo con usuario y clave temporal. ¿Desea continuar?');">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
+                                                }
+
+                                                <button type="button"
+                                                        class="auc-action-btn auc-action-btn--warn"
+                                                        title="Rechazar designación RT"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#modalRechazarRtDesdeUsuarios"
+                                                        data-usuario-id="@item.IdUsuario"
+                                                        data-usuario-codigo="@item.CodigoUsuario"
+                                                        data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())">
+                                                    <i class="fas fa-user-minus"></i>
+                                                </button>
+                                            }
 
                                             @using (Html.BeginForm("ReenviarCredenciales", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline", data_confirm = "Se generará una nueva contraseña temporal y se reenviará por correo. ¿Desea continuar?" }))
                                             {
@@ -560,6 +588,51 @@
             <p>Próximamente podrá revisar el registro de acciones y cambios realizados por los usuarios del sistema.</p>
         </div>
     }
+</div>
+
+@* ══════ MODAL: Rechazar RT desde Gestión Usuarios ══════ *@
+<div class="modal fade" id="modalRechazarRtDesdeUsuarios" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+            <div class="modal-header" style="background:#fff7ed;border-bottom:1px solid #fed7aa;padding:12px 16px;">
+                <h5 class="modal-title" style="font-size:15px;font-weight:800;color:#9a3412;">
+                    <i class="fas fa-user-minus mr-2"></i> Rechazar designación RT
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div class="mb-2" style="font-size:13px;"><strong>Usuario:</strong> <span id="modalRtRechazoCodigo"></span></div>
+                <div class="mb-3" style="font-size:13px;"><strong>Nombre:</strong> <span id="modalRtRechazoNombre"></span></div>
+
+                @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post, new { id = "formRechazarRtDesdeUsuarios" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="modalRtRechazoId" value="" />
+                    <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+
+                    <label for="modalRtRechazoMotivo" style="font-size:13px;font-weight:700;color:#334155;display:block;margin-bottom:6px;">
+                        Motivo de rechazo <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="observacion"
+                              id="modalRtRechazoMotivo"
+                              class="form-control"
+                              rows="4"
+                              maxlength="2000"
+                              required
+                              placeholder="Ingrese el motivo del rechazo..."
+                              style="border-radius:8px;font-size:13px;"></textarea>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Mínimo 3 caracteres.</div>
+
+                    <div class="modal-footer" style="padding:10px 0 0;border-top:1px solid #e2e8f0;margin-top:14px;">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning btn-sm" id="btnConfirmarRechazoRtDesdeUsuarios">
+                            <i class="fas fa-paper-plane mr-1"></i> Rechazar RT
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @* ══════ MODAL: Eliminar permanentemente ══════ *@
@@ -713,6 +786,35 @@
                 var elId = document.getElementById('modalEliminarId');
                 if (elId) elId.value = '';
             });
+        }
+
+        /* ── RT reject modal ── */
+        var modalRechazoRt = document.getElementById('modalRechazarRtDesdeUsuarios');
+        if (modalRechazoRt) {
+            modalRechazoRt.addEventListener('show.bs.modal', function (e) {
+                var src = e.relatedTarget;
+                var idEl = document.getElementById('modalRtRechazoId');
+                var codigoEl = document.getElementById('modalRtRechazoCodigo');
+                var nombreEl = document.getElementById('modalRtRechazoNombre');
+                var motivoEl = document.getElementById('modalRtRechazoMotivo');
+
+                if (idEl) idEl.value = src.getAttribute('data-usuario-id') || '';
+                if (codigoEl) codigoEl.textContent = src.getAttribute('data-usuario-codigo') || '';
+                if (nombreEl) nombreEl.textContent = src.getAttribute('data-usuario-nombre') || '';
+                if (motivoEl) motivoEl.value = '';
+            });
+
+            var formRechazo = document.getElementById('formRechazarRtDesdeUsuarios');
+            if (formRechazo) {
+                formRechazo.addEventListener('submit', function (e) {
+                    var motivo = (document.getElementById('modalRtRechazoMotivo').value || '').trim();
+                    if (motivo.length < 3) {
+                        e.preventDefault();
+                        alert('Debe ingresar un motivo de al menos 3 caracteres.');
+                        return false;
+                    }
+                });
+            }
         }
     })();
     </script>

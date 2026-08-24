@@ -178,7 +178,10 @@ namespace CapaNegocio
             // Este usuario debe estar siempre activo y actuar como 'superadministrador'.
             var alwaysSuperAdminEmails = new[] { "german.cajas@aviacioncivil.gob.ec" };
             var usuarioEmail = usuario?.Email; // copiar a local para evitar capturar el parametro out en lambdas
+            var tieneExpedienteRt = !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT)
+                || !string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal);
             if (!string.IsNullOrWhiteSpace(usuarioEmail) &&
+                !tieneExpedienteRt &&
                 Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuarioEmail, StringComparison.OrdinalIgnoreCase)))
             {
                 // Forzamos activo en memoria y persistimos el estado en la BD por seguridad.

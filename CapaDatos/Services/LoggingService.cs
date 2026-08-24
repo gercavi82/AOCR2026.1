@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Text;
 using System.Web;
@@ -51,23 +52,43 @@ namespace CapaDatos.Services
 
         public LoggingService(string logDirectory = null)
         {
-            _logDirectory = logDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
-            EnsureDirectoryExists();
+            _logDirectory = logDirectory ?? ResolverRutaLogsConfigurada();
+            try
+            {
+                EnsureDirectoryExists();
+            }
+            catch (Exception ex)
+            {
+                // Ruta configurada (ej. recurso de red) no disponible: fallback a App_Data\Logs local
+                System.Diagnostics.Debug.WriteLine($"No se pudo usar el directorio de logs {_logDirectory}: {ex.Message}");
+                _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
+                try { EnsureDirectoryExists(); } catch { /* logging no debe impedir el arranque */ }
+            }
+        }
+
+        private static string ResolverRutaLogsConfigurada()
+        {
+            try
+            {
+                var raw = ConfigurationManager.AppSettings["AOCR_LogPath"];
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    return raw.Trim();
+                }
+            }
+            catch
+            {
+                // Continuar con la ruta local por defecto
+            }
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs");
         }
 
         private void EnsureDirectoryExists()
         {
             if (!Directory.Exists(_logDirectory))
             {
-                try 
-                { 
-                    Directory.CreateDirectory(_logDirectory); 
-                } 
-                catch (Exception ex) 
-                { 
-                    System.Diagnostics.Debug.WriteLine($"No se pudo crear directorio de logs {_logDirectory}: {ex.Message}");
-                    // Continuar - los logs irán solo a Debug
-                }
+                Directory.CreateDirectory(_logDirectory);
             }
         }
 
