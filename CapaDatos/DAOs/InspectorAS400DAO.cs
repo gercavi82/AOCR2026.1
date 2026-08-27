@@ -105,68 +105,74 @@ namespace CapaDatos.DAOs
             {
                 return ExecuteWithConnection(conn =>
                 {
-                    var sql = new StringBuilder();
-                    sql.Append("SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP ");
-                    sql.Append("FROM ").Append(_schema).Append('.').Append(_tablaInspectores).Append(' ');
-                    sql.Append("WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? ");
-
-                    if (esNumerico)
+                    var resultados = EjecutarBusquedaPorCedulaONombre(
+                        conn, valorBuscado, esNumerico, maxResultados, soloActivos: true);
+                    if (resultados.Count == 0)
                     {
-                        sql.Append("AND TRIM(OPICED) = ? ");
-                    }
-                    else
-                    {
-                        sql.Append("AND UPPER(OPINO2) LIKE ? ");
+                        _logger.LogWarning("[InspectoresDAO-Buscar] Sin resultados con estado AC. Se ejecuta fallback sin filtro de estado.");
+                        resultados = EjecutarBusquedaPorCedulaONombre(
+                            conn, valorBuscado, esNumerico, maxResultados, soloActivos: false);
                     }
 
-                    sql.Append("ORDER BY OPINO2 ");
-                    sql.Append("FETCH FIRST ").Append(maxResultados).Append(" ROWS ONLY");
-
-                    _logger.LogInfo("[InspectoresDAO-Buscar] Query: " + sql.ToString());
-
-                    using (var cmd = CreateCommand(conn, sql.ToString()))
-                    {
-                        AddParameter(cmd, "AC", OdbcType.VarChar);
-
-                        if (esNumerico)
-                        {
-                            AddParameter(cmd, valorBuscado, OdbcType.VarChar);
-                        }
-                        else
-                        {
-                            AddParameter(cmd, "%" + valorBuscado + "%", OdbcType.VarChar);
-                        }
-
-                        var resultados = new List<InspectorAs400Record>();
-                        using (var reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                var item = new InspectorAs400Record
-                                {
-                                    Cedula = GetString(reader, 0),
-                                    NombreCompleto = GetString(reader, 1),
-                                    Estado = GetString(reader, 2),
-                                    Tipo = GetString(reader, 3)
-                                };
-
-                                if (!string.IsNullOrWhiteSpace(item.Cedula) ||
-                                    !string.IsNullOrWhiteSpace(item.NombreCompleto))
-                                {
-                                    resultados.Add(item);
-                                }
-                            }
-                        }
-
-                        _logger.LogInfo("[InspectoresDAO-Buscar] Resultados: " + resultados.Count);
-                        return resultados;
-                    }
+                    _logger.LogInfo("[InspectoresDAO-Buscar] Resultados finales: " + resultados.Count);
+                    return resultados;
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError("[InspectoresDAO-Buscar] Error: " + ex);
                 return new List<InspectorAs400Record>();
+            }
+        }
+
+        private List<InspectorAs400Record> EjecutarBusquedaPorCedulaONombre(
+            OdbcConnection conn,
+            string valorBuscado,
+            bool esNumerico,
+            int maxResultados,
+            bool soloActivos)
+        {
+            var sql = new StringBuilder();
+            sql.Append("SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP ");
+            sql.Append("FROM ").Append(_schema).Append('.').Append(_tablaInspectores).Append(' ');
+            sql.Append("WHERE 1 = 1 ");
+            if (soloActivos)
+            {
+                sql.Append("AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? ");
+            }
+
+            sql.Append(esNumerico ? "AND TRIM(OPICED) = ? " : "AND UPPER(OPINO2) LIKE ? ");
+            sql.Append("ORDER BY OPINO2 FETCH FIRST ").Append(maxResultados).Append(" ROWS ONLY");
+            _logger.LogInfo("[InspectoresDAO-Buscar] Query (soloActivos=" + soloActivos + "): " + sql);
+
+            using (var cmd = CreateCommand(conn, sql.ToString()))
+            {
+                if (soloActivos)
+                {
+                    AddParameter(cmd, "AC", OdbcType.VarChar);
+                }
+                AddParameter(cmd, esNumerico ? valorBuscado : "%" + valorBuscado + "%", OdbcType.VarChar);
+
+                var resultados = new List<InspectorAs400Record>();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var item = new InspectorAs400Record
+                        {
+                            Cedula = GetString(reader, 0),
+                            NombreCompleto = GetString(reader, 1),
+                            Estado = GetString(reader, 2),
+                            Tipo = GetString(reader, 3)
+                        };
+                        if (!string.IsNullOrWhiteSpace(item.Cedula) || !string.IsNullOrWhiteSpace(item.NombreCompleto))
+                        {
+                            resultados.Add(item);
+                        }
+                    }
+                }
+
+                return resultados;
             }
         }
 

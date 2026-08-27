@@ -379,7 +379,8 @@ namespace CapaPresentacion.Controllers
             var est = _dao.ObtenerEstadisticas(idUsuarioFiltro);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
 
-            return View(ordenes);
+            var modelo = ordenes ?? new List<OrdenRecaudacion>();
+            return View("Obligatoria", modelo);
         }
 
         private void CargarContinuidadOrdenUsuario(int idUsuario)
@@ -2328,7 +2329,13 @@ namespace CapaPresentacion.Controllers
                 })
                 .Sum(p => p.Monto);
             var saldoPendienteReal = Math.Max(orden.Total - totalPagadoValidado, 0m);
-            if (saldoPendienteReal > 0m && montoValue > saldoPendienteReal)
+            if (saldoPendienteReal <= 0m)
+            {
+                TempData["Error"] = "La orden no tiene saldo pendiente. No se puede registrar otro comprobante de pago.";
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+            if (montoValue > saldoPendienteReal)
             {
                 TempData["Error"] = "El monto no puede exceder el saldo pendiente de $" + saldoPendienteReal.ToString("#,##0.00", new System.Globalization.CultureInfo("es-EC")) + ".";
                 return RedirectToAction("Detalles", new { id = id });

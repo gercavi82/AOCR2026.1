@@ -49,7 +49,9 @@
         var e = (p.Estado ?? "").Trim().ToUpperInvariant();
         return e == "APROBADO" || e == "VALIDADO";
     }).Sum(p => p.Monto);
-    var saldoPendiente = orden.Total - totalPagado;
+    // El saldo nunca puede exponerse como negativo cuando existen pagos duplicados
+    // o un valor aprobado superior al total de la orden.
+    var saldoPendiente = Math.Max(orden.Total - totalPagado, 0m);
     var tieneSaldoPendiente = saldoPendiente > 0 && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
     var facturaGenerada = ordenCerradaPostAprobacion || estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
@@ -576,7 +578,7 @@
 
 <!-- Modal para registrar pago -->
 <div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             @using (Html.BeginForm("RegistrarPago", "OrdenRecaudacion", FormMethod.Post, new { enctype = "multipart/form-data" }))
             {

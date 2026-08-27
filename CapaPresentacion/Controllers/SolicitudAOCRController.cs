@@ -4608,9 +4608,33 @@ namespace CapaPresentacion.Controllers
 
         private bool UsuarioPuedeAsignarInspector()
         {
-            return User.IsInRole("Administrador")
-                || User.IsInRole("Coordinador")
-                || User.IsInRole("CoordinadorInspecciones");
+            if (User == null)
+            {
+                return false;
+            }
+
+            if (User.IsInRole("Administrador"))
+            {
+                return true;
+            }
+
+            var rolesSesion = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+            var rolesEfectivos = RoleGroupingHelper.BuildUnifiedRoles(rolesSesion);
+
+            return UsuarioEsCoordinacionPrincipal()
+                || rolesEfectivos.Any(role => RoleGroupingHelper.IsCoordinacion(role));
+        }
+
+        private bool UsuarioEsCoordinacionPrincipal()
+        {
+            if (User == null)
+            {
+                return false;
+            }
+
+            return User.IsInRole("Coordinador")
+                || User.IsInRole("CoordinadorInspecciones")
+                || User.IsInRole("Coordinacion");
         }
 
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
@@ -5344,7 +5368,7 @@ namespace CapaPresentacion.Controllers
             ViewBag.RevisionDocumentalCoordinador = revisionCoordinador;
             if (revisionCoordinador != null
                 && string.Equals(revisionCoordinador.Estado, CapaDatos.Models.EstadoRevisionDocumentalCoordinador.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion") || User.IsInRole("Administrador")))
+                && (UsuarioEsCoordinacionPrincipal() || User.IsInRole("Administrador")))
             {
                 ViewBag.InspectoresRevisionCoordinador = UsuarioInternoRTBL.ListarInspectoresAsignables(null)
                     ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
@@ -5524,7 +5548,8 @@ namespace CapaPresentacion.Controllers
                 documentosRevision,
                 revisiones,
                 observacion,
-                solicitud.TipoSolicitud);
+                solicitud.TipoSolicitud,
+                flujoCoordinador != null && flujoCoordinador.InspectorOriginalId.GetValueOrDefault() > 0);
             var documentosAceptados = documentosRevision.Count(d => d != null && d.CodigoDocumento > 0 && ObtenerDecisionRevisionDocumentalLog(d, revisiones) == "ACEPTADO");
             _logger.LogInfo(
                 "[FirmarAceptacionDocumental] Validacion. SolicitudId=" + id +
@@ -5614,7 +5639,13 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var solicitudActualizada = solicitudPostCambio ?? solicitud;
-                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "REVISION_FINAL_COORDINACION_REGISTRADA", firmaPlan.ObservacionEstado);
+                var inspeccionNotificacion = (_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>())
+                    .OrderByDescending(i => i.CodigoInspeccion)
+                    .FirstOrDefault();
+                _solicitudAocrCorreoService.NotificarAceptacionInspeccion(
+                    solicitudActualizada,
+                    inspeccionNotificacion,
+                    "REVISION_COORDINACION_" + id);
             }
             catch (Exception exCorreo)
             {
@@ -5754,9 +5785,7 @@ namespace CapaPresentacion.Controllers
             var esCoordinacion = contextoBandeja.EsAdministrador
                 || contextoBandeja.EsCoordinacion
                 || contextoBandeja.EsDireccion
-                || User.IsInRole("Coordinador")
-                || User.IsInRole("CoordinadorInspecciones")
-                || User.IsInRole("Coordinacion");
+                || UsuarioEsCoordinacionPrincipal();
             var esInspectorRelacionadoFlujo = flujo != null && usuarioId > 0
                 && (flujo.InspectorOriginalId.GetValueOrDefault() == usuarioId
                     || flujo.InspectorConfirmadoId.GetValueOrDefault() == usuarioId);
@@ -5819,7 +5848,7 @@ namespace CapaPresentacion.Controllers
             var esPropietario = usuarioActualId > 0 && solicitud.CodigoUsuario == usuarioActualId;
             var puedeDescargar = esPropietario
                 || EsAdmin()
-                || (User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones")));
+                || (User != null && UsuarioEsCoordinacionPrincipal());
             if (!puedeDescargar)
             {
                 return new HttpStatusCodeResult(403, "No autorizado para descargar la aceptación documental.");
@@ -5902,8 +5931,7 @@ namespace CapaPresentacion.Controllers
                     || User.IsInRole("Direccion")
                     || User.IsInRole("DirectorGeneral")
                     || User.IsInRole("JefaturaTecnica")
-                    || User.IsInRole("Coordinador")
-                    || User.IsInRole("CoordinadorInspecciones")));
+                    || UsuarioEsCoordinacionPrincipal()));
 
             if (!esPropietario && !esUsuarioInterno)
             {
@@ -7702,7 +7730,7 @@ namespace CapaPresentacion.Controllers
 
             var usuarioActualId = ObtenerUsuarioActualId();
             var esAdministrador = User != null && User.IsInRole("Administrador");
-            var esCoordinacion = User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
+            var esCoordinacion = UsuarioEsCoordinacionPrincipal();
             var esPropietario = solicitud != null && usuarioActualId > 0 && solicitud.CodigoUsuario == usuarioActualId;
             var esInspectorAsignado = usuarioActualId > 0 && (inspeccionesSolicitud ?? Enumerable.Empty<Inspeccion>())
                 .Any(i => i != null && i.CodigoInspector.HasValue && i.CodigoInspector.Value == usuarioActualId);

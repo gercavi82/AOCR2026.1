@@ -16,6 +16,7 @@
         && string.IsNullOrWhiteSpace(u.RutaDocumentoLegal)) : 0;
     var enRevisionKpi = Model != null ? Model.Count(u => u != null
         && (u.EstadoSolicitudRT ?? "").Trim().ToUpperInvariant() == "EN_REVISION_COORDINADOR") : 0;
+    var puedeEliminarUsuarios = User != null && User.IsInRole("Administrador");
 }
 
 <div class="aocr-rt-users-page rt-users-shell" data-module="rt-users-admin">
@@ -338,6 +339,8 @@
                                             }
                                         }
 
+                                        if (puedeEliminarUsuarios)
+                                        {
                                         <button type="button"
                                                 class="rt-action-btn rt-action-btn--danger"
                                                 title="@(puedeEliminar ? "Eliminar usuario" : "No se puede eliminar (tiene información relacionada)")"
@@ -349,6 +352,7 @@
                                                 data-puede-eliminar="@(puedeEliminar ? "true" : "false")">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -472,6 +476,8 @@
 </div>
 
 @* ══════ MODAL: Eliminar RT ══════ *@
+@if (puedeEliminarUsuarios)
+{
 <div class="modal fade" id="modalEliminarRt" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-danger" style="border-radius:14px;overflow:hidden;">
@@ -506,6 +512,7 @@
         </div>
     </div>
 </div>
+}
 
 @section Styles {
     <link rel="stylesheet" href="@Url.Content("~/Content/css/rt-users-admin.css")?v=20260728" />

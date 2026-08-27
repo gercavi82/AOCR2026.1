@@ -141,6 +141,15 @@ namespace CapaPresentacion.Infrastructure
             string loginUsado;
             if (!TryResolveAuthenticatedUser(httpContext, out usuario, out roles, out loginUsado))
             {
+                if (TryRestoreForcedInstitutionalSession(
+                    httpContext,
+                    session,
+                    ticketRoleData,
+                    selectedRoleHint))
+                {
+                    return AuthenticatedSessionBootstrapStatus.Restored;
+                }
+
                 return AuthenticatedSessionBootstrapStatus.Failed;
             }
 
@@ -163,6 +172,53 @@ namespace CapaPresentacion.Infrastructure
             }
 
             return AuthenticatedSessionBootstrapStatus.Unchanged;
+        }
+
+        private static bool TryRestoreForcedInstitutionalSession(
+            HttpContextBase httpContext,
+            HttpSessionStateBase session,
+            AuthTicketRoleData ticketRoleData,
+            string selectedRoleHint)
+        {
+            if (httpContext == null || session == null || httpContext.User == null ||
+                httpContext.User.Identity == null || !httpContext.User.Identity.IsAuthenticated)
+            {
+                return false;
+            }
+
+            var login = (httpContext.User.Identity.Name ?? string.Empty).Trim();
+            if (!RoleGroupingHelper.IsForcedCoordinacionUser(login))
+            {
+                return false;
+            }
+
+            var rolesRaw = ObtenerRolesSesion(session)
+                .Concat(ticketRoleData != null ? ticketRoleData.Roles : Array.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
+            if (!rolesUnificados.Contains(RoleGroupingHelper.Coordinacion, StringComparer.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            session["CodigoUsuario"] = login;
+            session["NombreUsuario"] = login;
+            session["RolesRaw"] = rolesRaw;
+            session["Roles"] = rolesUnificados;
+            session["Rol"] = ResolveSelectedRole(rolesUnificados, session["Rol"] as string, selectedRoleHint);
+            session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
+            session["LastActivity"] = DateTime.Now;
+
+            LogRolActivo(
+                "RESTAURADO_USUARIO_INSTITUCIONAL",
+                httpContext,
+                session,
+                "Se restauraron el codigo visible y los roles firmados de la cuenta institucional.");
+
+            return true;
         }
 
         private static bool HasSessionBaseline(HttpSessionStateBase session)

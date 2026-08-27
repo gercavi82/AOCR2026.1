@@ -17,5 +17,14 @@ namespace AOCR.Tests.Unit
             var destino = RevisionDocumentalService.ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud);
             Assert.AreEqual(destinoEsperado, destino);
         }
+
+        [DataTestMethod]
+        [DataRow(1)]
+        [DataRow(2)]
+        public void ResolverEstadoDestinoFirmaAceptacionDocumental_ConInspectorAsignado_DebeContinuarEnInspeccion(int tipoSolicitud)
+        {
+            var destino = RevisionDocumentalService.ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud, true);
+            Assert.AreEqual(EstadoSolicitud.EnInspeccion, destino);
+        }
     }
 }

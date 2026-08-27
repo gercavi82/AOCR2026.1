@@ -13,6 +13,7 @@ namespace AOCR.Tests.Unit
         [DataRow("ENVIADO_COORDINADOR")]
         [DataRow("PENDIENTE_ASIGNACION")]
         [DataRow("PENDIENTE_ASIGNACION_TECNICA")]
+        [DataRow("PENDIENTE_ASIGNACION_INSPECTOR")]
         [DataRow("DOCUMENTACION_COMPLETA")]
         [DataRow("ACEPTACION_DOCUMENTAL")]
         public void EstadoPermiteAsignacionInicial_DebeIncluirEstadosDeCoordinacion(string estado)
@@ -49,6 +50,15 @@ namespace AOCR.Tests.Unit
         {
             var sql = EstadoSolicitudSql.ExpresionTieneInspectorEfectivo("s", new string[0], new string[0]);
             Assert.AreEqual("FALSE", sql);
+        }
+
+        [TestMethod]
+        public void CanonicalExpression_DebeReconocerEstadoPersistidoPendienteAsignacionInspector()
+        {
+            var sql = EstadoSolicitudSql.CanonicalExpression("s.estado");
+
+            StringAssert.Contains(sql, "'PENDIENTE ASIGNACION INSPECTOR'");
+            StringAssert.Contains(sql, "THEN 'PENDIENTE ASIGNACION RT'");
         }
     }
 }

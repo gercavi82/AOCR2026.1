@@ -10,6 +10,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaPresentacion.Filters;
 using CapaPresentacion.Helpers;
@@ -476,6 +477,10 @@ namespace CapaPresentacion.Controllers
                     catch (Exception ex)
                     {
                         Trace.TraceError("[REV_DOC][OFICIO_GENERAR_ERROR] SolicitudId=" + solicitud.CodigoSolicitud + "; Error=" + ex);
+                        LogBL.RegistrarError(
+                            "[REV_DOC][OFICIO_GENERAR_ERROR] SolicitudId=" + solicitud.CodigoSolicitud,
+                            ex.ToString(),
+                            "RevisionDocumentalController");
                         return JsonRevisionError(500, "No se pudo generar el oficio institucional. La revision no fue habilitada.", solicitud.CodigoSolicitud, ex.Message);
                     }
                 }
@@ -604,12 +609,16 @@ namespace CapaPresentacion.Controllers
                 throw new InvalidOperationException("El motor PDF no genero contenido.");
             }
 
-            var carpetaRelativa = "~/App_Data/Documentos/RevisionDocumental/" + solicitud.CodigoSolicitud;
-            var carpetaFisica = Server.MapPath(carpetaRelativa);
+            // Persistir mediante la raiz centralizada. En produccion puede ser una ruta
+            // compartida y no necesariamente el App_Data fisico del sitio IIS.
+            var carpetaInterna = Path.Combine("Documentos", "RevisionDocumental", solicitud.CodigoSolicitud.ToString());
+            var baseFisica = FileStorageHelper.GetPhysicalBasePath(null);
+            var carpetaFisica = Path.Combine(baseFisica, carpetaInterna);
             Directory.CreateDirectory(carpetaFisica);
             var rutaFisica = Path.Combine(carpetaFisica, nombre);
             System.IO.File.WriteAllBytes(rutaFisica, bytes);
-            var rutaRelativa = carpetaRelativa.TrimStart('~').Replace('\\', '/') + "/" + nombre;
+            var rutaRelativa = FileStorageHelper.NormalizeStoredPath(
+                "~/App_Data/" + carpetaInterna.Replace('\\', '/') + "/" + nombre);
 
             int documentoId;
             if (oficioExistente != null)

@@ -126,7 +126,7 @@ namespace CapaNegocio.Services
                 NotificarRtModuloHabilitado(cn, tx, ctx, usuarioFinanciero, usuarioFinancieroId);
             }
 
-            if (!ctx.TieneInspectorAsignado && !ctx.NotificadoCoordinadorPagoAprobado)
+            if (tieneDocumentos && !ctx.TieneInspectorAsignado && !ctx.NotificadoCoordinadorPagoAprobado)
             {
                 NotificarCoordinadoresAsignacionPendiente(cn, tx, ctx, usuarioFinanciero);
             }
@@ -590,17 +590,54 @@ namespace CapaNegocio.Services
         private static bool TieneDocumentosHabilitantes(NpgsqlConnection cn, NpgsqlTransaction tx, int codigoSolicitud)
         {
             const string sql = @"
-                SELECT COUNT(1)
-                FROM aocr_tbdocumento
-                WHERE codigo_solicitud = @codigo_solicitud
-                  AND COALESCE(tamano_bytes, 0) > 0
-                  AND NULLIF(TRIM(COALESCE(nombre_archivo, '')), '') IS NOT NULL
-                  AND NULLIF(TRIM(COALESCE(ruta_guardada, '')), '') IS NOT NULL
-                  AND UPPER(TRIM(COALESCE(tipo_documento, ''))) NOT IN ('BORRADOR_AOCR', 'AOCR_GENERADO', 'AOCR')";
+                WITH solicitud AS (
+                    SELECT COALESCE(tipo_solicitud, 1) AS tipo_solicitud
+                    FROM aocr_tbsolicitud
+                    WHERE codigo_solicitud = @codigo_solicitud
+                      AND deleted_at IS NULL
+                ), requeridos(tipo_canonico) AS (
+                    VALUES
+                        ('FACTURA'),
+                        ('AOC'),
+                        ('OPSPECS'),
+                        ('MANUAL_OPERACIONES'),
+                        ('PERMISO_OPERACION'),
+                        ('CERTIFICADO_RUIDO'),
+                        ('PODER_REPRESENTANTE')
+                ), presentes AS (
+                    SELECT DISTINCT CASE UPPER(TRIM(COALESCE(d.tipo_documento, '')))
+                        WHEN 'COMPROBANTE_PAGO' THEN 'FACTURA'
+                        WHEN 'FACTURA' THEN 'FACTURA'
+                        WHEN 'FACTURA_PAGO' THEN 'FACTURA'
+                        WHEN 'COPIA_AOC_VALIDA' THEN 'AOC'
+                        WHEN 'OPSPECS_ESPECIFICACIONES_OPERACIONALES' THEN 'OPSPECS'
+                        WHEN 'MANUAL_OPERACIONES' THEN 'MANUAL_OPERACIONES'
+                        WHEN 'PERMISO_OPERACION_CNAC' THEN 'PERMISO_OPERACION'
+                        WHEN 'CERTIFICADO_RUIDO_AERONAVES_EAE' THEN 'CERTIFICADO_RUIDO'
+                        WHEN 'COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR' THEN 'PODER_REPRESENTANTE'
+                        ELSE NULL
+                    END AS tipo_canonico
+                    FROM aocr_tbdocumento d
+                    WHERE d.codigo_solicitud = @codigo_solicitud
+                      AND COALESCE(d.tamano_bytes, 0) > 0
+                      AND NULLIF(TRIM(COALESCE(d.nombre_archivo, '')), '') IS NOT NULL
+                      AND NULLIF(TRIM(COALESCE(d.ruta_guardada, '')), '') IS NOT NULL
+                      AND UPPER(TRIM(COALESCE(d.estado, ''))) <> 'ELIMINADO'
+                )
+                SELECT NOT EXISTS (
+                    SELECT 1
+                    FROM requeridos r
+                    CROSS JOIN solicitud s
+                    WHERE NOT (s.tipo_solicitud = 3 AND r.tipo_canonico = 'CERTIFICADO_RUIDO')
+                      AND NOT EXISTS (
+                          SELECT 1 FROM presentes p WHERE p.tipo_canonico = r.tipo_canonico
+                      )
+                );";
             using (var cmd = new NpgsqlCommand(sql, cn, tx))
             {
                 cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
-                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                var value = cmd.ExecuteScalar();
+                return value != null && value != DBNull.Value && Convert.ToBoolean(value);
             }
         }
 
@@ -658,7 +695,7 @@ namespace CapaNegocio.Services
                 cmd.Parameters.AddWithValue("@estado_habilitada", EstadoSolicitudAocrHabilitada);
                 cmd.Parameters.AddWithValue("@estado_revision", EstadoPendienteRevisionDocumental);
                 cmd.Parameters.AddWithValue("@tiene_documentos", tieneDocumentos);
-                cmd.Parameters.AddWithValue("@pendiente_asignacion", !ctx.TieneInspectorAsignado);
+                cmd.Parameters.AddWithValue("@pendiente_asignacion", tieneDocumentos && !ctx.TieneInspectorAsignado);
                 cmd.Parameters.AddWithValue("@pendiente_documentos", !tieneDocumentos);
                 cmd.Parameters.AddWithValue("@usuario", (object)(usuario ?? "FINANCIERO") ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@codigo_solicitud", ctx.CodigoSolicitud);

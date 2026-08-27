@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Text;
 using CapaDatos.Services;
 using CapaModelo;
 using CapaModelo.Common;
@@ -97,6 +100,190 @@ namespace CapaNegocio.Services
                 _logger.LogWarning("SolicitudAocrCorreoService.NotificarEvento: " + ex.Message);
                 return ResultadoOperacion.Error("No fue posible encolar correos del evento de solicitud AOCR.");
             }
+        }
+
+        public ResultadoOperacion NotificarAceptacionInspeccion(SolicitudAOCR solicitud, Inspeccion inspeccion, string correlationId = null)
+        {
+            if (solicitud == null)
+            {
+                return ResultadoOperacion.Error("No existe solicitud AOCR para notificar la aceptación de inspección.");
+            }
+
+            try
+            {
+                var destinatariosRt = _policyService.ResolverDestinatarios(
+                    solicitud,
+                    inspeccion,
+                    NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                    NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante);
+                var destinatariosInspector = _policyService.ResolverDestinatarios(
+                    solicitud,
+                    inspeccion,
+                    NotificacionDestinatarioPolicyService.GrupoInspectorAsignado);
+                var nombreInspector = destinatariosInspector
+                    .Select(d => d != null ? d.Nombre : null)
+                    .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+                if (string.IsNullOrWhiteSpace(nombreInspector) && inspeccion != null)
+                {
+                    nombreInspector = inspeccion.InspectorPrincipalNombre;
+                }
+                if (string.IsNullOrWhiteSpace(nombreInspector))
+                {
+                    nombreInspector = solicitud.TecnicoResponsableNombre;
+                }
+                if (string.IsNullOrWhiteSpace(nombreInspector))
+                {
+                    nombreInspector = "Inspector designado";
+                }
+
+                var estaciones = ObtenerEstacionesNotificacion(solicitud, inspeccion);
+                var total = 0;
+                foreach (var destinatario in destinatariosRt)
+                {
+                    if (EncolarAceptacionInspeccion(
+                        solicitud,
+                        destinatario,
+                        "ACEPTACION_INSPECCION_RT",
+                        "AOCR - Aceptación de inspección " + ObtenerNumeroSolicitudVisible(solicitud),
+                        "Notificación al Representante Técnico",
+                        ConstruirContenidoAceptacionRt(solicitud, nombreInspector, estaciones),
+                        correlationId))
+                    {
+                        total++;
+                    }
+                }
+
+                foreach (var destinatario in destinatariosInspector)
+                {
+                    if (EncolarAceptacionInspeccion(
+                        solicitud,
+                        destinatario,
+                        "DESIGNACION_INSPECTOR",
+                        "AOCR - Designación de inspector " + ObtenerNumeroSolicitudVisible(solicitud),
+                        "Designación para inspección AOCR",
+                        ConstruirContenidoDesignacionInspector(solicitud, estaciones),
+                        correlationId))
+                    {
+                        total++;
+                    }
+                }
+
+                return ResultadoOperacion.Ok(total, "Notificaciones de aceptación y designación encoladas correctamente.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("SolicitudAocrCorreoService.NotificarAceptacionInspeccion: " + ex.Message);
+                return ResultadoOperacion.Error("No fue posible encolar las notificaciones de aceptación de inspección.");
+            }
+        }
+
+        private bool EncolarAceptacionInspeccion(
+            SolicitudAOCR solicitud,
+            NotificacionDestinatario destinatario,
+            string evento,
+            string asunto,
+            string titulo,
+            string contenidoHtml,
+            string correlationId)
+        {
+            if (destinatario == null || !CorreoInstitucionalService.EsCorreoValido(destinatario.Email))
+            {
+                return false;
+            }
+
+            var tipo = "SOLICITUD_" + evento;
+            var eventKey = BuildAocrEventKey(evento, solicitud.CodigoSolicitud, null, correlationId, destinatario.Email);
+            if (_emailQueueService.ExisteNotificacionAsync(tipo, eventKey, solicitud.CodigoSolicitud).GetAwaiter().GetResult())
+            {
+                return false;
+            }
+
+            var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
+            {
+                Titulo = titulo,
+                NombreDestinatario = string.IsNullOrWhiteSpace(destinatario.Nombre) ? "Usuario AOCR" : destinatario.Nombre,
+                ContenidoHtmlExtra = contenidoHtml,
+                TextoCierre = "Puede revisar el expediente desde el sistema AOCR.",
+                Footer = "Este es un mensaje automático del workflow AOCR."
+            });
+            _emailQueueService.EncolarAsync(new EmailQueueItem
+            {
+                Para = destinatario.Email,
+                ParaNombre = destinatario.Nombre,
+                Asunto = asunto,
+                Cuerpo = cuerpo,
+                Estado = "PENDIENTE",
+                SolicitudId = solicitud.CodigoSolicitud,
+                TipoNotificacion = tipo,
+                EventKey = eventKey,
+                CorrelationId = string.IsNullOrWhiteSpace(correlationId) ? null : correlationId.Trim(),
+                EsHtml = true
+            }).GetAwaiter().GetResult();
+            return true;
+        }
+
+        private static string ConstruirContenidoAceptacionRt(SolicitudAOCR solicitud, string inspector, IList<Tuple<string, string>> estaciones)
+        {
+            var numero = WebUtility.HtmlEncode(ObtenerNumeroSolicitudVisible(solicitud));
+            var operador = WebUtility.HtmlEncode(ObtenerOperadorVisible(solicitud));
+            var nombreInspector = WebUtility.HtmlEncode(inspector);
+            return "<p>En referencia a la solicitud <strong>" + numero + "</strong>, presentada por el Operador Aéreo Extranjero <strong>" + operador +
+                   "</strong>, relacionada con el trámite de emisión de un AOCR, esta Dirección comunica a usted que el Inspector designado ha cumplido con la revisión de la información y documentación ingresada, determinando que la misma cumple con lo requerido por la normativa.</p>" +
+                   "<p>Asimismo, se acepta la inspección solicitada y, para tal efecto, se designa al Inspector <strong>" + nombreInspector + "</strong>, quien la cumplirá conforme al siguiente detalle:</p>" +
+                   ConstruirTablaEstaciones(estaciones) +
+                   "<p>Es importante señalar que su Representada será responsable de cubrir todos los gastos de traslados aéreos y terrestres del Inspector designado, hacia y desde los aeropuertos involucrados.</p>";
+        }
+
+        private static string ConstruirContenidoDesignacionInspector(SolicitudAOCR solicitud, IList<Tuple<string, string>> estaciones)
+        {
+            var numero = WebUtility.HtmlEncode(ObtenerNumeroSolicitudVisible(solicitud));
+            var operador = WebUtility.HtmlEncode(ObtenerOperadorVisible(solicitud));
+            return "<p>En referencia a la solicitud <strong>" + numero + "</strong>, presentada por el Operador Aéreo Extranjero <strong>" + operador +
+                   "</strong>, comunico a usted que ha sido designado para realizar la inspección solicitada conforme al siguiente detalle:</p>" +
+                   ConstruirTablaEstaciones(estaciones) +
+                   "<p>Agradeceré gestionar la comisión de servicios institucionales y, a su vez, coordinar con el Representante Técnico del EAE la logística para cumplir la inspección referida.</p>";
+        }
+
+        private static string ConstruirTablaEstaciones(IEnumerable<Tuple<string, string>> estaciones)
+        {
+            var sb = new StringBuilder();
+            sb.Append("<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;margin:12px 0 18px 0;'>");
+            sb.Append("<tr><th style='padding:9px;border:1px solid #ccd8e2;background:#f2f7fa;text-align:left;'>Estación</th><th style='padding:9px;border:1px solid #ccd8e2;background:#f2f7fa;text-align:left;'>Fecha</th></tr>");
+            foreach (var item in estaciones ?? Enumerable.Empty<Tuple<string, string>>())
+            {
+                sb.Append("<tr><td style='padding:9px;border:1px solid #dbe4eb;'>").Append(WebUtility.HtmlEncode(item.Item1)).Append("</td>");
+                sb.Append("<td style='padding:9px;border:1px solid #dbe4eb;'>").Append(WebUtility.HtmlEncode(item.Item2)).Append("</td></tr>");
+            }
+            sb.Append("</table>");
+            return sb.ToString();
+        }
+
+        private static List<Tuple<string, string>> ObtenerEstacionesNotificacion(SolicitudAOCR solicitud, Inspeccion inspeccion)
+        {
+            var fecha = inspeccion != null && inspeccion.FechaProgramada.HasValue
+                ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                : "---";
+            var valores = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, inspeccion != null ? inspeccion.Lugar : null };
+            var estaciones = valores
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .SelectMany(v => v.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(v => v.Trim().ToUpperInvariant())
+                .Where(v => v.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(v => Tuple.Create(v, fecha))
+                .ToList();
+            if (estaciones.Count == 0)
+            {
+                estaciones.Add(Tuple.Create("POR DEFINIR", fecha));
+            }
+            return estaciones;
+        }
+
+        private static string ObtenerOperadorVisible(SolicitudAOCR solicitud)
+        {
+            return !string.IsNullOrWhiteSpace(solicitud.NombreOperador)
+                ? solicitud.NombreOperador.Trim()
+                : (!string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? solicitud.RazonSocial.Trim() : "Operador Aéreo Extranjero");
         }
 
         private List<NotificacionDestinatario> ResolverDestinatarios(
@@ -339,6 +526,7 @@ namespace CapaNegocio.Services
                                   "La solicitud se encuentra pendiente de asignación de inspector para continuar con el proceso de inspección.",
                         GruposDestinatarios = new[]
                         {
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
                         }
                     };

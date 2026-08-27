@@ -282,6 +282,7 @@ namespace CapaDatos.DAOs
                     subtotal,
                     admin,
                     compania,
+                    compania_codigo,
                     ruc_cedula,
                     lugar_emision,
                     correo,
@@ -297,6 +298,7 @@ namespace CapaDatos.DAOs
                     @Subtotal,
                     @Admin,
                     @Compania,
+                    @CompaniaCodigo,
                     @RucCedula,
                     @LugarEmision,
                     @Correo,
@@ -323,6 +325,7 @@ namespace CapaDatos.DAOs
                             orden.Subtotal,
                             orden.Admin,
                             orden.Compania,
+                            orden.CompaniaCodigo,
                             orden.RucCedula,
                             orden.LugarEmision,
                             orden.Correo,
@@ -725,6 +728,19 @@ namespace CapaDatos.DAOs
                 Telefono = reader.IsDBNull(reader.GetOrdinal("telefono")) ? null : reader.GetString(reader.GetOrdinal("telefono")),
                 ConceptoId = GetSafeNullableInt(reader, "concepto_id")
             };
+
+            try
+            {
+                var companiaCodigoOrdinal = reader.GetOrdinal("compania_codigo");
+                if (!reader.IsDBNull(companiaCodigoOrdinal))
+                {
+                    orden.CompaniaCodigo = reader.GetString(companiaCodigoOrdinal);
+                }
+            }
+            catch
+            {
+                // Compatibilidad con esquemas heredados sin compania_codigo.
+            }
 
             // Intentar obtener el nombre del usuario si está en el resultado
             try
@@ -1517,20 +1533,12 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
                     var sql = @"SELECT * FROM aocr_tbpago
-                                WHERE codigo_solicitud = @ordenId
-                                   OR codigo_solicitud = @codigoSolicitud
-                                ORDER BY
-                                    CASE
-                                        WHEN codigo_solicitud = @codigoSolicitud THEN 0
-                                        WHEN codigo_solicitud = @ordenId THEN 1
-                                        ELSE 2
-                                    END,
-                                    fecha_pago DESC,
+                                WHERE codigo_solicitud = @codigoSolicitud
+                                ORDER BY fecha_pago DESC,
                                     codigo_pago DESC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -1565,21 +1573,13 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
                     var sql = @"SELECT * FROM aocr_tbpago
-                                WHERE codigo_solicitud = @ordenId
-                                   OR codigo_solicitud = @codigoSolicitud
-                                ORDER BY
-                                    CASE
-                                        WHEN codigo_solicitud = @codigoSolicitud THEN 0
-                                        WHEN codigo_solicitud = @ordenId THEN 1
-                                        ELSE 2
-                                    END,
-                                    fecha_pago DESC,
+                                WHERE codigo_solicitud = @codigoSolicitud
+                                ORDER BY fecha_pago DESC,
                                     codigo_pago DESC
                                 LIMIT 1";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -2021,8 +2021,7 @@ namespace CapaDatos.DAOs
                             observaciones = COALESCE(@observaciones, observaciones)
                         WHERE codigo_pago = (
                             SELECT codigo_pago FROM aocr_tbpago
-                            WHERE codigo_solicitud = @ordenId
-                               OR codigo_solicitud = @codigoSolicitud
+                            WHERE codigo_solicitud = @codigoSolicitud
                             ORDER BY fecha_pago DESC, codigo_pago DESC
                             LIMIT 1
                         )";
@@ -2033,7 +2032,6 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@fecha_validacion", DateTime.Now);
                         cmd.Parameters.AddWithValue("@validado_por", (object)usuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@observaciones", (object)observacion ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
 
                         return cmd.ExecuteNonQuery() > 0;
@@ -2466,20 +2464,12 @@ namespace CapaDatos.DAOs
 
                             var sqlGet = @"SELECT codigo_pago
                                            FROM aocr_tbpago
-                                           WHERE codigo_solicitud = @ordenId
-                                              OR codigo_solicitud = @codigoSolicitud
-                                           ORDER BY
-                                               CASE
-                                                   WHEN codigo_solicitud = @codigoSolicitud THEN 0
-                                                   WHEN codigo_solicitud = @ordenId THEN 1
-                                                   ELSE 2
-                                               END,
-                                               fecha_pago DESC,
+                                           WHERE codigo_solicitud = @codigoSolicitud
+                                           ORDER BY fecha_pago DESC,
                                                codigo_pago DESC
                                            LIMIT 1";
                             using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
                             {
-                                cmdGet.Parameters.AddWithValue("@ordenId", ordenId);
                                 cmdGet.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                                 var obj = cmdGet.ExecuteScalar();
                                 if (obj != null && obj != DBNull.Value) targetPagoId = Convert.ToInt32(obj);

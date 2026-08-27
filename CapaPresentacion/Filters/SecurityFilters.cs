@@ -128,7 +128,11 @@ namespace CapaPresentacion.Filters
             }
 
             var bootstrapStatus = AuthenticatedSessionBootstrapper.EnsureSession(httpContext);
-            if (bootstrapStatus == AuthenticatedSessionBootstrapStatus.Failed)
+            // Si Session State expiró pero FormsAuth continúa vigente, la autorización
+            // debe resolverse con el principal y los roles firmados del ticket. Las
+            // guardas específicas siguen validando usuario y compañía cuando se requieren.
+            if (bootstrapStatus == AuthenticatedSessionBootstrapStatus.Failed &&
+                (httpContext.User == null || httpContext.User.Identity == null || !httpContext.User.Identity.IsAuthenticated))
             {
                 httpContext.Items["AOCR_AUTH_RESULT"] = AocrAuthorizationResultType.Denied(Modulo ?? string.Empty, Accion ?? string.Empty, "No se pudo restaurar la sesión autenticada.");
                 return false;

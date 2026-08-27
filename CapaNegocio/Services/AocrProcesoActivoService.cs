@@ -68,7 +68,12 @@ namespace CapaNegocio.Services
 
             info.OrdenActiva = ordenes
                 .Where(o => o != null && o.Id > 0)
-                .Where(o => !EstadoOrden.EsEstadoFinal(o.Estado))
+                .Where(o => !EstadoOrden.EsEstadoFinal(o.Estado)
+                    || (info.SolicitudActiva != null
+                        && o.CodigoSolicitud.HasValue
+                        && o.CodigoSolicitud.Value == info.SolicitudActiva.CodigoSolicitud
+                        && (EstadoOrden.EsPagado(o.Estado)
+                            || EstadoOrden.EsOrdenCerradaPostAprobacionFinanciera(o.Estado))))
                 .OrderByDescending(o => o.FechaCreacion)
                 .ThenByDescending(o => o.Id)
                 .FirstOrDefault();

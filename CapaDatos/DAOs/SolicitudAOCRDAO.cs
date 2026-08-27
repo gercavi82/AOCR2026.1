@@ -420,12 +420,14 @@ namespace CapaDatos.DAOs
                 SELECT s.*
                 FROM aocr_tbsolicitud s
                 WHERE s.deleted_at IS NULL
-                  AND " + estadoCanonicoSql + @" IN (" + string.Join(", ", placeholders) + @")
+                  AND (
+                      " + estadoCanonicoSql + @" IN (" + string.Join(", ", placeholders) + @")
+                      OR COALESCE(s.pendiente_asignacion_inspector, FALSE) = TRUE
+                  )
                   AND " + estadoCanonicoSql + @" NOT IN (" + string.Join(", ", placeholdersExcluidos) + @")
                   AND NOT " + tieneInspectorSql + @"
                   AND (
                       COALESCE(s.pendiente_asignacion_inspector, FALSE) = TRUE
-                      OR COALESCE(s.pago_aprobado, FALSE) = TRUE
                       OR COALESCE(s.solicitud_finalizada_rt, FALSE) = TRUE
                       OR " + estadoCanonicoSql + @" IN (
                           'EN REVISION',
@@ -433,19 +435,6 @@ namespace CapaDatos.DAOs
                           'PENDIENTE ASIGNACION RT',
                           'DOCUMENTACION COMPLETA',
                           'REQUIERE INSPECCION'
-                      )
-                      OR EXISTS (
-                          SELECT 1
-                          FROM aocr_tbdocumento d
-                          WHERE d.codigo_solicitud = s.codigo_solicitud
-                            AND COALESCE(d.tamano_bytes, 0) > 0
-                            AND NULLIF(TRIM(COALESCE(d.nombre_archivo, '')), '') IS NOT NULL
-                      )
-                      OR EXISTS (
-                          SELECT 1
-                          FROM aocr_or_orden o
-                          WHERE COALESCE(o.codigo_solicitud::text, '') = s.codigo_solicitud::text
-                            AND UPPER(COALESCE(o.estado, '')) IN ('FACTURADA', 'COMPLETADA', 'PAGADA')
                       )
                   )
                 ORDER BY COALESCE(s.updated_at, s.fecha_solicitud, s.created_at) DESC, s.codigo_solicitud DESC";
@@ -1817,6 +1806,13 @@ LIMIT 1;";
                 return diagnostico;
             }
 
+            if (!TieneDocumentacionObligatoriaCompleta(cn, tx, codigoSolicitud))
+            {
+                diagnostico.PuedeEnviarInspector = false;
+                diagnostico.MotivoBloqueo = "No se puede asignar inspector porque el RT aun no ha cargado todos los documentos obligatorios de la Solicitud AOCR.";
+                return diagnostico;
+            }
+
             var estadoSql = columnas.Contains("estado")
                 ? "UPPER(COALESCE(estado, ''))"
                 : "''";
@@ -1880,6 +1876,56 @@ LIMIT 1;";
             }
 
             return diagnostico;
+        }
+
+        private static bool TieneDocumentacionObligatoriaCompleta(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int codigoSolicitud)
+        {
+            const string sql = @"
+                WITH solicitud AS (
+                    SELECT COALESCE(tipo_solicitud, 1) AS tipo_solicitud
+                    FROM aocr_tbsolicitud
+                    WHERE codigo_solicitud = @codigo_solicitud
+                      AND deleted_at IS NULL
+                ), requeridos(tipo_canonico) AS (
+                    VALUES
+                        ('FACTURA'), ('AOC'), ('OPSPECS'), ('MANUAL_OPERACIONES'),
+                        ('PERMISO_OPERACION'), ('CERTIFICADO_RUIDO'), ('PODER_REPRESENTANTE')
+                ), presentes AS (
+                    SELECT DISTINCT CASE UPPER(TRIM(COALESCE(d.tipo_documento, '')))
+                        WHEN 'COMPROBANTE_PAGO' THEN 'FACTURA'
+                        WHEN 'FACTURA' THEN 'FACTURA'
+                        WHEN 'FACTURA_PAGO' THEN 'FACTURA'
+                        WHEN 'COPIA_AOC_VALIDA' THEN 'AOC'
+                        WHEN 'OPSPECS_ESPECIFICACIONES_OPERACIONALES' THEN 'OPSPECS'
+                        WHEN 'MANUAL_OPERACIONES' THEN 'MANUAL_OPERACIONES'
+                        WHEN 'PERMISO_OPERACION_CNAC' THEN 'PERMISO_OPERACION'
+                        WHEN 'CERTIFICADO_RUIDO_AERONAVES_EAE' THEN 'CERTIFICADO_RUIDO'
+                        WHEN 'COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR' THEN 'PODER_REPRESENTANTE'
+                        ELSE NULL
+                    END AS tipo_canonico
+                    FROM aocr_tbdocumento d
+                    WHERE d.codigo_solicitud = @codigo_solicitud
+                      AND COALESCE(d.tamano_bytes, 0) > 0
+                      AND NULLIF(TRIM(COALESCE(d.nombre_archivo, '')), '') IS NOT NULL
+                      AND UPPER(TRIM(COALESCE(d.estado, ''))) <> 'ELIMINADO'
+                )
+                SELECT NOT EXISTS (
+                    SELECT 1
+                    FROM requeridos r
+                    CROSS JOIN solicitud s
+                    WHERE NOT (s.tipo_solicitud = 3 AND r.tipo_canonico = 'CERTIFICADO_RUIDO')
+                      AND NOT EXISTS (SELECT 1 FROM presentes p WHERE p.tipo_canonico = r.tipo_canonico)
+                );";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                var value = cmd.ExecuteScalar();
+                return value != null && value != DBNull.Value && Convert.ToBoolean(value);
+            }
         }
 
         private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)

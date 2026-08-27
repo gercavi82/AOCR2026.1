@@ -2017,7 +2017,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = RolesGestionUsuariosRt)]
+        [Authorize(Roles = "Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult EliminarUsuarioRT(int id)
         {

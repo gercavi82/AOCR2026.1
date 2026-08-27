@@ -324,6 +324,7 @@ namespace CapaNegocio
                 case "AOCR_FIRMADO":
                 case "CONDICIONES_LIMITACIONES":
                 case "CONSTANCIA":
+                case "OFICIO_ACEPTACION_REVISION_DOCUMENTAL":
                     return false;
                 default:
                     return true;
@@ -379,6 +380,9 @@ namespace CapaNegocio
 
                 case "CONSTANCIA":
                     return "CONSTANCIA";
+
+                case "OFICIO_ACEPTACION_REVISION_DOCUMENTAL":
+                    return "OFICIO_ACEPTACION_REVISION_DOCUMENTAL";
 
                 case "SOLICITUD_INSPECCION_EXT":
                 case "SOLICITUD_DE_INSPECCIONES":

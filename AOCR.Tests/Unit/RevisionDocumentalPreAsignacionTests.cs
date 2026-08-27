@@ -2,6 +2,7 @@ using CapaDatos.Constants;
 using CapaModelo;
 using CapaNegocio;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Reflection;
 
 namespace AOCR.Tests.Unit
 {
@@ -33,6 +34,19 @@ namespace AOCR.Tests.Unit
             };
 
             Assert.IsFalse(SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion(solicitud, null));
+        }
+
+        [TestMethod]
+        public void OficioAceptacionGeneradoPorSistema_NoDebeReabrirRevisionDocumental()
+        {
+            var metodo = typeof(SolicitudAocrInfraBL).GetMethod(
+                "DebeIncluirEnRevisionDocumental",
+                BindingFlags.NonPublic | BindingFlags.Static);
+
+            Assert.IsNotNull(metodo);
+            var incluir = (bool)metodo.Invoke(null, new object[] { "OFICIO_ACEPTACION_REVISION_DOCUMENTAL" });
+
+            Assert.IsFalse(incluir);
         }
     }
 }

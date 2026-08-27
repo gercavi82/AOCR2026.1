@@ -551,7 +551,8 @@ namespace CapaNegocio.Services
             IEnumerable<Documento> documentos,
             IDictionary<int, Tuple<string, string>> revisiones,
             string observacion,
-            int? tipoSolicitud)
+            int? tipoSolicitud,
+            bool tieneInspectorAsignado = false)
         {
             if (!string.Equals(EstadoSolicitud.Normalizar(estadoActual ?? string.Empty), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
             {
@@ -578,7 +579,7 @@ namespace CapaNegocio.Services
             return new RevisionDocumentalFirmaPlan
             {
                 EsValido = true,
-                EstadoDestino = ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud),
+                EstadoDestino = ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud, tieneInspectorAsignado),
                 ObservacionEstado = string.IsNullOrWhiteSpace(observacion)
                     ? "Aceptación documental firmada por coordinación."
                     : observacion.Trim()
@@ -587,6 +588,11 @@ namespace CapaNegocio.Services
 
         public static string ResolverEstadoDestinoFirmaAceptacionDocumental(int? tipoSolicitud)
         {
+            return ResolverEstadoDestinoFirmaAceptacionDocumental(tipoSolicitud, false);
+        }
+
+        public static string ResolverEstadoDestinoFirmaAceptacionDocumental(int? tipoSolicitud, bool tieneInspectorAsignado)
+        {
             if (!tipoSolicitud.HasValue)
             {
                 return EstadoSolicitud.FirmadoCoordinador;
@@ -594,7 +600,9 @@ namespace CapaNegocio.Services
 
             if (tipoSolicitud == 1 || tipoSolicitud == 2)
             {
-                return EstadoSolicitud.PendienteAsignacionRT;
+                return tieneInspectorAsignado
+                    ? EstadoSolicitud.EnInspeccion
+                    : EstadoSolicitud.PendienteAsignacionRT;
             }
 
             return EstadoSolicitud.FirmadoCoordinador;

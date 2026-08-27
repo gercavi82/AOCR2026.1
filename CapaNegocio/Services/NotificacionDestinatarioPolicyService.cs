@@ -46,12 +46,18 @@ namespace CapaNegocio.Services
                         break;
 
                     case GrupoRepresentanteTecnico:
-                        AgregarCorreo(
-                            destinatarios,
-                            !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
-                                ? solicitud.CorreoRepresentanteTecnico
-                                : solicitud.Email,
-                            solicitud.RepresentanteLegal);
+                        // La fuente autoritativa es el usuario propietario activo de la solicitud.
+                        // Los correos persistidos en la solicitud pueden pertenecer a quien la
+                        // creó o administró previamente y no deben desplazar al RT autenticable.
+                        if (!AgregarUsuarioActivo(destinatarios, solicitud.CodigoUsuario))
+                        {
+                            AgregarCorreo(
+                                destinatarios,
+                                !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
+                                    ? solicitud.CorreoRepresentanteTecnico
+                                    : solicitud.Email,
+                                solicitud.RepresentanteLegal);
+                        }
                         break;
 
                     case GrupoInspectorAsignado:
@@ -186,6 +192,31 @@ namespace CapaNegocio.Services
             catch (Exception ex)
             {
                 _logger.LogWarning("NotificacionDestinatarioPolicyService.AgregarUsuario: " + ex.Message);
+            }
+        }
+
+        private bool AgregarUsuarioActivo(IDictionary<string, NotificacionDestinatario> destinatarios, int? idUsuario)
+        {
+            if (!idUsuario.HasValue || idUsuario.Value <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                var usuario = UsuarioDAO.ObtenerPorId(idUsuario.Value);
+                if (usuario == null || !usuario.Activo || string.IsNullOrWhiteSpace(usuario.Email))
+                {
+                    return false;
+                }
+
+                AgregarCorreo(destinatarios, usuario.Email, ConstruirNombreUsuario(usuario));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("NotificacionDestinatarioPolicyService.AgregarUsuarioActivo: " + ex.Message);
+                return false;
             }
         }
 

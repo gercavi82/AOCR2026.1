@@ -98,6 +98,11 @@ namespace CapaPresentacion.Controllers
         private const string CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados";
         private const string CARPETA_VIRTUAL_LV_EAE = "~/App_Data/Uploads/Inspecciones/ListasVerificacionEae";
         private const string CARPETA_VIRTUAL_LV_EAE_FIRMADAS = "~/App_Data/Uploads/Inspecciones/ListasVerificacionEae/Firmadas";
+        private const string CARPETA_STORAGE_LV_EAE = "Uploads/Inspecciones/ListasVerificacionEae";
+        private const string CARPETA_STORAGE_LV_EAE_FIRMADAS = "Uploads/Inspecciones/ListasVerificacionEae/Firmadas";
+        private const string CARPETA_STORAGE_INFORMES = "Uploads/Inspecciones";
+        private const string CARPETA_STORAGE_INFORMES_TECNICOS = "Uploads/Inspecciones/InformesTecnicos";
+        private const string CARPETA_STORAGE_INFORMES_TECNICOS_FIRMADOS = "Uploads/Inspecciones/InformesTecnicos/Firmados";
         private const string CARPETA_VIRTUAL_TEMP_PDF = "~/App_Data/TempPdf";
         private const string CARPETA_VIRTUAL_ADJUNTOS_INFORME = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Adjuntos";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
@@ -1727,14 +1732,14 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("La inspección aún no tiene informe cargado.");
             }
 
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
+            var baseDir = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES);
             string rutaRelativa = null;
             string fullPath = null;
             var rutasFueraBase = new List<string>();
 
             foreach (var rutaCandidata in rutasCandidatas)
             {
-                var fullPathCandidata = Server.MapPath("~" + rutaCandidata);
+                var fullPathCandidata = ResolverRutaAbsolutaInforme(rutaCandidata);
                 if (!EsRutaDentroDeBase(fullPathCandidata, baseDir))
                 {
                     rutasFueraBase.Add(rutaCandidata);
@@ -1874,7 +1879,7 @@ namespace CapaPresentacion.Controllers
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informe));
             return ServirArchivoInstitucionalSeguro(informe.CodigoInforme, inspeccion.CodigoSolicitud,
                 disponibilidad.RutaFisica, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informe),
-                descargar, Server.MapPath(CARPETA_VIRTUAL_INFORMES));
+                descargar, ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES));
         }
 
         private ActionResult ServirListaVerificacionOperacionalEaePdf(int id, bool descargar)
@@ -1921,15 +1926,15 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("La inspección aún no tiene una lista de verificación operacional generada.");
             }
 
-            var baseDirOriginal = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
-            var baseDirFirmadas = Server.MapPath(CARPETA_VIRTUAL_LV_EAE_FIRMADAS);
+            var baseDirOriginal = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE);
+            var baseDirFirmadas = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE_FIRMADAS);
             string rutaRelativa = null;
             string fullPath = null;
             var rutasFueraBase = new List<string>();
 
             foreach (var rutaCandidata in rutasCandidatas)
             {
-                var fullPathCandidata = Server.MapPath("~" + rutaCandidata);
+                var fullPathCandidata = ResolverRutaAbsolutaInforme(rutaCandidata);
                 if (!EsRutaDentroDeBase(fullPathCandidata, baseDirOriginal) && !EsRutaDentroDeBase(fullPathCandidata, baseDirFirmadas))
                 {
                     rutasFueraBase.Add(rutaCandidata);
@@ -2575,7 +2580,7 @@ namespace CapaPresentacion.Controllers
                     inspeccion.RutaInforme,
                     informeActual != null ? informeActual.RutaPdf : null);
                 var rutaFisicaDefinitiva = !string.IsNullOrWhiteSpace(rutaDefinitiva)
-                    ? Server.MapPath("~" + rutaDefinitiva)
+                    ? ResolverRutaAbsolutaInforme(rutaDefinitiva)
                     : string.Empty;
                 var existeDefinitivo = !string.IsNullOrWhiteSpace(rutaFisicaDefinitiva) && System.IO.File.Exists(rutaFisicaDefinitiva);
                 var tamanioDefinitivo = existeDefinitivo ? new FileInfo(rutaFisicaDefinitiva).Length : 0;
@@ -5697,7 +5702,7 @@ namespace CapaPresentacion.Controllers
 
         private string GuardarInformeTecnicoPdf(int codigoInspeccion, int version, byte[] pdfBytes)
         {
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_INFORMES_TECNICOS);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES_TECNICOS);
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
@@ -5706,7 +5711,7 @@ namespace CapaPresentacion.Controllers
             var fileName = string.Format("InformeTecnico_{0}_v{1}_{2}.pdf", codigoInspeccion, version, DateTime.Now.ToString("yyyyMMddHHmmss"));
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
-            return CARPETA_VIRTUAL_INFORMES_TECNICOS.TrimStart('~') + "/" + fileName;
+            return ConstruirRutaStorage(CARPETA_STORAGE_INFORMES_TECNICOS, fileName);
         }
 
         private string GuardarInformeTecnicoPreviewPdf(int codigoInspeccion, int usuarioId, byte[] pdfBytes)
@@ -6809,7 +6814,7 @@ namespace CapaPresentacion.Controllers
 
         private string GuardarListaVerificacionOperacionalEaePdf(int codigoInspeccion, int version, byte[] pdfBytes)
         {
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE);
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
@@ -6818,13 +6823,13 @@ namespace CapaPresentacion.Controllers
             var fileName = string.Format("ListaVerificacionEae_{0}_v{1}_{2}.pdf", codigoInspeccion, version, DateTime.Now.ToString("yyyyMMddHHmmss"));
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
-            return CARPETA_VIRTUAL_LV_EAE.TrimStart('~') + "/" + fileName;
+            return ConstruirRutaStorage(CARPETA_STORAGE_LV_EAE, fileName);
         }
 
         private string GuardarOReemplazarListaVerificacionOperacionalEaePdfHistorico(ListaVerificacionOperacionalEae lista, byte[] pdfBytes, int usuarioId)
         {
             var rutaRelativa = NormalizarRutaRelativaInforme(lista != null ? lista.RutaPdf : null);
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+            var baseDir = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE);
 
             if (!string.IsNullOrWhiteSpace(rutaRelativa))
             {
@@ -6853,7 +6858,7 @@ namespace CapaPresentacion.Controllers
 
         private string GuardarListaVerificacionOperacionalEaeFirmadaPdf(int codigoInspeccion, int version, byte[] pdfBytes)
         {
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_LV_EAE_FIRMADAS);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE_FIRMADAS);
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
@@ -6862,7 +6867,7 @@ namespace CapaPresentacion.Controllers
             var fileName = string.Format("ListaVerificacionEae_{0}_v{1}_firmada_{2}.pdf", codigoInspeccion, version, DateTime.Now.ToString("yyyyMMddHHmmss"));
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
-            return CARPETA_VIRTUAL_LV_EAE_FIRMADAS.TrimStart('~') + "/" + fileName;
+            return ConstruirRutaStorage(CARPETA_STORAGE_LV_EAE_FIRMADAS, fileName);
         }
 
         private int ObtenerNumeroPaginasPdf(byte[] pdfBytes)
@@ -6922,9 +6927,13 @@ namespace CapaPresentacion.Controllers
             }
 
             var rutaFisica = ResolverRutaAbsolutaInforme(rutaRelativa);
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+            var baseDir = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_LV_EAE);
             if (string.IsNullOrWhiteSpace(rutaFisica) || !EsRutaDentroDeBase(rutaFisica, baseDir))
             {
+                _logger.LogError("[FIRMA_LV][RUTA_SEGURA_ERROR] RutaRegistrada=" + (lista.RutaPdf ?? string.Empty)
+                    + ", RutaNormalizada=" + (rutaRelativa ?? string.Empty)
+                    + ", RutaFisica=" + (rutaFisica ?? string.Empty)
+                    + ", BasePermitida=" + (baseDir ?? string.Empty));
                 mensaje = "La ruta del PDF de la LV/EAE no pertenece al repositorio seguro de listas de verificacion.";
                 return false;
             }
@@ -7777,7 +7786,7 @@ namespace CapaPresentacion.Controllers
 
         private string GuardarInformeTecnicoFirmadoPdf(int codigoInspeccion, int version, string sufijo, byte[] pdfBytes)
         {
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES_TECNICOS_FIRMADOS);
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
@@ -7791,7 +7800,7 @@ namespace CapaPresentacion.Controllers
                 DateTime.Now.ToString("yyyyMMddHHmmss"));
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
-            return CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS.TrimStart('~') + "/" + fileName;
+            return ConstruirRutaStorage(CARPETA_STORAGE_INFORMES_TECNICOS_FIRMADOS, fileName);
         }
 
         private bool EnviarInformeTecnicoAlSolicitante(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, byte[] pdfBytes)
@@ -8725,7 +8734,38 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            return Server.MapPath("~" + rutaNormalizada);
+            // Las rutas persistidas de este flujo usan /App_Data/Uploads/... pero los
+            // archivos viven directamente bajo RT_FileStorageRoot\Uploads. Resolver el
+            // segmento de forma explicita evita que Windows lo convierta en C:\App_Data
+            // y mantiene la comprobacion posterior de confinamiento en la carpeta LV.
+            const string appDataPrefix = "/App_Data/";
+            if (rutaNormalizada.StartsWith(appDataPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var relativaStorage = rutaNormalizada.Substring(appDataPrefix.Length)
+                    .TrimStart('/', '\\')
+                    .Replace('/', Path.DirectorySeparatorChar);
+                return Path.GetFullPath(Path.Combine(
+                    FileStorageHelper.GetPhysicalBasePath(null),
+                    relativaStorage));
+            }
+
+            return FileStorageHelper.ResolvePhysicalPath(rutaNormalizada);
+        }
+
+        private static string ObtenerDirectorioFisicoStorage(string carpetaRelativa)
+        {
+            // RT_FileStorageRoot apunta a \\172.20.16.90\aocr. No agregar
+            // RT_BasePathStorage (AOCR), porque las LV viven bajo la raiz Uploads.
+            var basePath = FileStorageHelper.GetPhysicalBasePath(null);
+            var carpeta = (carpetaRelativa ?? string.Empty).Trim('/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar);
+            return string.IsNullOrWhiteSpace(carpeta) ? basePath : Path.Combine(basePath, carpeta);
+        }
+
+        private static string ConstruirRutaStorage(string carpetaRelativa, string nombreArchivo)
+        {
+            var carpeta = (carpetaRelativa ?? string.Empty).Trim('/', '\\').Replace('\\', '/');
+            return FileStorageHelper.NormalizeStoredPath("~/App_Data/" + carpeta + "/" + nombreArchivo);
         }
 
         private DisponibilidadPdfFirmadoInspector ObtenerDisponibilidadPdfFirmadoInspectorDireccion(InspeccionInformeTecnico informe)
@@ -8750,8 +8790,8 @@ namespace CapaPresentacion.Controllers
                 return resultado;
             }
 
-            var rutaFisica = Server.MapPath("~" + rutaRelativa);
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
+            var rutaFisica = ResolverRutaAbsolutaInforme(rutaRelativa);
+            var baseDir = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES);
             resultado.RutaRelativa = rutaRelativa;
             resultado.RutaFisica = rutaFisica;
 
@@ -8820,10 +8860,10 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
+            var baseDir = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_INFORMES);
             foreach (var rutaCandidata in rutasCandidatas)
             {
-                var fullPath = Server.MapPath("~" + rutaCandidata);
+                var fullPath = ResolverRutaAbsolutaInforme(rutaCandidata);
                 if (!EsRutaDentroDeBase(fullPath, baseDir))
                 {
                     continue;

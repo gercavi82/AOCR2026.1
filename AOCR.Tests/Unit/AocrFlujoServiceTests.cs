@@ -51,6 +51,8 @@ namespace AOCR.Tests.Unit
         public void RolPuedeEjecutarAccion_CoordinadorAsignarInspector_DebePermitir()
         {
             Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Coordinacion", AocrFlujoAcciones.AsignarInspector));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Coordinador", AocrFlujoAcciones.AsignarInspector));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("CoordinadorInspecciones", AocrFlujoAcciones.AsignarInspector));
             Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Solicitante", AocrFlujoAcciones.AsignarInspector));
         }
 
