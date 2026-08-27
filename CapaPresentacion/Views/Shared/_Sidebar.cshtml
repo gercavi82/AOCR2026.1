@@ -9,7 +9,7 @@
     Func<int, string> sidebarBadgeText = value => value >= 100 ? "99+" : value.ToString();
 }
 
-<div class="aocr-sidebar-shell text-white" data-aocr-sidebar>
+<div class="aocr-sidebar-shell text-white" data-aocr-sidebar tabindex="-1" aria-label="Menú principal AOCR">
     <div class="aocr-sidebar-brandbar">
         <span class="aocr-sidebar-brandmark" aria-hidden="true">
             <i class="fas fa-plane"></i>
@@ -18,6 +18,12 @@
             <div class="aocr-sidebar-brandcopy__eyebrow">DGAC Ecuador</div>
             <div class="aocr-sidebar-brandcopy__title">Sistema AOCR</div>
         </div>
+        <button type="button"
+                class="aocr-sidebar-close"
+                data-aocr-sidebar-close
+                aria-label="Cerrar menú principal">
+            <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
     </div>
 
     <div class="aocr-sidebar-userpanel">

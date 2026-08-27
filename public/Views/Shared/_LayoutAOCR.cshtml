@@ -8,7 +8,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Sistema AOCR - Dirección General de Aviación Civil Ecuador" />
     <meta name="author" content="DGAC Ecuador" />
     <meta name="keywords" content="DGAC, Aviación Civil, Ecuador, AOCR, Órdenes de Recaudación" />
@@ -66,6 +66,7 @@
         var siteJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/site.js");
         var appJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/app.js");
         var sidebarJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-sidebar.js");
+        var responsiveJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-responsive.js");
         var pdfViewerJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js");
         var pdfLibUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.min.js");
         var pdfWorkerUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.worker.min.js");
@@ -215,11 +216,11 @@
         body.aocr-body .main-sidebar.aocr-sidebar,
         body.aocr-body .main-sidebar,
         body.aocr-body .sidebar {
-            z-index: 1030 !important;
+            z-index: 1050 !important;
         }
 
         body.aocr-body .aocr-sidebar-backdrop {
-            z-index: 1025 !important;
+            z-index: 1040 !important;
         }
 
         body.aocr-body .main-header.navbar,
@@ -361,6 +362,7 @@
     </div>
 
     <div class="wrapper aocr-app-shell">
+        <div id="aocrSidebarBackdrop" class="aocr-sidebar-backdrop" aria-hidden="true"></div>
         <!-- Navbar Principal -->
         <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom aocr-topbar shadow-sm">
             <!-- Botón sidebar -->
@@ -1170,9 +1172,8 @@
     })();
     </script>
 
-    <div id="aocrSidebarBackdrop" class="aocr-sidebar-backdrop" aria-hidden="true"></div>
-
     <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
+    <script src="@responsiveJsUrl"></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

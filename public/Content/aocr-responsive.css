@@ -185,7 +185,7 @@ embed {
         transform: translateX(-100%);
         transition: transform .25s ease;
         width: min(86vw, 300px);
-        z-index: 1030;
+        z-index: 1050 !important;
     }
 
     body.sidebar-open .main-sidebar.aocr-sidebar {
@@ -200,6 +200,10 @@ embed {
     #sidebar-overlay {
         background: rgba(8, 18, 31, .42);
         backdrop-filter: blur(2px);
+    }
+
+    body.aocr-body .aocr-sidebar-backdrop {
+        z-index: 1040 !important;
     }
 
     .card-body {
@@ -461,5 +465,138 @@ embed {
 
     .w-md-auto {
         width: auto;
+    }
+}
+
+/* AOCR responsive foundation. Scoped to the institutional application shell. */
+body.aocr-body {
+    --aocr-color-primary: #0b5fa5;
+    --aocr-color-secondary: #0f7d8c;
+    --aocr-color-background: #f4f7fb;
+    --aocr-color-border: #dce5ee;
+    --aocr-text-primary: #17324d;
+    --aocr-text-secondary: #61758a;
+    --aocr-radius: 12px;
+    --aocr-touch-size: 44px;
+    --aocr-content-gap: clamp(12px, 2vw, 24px);
+    padding-right: env(safe-area-inset-right);
+    padding-left: env(safe-area-inset-left);
+}
+
+body.aocr-body .aocr-page,
+body.aocr-body .aocr-main-wrapper,
+body.aocr-body .aocr-content-shell,
+body.aocr-body .aocr-main-wrapper main,
+body.aocr-body .aocr-main-wrapper form {
+    min-width: 0;
+    width: 100%;
+}
+
+body.aocr-body .aocr-content-shell {
+    padding-bottom: calc(var(--aocr-content-gap) + env(safe-area-inset-bottom)) !important;
+}
+
+body.aocr-body .aocr-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.aocr-body .aocr-table-scroll:focus-visible {
+    border-radius: 6px;
+    outline: 3px solid rgba(11, 95, 165, .35);
+    outline-offset: 2px;
+}
+
+body.aocr-body :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid rgba(11, 95, 165, .45);
+    outline-offset: 2px;
+}
+
+body.aocr-body .aocr-responsive-grid {
+    display: grid;
+    gap: var(--aocr-content-gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+body.aocr-body :is(img, video, canvas, svg) {
+    height: auto;
+    max-width: 100%;
+}
+
+body.aocr-body .select2-container {
+    max-width: 100%;
+    width: 100% !important;
+}
+
+@media (max-width: 991.98px) {
+    body.aocr-body .aocr-sidebar-shell {
+        height: 100%;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.aocr-body .aocr-content-shell {
+        padding: 12px !important;
+    }
+
+    body.aocr-body :is(.btn, .form-control, .form-select, .custom-select, .select2-selection, input[type="file"]) {
+        min-height: var(--aocr-touch-size);
+    }
+
+    body.aocr-body :is(input, select, textarea).form-control,
+    body.aocr-body select.form-select {
+        font-size: 16px;
+    }
+
+    body.aocr-body .modal-content {
+        max-height: calc(100dvh - 16px);
+        max-height: calc(var(--aocr-viewport-height, 100vh) - 16px);
+    }
+
+    body.aocr-body .modal-body {
+        overscroll-behavior: contain;
+    }
+
+    body.aocr-body .dropdown-menu {
+        max-width: calc(100vw - 16px);
+    }
+
+    body.aocr-body .aocr-table-scroll > table {
+        margin-bottom: 0;
+        min-width: max(560px, 100%);
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.aocr-body .aocr-topbar {
+        padding-left: max(4px, env(safe-area-inset-left));
+        padding-right: max(4px, env(safe-area-inset-right));
+    }
+
+    body.aocr-body .modal-dialog {
+        margin: 8px auto !important;
+        max-width: calc(100vw - 16px) !important;
+        width: calc(100vw - 16px) !important;
+    }
+
+    body.aocr-body .modal-header,
+    body.aocr-body .modal-body,
+    body.aocr-body .modal-footer {
+        padding: 12px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.aocr-body *,
+    body.aocr-body *::before,
+    body.aocr-body *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
     }
 }

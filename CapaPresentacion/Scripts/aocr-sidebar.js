@@ -19,12 +19,33 @@
         return window.matchMedia('(max-width: 991.98px)').matches;
     }
 
+    var sidebarTrigger = null;
+
+    function getFocusableElements(shell) {
+        if (!shell) return [];
+        return Array.prototype.slice.call(shell.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(function (element) {
+            return !element.hidden && element.getAttribute('aria-hidden') !== 'true' && element.offsetParent !== null;
+        });
+    }
+
+    function focusSidebar(shell) {
+        var focusable = getFocusableElements(shell);
+        (focusable[0] || shell).focus();
+    }
+
     function closeMobileSidebar() {
         if (!isMobileViewport()) {
             return;
         }
 
         document.body.classList.remove('sidebar-open');
+        var backdrop = document.getElementById('aocrSidebarBackdrop');
+        if (backdrop) backdrop.setAttribute('aria-hidden', 'true');
+        if (sidebarTrigger && typeof sidebarTrigger.focus === 'function') sidebarTrigger.focus();
+        var pushMenu = document.querySelector('[data-widget="pushmenu"]');
+        if (pushMenu) pushMenu.setAttribute('aria-expanded', 'false');
     }
 
     function setGroupState(item, toggle, submenu, open) {
@@ -149,10 +170,50 @@
         });
 
         document.addEventListener('keydown', function (event) {
+            if (event.key === 'Tab' && isMobileViewport() && document.body.classList.contains('sidebar-open')) {
+                var focusable = getFocusableElements(shell);
+                if (!focusable.length) {
+                    event.preventDefault();
+                    shell.focus();
+                    return;
+                }
+                var first = focusable[0];
+                var last = focusable[focusable.length - 1];
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
             if (event.key === 'Escape' || event.keyCode === 27) {
                 closeMobileSidebar();
             }
         });
+
+        var pushMenu = document.querySelector('[data-widget="pushmenu"]');
+        if (pushMenu) {
+            pushMenu.setAttribute('aria-expanded', 'false');
+            pushMenu.addEventListener('click', function () {
+                if (!isMobileViewport()) return;
+                sidebarTrigger = pushMenu;
+                window.setTimeout(function () {
+                    if (!document.body.classList.contains('sidebar-open')) return;
+                    pushMenu.setAttribute('aria-expanded', 'true');
+                    var backdropElement = document.getElementById('aocrSidebarBackdrop');
+                    if (backdropElement) backdropElement.setAttribute('aria-hidden', 'false');
+                    focusSidebar(shell);
+                }, 50);
+            });
+        }
+
+        var closeButton = shell.querySelector('[data-aocr-sidebar-close]');
+        if (closeButton) {
+            closeButton.addEventListener('click', function () {
+                closeMobileSidebar();
+            });
+        }
 
         var backdrop = document.getElementById('aocrSidebarBackdrop');
         if (backdrop) {
@@ -160,6 +221,18 @@
                 closeMobileSidebar();
             });
         }
+
+        if (isMobileViewport()) closeMobileSidebar();
+
+        var breakpoint = window.matchMedia('(max-width: 991.98px)');
+        var handleBreakpointChange = function (event) {
+            document.body.classList.remove('sidebar-open');
+            if (backdrop) backdrop.setAttribute('aria-hidden', 'true');
+            if (pushMenu) pushMenu.setAttribute('aria-expanded', 'false');
+            if (!event.matches) shell.removeAttribute('aria-modal');
+        };
+        if (typeof breakpoint.addEventListener === 'function') breakpoint.addEventListener('change', handleBreakpointChange);
+        else if (typeof breakpoint.addListener === 'function') breakpoint.addListener(handleBreakpointChange);
 
         return true;
     }

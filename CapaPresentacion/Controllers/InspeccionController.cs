@@ -103,6 +103,8 @@ namespace CapaPresentacion.Controllers
         private const string CARPETA_STORAGE_INFORMES = "Uploads/Inspecciones";
         private const string CARPETA_STORAGE_INFORMES_TECNICOS = "Uploads/Inspecciones/InformesTecnicos";
         private const string CARPETA_STORAGE_INFORMES_TECNICOS_FIRMADOS = "Uploads/Inspecciones/InformesTecnicos/Firmados";
+        private const string CARPETA_STORAGE_ADJUNTOS_INFORME = "Uploads/Inspecciones/InformesTecnicos/Adjuntos";
+        private const string CARPETA_STORAGE_TEMP_PDF = "Uploads/TempPdf";
         private const string CARPETA_VIRTUAL_TEMP_PDF = "~/App_Data/TempPdf";
         private const string CARPETA_VIRTUAL_ADJUNTOS_INFORME = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Adjuntos";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
@@ -2006,7 +2008,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("El adjunto no está registrado en el informe técnico.");
             }
 
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_ADJUNTOS_INFORME);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_ADJUNTOS_INFORME);
             var fullPath = Path.Combine(basePath, nombreFisico);
             if (!EsRutaDentroDeBase(fullPath, basePath) || !System.IO.File.Exists(fullPath))
             {
@@ -2600,7 +2602,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var token = GuardarInformeTecnicoPreviewPdf(id, usuarioId, pdfBytes);
-                var rutaTemporal = Path.Combine(Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF), token + ".pdf");
+                var rutaTemporal = Path.Combine(ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_TEMP_PDF), token + ".pdf");
                 var existeTemporal = System.IO.File.Exists(rutaTemporal);
                 var tamanioTemporal = existeTemporal ? new FileInfo(rutaTemporal).Length : 0;
                 var pdfUrl = Url.Action("VerPreviewInformeTecnico", "Inspeccion", new { token = token });
@@ -2688,7 +2690,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 LimpiarPdfTemporalesAntiguos();
-                var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+                var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_TEMP_PDF);
                 var fullPath = Path.Combine(basePath, safeToken + ".pdf");
                 if (!EsRutaDentroDeBase(fullPath, basePath) || !System.IO.File.Exists(fullPath))
                 {
@@ -5432,7 +5434,7 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            var carpetaTemporal = Server.MapPath("~/App_Data/Temp/PdfBranding");
+            var carpetaTemporal = ObtenerDirectorioTemporalPdfBranding();
             if (!Directory.Exists(carpetaTemporal))
             {
                 Directory.CreateDirectory(carpetaTemporal);
@@ -5717,7 +5719,7 @@ namespace CapaPresentacion.Controllers
         private string GuardarInformeTecnicoPreviewPdf(int codigoInspeccion, int usuarioId, byte[] pdfBytes)
         {
             LimpiarPdfTemporalesAntiguos();
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_TEMP_PDF);
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
@@ -5738,7 +5740,7 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
-                var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+                var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_TEMP_PDF);
                 if (!Directory.Exists(basePath))
                 {
                     return;
@@ -6720,7 +6722,7 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            var carpetaTemporal = Server.MapPath("~/App_Data/Temp/PdfBranding");
+            var carpetaTemporal = ObtenerDirectorioTemporalPdfBranding();
             if (!Directory.Exists(carpetaTemporal))
             {
                 Directory.CreateDirectory(carpetaTemporal);
@@ -7674,7 +7676,7 @@ namespace CapaPresentacion.Controllers
             var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
             if (Request == null || Request.Files == null || Request.Files.Count == 0) { return archivosGuardados; }
 
-            var basePath = Server.MapPath(CARPETA_VIRTUAL_ADJUNTOS_INFORME);
+            var basePath = ObtenerDirectorioFisicoStorage(CARPETA_STORAGE_ADJUNTOS_INFORME);
             if (!Directory.Exists(basePath)) { Directory.CreateDirectory(basePath); }
 
             var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -8760,6 +8762,14 @@ namespace CapaPresentacion.Controllers
             var carpeta = (carpetaRelativa ?? string.Empty).Trim('/', '\\')
                 .Replace('/', Path.DirectorySeparatorChar);
             return string.IsNullOrWhiteSpace(carpeta) ? basePath : Path.Combine(basePath, carpeta);
+        }
+
+        private static string ObtenerDirectorioTemporalPdfBranding()
+        {
+            // wkhtmltopdf no puede cargar --header-html/--footer-html desde una ruta
+            // UNC. Los archivos de branding son transitorios y deben permanecer en
+            // el disco local del servidor para que el proceso hijo pueda leerlos.
+            return Path.Combine(Path.GetTempPath(), "AOCR", "PdfBranding");
         }
 
         private static string ConstruirRutaStorage(string carpetaRelativa, string nombreArchivo)
