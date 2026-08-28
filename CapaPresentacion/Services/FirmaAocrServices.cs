@@ -197,6 +197,12 @@ namespace CapaPresentacion.Services
                 {
                     documento.PuedeFirmar = false;
                 }
+
+                if (permisos.EsCoordinadorRol)
+                {
+                    model.MotivoBloqueo = "Seguimiento habilitado para CoordinaciÃ³n. La generaciÃ³n de los documentos finales corresponde al Inspector asignado.";
+                    model.ResponsableFirma = "Inspector asignado / DIRDAC / DCAV";
+                }
             }
 
             model.Documentos = documentos;
@@ -395,6 +401,8 @@ namespace CapaPresentacion.Services
                 CamposFaltantes = camposFaltantes,
                 EstadoExplotador = contexto.Documento != null ? contexto.Documento.EstadoExplotador : null,
                 FechaVencimiento = contexto.Documento != null ? contexto.Documento.FechaVencimiento : null,
+                NombreDirectorGeneral = contexto.Documento != null ? contexto.Documento.NombreDirectorGeneral : null,
+                NombreDirectorCertificacion = contexto.Documento != null ? contexto.Documento.NombreDirectorCertificacion : null,
                 FechaEmisionDocumento = contexto.Documento != null ? (DateTime?)contexto.Documento.FechaEmisionDocumento : null,
                 AocOriginalNumero = contexto.Documento != null ? contexto.Documento.AocOriginalNumero : null,
                 PermisoOperacionCnac = solicitud.NumeroAOC,
@@ -548,7 +556,14 @@ namespace CapaPresentacion.Services
             };
         }
 
-        public FirmaAocrOperacionResultado GuardarDatosObligatorios(int solicitudId, string estadoExplotador, DateTime? fechaVencimiento, int usuarioId, string usuarioNombre)
+        public FirmaAocrOperacionResultado GuardarDatosObligatorios(
+            int solicitudId,
+            string estadoExplotador,
+            DateTime? fechaVencimiento,
+            string nombreDirectorGeneral,
+            string nombreDirectorCertificacion,
+            int usuarioId,
+            string usuarioNombre)
         {
             var contexto = CargarContexto(solicitudId);
             if (contexto == null || contexto.Solicitud == null)
@@ -582,7 +597,8 @@ namespace CapaPresentacion.Services
                     Estado = "GENERADO",
                     FechaEmision = contexto.Documento != null && contexto.Documento.FechaEmisionDocumento != default(DateTime) ? (DateTime?)contexto.Documento.FechaEmisionDocumento : DateTime.Now,
                     FechaVencimiento = fechaVencimiento,
-                    EmitidoPor = usuarioNombre,
+                    EmitidoPor = (nombreDirectorCertificacion ?? string.Empty).Trim(),
+                    AprobadoPor = (nombreDirectorGeneral ?? string.Empty).Trim(),
                     CreatedAt = DateTime.Now,
                     CreatedBy = usuarioId,
                     UpdatedAt = DateTime.Now,
@@ -591,9 +607,13 @@ namespace CapaPresentacion.Services
                 certificado.CodigoCertificado = _certificadoDao.Crear(certificado);
                 camposActualizados++;
             }
-            else if (certificado.FechaVencimiento != fechaVencimiento)
+            else if (certificado.FechaVencimiento != fechaVencimiento
+                || !string.Equals(certificado.AprobadoPor ?? string.Empty, nombreDirectorGeneral ?? string.Empty, StringComparison.Ordinal)
+                || !string.Equals(certificado.EmitidoPor ?? string.Empty, nombreDirectorCertificacion ?? string.Empty, StringComparison.Ordinal))
             {
                 certificado.FechaVencimiento = fechaVencimiento;
+                certificado.AprobadoPor = (nombreDirectorGeneral ?? string.Empty).Trim();
+                certificado.EmitidoPor = (nombreDirectorCertificacion ?? string.Empty).Trim();
                 certificado.FechaEmision = certificado.FechaEmision ?? DateTime.Now;
                 certificado.UpdatedAt = DateTime.Now;
                 certificado.UpdatedBy = usuarioId;
@@ -744,7 +764,9 @@ namespace CapaPresentacion.Services
                 Certificado = certificado,
                 Aeronaves = aeronaves ?? new List<AeronaveSolicitud>(),
                 NumeroAocr = PrimerValorNoVacio(certificado != null ? certificado.NumeroCertificado : null, solicitud != null ? solicitud.NumeroSolicitud : null, solicitud != null ? "AOCR-" + solicitud.CodigoSolicitud : null),
-                FirmanteFinal = PrimerValorNoVacio(certificado != null ? certificado.AprobadoPor : null, certificado != null ? certificado.EmitidoPor : null, informe != null ? informe.UsuarioFirma2 : null),
+                FirmanteFinal = certificado != null ? certificado.AprobadoPor : null,
+                NombreDirectorGeneral = certificado != null ? certificado.AprobadoPor : null,
+                NombreDirectorCertificacion = certificado != null ? certificado.EmitidoPor : null,
                 CargoFirmante = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CargoDirector) ? solicitud.CargoDirector : "Direccion General de Aviacion Civil",
                 FechaEmisionDocumento = certificado != null && certificado.FechaEmision.HasValue ? certificado.FechaEmision.Value : DateTime.Now,
                 FechaExpedicion = certificado != null ? certificado.FechaEmision : null,
@@ -823,6 +845,8 @@ namespace CapaPresentacion.Services
             AgregarCampoFaltante(faltantes, model.PuntosContactoOperacionales, "Puntos de contacto operacionales");
             AgregarCampoFaltante(faltantes, model.RepresentanteTecnico, "Representante tecnico");
             AgregarCampoFaltante(faltantes, model.CondicionBaseOperacion, "Aeropuertos autorizados / condicion base");
+            AgregarCampoFaltante(faltantes, model.NombreDirectorGeneral, "Nombre del Director General de Aviacion Civil");
+            AgregarCampoFaltante(faltantes, model.NombreDirectorCertificacion, "Nombre del Director de Certificacion Aeronautica y Vigilancia Continua");
 
             if (model.FechaEmisionDocumento == default(DateTime))
             {
@@ -969,36 +993,7 @@ namespace CapaPresentacion.Services
                 return null;
             }
 
-            if (Path.IsPathRooted(ruta))
-            {
-                return ruta;
-            }
-
-            var normalizada = ruta.Trim();
-            if (normalizada.StartsWith("~/", StringComparison.Ordinal))
-            {
-                return _server.MapPath(normalizada);
-            }
-
-            if (normalizada.StartsWith("/", StringComparison.Ordinal))
-            {
-                try
-                {
-                    var appRelative = VirtualPathUtility.ToAppRelative(normalizada);
-                    if (!string.IsNullOrWhiteSpace(appRelative) && appRelative.StartsWith("~/", StringComparison.Ordinal))
-                    {
-                        return _server.MapPath(appRelative);
-                    }
-                }
-                catch
-                {
-                    // Fallback para rutas antiguas almacenadas como /App_Data/...
-                }
-
-                return _server.MapPath("~/" + normalizada.TrimStart('/'));
-            }
-
-            return _server.MapPath("~/" + normalizada.TrimStart('~', '/', '\\'));
+            return FileStorageHelper.ResolvePhysicalPath(ruta);
         }
 
         public bool Existe(string ruta)
@@ -1010,7 +1005,7 @@ namespace CapaPresentacion.Services
         private string Guardar(string tipoCarpeta, int solicitudId, string prefijo, byte[] contenido)
         {
             var carpetaRelativa = "~/App_Data/Uploads/AOCR/" + tipoCarpeta + "/" + solicitudId;
-            var carpetaAbsoluta = _server.MapPath(carpetaRelativa);
+            var carpetaAbsoluta = FileStorageHelper.GetPhysicalBasePath(carpetaRelativa);
             if (!Directory.Exists(carpetaAbsoluta))
             {
                 Directory.CreateDirectory(carpetaAbsoluta);

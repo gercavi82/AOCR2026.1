@@ -100,6 +100,14 @@
                                 <input type="date" id="FechaVencimiento" name="FechaVencimiento" value="@(Model.FechaVencimiento.HasValue ? Model.FechaVencimiento.Value.ToString("yyyy-MM-dd") : "")" />
                             </label>
                             <label class="firma-aocr__field">
+                                <span>Director General de Aviacion Civil *</span>
+                                <input type="text" id="NombreDirectorGeneral" name="NombreDirectorGeneral" maxlength="100" value="@(Model.NombreDirectorGeneral ?? "")" autocomplete="off" placeholder="Nombre de quien firmara el AOCR" />
+                            </label>
+                            <label class="firma-aocr__field">
+                                <span>Director de Certificacion Aeronautica y Vigilancia Continua *</span>
+                                <input type="text" id="NombreDirectorCertificacion" name="NombreDirectorCertificacion" maxlength="100" value="@(Model.NombreDirectorCertificacion ?? "")" autocomplete="off" placeholder="Nombre de quien firmara Condiciones y Limitaciones" />
+                            </label>
+                            <label class="firma-aocr__field">
                                 <span>Fecha de emision</span>
                                 <input type="text" value="@(Model.FechaEmisionDocumento.HasValue ? Model.FechaEmisionDocumento.Value.ToString("dd/MM/yyyy") : "-")" readonly />
                             </label>

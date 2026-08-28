@@ -38,7 +38,7 @@ namespace CapaPresentacion.Controllers
         public ActionResult Index(int solicitudId)
         {
             var permisos = ObtenerPermisosRolActivo();
-            if (!permisos.EsInspectorRol && !permisos.EsDirdacRol && !permisos.EsDcavRol && !permisos.EsAdministrador)
+            if (!permisos.EsInspectorRol && !permisos.EsCoordinadorRol && !permisos.EsDirdacRol && !permisos.EsDcavRol && !permisos.EsAdministrador)
                 return new HttpStatusCodeResult(403, "No está autorizado para gestionar documentos finales con el rol activo.");
             if (permisos.EsInspectorRol && !EsSolicitudAsignadaAlInspectorActivo(solicitudId))
                 return new HttpStatusCodeResult(403, "El expediente no está asignado al Inspector autenticado.");
@@ -131,6 +131,12 @@ namespace CapaPresentacion.Controllers
                     Request != null && Request.Unvalidated != null ? Request.Unvalidated.Form["fechaVencimiento"] : null,
                     request.FechaVencimiento.HasValue ? request.FechaVencimiento.Value.ToString("yyyy-MM-dd") : null);
                 var fechaVencimiento = ParseFechaAocr(fechaVencimientoRaw);
+                var nombreDirectorGeneral = PrimerValorFormulario(
+                    request.NombreDirectorGeneral,
+                    Request != null && Request.Unvalidated != null ? Request.Unvalidated.Form["NombreDirectorGeneral"] : null);
+                var nombreDirectorCertificacion = PrimerValorFormulario(
+                    request.NombreDirectorCertificacion,
+                    Request != null && Request.Unvalidated != null ? Request.Unvalidated.Form["NombreDirectorCertificacion"] : null);
 
                 Trace.TraceInformation("[FIRMA_AOCR][GUARDAR_DATOS_IN] SolicitudId=" + solicitudId
                     + "; EstadoExplotador='" + (estadoExplotador ?? string.Empty) + "'"
@@ -145,6 +151,18 @@ namespace CapaPresentacion.Controllers
                 if (!fechaVencimiento.HasValue)
                 {
                     errores.Add("Fecha de vencimiento");
+                }
+                if (string.IsNullOrWhiteSpace(nombreDirectorGeneral))
+                {
+                    errores.Add("Nombre del Director General de Aviacion Civil");
+                }
+                if (string.IsNullOrWhiteSpace(nombreDirectorCertificacion))
+                {
+                    errores.Add("Nombre del Director de Certificacion Aeronautica y Vigilancia Continua");
+                }
+                if ((nombreDirectorGeneral ?? string.Empty).Length > 100 || (nombreDirectorCertificacion ?? string.Empty).Length > 100)
+                {
+                    errores.Add("Los nombres de los firmantes no pueden superar 100 caracteres");
                 }
 
                 if (errores.Count > 0)
@@ -167,6 +185,8 @@ namespace CapaPresentacion.Controllers
                     solicitudId,
                     estadoExplotador,
                     fechaVencimiento,
+                    nombreDirectorGeneral,
+                    nombreDirectorCertificacion,
                     ObtenerUsuarioActualId(),
                     ObtenerUsuarioActualNombre());
 
@@ -268,6 +288,13 @@ namespace CapaPresentacion.Controllers
                 }
 
                 workflow.RegistrarDocumentoGenerado(contexto, tipoDocumento, ruta, bytes, ObtenerUsuarioActualId(), ObtenerUsuarioActualNombre());
+                CapaNegocio.LogBL.RegistrarInfo(
+                    "[FIRMA_AOCR][GENERAR_PDF_OK] SolicitudId=" + solicitudId
+                    + "; TipoDocumento=" + tipoDocumento
+                    + "; Ruta=" + ruta
+                    + "; Bytes=" + bytes + ";",
+                    "FirmaAocrController",
+                    ObtenerUsuarioActualId());
                 Trace.TraceInformation("[FIRMA_AOCR_NUEVA][GENERAR_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; Ruta=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
                 Trace.TraceInformation("[FIRMA_AOCR_V2][GENERAR_PDF_OK] SolicitudId=" + solicitudId + "; TipoDocumento=" + tipoDocumento + "; RutaPdf=" + ruta + "; Bytes=" + bytes + "; Paginas=1");
 
@@ -285,6 +312,13 @@ namespace CapaPresentacion.Controllers
             {
                 Trace.TraceError("[FIRMA_AOCR_NUEVA][ERROR] GENERAR SolicitudId=" + solicitudId + "; Motivo=" + ex.Message + "; Exception=" + ex);
                 Trace.TraceError("[FIRMA_AOCR_V2][ERROR] SolicitudId=" + solicitudId + "; Motivo=" + ex.Message + "; Exception=" + ex);
+                CapaNegocio.LogBL.RegistrarError(
+                    "[FIRMA_AOCR][GENERAR_PDF_ERROR] SolicitudId=" + solicitudId
+                    + "; TipoDocumento=" + tipoDocumento
+                    + "; Usuario=" + ObtenerUsuarioActualNombre(),
+                    ex.ToString(),
+                    "FirmaAocrController",
+                    ObtenerUsuarioActualId());
                 return JsonError(500, "Error interno al generar PDF AOCR. " + ex.Message, solicitudId);
             }
         }
@@ -566,6 +600,14 @@ namespace CapaPresentacion.Controllers
         private ActionResult ServirPdf(int solicitudId, bool firmado, bool descargar, string tipoDocumento)
         {
             tipoDocumento = FirmaAocrWorkflowService.NormalizarTipoDocumento(tipoDocumento);
+            CapaNegocio.LogBL.RegistrarInfo(
+                "[FIRMA_AOCR][SERVIR_PDF_IN] SolicitudId=" + solicitudId
+                + "; TipoDocumento=" + tipoDocumento
+                + "; Firmado=" + firmado
+                + "; Descargar=" + descargar
+                + "; Usuario=" + ObtenerUsuarioActualNombre() + ";",
+                "FirmaAocrController",
+                ObtenerUsuarioActualId());
             var contexto = WorkflowService.CargarContexto(solicitudId);
             if (contexto == null || contexto.Solicitud == null)
             {
@@ -590,27 +632,48 @@ namespace CapaPresentacion.Controllers
             var nombreBase = (contexto.Solicitud.NumeroSolicitud ?? ("AOCR-" + solicitudId)).Replace("/", "-").Replace("\\", "-");
             var sufijo = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase) ? "-condiciones" : "-aocr";
             var nombre = firmado ? nombreBase + sufijo + "-firmado.pdf" : nombreBase + sufijo + "-oficial.pdf";
-            Response.Headers["X-Content-Type-Options"] = "nosniff";
-            if (descargar)
-            {
-                Response.AppendHeader("Content-Disposition", "attachment; filename=\"" + nombre + "\"");
-            }
-            else
-            {
-                Response.AppendHeader("Content-Disposition", "inline; filename=\"" + nombre + "\"");
-            }
 
             var documentoId = firmado && firma != null ? firma.CodigoFirma
                 : (documentoGenerado != null ? documentoGenerado.CodigoDocumento
                     : (contexto.Certificado != null ? contexto.Certificado.CodigoCertificado : solicitudId));
-            var seguro = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+            var raicesPermitidas = CapaNegocio.Helpers.FileStorageHelper.GetAllowedStorageRoots()
+                .Concat(new[] { Server.MapPath("~/App_Data") })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var seguro = new DocumentoSeguroService(raicesPermitidas,
                 evento => Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + (User != null ? User.Identity.Name : string.Empty)));
             var archivo = seguro.Resolver(documentoId, solicitudId, contexto.Solicitud.CodigoSolicitud, ruta, nombre,
                 valor => StorageService.ResolverRutaFisica(valor));
             if (!archivo.EsValido)
+            {
+                CapaNegocio.LogBL.RegistrarError(
+                    "[FIRMA_AOCR][SERVIR_PDF_DENEGADO] SolicitudId=" + solicitudId
+                    + "; TipoDocumento=" + tipoDocumento
+                    + "; Error=" + archivo.Error
+                    + "; RaicesPermitidas=" + raicesPermitidas.Length + ";",
+                    archivo.MensajePublico,
+                    "FirmaAocrController",
+                    ObtenerUsuarioActualId());
                 return archivo.Error == DocumentoSeguroError.NoEncontrado || archivo.Error == DocumentoSeguroError.Vacio
                     ? (ActionResult)HttpNotFound(archivo.MensajePublico)
                     : new HttpStatusCodeResult(403, archivo.MensajePublico);
+            }
+
+            CapaNegocio.LogBL.RegistrarInfo(
+                "[FIRMA_AOCR][SERVIR_PDF_OK] SolicitudId=" + solicitudId
+                + "; TipoDocumento=" + tipoDocumento
+                + "; Bytes=" + new FileInfo(archivo.RutaFisica).Length
+                + "; Descargar=" + descargar + ";",
+                "FirmaAocrController",
+                ObtenerUsuarioActualId());
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            if (descargar)
+            {
+                return File(archivo.RutaFisica, archivo.Mime, nombre);
+            }
+
+            Response.AppendHeader("Content-Disposition", "inline; filename=\"" + nombre + "\"");
             return File(archivo.RutaFisica, archivo.Mime);
         }
 

@@ -7,11 +7,14 @@ namespace CapaDatos.Constants
         public const string Inspector = "Inspector";
         public const string Dirdac = "DIRDAC";
         public const string Dcav = "DCAV";
-        public const string RolesAccesoMvc = "Inspector,DirectorCertificacionesDcav,DCAV,Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica";
+        public const string Coordinacion = "Coordinacion";
+        public const string Administrador = "Administrador";
+        public const string RolesAccesoMvc = "Inspector,DirectorCertificacionesDcav,DCAV,Direccion,DireccionJefaturaTecnica,DIRDAC,JefaturaTecnica,Coordinacion,Coordinador,CoordinadorInspecciones,Administrador";
 
         public static readonly string[] RolesAcceso =
         {
-            Inspector, "DirectorCertificacionesDcav", Dcav, "Direccion", "DireccionJefaturaTecnica", Dirdac, "JefaturaTecnica"
+            Inspector, "DirectorCertificacionesDcav", Dcav, "Direccion", "DireccionJefaturaTecnica", Dirdac, "JefaturaTecnica",
+            Coordinacion, "Coordinador", "CoordinadorInspecciones", Administrador
         };
 
         public static readonly string[] DirdacAliases =

@@ -5982,12 +5982,15 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Generar", CodigoSolicitudParameter = "id")]
         public ActionResult GenerarAOCR(int id)
         {
-            if (User != null
-                && (User.IsInRole("Direccion")
-                    || User.IsInRole("DireccionJefaturaTecnica")
-                    || User.IsInRole("DIRDAC")
-                    || User.IsInRole("JefaturaTecnica")
-                    || User.IsInRole("DirectorGeneral")))
+            var permisosRolActivo = SidebarPermissionHelper.Resolve(
+                Session != null ? Session["Rol"] as string ?? string.Empty : string.Empty,
+                Session != null ? Session["RolesRaw"] ?? Session["Roles"] : null);
+            if (permisosRolActivo.EsInspectorRol
+                || permisosRolActivo.EsCoordinadorRol
+                || permisosRolActivo.EsDirdacRol
+                || permisosRolActivo.EsDcavRol
+                || permisosRolActivo.EsDirectorGeneralRol
+                || permisosRolActivo.EsAdministrador)
             {
                 return RedirectToAction("Index", "FirmaAocr", new { solicitudId = id });
             }

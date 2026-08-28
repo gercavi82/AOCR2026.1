@@ -266,6 +266,8 @@ namespace CapaPresentacion.Models
         public List<string> CamposFaltantes { get; set; } = new List<string>();
         public string EstadoExplotador { get; set; }
         public DateTime? FechaVencimiento { get; set; }
+        public string NombreDirectorGeneral { get; set; }
+        public string NombreDirectorCertificacion { get; set; }
         public DateTime? FechaEmisionDocumento { get; set; }
         public string AocOriginalNumero { get; set; }
         public string PermisoOperacionCnac { get; set; }
@@ -331,6 +333,8 @@ namespace CapaPresentacion.Models
         public int SolicitudId { get; set; }
         public string EstadoExplotador { get; set; }
         public DateTime? FechaVencimiento { get; set; }
+        public string NombreDirectorGeneral { get; set; }
+        public string NombreDirectorCertificacion { get; set; }
     }
 
     public class FirmarAocrInstitucionalResult
@@ -369,6 +373,8 @@ namespace CapaPresentacion.Models
         public string NumeroAocr { get; set; }
         public string FirmanteFinal { get; set; }
         public string CargoFirmante { get; set; }
+        public string NombreDirectorGeneral { get; set; }
+        public string NombreDirectorCertificacion { get; set; }
         public DateTime FechaEmisionDocumento { get; set; }
         public DateTime? FechaExpedicion { get; set; }
         public DateTime? FechaRenovacion { get; set; }

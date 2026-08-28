@@ -81,7 +81,7 @@ namespace CapaPresentacion.Controllers
                             "Login GET usuario autenticado redirige a cambio de contrasena");
                     }
 
-                    var esUsuarioRt = EsUsuarioRt(usuarioActual) && !EsUsuarioAdministrador(usuarioActual, rolesActuales);
+                    var esUsuarioRt = DebeGestionarCompaniaRt(usuarioActual, rolesActuales);
                     var companiasAsignadas = esUsuarioRt
                         ? ObtenerCompaniasAsignadasConFallback(usuarioActual)
                         : new List<UsuarioCompaniaRT>();
@@ -312,7 +312,7 @@ namespace CapaPresentacion.Controllers
                     "Login POST redirige a cambio de contrasena");
             }
 
-            var esUsuarioRt = EsUsuarioRt(usuario) && !EsUsuarioAdministrador(usuario, roles);
+            var esUsuarioRt = DebeGestionarCompaniaRt(usuario, roles);
             var companiasAsignadas = new List<UsuarioCompaniaRT>();
             if (esUsuarioRt)
             {
@@ -421,7 +421,7 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
-            var esUsuarioRt = EsUsuarioRt(usuario) && !EsAdministradorSesion(usuario);
+            var esUsuarioRt = DebeGestionarCompaniaRt(usuario, ObtenerRolesSesion());
             var rolActivo = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
             var requiereSeleccionCompania = esUsuarioRt || string.Equals(rolActivo, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase);
             var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
@@ -882,7 +882,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var rolesSesion = ObtenerRolesSesion();
-            var esUsuarioRt = EsUsuarioRt(usuarioActualizado) && !EsUsuarioAdministrador(usuarioActualizado, rolesSesion);
+            var esUsuarioRt = DebeGestionarCompaniaRt(usuarioActualizado, rolesSesion);
             if (esUsuarioRt)
             {
                 var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuarioActualizado);
@@ -993,6 +993,15 @@ namespace CapaPresentacion.Controllers
             return usuario != null &&
                    !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                    usuario.EstadoDesignacionRT.Trim().Equals("aceptado", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool DebeGestionarCompaniaRt(Usuario usuario, IEnumerable<string> roles)
+        {
+            return EsUsuarioRt(usuario)
+                && !EsUsuarioAdministrador(usuario, roles)
+                && !EsUsuarioInternoSinBloqueoRt(
+                    roles,
+                    usuario != null ? usuario.NombreUsuario : null);
         }
 
         private static bool EsUsuarioInternoSinBloqueoRt(IEnumerable<string> roles, string nombreUsuario)

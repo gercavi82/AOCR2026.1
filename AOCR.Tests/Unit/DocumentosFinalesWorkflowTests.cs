@@ -239,7 +239,16 @@ namespace AOCR.Tests.Unit
             Assert.IsTrue(AocrRolesInstitucionales.EsDirdac("DireccionJefaturaTecnica"));
             Assert.IsTrue(AocrRolesInstitucionales.EsDcav("DirectorCertificacionesDcav"));
             Assert.IsFalse(AocrRolesInstitucionales.EsDcav("Inspector"));
+            CollectionAssert.Contains(AocrRolesInstitucionales.RolesAcceso, AocrRolesInstitucionales.Administrador);
+            StringAssert.Contains(AocrRolesInstitucionales.RolesAccesoMvc, AocrRolesInstitucionales.Administrador);
+            CollectionAssert.Contains(AocrRolesInstitucionales.RolesAcceso, AocrRolesInstitucionales.Coordinacion);
+            StringAssert.Contains(AocrRolesInstitucionales.RolesAccesoMvc, AocrRolesInstitucionales.Coordinacion);
+            Assert.IsFalse(AocrRolesInstitucionales.EsDirdac(AocrRolesInstitucionales.Administrador));
+            Assert.IsFalse(AocrRolesInstitucionales.EsDcav(AocrRolesInstitucionales.Administrador));
+            Assert.IsFalse(AocrRolesInstitucionales.EsDirdac(AocrRolesInstitucionales.Coordinacion));
+            Assert.IsFalse(AocrRolesInstitucionales.EsDcav(AocrRolesInstitucionales.Coordinacion));
         }
+
 
         [TestMethod, TestCategory("Integration")] public void EsquemaReal_DocumentosVigentesSePuedeConsultar()
         {

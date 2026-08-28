@@ -50,6 +50,15 @@
         margin-left: var(--aocr-sidebar-width) !important;
         transition: margin-left .2s ease;
     }
+
+    /* El contenido no puede conservar 100% del viewport y sumar además el
+       margen del sidebar: esa combinación desplazaba el extremo derecho fuera
+       de pantalla, especialmente con zoom de navegador. */
+    body.aocr-body:not(.login-page) .content-wrapper.aocr-main-wrapper {
+        width: auto !important;
+        max-width: calc(100% - var(--aocr-sidebar-width)) !important;
+        min-width: 0;
+    }
 }
 
 .aocr-sidebar-shell {

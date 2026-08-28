@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -40,9 +41,19 @@ namespace AOCR.Tests.Unit
         [Description("La cuenta institucional GEN_COORDINACION no debe quedar bloqueada por RT pendiente.")]
         public void Login_NoBloqueaCuentaCoordinacionForzada_PorEstadoRtPendiente()
         {
-            var controller = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..\..\..\..\CapaPresentacion\Controllers\AccountController.cs"));
+            var controller = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\CapaPresentacion\Controllers\AccountController.cs"));
             StringAssert.Contains(controller, "IsForcedCoordinacionUser(");
-            StringAssert.Contains(controller, "!esUsuarioInstitucionalForzado");
+            StringAssert.Contains(controller, "!esUsuarioInternoSinBloqueoRt");
+        }
+
+        [TestMethod]
+        [Description("Las cuentas institucionales no deben entrar al selector de companias RT despues del login o cambio de clave.")]
+        public void Login_CuentaInstitucional_NoSeClasificaComoRtOperador()
+        {
+            var controller = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\CapaPresentacion\Controllers\AccountController.cs"));
+            StringAssert.Contains(controller, "private static bool DebeGestionarCompaniaRt");
+            StringAssert.Contains(controller, "&& !EsUsuarioInternoSinBloqueoRt(");
+            Assert.AreEqual(5, controller.Split(new[] { "DebeGestionarCompaniaRt(" }, StringSplitOptions.None).Length - 1);
         }
     }
 }

@@ -140,6 +140,63 @@ namespace AOCR.Tests.Unit
                 Assert.AreEqual(1, Count(body, "\"" + key + "\""), key);
         }
 
+        [TestMethod]
+        public void Caso25_PdfFinalSeGuardaEnRepositorioInstitucionalConfigurado()
+        {
+            var service = Read("CapaPresentacion/Services/FirmaAocrServices.cs");
+            StringAssert.Contains(service, "FileStorageHelper.GetPhysicalBasePath(carpetaRelativa)");
+            StringAssert.Contains(service, "return FileStorageHelper.ResolvePhysicalPath(ruta);");
+        }
+
+        [TestMethod]
+        public void Caso26_VisorPdfAceptaRepositorioInstitucionalConfigurado()
+        {
+            var controller = Read("CapaPresentacion/Controllers/FirmaAocrController.cs");
+            var servirPdf = Slice(controller, "private ActionResult ServirPdf", "private SidebarPermissionSnapshot ObtenerPermisosRolActivo");
+            StringAssert.Contains(servirPdf, "FileStorageHelper.GetAllowedStorageRoots()");
+            StringAssert.Contains(servirPdf, "new DocumentoSeguroService(raicesPermitidas");
+        }
+
+        [TestMethod]
+        public void Caso27_DescargaAgregaNombreSoloDespuesDeValidarArchivo()
+        {
+            var controller = Read("CapaPresentacion/Controllers/FirmaAocrController.cs");
+            var servirPdf = Slice(controller, "private ActionResult ServirPdf", "private SidebarPermissionSnapshot ObtenerPermisosRolActivo");
+            var validar = servirPdf.IndexOf("if (!archivo.EsValido)", StringComparison.Ordinal);
+            var descargar = servirPdf.IndexOf("return File(archivo.RutaFisica, archivo.Mime, nombre);", StringComparison.Ordinal);
+            Assert.IsTrue(validar >= 0 && descargar > validar);
+        }
+
+        [TestMethod]
+        public void Caso28_InspectorCapturaFirmantesInstitucionalesSeparados()
+        {
+            var view = Read("CapaPresentacion/Views/FirmaAocr/Index.cshtml");
+            StringAssert.Contains(view, "name=\"NombreDirectorGeneral\"");
+            StringAssert.Contains(view, "name=\"NombreDirectorCertificacion\"");
+        }
+
+        [TestMethod]
+        public void Caso29_CadaPdfUsaElFirmanteQueCorrespondeAlCargo()
+        {
+            var reconocimiento = Read("CapaPresentacion/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml");
+            var condiciones = Read("CapaPresentacion/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml");
+            StringAssert.Contains(reconocimiento, "Model.NombreDirectorGeneral");
+            StringAssert.Contains(condiciones, "Model.NombreDirectorCertificacion");
+            StringAssert.Contains(condiciones, "Director of Aeronautical Certification and Continuous Surveillance");
+        }
+
+        [TestMethod]
+        public void Caso30_MigracionPersisteAmbosFirmantesEnColumnasSeparadas()
+        {
+            var migration = Read("scripts/sql/20260828_certificado_firmantes_institucionales.sql");
+            StringAssert.Contains(migration, "ADD COLUMN IF NOT EXISTS emitido_por");
+            StringAssert.Contains(migration, "ADD COLUMN IF NOT EXISTS aprobado_por");
+
+            var dao = Read("CapaDatos/DAOs/CertificadoDAO.cs");
+            StringAssert.Contains(dao, "EmitidoPor = ResolverColumnaOpcional(cn, TablaCertificado, \"emitido_por\"");
+            StringAssert.Contains(dao, "AprobadoPor = ResolverColumnaOpcional(cn, TablaCertificado, \"aprobado_por\"");
+        }
+
         private static string InspectorBranch() { return RoleBranch("else if (context.EsInspectorRol)", "else if (context.EsFinancieroRol)"); }
         private static string RoleBranch(string start, string end) { return Slice(RoleMatrixBody(), start, end); }
         private static string RoleMatrixBody() { return Slice(Read("CapaPresentacion/Helpers/SidebarMenuBuilder.cs"), "private static SidebarMenuGroupViewModel BuildRoleWorkMenuGroup", "private static int? PendingBadge"); }

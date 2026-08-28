@@ -22,6 +22,9 @@
     }
 
     var normalizeVisibleText = new Func<string, string>(VisibleTextHelper.Normalize);
+    var permisosRolActivo = SidebarPermissionHelper.Resolve(
+        Session != null ? Session["Rol"] as string ?? string.Empty : string.Empty,
+        Session != null ? Session["RolesRaw"] ?? Session["Roles"] : null);
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
     var estadoVisibleExpediente = (ViewBag.EstadoDocumentalVisible as string ?? Model.Estado ?? string.Empty);
     var procesoCerradoOperativamente = (bool)(ViewBag.ProcesoCerradoOperativamente ?? false);
@@ -1602,18 +1605,19 @@
                 }
                 else if (puedeGenerarAocr)
                 {
-                    var esFirmaInstitucionalAocr = User.IsInRole("Direccion")
-                        || User.IsInRole("DireccionJefaturaTecnica")
-                        || User.IsInRole("DIRDAC")
-                        || User.IsInRole("JefaturaTecnica")
-                        || User.IsInRole("DirectorGeneral");
+                    var esFirmaInstitucionalAocr = permisosRolActivo.EsInspectorRol
+                        || permisosRolActivo.EsCoordinadorRol
+                        || permisosRolActivo.EsDirdacRol
+                        || permisosRolActivo.EsDcavRol
+                        || permisosRolActivo.EsDirectorGeneralRol
+                        || permisosRolActivo.EsAdministrador;
                     if (esFirmaInstitucionalAocr)
                     {
                         <a class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked"
                            href="@Url.Action("Index", "FirmaAocr", new { solicitudId = Model.CodigoSolicitud })"
                            title="@(string.IsNullOrWhiteSpace(motivoAocr) ? "Abrir Firma institucional AOCR" : normalizeVisibleText(motivoAocr))">
-                            <span class="aocr-action-btn-full__title"><i class="fas fa-file-signature"></i> Firma institucional AOCR</span>
-                            <span class="aocr-action-btn-full__hint">Revise y firme el AOCR en formato oficial.</span>
+                            <span class="aocr-action-btn-full__title"><i class="fas fa-file-signature"></i> @(permisosRolActivo.EsInspectorRol ? "Generar documentos AOCR" : "GestiÃ³n documental AOCR")</span>
+                            <span class="aocr-action-btn-full__hint">@(permisosRolActivo.EsInspectorRol ? "Complete y genere el AOCR en formato oficial." : "Consulte el avance de generaciÃ³n y firma institucional.")</span>
                         </a>
                     }
                     else
