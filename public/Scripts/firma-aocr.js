@@ -136,6 +136,22 @@
             return;
         }
 
+        var uppercaseInputs = form.querySelectorAll('input[type="text"]:not([readonly])');
+        function normalizeUppercase(input) {
+            if (input && typeof input.value === 'string') {
+                input.value = input.value.toLocaleUpperCase('es-EC');
+            }
+        }
+        Array.prototype.forEach.call(uppercaseInputs, function (input) {
+            input.setAttribute('autocapitalize', 'characters');
+            input.classList.add('firma-aocr__uppercase');
+            input.addEventListener('input', function () { normalizeUppercase(input); });
+            input.addEventListener('paste', function () {
+                window.setTimeout(function () { normalizeUppercase(input); }, 0);
+            });
+            normalizeUppercase(input);
+        });
+
         function validateLocal() {
             var estado = qs('input[name="EstadoExplotador"]', form) || qs('input[name="estadoExplotador"]', form);
             var vencimiento = qs('input[name="FechaVencimiento"]', form) || qs('input[name="fechaVencimiento"]', form);
@@ -190,6 +206,7 @@
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
+            Array.prototype.forEach.call(uppercaseInputs, normalizeUppercase);
             if (form.classList.contains('firma-aocr-is-loading') || !validateLocal()) {
                 return;
             }

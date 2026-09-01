@@ -138,6 +138,10 @@ namespace CapaPresentacion.Controllers
                     request.NombreDirectorCertificacion,
                     Request != null && Request.Unvalidated != null ? Request.Unvalidated.Form["NombreDirectorCertificacion"] : null);
 
+                estadoExplotador = NormalizarMayusculas(estadoExplotador);
+                nombreDirectorGeneral = NormalizarMayusculas(nombreDirectorGeneral);
+                nombreDirectorCertificacion = NormalizarMayusculas(nombreDirectorCertificacion);
+
                 Trace.TraceInformation("[FIRMA_AOCR][GUARDAR_DATOS_IN] SolicitudId=" + solicitudId
                     + "; EstadoExplotador='" + (estadoExplotador ?? string.Empty) + "'"
                     + "; FechaVencimientoRaw='" + (fechaVencimientoRaw ?? string.Empty) + "';");
@@ -878,6 +882,13 @@ namespace CapaPresentacion.Controllers
         private string ObtenerRolActual()
         {
             return _authorizationService.ObtenerRolActual(User);
+        }
+
+        private static string NormalizarMayusculas(string valor)
+        {
+            return string.IsNullOrWhiteSpace(valor)
+                ? valor
+                : valor.Trim().ToUpperInvariant();
         }
 
         private string ObtenerRolFirma(string tipoDocumento)

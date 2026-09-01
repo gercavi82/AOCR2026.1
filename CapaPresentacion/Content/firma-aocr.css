@@ -351,6 +351,10 @@
     border-radius: 6px;
 }
 
+.firma-aocr__field input.firma-aocr__uppercase {
+    text-transform: uppercase;
+}
+
 .firma-aocr__field input[readonly] {
     background: #f4f8fb;
     color: #53657a;

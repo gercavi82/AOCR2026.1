@@ -197,6 +197,20 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(dao, "AprobadoPor = ResolverColumnaOpcional(cn, TablaCertificado, \"aprobado_por\"");
         }
 
+        [TestMethod]
+        public void Caso31_CamposEditablesSeNormalizanAMayusculasEnClienteYServidor()
+        {
+            var script = Read("CapaPresentacion/Scripts/firma-aocr.js");
+            StringAssert.Contains(script, "input[type=\"text\"]:not([readonly])");
+            StringAssert.Contains(script, "toLocaleUpperCase('es-EC')");
+
+            var controller = Read("CapaPresentacion/Controllers/FirmaAocrController.cs");
+            StringAssert.Contains(controller, "estadoExplotador = NormalizarMayusculas(estadoExplotador)");
+            StringAssert.Contains(controller, "nombreDirectorGeneral = NormalizarMayusculas(nombreDirectorGeneral)");
+            StringAssert.Contains(controller, "nombreDirectorCertificacion = NormalizarMayusculas(nombreDirectorCertificacion)");
+            StringAssert.Contains(controller, "valor.Trim().ToUpperInvariant()");
+        }
+
         private static string InspectorBranch() { return RoleBranch("else if (context.EsInspectorRol)", "else if (context.EsFinancieroRol)"); }
         private static string RoleBranch(string start, string end) { return Slice(RoleMatrixBody(), start, end); }
         private static string RoleMatrixBody() { return Slice(Read("CapaPresentacion/Helpers/SidebarMenuBuilder.cs"), "private static SidebarMenuGroupViewModel BuildRoleWorkMenuGroup", "private static int? PendingBadge"); }
