@@ -1,0 +1,161 @@
+@using CapaModelo
+@using CapaModelo.Common
+@{
+    ViewBag.Title = "Bandeja Institucional DIRDAC";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var activeTab = (ViewBag.ActiveTab as string) ?? "revision";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h4 mb-0 text-danger"><i class="fas fa-certificate me-2"></i>Bandeja de Dirección General DIRDAC</h2>
+            <small class="text-muted">Dirección General de Aviación Civil (DIRDAC) - Revisión, Legalización y Firma del AOCR</small>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-1"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-1"></i>@TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-times-circle me-1"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Navegación por pestañas de las 6 bandejas de DIRDAC -->
+    <ul class="nav nav-tabs nav-fill mb-3" id="dirdacTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "revision" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "revision" })">
+                <i class="fas fa-file-invoice me-1"></i>AOCR por Revisar
+                <span class="badge bg-warning text-dark ms-1">@ViewBag.ContadorRevision</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "firma" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "firma" })">
+                <i class="fas fa-signature me-1"></i>AOCR Pendientes de Firma
+                <span class="badge bg-danger ms-1">@ViewBag.ContadorFirma</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "devueltos" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "devueltos" })">
+                <i class="fas fa-undo me-1"></i>Expedientes Devueltos a DIRCAV
+                <span class="badge bg-secondary ms-1">@ViewBag.ContadorDevueltos</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "firmados" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "firmados" })">
+                <i class="fas fa-file-signature me-1"></i>AOCR Firmados
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "concluidos" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "concluidos" })">
+                <i class="fas fa-check-double me-1"></i>Procesos Concluidos
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "historial" ? "active fw-bold text-danger" : "")" href="@Url.Action("Bandeja", "Dirdac", new { tab = "historial" })">
+                <i class="fas fa-history me-1"></i>Historial DIRDAC
+            </a>
+        </li>
+    </ul>
+
+    <!-- Contenedor de la pestaña activa -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            @if (activeTab == "revision")
+            {
+                var lista = ViewBag.AocrPendientesRevision as List<SolicitudAOCR> ?? new List<SolicitudAOCR>();
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th># Trámite</th>
+                                <th>Operador / Razón Social</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!lista.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-check-circle me-1"></i>No hay AOCR pendientes de revisión en DIRDAC.</td></tr>
+                            }
+                            @foreach (var item in lista)
+                            {
+                                <tr>
+                                    <td><strong>@item.NumeroSolicitud</strong></td>
+                                    <td>@(item.NombreOperador ?? item.RazonSocial)</td>
+                                    <td><span class="badge bg-secondary">@(item.TipoSolicitud == 2 ? "Renovación" : (item.TipoSolicitud == 3 ? "Modificación" : "Emisión"))</span></td>
+                                    <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
+                                    <td class="text-end">
+                                        <a href="@Url.Action("Detalle", "Dirdac", new { id = item.CodigoSolicitud })" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-search me-1"></i>Revisar AOCR
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (activeTab == "firma")
+            {
+                var lista = ViewBag.AocrPendientesFirma as List<AocrBandejaDocumentoRow> ?? new List<AocrBandejaDocumentoRow>();
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th># Solicitud</th>
+                                <th>Operador</th>
+                                <th>Documento</th>
+                                <th>Estado Documento</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!lista.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-check-circle me-1"></i>No hay documentos AOCR pendientes de firma por DIRDAC.</td></tr>
+                            }
+                            @foreach (var item in lista)
+                            {
+                                <tr>
+                                    <td><strong>@item.NumeroSolicitud</strong></td>
+                                    <td>@(item.NombreExplotador ?? item.CompaniasSeleccionadas ?? "Operador")</td>
+                                    <td><span class="badge bg-danger">AOCR Oficial</span></td>
+                                    <td><span class="badge bg-warning text-dark">@item.EstadoDocumentoAocr</span></td>
+                                    <td class="text-end">
+                                        <a href="@Url.Action("Detalle", "Dirdac", new { id = item.SolicitudId })" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-signature me-1"></i>Legalizar y Firmar
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted">
+                    <p class="mb-0"><i class="fas fa-info-circle me-1"></i>Bandeja institucional de la Dirección General (DIRDAC) activa.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

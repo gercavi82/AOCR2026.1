@@ -207,15 +207,10 @@
                                     <div class="aocr-field-help">Incluya el contexto de la solicitud, el vínculo con la LV/EAE finalizada y la base documental revisada.</div>
                                 </div>
 
-                                <div class="aocr-form-grid aocr-form-grid-split">
-                                    <div class="aocr-info-card">
-                                        <h6 class="aocr-section-title">Objetivo de la inspección</h6>
-                                        <textarea name="resumen" class="form-control aocr-textarea-lg" placeholder="Describa el objetivo técnico de la inspección.">@objetivoTexto</textarea>
-                                    </div>
-                                    <div class="aocr-info-card">
-                                        <h6 class="aocr-section-title">Alcance</h6>
-                                        <textarea name="alcance" class="form-control aocr-textarea-lg" placeholder="Describa el alcance técnico, estaciones, operación o cobertura revisada.">@alcanceTexto</textarea>
-                                    </div>
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Objetivo de la inspección</h6>
+                                    <textarea name="resumen" class="form-control aocr-textarea-lg" placeholder="Describa el objetivo técnico de la inspección.">@objetivoTexto</textarea>
+                                    @Html.Hidden("alcance", alcanceTexto)
                                 </div>
 
                                 <div class="aocr-info-card">
@@ -236,8 +231,9 @@
                                             <input type="text" id="estacionesInspeccionManualFieldModal" name="estacionesInspeccionManual" class="form-control" value="@estacionesInspeccionManual" placeholder="UIO, GYE, MEC, LTX u otra cobertura" />
                                         </div>
                                         <div class="aocr-form-field">
-                                            <label for="numeroLicenciaInspectorModal">Nro. licencia / identificación inspector</label>
-                                            <input type="text" id="numeroLicenciaInspectorModal" name="numeroLicenciaInspector" class="form-control" value="@numeroLicenciaInspector" placeholder="Licencia o identificación" />
+                                            <label>Cédula del inspector</label>
+                                            <input type="text" class="form-control" value="@inspectorCedula" readonly="readonly" placeholder="Cédula del inspector" />
+                                            @Html.Hidden("numeroLicenciaInspector", numeroLicenciaInspector)
                                         </div>
                                         <div class="aocr-form-field">
                                             <label>Documentos revisados</label>
@@ -315,11 +311,11 @@
                                 <div class="aocr-form-grid aocr-form-grid-split">
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Resultado de la LV/EAE</h6>
-                                        <div class="aocr-state-box mb-3">
+                                        <div class="aocr-state-box">
                                             <div><strong>Estado actual:</strong> @(vm.LvEaeFinalizada ? "LV/EAE finalizada" : estadoLvVisual)</div>
                                             <div><strong>Resultado general:</strong> @(string.IsNullOrWhiteSpace(lista.ResultadoGeneral) ? "Pendiente" : lista.ResultadoGeneral)</div>
                                         </div>
-                                        <textarea name="notas" class="form-control aocr-textarea-lg" placeholder="Resuma cumplimiento, observaciones relevantes y resultado general de la LV/EAE.">@notasTexto</textarea>
+                                        @Html.Hidden("notas", notasTexto)
                                     </div>
 
                                     <div class="aocr-info-card"

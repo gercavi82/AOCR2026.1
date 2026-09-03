@@ -1,0 +1,130 @@
+﻿=== DIAGNÓSTICO EN VIVO DE BASE DE DATOS AOCR ===
+MIGRACIÓN SQL 20260903 EJECUTADA CORRECTAMENTE.
+
+--- 1. COLUMNAS Y CONTENIDO DE TABLA ROL ---
+col: codigorol (integer) null=NO
+col: descripcion (character varying) null=NO
+col: activo (boolean) null=NO
+col: fecha_registro (timestamp without time zone) null=YES
+col: usuariocreado (character varying) null=YES
+col: fechacreado (timestamp without time zone) null=YES
+col: usuariomodificado (character varying) null=YES
+col: fechamodificado (timestamp without time zone) null=YES
+codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado | usuariomodificado | fechamodificado | 
+1 | Administrador | True | 1/12/2025 15:59:40 |  | 1/12/2025 15:59:40 |  |  | 
+5 | Inspector | True | 1/12/2025 15:59:40 |  | 1/12/2025 15:59:40 |  |  | 
+7 | CoordinacionLegal | True | 7/1/2026 21:08:46 |  | 7/1/2026 21:08:46 |  |  | 
+14 | Operador | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+15 | Financiero | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+16 | JefaturaTecnica | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+17 | Direccion | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+18 | Tecnico | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+19 | Solicitante | True | 9/1/2026 19:07:07 |  | 9/1/2026 19:07:07 |  |  | 
+20 | Recepcion | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+21 | CoordinadorLegal | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 | 
+28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
+29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
+
+--- 2. USUARIOS CON ROLES ASIGNADOS ---
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 1 | desc: Administrador | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 78 | user: GEN_INSPECTOR | nombre: Inspector Generico | email: gen.inspector@aocr.test | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 79 | user: 1709565459 | nombre: CATOTA TORRES LUIS WILKIR | email: luis.catota@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 80 | user: 1709318354 | nombre: GALVEZ VERA SANDRA DEL CARMEN | email: sandra.galvez@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 81 | user: 1709778946 | nombre: GUIJARRO CADENA JOSE FERNANDO | email: jose.guijarro@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 82 | user: 1707980049 | nombre: MOLINA VILLAFUERTE CESAR IVAN | email: ivan.molina@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 91 | user: 0201172293 | nombre: GALLO GARCIA WILLMAN EDGAR | email: edgar.gallo@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 14 | desc: Operador | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 15 | desc: Financiero | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 17 | desc: Direccion | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 18 | desc: Tecnico | ur_activo: True
+id: 45 | user: GACAJAS | nombre: GERMAN ALBERTO CAJAS VITERI | email: mancho2002@hotmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 88 | user: IMOLINA | nombre: IVAN MOLINA VILLAFUERTE | email: ivanmolinav@hotmail.es | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 89 | user: EGALLO | nombre: EDGAR GALLO | email: edgar_gallo_g@yahoo.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 20 | desc: Recepcion | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 21 | desc: CoordinadorLegal | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 22 | desc: CoordinadorFinanciero | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 23 | desc: DirectorFinanciero | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 25 | desc: CoordinadorInspecciones | ur_activo: True
+
+--- 3. COLUMNAS DE SEGURIDAD_PERMISO ---
+col: id_permiso (bigint)
+col: codigo (character varying)
+col: nombre (character varying)
+col: modulo (character varying)
+col: activo (boolean)
+col: creado_en (timestamp without time zone)
+col: creado_por (character varying)
+col: actualizado_en (timestamp without time zone)
+col: actualizado_por (character varying)
+
+--- 4. COLUMNAS DE SEGURIDAD_ROL_PERMISO ---
+col: codigorol (integer)
+col: id_permiso (bigint)
+col: activo (boolean)
+col: creado_en (timestamp without time zone)
+col: creado_por (character varying)
+col: actualizado_en (timestamp without time zone)
+col: actualizado_por (character varying)
+
+--- 5. ASIGNACIONES EN SEGURIDAD_ROL_PERMISO ---
+codigorol: 1 (Administrador) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 1 (Administrador) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 1 (Administrador) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 1 (Administrador) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 1 (Administrador) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 1 (Administrador) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 1 (Administrador) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 1 (Administrador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 14 (Operador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 15 (Financiero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 15 (Financiero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 19 (Solicitante) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 23 (DirectorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 23 (DirectorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_CONFIRMAR_LEGALIZACION (Confirmar culminación y entrega de trámite) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_DEVOLVER_DIRCAV (Devolver expediente a DIRCAV con observaciones) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_FIRMAR_AOCR (Legalizar y firmar digitalmente documento AOCR) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_REVISAR_AOCR (Revisar AOCR y expediente aprobado por DIRCAV) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_BANDEJA (Ver bandeja institucional de AOCR DIRDAC) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_HISTORIAL (Consultar historial y trámites concluidos DIRDAC) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_ACEPTAR_DOCUMENTACION (Aceptar formalmente documentación técnica) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_DESIGNAR_INSPECTOR (Designar formalmente al Inspector de la solicitud) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_DEVOLVER_COORDINADOR (Devolver expediente al Coordinador con observaciones) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_FIRMAR_CL (Firmar digitalmente Condiciones y Limitaciones) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_FIRMAR_DESIGNACION (Firmar digitalmente oficio de designación de Inspector) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REMITIR_DIRDAC (Remitir expediente y AOCR a DIRDAC para firma) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_CL (Revisar Condiciones y Limitaciones del AOCR) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_DOCUMENTACION (Revisar expediente documental para aceptación) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_INFORME (Revisar Informe Técnico remitido por Coordinación) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_BANDEJA (Ver bandeja de trámites DIRCAV) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_HISTORIAL (Consultar historial y auditoría de trámites DIRCAV) | activo: True

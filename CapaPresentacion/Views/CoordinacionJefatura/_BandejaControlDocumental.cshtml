@@ -7,10 +7,10 @@
     var solicitudes = Model ?? new System.Collections.Generic.List<CapaModelo.SolicitudAOCR>();
 }
 
-<div class="rv-pane-header">
+<div class="rv-pane-header d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h3 class="rv-pane-title"><i class="fas fa-folder-open"></i> Bandeja de revisión documental</h3>
-        <p class="rv-pane-sub">Solicitudes pendientes de revisión documental y validación previa dentro del flujo documental sincronizado.</p>
+        <h3 class="rv-pane-title"><i class="fas fa-folder-open text-primary me-2"></i> Bandeja de Revisión Documental (Coordinación)</h3>
+        <p class="rv-pane-sub text-muted mb-0">Gestión obligatoria de revisiones finalizadas por inspectores: validación, devolución con comentarios y remisión formal a DIRCAV.</p>
     </div>
     @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudes.Any() ? "En bandeja" : "Completado" } })
 </div>
@@ -20,42 +20,144 @@
     @Html.Partial("_EmptyState", null, new ViewDataDictionary {
         { "Icon", "fas fa-folder-open" },
         { "Title", "Sin pendientes en la bandeja documental" },
-        { "Description", "No existen solicitudes pendientes de revisión documental en este momento dentro de la bandeja sincronizada." }
+        { "Description", "No existen solicitudes pendientes de revisión documental en este momento dentro de la bandeja institucional." }
     })
 }
 else
 {
     <div class="table-responsive aocr-table-wrap">
-        <table id="tblControlDocumental" class="table aocr-table aocr-datatable align-middle mb-0" style="width:100%">
-            <thead>
+        <table id="tblControlDocumental" class="table aocr-table aocr-datatable align-middle mb-0 table-hover" style="width:100%">
+            <thead class="table-light">
                 <tr>
                     <th>Solicitud</th>
-                    <th>Operador</th>
+                    <th>Compañía</th>
                     <th>RT</th>
-                    <th>Inspector actual</th>
-                    <th>Estado</th>
+                    <th>Inspector</th>
+                    <th>Resultado</th>
+                    <th>Comentarios</th>
+                    <th>Documentos</th>
                     <th>Fecha</th>
-                    <th class="text-end">Acciones</th>
+                    <th>Estado</th>
+                    <th>Historial</th>
+                    <th class="text-end" style="min-width: 240px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in solicitudes)
                 {
                     var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
+                    var estadoNorm = CapaDatos.Constants.EstadoSolicitud.Normalizar(item.Estado);
+                    var esPendienteCoord = string.Equals(item.Estado, CapaDatos.Constants.AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                                         || string.Equals(item.Estado, CapaDatos.Constants.EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase);
+                    var modalDevolverId = "modalDevolver_" + item.CodigoSolicitud;
+                    var formRemitirId = "formRemitir_" + item.CodigoSolicitud;
+
                     <tr>
                         <td>
-                            <div class="fw-semibold text-primary">@numeroSolicitud</div>
-                            <small class="text-muted">Código @item.CodigoSolicitud</small>
+                            <div class="fw-bold text-primary">@numeroSolicitud</div>
+                            <small class="text-muted">ID: @item.CodigoSolicitud</small>
                         </td>
-                        <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
-                        <td>@(string.IsNullOrWhiteSpace(item.RepresentanteLegal) ? "No registrado" : item.RepresentanteLegal)</td>
-                        <td>@(string.IsNullOrWhiteSpace(item.TecnicoResponsableNombre) ? "Sin asignar" : item.TecnicoResponsableNombre)</td>
-                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", CapaDatos.Constants.EstadoSolicitud.Normalizar(item.Estado) == CapaDatos.Constants.EstadoSolicitud.AceptacionDocumental ? "Pendiente revision Coordinador" : item.Estado } })</td>
-                        <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
-                                <i class="fas fa-eye"></i> Detalle
+                        <td>
+                            <span class="fw-semibold">@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</span>
+                        </td>
+                        <td>
+                            <small>@(string.IsNullOrWhiteSpace(item.RepresentanteLegal) ? "No registrado" : item.RepresentanteLegal)</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                <i class="fas fa-user-check me-1 text-info"></i>@(string.IsNullOrWhiteSpace(item.TecnicoResponsableNombre) ? "Sin asignar" : item.TecnicoResponsableNombre)
+                            </span>
+                        </td>
+                        <td>
+                            @if (string.Equals(item.Estado, CapaDatos.Constants.AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="badge bg-warning text-dark"><i class="fas fa-undo me-1"></i>Devuelto al Inspector</span>
+                            }
+                            else if (esPendienteCoord)
+                            {
+                                <span class="badge bg-info text-white"><i class="fas fa-clipboard-check me-1"></i>Revisión Finalizada</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@(string.IsNullOrWhiteSpace(item.Estado) ? "En proceso" : item.Estado)</span>
+                            }
+                        </td>
+                        <td style="max-width: 200px;">
+                            <div class="text-truncate" title="@(item.Observaciones ?? "Sin observaciones registradas")">
+                                <small class="text-muted">@(string.IsNullOrWhiteSpace(item.Observaciones) ? "Sin observaciones" : item.Observaciones)</small>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })#documentos" class="btn btn-sm btn-light border" title="Ver documentos adjuntos">
+                                <i class="fas fa-file-lines text-primary"></i> <small>Ver docs</small>
                             </a>
+                        </td>
+                        <td>
+                            <small>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</small>
+                        </td>
+                        <td>
+                            @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", esPendienteCoord ? "Pendiente Coordinación" : item.Estado } })
+                        </td>
+                        <td class="text-center">
+                            <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Historial", "SolicitudAOCR", new { id = item.CodigoSolicitud })" title="Historial del trámite">
+                                <i class="fas fa-timeline"></i>
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a class="btn btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })" title="Ver expediente">
+                                    <i class="fas fa-eye me-1"></i>Ver
+                                </a>
+
+                                @if (esPendienteCoord)
+                                {
+                                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#@modalDevolverId" title="Devolver al Inspector con comentario">
+                                        <i class="fas fa-undo me-1"></i>Devolver
+                                    </button>
+
+                                    using (Html.BeginForm("RemitirADircav", "CoordinacionJefatura", FormMethod.Post, new { id = formRemitirId, style = "display:inline-block;" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="solicitudId" value="@item.CodigoSolicitud" />
+                                        <input type="hidden" name="observacion" value="Expediente documental validado por Coordinacion y remitido a DIRCAV." />
+                                        <button type="button" class="btn btn-success" onclick="if(confirm('¿Está seguro de remitir este expediente documental a DIRCAV?')){ document.getElementById('@formRemitirId').submit(); }" title="Remitir oficialmente a DIRCAV">
+                                            <i class="fas fa-paper-plane me-1"></i>Remitir a DIRCAV
+                                        </button>
+                                    }
+                                }
+                            </div>
+
+                            @if (esPendienteCoord)
+                            {
+                                <!-- Modal de Devolución al Inspector -->
+                                <div class="modal fade text-start" id="@modalDevolverId" tabindex="-1" aria-labelledby="@(modalDevolverId)_label" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            @using (Html.BeginForm("DevolverAlInspector", "CoordinacionJefatura", FormMethod.Post))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="solicitudId" value="@item.CodigoSolicitud" />
+                                                <div class="modal-header bg-warning bg-opacity-25">
+                                                    <h5 class="modal-title" id="@(modalDevolverId)_label"><i class="fas fa-undo text-warning me-2"></i>Devolver Revisión al Inspector</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p class="mb-2">Solicitud: <strong>@numeroSolicitud</strong> - Operador: <strong>@item.NombreOperador</strong></p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Comentario obligatorio para el Inspector: <span class="text-danger">*</span></label>
+                                                        <textarea name="comentario" class="form-control" rows="4" required placeholder="Indique detalladamente las observaciones o correcciones requeridas por Coordinación..."></textarea>
+                                                        <div class="form-text">El Inspector asignado recibirá una notificación institucional con estas observaciones.</div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-warning"><i class="fas fa-paper-plane me-1"></i>Confirmar Devolución</button>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </td>
                     </tr>
                 }

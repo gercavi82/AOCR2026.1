@@ -1,0 +1,744 @@
+﻿=== DIAGNÓSTICO EN VIVO DE BASE DE DATOS AOCR ===
+MIGRACIÓN SQL 20260903 EJECUTADA CORRECTAMENTE.
+
+--- 1. COLUMNAS Y CONTENIDO DE TABLA ROL ---
+col: codigorol (integer) null=NO
+col: descripcion (character varying) null=NO
+col: activo (boolean) null=NO
+col: fecha_registro (timestamp without time zone) null=YES
+col: usuariocreado (character varying) null=YES
+col: fechacreado (timestamp without time zone) null=YES
+col: usuariomodificado (character varying) null=YES
+col: fechamodificado (timestamp without time zone) null=YES
+codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado | usuariomodificado | fechamodificado | 
+1 | Administrador | True | 1/12/2025 15:59:40 |  | 1/12/2025 15:59:40 |  |  | 
+5 | Inspector | True | 1/12/2025 15:59:40 |  | 1/12/2025 15:59:40 |  |  | 
+7 | CoordinacionLegal | True | 7/1/2026 21:08:46 |  | 7/1/2026 21:08:46 |  |  | 
+14 | Operador | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+15 | Financiero | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+16 | JefaturaTecnica | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+17 | Direccion | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+18 | Tecnico | True | 7/1/2026 21:18:58 |  | 7/1/2026 21:18:58 |  |  | 
+19 | Solicitante | True | 9/1/2026 19:07:07 |  | 9/1/2026 19:07:07 |  |  | 
+20 | Recepcion | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+21 | CoordinadorLegal | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
+25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 20:22:00 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 20:22:00 | 
+28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
+29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
+
+--- 2. USUARIOS CON ROLES ASIGNADOS ---
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 1 | desc: Administrador | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 78 | user: GEN_INSPECTOR | nombre: Inspector Generico | email: gen.inspector@aocr.test | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 79 | user: 1709565459 | nombre: CATOTA TORRES LUIS WILKIR | email: luis.catota@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 80 | user: 1709318354 | nombre: GALVEZ VERA SANDRA DEL CARMEN | email: sandra.galvez@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 81 | user: 1709778946 | nombre: GUIJARRO CADENA JOSE FERNANDO | email: jose.guijarro@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 82 | user: 1707980049 | nombre: MOLINA VILLAFUERTE CESAR IVAN | email: ivan.molina@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 91 | user: 0201172293 | nombre: GALLO GARCIA WILLMAN EDGAR | email: edgar.gallo@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 14 | desc: Operador | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 15 | desc: Financiero | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 17 | desc: Direccion | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 18 | desc: Tecnico | ur_activo: True
+id: 45 | user: GACAJAS | nombre: GERMAN ALBERTO CAJAS VITERI | email: mancho2002@hotmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 88 | user: IMOLINA | nombre: IVAN MOLINA VILLAFUERTE | email: ivanmolinav@hotmail.es | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 89 | user: EGALLO | nombre: EDGAR GALLO | email: edgar_gallo_g@yahoo.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 20 | desc: Recepcion | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 21 | desc: CoordinadorLegal | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 22 | desc: CoordinadorFinanciero | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 23 | desc: DirectorFinanciero | ur_activo: True
+id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 25 | desc: CoordinadorInspecciones | ur_activo: True
+
+--- 3. COLUMNAS DE SEGURIDAD_PERMISO ---
+col: id_permiso (bigint)
+col: codigo (character varying)
+col: nombre (character varying)
+col: modulo (character varying)
+col: activo (boolean)
+col: creado_en (timestamp without time zone)
+col: creado_por (character varying)
+col: actualizado_en (timestamp without time zone)
+col: actualizado_por (character varying)
+
+--- 4. COLUMNAS DE SEGURIDAD_ROL_PERMISO ---
+col: codigorol (integer)
+col: id_permiso (bigint)
+col: activo (boolean)
+col: creado_en (timestamp without time zone)
+col: creado_por (character varying)
+col: actualizado_en (timestamp without time zone)
+col: actualizado_por (character varying)
+
+--- 5. ASIGNACIONES EN SEGURIDAD_ROL_PERMISO ---
+codigorol: 1 (Administrador) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 1 (Administrador) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 1 (Administrador) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 1 (Administrador) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 1 (Administrador) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 1 (Administrador) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 1 (Administrador) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 1 (Administrador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 14 (Operador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 15 (Financiero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 15 (Financiero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 16 (JefaturaTecnica) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 17 (Direccion) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 19 (Solicitante) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 23 (DirectorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
+codigorol: 23 (DirectorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
+codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_CONFIRMAR_LEGALIZACION (Confirmar culminación y entrega de trámite) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_DEVOLVER_DIRCAV (Devolver expediente a DIRCAV con observaciones) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_FIRMAR_AOCR (Legalizar y firmar digitalmente documento AOCR) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_REVISAR_AOCR (Revisar AOCR y expediente aprobado por DIRCAV) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_BANDEJA (Ver bandeja institucional de AOCR DIRDAC) | activo: True
+codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_HISTORIAL (Consultar historial y trámites concluidos DIRDAC) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_ACEPTAR_DOCUMENTACION (Aceptar formalmente documentación técnica) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_DESIGNAR_INSPECTOR (Designar formalmente al Inspector de la solicitud) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_DEVOLVER_COORDINADOR (Devolver expediente al Coordinador con observaciones) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_FIRMAR_CL (Firmar digitalmente Condiciones y Limitaciones) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_FIRMAR_DESIGNACION (Firmar digitalmente oficio de designación de Inspector) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REMITIR_DIRDAC (Remitir expediente y AOCR a DIRDAC para firma) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_CL (Revisar Condiciones y Limitaciones del AOCR) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_DOCUMENTACION (Revisar expediente documental para aceptación) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_INFORME (Revisar Informe Técnico remitido por Coordinación) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_BANDEJA (Ver bandeja de trámites DIRCAV) | activo: True
+codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_HISTORIAL (Consultar historial y auditoría de trámites DIRCAV) | activo: True
+
+--- 6. TABLAS AOCR Y DE SISTEMA ---
+TABLA: acciones_personal
+TABLA: accounts_compania
+TABLA: accounts_perfil_usuario
+TABLA: accounts_sesion_compania_activa
+TABLA: accounts_usuario_compania
+TABLA: aocr_asignacion_rt
+TABLA: aocr_audit_trail
+TABLA: aocr_correlativo_anual
+TABLA: aocr_correlativo_orden
+TABLA: aocr_declaracion_historial
+TABLA: aocr_declaracion_tmp
+TABLA: aocr_evento_workflow
+TABLA: aocr_expediente_archivo
+TABLA: aocr_expediente_compania
+TABLA: aocr_fix_backup_20260825_historial4
+TABLA: aocr_fix_backup_20260825_inspeccion4
+TABLA: aocr_fix_backup_20260825_orden3
+TABLA: aocr_fix_backup_20260825_solicitud4
+TABLA: aocr_fr3_integracion
+TABLA: aocr_fr3_operacion
+TABLA: aocr_fr3_outbox
+TABLA: aocr_fr3_retry_queue
+TABLA: aocr_fr3_tipo_operacion_map
+TABLA: aocr_idempotency_key
+TABLA: aocr_inspector_reasignacion_historial
+TABLA: aocr_operador_espejo_as400
+TABLA: aocr_or_concepto
+TABLA: aocr_or_orden
+TABLA: aocr_or_orden_detalle
+TABLA: aocr_orden_recaudacion
+TABLA: aocr_orden_recaudacion_detalle
+TABLA: aocr_pago_comprobante
+TABLA: aocr_proceso_estado
+TABLA: aocr_proceso_estado_historial
+TABLA: aocr_proceso_idempotencia
+TABLA: aocr_revision_documental_coordinador
+TABLA: aocr_solicitud_rt_revision
+TABLA: aocr_sync_log
+TABLA: aocr_tb_factura_pago
+TABLA: aocr_tb_sync_log
+TABLA: aocr_tbaeronave
+TABLA: aocr_tbaeronave_solicitud
+TABLA: aocr_tbauditoria
+TABLA: aocr_tbcertificado
+TABLA: aocr_tbchecklist
+TABLA: aocr_tbchecklist_item
+TABLA: aocr_tbchecklist_solicitud
+TABLA: aocr_tbcorreo_institucional
+TABLA: aocr_tbcorreo_institucional_historial
+TABLA: aocr_tbdocumento
+TABLA: aocr_tbdocumento_generado
+TABLA: aocr_tbdocumento_inspeccion
+TABLA: aocr_tbdocumento_subsanacion
+TABLA: aocr_tbfirma_documento
+TABLA: aocr_tbfirma_posicion_documento
+TABLA: aocr_tbhallazgo
+TABLA: aocr_tbhistorial_documental
+TABLA: aocr_tbhistorial_estado
+TABLA: aocr_tbhistorial_estado_inspeccion
+TABLA: aocr_tbinforme
+TABLA: aocr_tbinforme_inspeccion
+TABLA: aocr_tbinspeccion
+TABLA: aocr_tbinspectores
+TABLA: aocr_tblog
+TABLA: aocr_tblv_operacional_eae
+TABLA: aocr_tbnoconformidad
+TABLA: aocr_tbnotificacion
+TABLA: aocr_tbobservacion
+TABLA: aocr_tbpago
+TABLA: aocr_tbparametro
+TABLA: aocr_tbrevision_documental
+TABLA: aocr_tbsesiones
+TABLA: aocr_tbsolicitud
+TABLA: aocr_tbsubsanacion
+TABLA: aocr_tbviatico
+TABLA: aocr_usuario_compania_rt
+TABLA: aocr_usuario_interno_rt
+TABLA: aocr_usuario_transferencia
+TABLA: aocr_usuario_transferencia_detalle
+TABLA: auditoria_historialestado
+TABLA: auditoria_seguridad
+TABLA: auditorias
+TABLA: auth_group
+TABLA: auth_group_permissions
+TABLA: auth_permission
+TABLA: cache
+TABLA: cache_locks
+TABLA: capacitaciones
+TABLA: certificados_certificadoaocr
+TABLA: competencias
+TABLA: conceptos
+TABLA: contactos_institucionales
+TABLA: contactos_servidor
+TABLA: contribuyentes
+TABLA: cursos
+TABLA: cursos_mandatorios
+TABLA: datos_laborales
+TABLA: detalles_orden
+TABLA: django_admin_log
+TABLA: django_aocr_auditoria_evento
+TABLA: django_aocr_bandeja_item
+TABLA: django_aocr_certificado_aocr
+TABLA: django_aocr_comprobante_pago
+TABLA: django_aocr_concepto_recaudacion
+TABLA: django_aocr_condiciones_limitaciones
+TABLA: django_aocr_contador_bandeja
+TABLA: django_aocr_descarga_documento
+TABLA: django_aocr_designacion_inspector
+TABLA: django_aocr_documento_generado
+TABLA: django_aocr_documento_solicitud
+TABLA: django_aocr_documento_subsanacion_nc
+TABLA: django_aocr_email_queue
+TABLA: django_aocr_estado_tramite
+TABLA: django_aocr_factura_recaudacion
+TABLA: django_aocr_firma_documento
+TABLA: django_aocr_historial_estado
+TABLA: django_aocr_informe_tecnico
+TABLA: django_aocr_inspeccion_ejecucion
+TABLA: django_aocr_lista_verificacion
+TABLA: django_aocr_no_conformidad
+TABLA: django_aocr_notificacion
+TABLA: django_aocr_orden_observacion
+TABLA: django_aocr_orden_recaudacion
+TABLA: django_aocr_orden_recaudacion_detalle
+TABLA: django_aocr_plantilla_correo
+TABLA: django_aocr_registro_rt
+TABLA: django_aocr_registro_rt_archivo_version
+TABLA: django_aocr_registro_rt_observacion
+TABLA: django_aocr_revision_documental
+TABLA: django_aocr_revision_documento
+TABLA: django_aocr_solicitud_formal
+TABLA: django_aocr_solicitud_inspeccion
+TABLA: django_aocr_solicitud_inspeccion_archivo_version
+TABLA: django_aocr_solicitud_inspeccion_observacion
+TABLA: django_aocr_solicitud_observacion
+TABLA: django_aocr_tipo_documento
+TABLA: django_content_type
+TABLA: django_migrations
+TABLA: django_session
+TABLA: documentos_documento
+TABLA: email_attachment
+TABLA: email_queue
+TABLA: errores_importacion
+TABLA: especialidades
+TABLA: estados_capacitacion
+TABLA: estados_servidor
+TABLA: estatutos_organicos
+TABLA: experiencia_profesional
+TABLA: failed_jobs
+TABLA: firmas_firmadocumento
+TABLA: fr3
+TABLA: fr3_detalle
+TABLA: fr3_detalle_pg
+TABLA: fr3_pg
+TABLA: gestiones_administrativas
+TABLA: grupos_ocupacionales
+TABLA: historial_estados_orden
+TABLA: historial_laboral
+TABLA: importaciones
+TABLA: inspecciones_inspecciontecnica
+TABLA: inspecciones_noconformidad
+TABLA: inspecciones_solicitudinspeccion
+TABLA: instituciones
+TABLA: instituciones_capacitadoras
+TABLA: instituciones_educativas
+TABLA: instrucciones_formales
+TABLA: job_batches
+TABLA: jobs
+TABLA: lugares_trabajo
+TABLA: materias
+TABLA: menu
+TABLA: migrations
+TABLA: modalidades_prestacion
+TABLA: model_has_permissions
+TABLA: model_has_roles
+TABLA: modificacion_cyl_aeropuertomodificacioncyl
+TABLA: modificacion_cyl_documentogeneradomodificacioncyl
+TABLA: modificacion_cyl_documentomodificacioncyl
+TABLA: modificacion_cyl_historialdocumentomodificacioncyl
+TABLA: modificacion_cyl_historialmodificacioncyl
+TABLA: modificacion_cyl_revisiondocumentomodificacioncyl
+TABLA: modificacion_cyl_solicitudmodificacioncyl
+TABLA: niveles_instruccion
+TABLA: niveles_proceso
+TABLA: operadores_operador
+TABLA: operadores_registrort
+TABLA: operadores_representantetecnico
+TABLA: ordenes_recaudacion
+TABLA: otros_estudios
+TABLA: pagos
+TABLA: parametros
+TABLA: password_reset_tokens
+TABLA: permisos
+TABLA: permissions
+TABLA: personas
+TABLA: programas_capacitacion
+TABLA: puestos_institucionales
+TABLA: recaudacion_comprobantepago
+TABLA: recaudacion_factura
+TABLA: recaudacion_ordenrecaudacion
+TABLA: rol
+TABLA: role_has_permissions
+TABLA: roles
+TABLA: seguridad_permiso
+TABLA: seguridad_rol_permiso
+TABLA: servidor_discapacidades
+TABLA: servidor_titulos
+TABLA: servidores
+TABLA: sessions
+TABLA: solicitudes_documentosolicitud
+TABLA: solicitudes_solicitudaocr
+TABLA: staging_curar
+TABLA: staging_maear
+TABLA: staging_uniar
+TABLA: submenu
+TABLA: sync_log
+TABLA: sync_state
+TABLA: temarios
+TABLA: tipos_curso
+TABLA: tipos_instruccion
+TABLA: tipos_movimiento
+TABLA: tipos_relacion_laboral
+TABLA: tipos_unidad
+TABLA: titulos
+TABLA: tramites_historialestado
+TABLA: tramites_tramite
+TABLA: unidades_administrativas
+TABLA: users
+TABLA: usuario
+TABLA: usuario_as400
+TABLA: usuario_as400_adicional
+TABLA: usuario_backup_eliminados
+TABLA: usuario_rol
+TABLA: usuarios_usuario
+TABLA: usuarios_usuario_groups
+TABLA: usuarios_usuario_user_permissions
+TABLA: v_usuario_as400_adicional
+TABLA: validaciones_capacitacion
+TABLA: vista_usuarios_con_roles
+TABLA: vw_aocr_resumen_financiero_orden
+TABLA: vw_inspecciones_por_estado
+TABLA: vw_subsanaciones_pendientes
+
+--- 7. COLUMNAS DE TABLAS OPERATIVAS ---
+
+>>> TABLA: aocr_tbsolicitud
+  codigo_solicitud | integer | null=NO | def=nextval('aocr_tbsolicitud_codigo_solicitud_seq'::regclass)
+  numero_solicitud | character varying | null=NO | def=
+  fecha_solicitud | timestamp without time zone | null=NO | def=CURRENT_TIMESTAMP
+  tipo_solicitud | integer | null=NO | def=
+  estado | character varying | null=YES | def='Pendiente'::character varying
+  nombre_operador | character varying | null=NO | def=
+  ruc | character varying | null=YES | def=
+  razon_social | character varying | null=YES | def=
+  email | character varying | null=YES | def=
+  telefono | character varying | null=YES | def=
+  direccion | text | null=YES | def=
+  ciudad | character varying | null=YES | def=
+  provincia | character varying | null=YES | def=
+  pais | character varying | null=YES | def='Ecuador'::character varying
+  representante_legal | character varying | null=YES | def=
+  cedula_representante | character varying | null=YES | def=
+  tipo_operacion | character varying | null=NO | def=
+  descripcion_operacion | text | null=YES | def=
+  observaciones | text | null=YES | def=
+  codigo_usuario | integer | null=YES | def=
+  created_at | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  updated_at | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  created_by | character varying | null=YES | def=
+  updated_by | character varying | null=YES | def=
+  deleted_at | timestamp without time zone | null=YES | def=
+  deleted_by | character varying | null=YES | def=
+  codigo_tecnico | integer | null=YES | def=
+  fecha_recepcion | timestamp without time zone | null=YES | def=
+  fecha_solicitud_subsanacion | timestamp without time zone | null=YES | def=
+  fecha_subsanacion | timestamp without time zone | null=YES | def=
+  fecha_aprobacion_coordinador | timestamp without time zone | null=YES | def=
+  fecha_emision_aocr | timestamp without time zone | null=YES | def=
+  fecha_entrega_aocr | timestamp without time zone | null=YES | def=
+  numero_aocr | character varying | null=YES | def=
+  ruta_archivo_pdf_aocr | character varying | null=YES | def=
+  codigo_usuario_aprobacion_coordinador | integer | null=YES | def=
+  codigo_usuario_aprobacion_director | integer | null=YES | def=
+  pago_aprobado | boolean | null=YES | def=false
+  fecha_aprobacion_pago | timestamp without time zone | null=YES | def=
+  modulo_solicitud_rt_habilitado | boolean | null=YES | def=false
+  notificado_coordinador_pago_aprobado | boolean | null=YES | def=false
+  fecha_notificacion_coordinador_pago | timestamp without time zone | null=YES | def=
+  notificado_rt_modulo_habilitado | boolean | null=YES | def=false
+  fecha_notificacion_rt_modulo_habilitado | timestamp without time zone | null=YES | def=
+  pendiente_asignacion_inspector | boolean | null=YES | def=false
+  pendiente_carga_documental_rt | boolean | null=YES | def=true
+  solicitud_finalizada_rt | boolean | null=YES | def=false
+  fecha_finalizacion_rt | timestamp without time zone | null=YES | def=
+  requiere_nueva_orden | boolean | null=YES | def=false
+  resumen_operaciones_eae | text | null=YES | def=
+  numero_aoc | character varying | null=YES | def=
+  aprobaciones_especiales | text | null=YES | def=
+  aprobaciones_especiales_otros | text | null=YES | def=
+  aeropuertos_ecuador | text | null=YES | def=
+  aeropuertos_ecuador_otros | text | null=YES | def=
+  companias_seleccionadas | text | null=YES | def=
+  codigo_oaci | character varying | null=YES | def=
+  correo_representante_tecnico | character varying | null=YES | def=
+  nombre_comercial | character varying | null=YES | def=
+
+>>> TABLA: aocr_tbsolicitud_estacion
+
+>>> TABLA: aocr_tbinspeccion
+  codigo_inspeccion | integer | null=NO | def=nextval('aocr_tbinspeccion_codigo_inspeccion_seq'::regclass)
+  codigo_solicitud | integer | null=NO | def=
+  numero_inspeccion | character varying | null=NO | def=
+  tipo | integer | null=NO | def=
+  fecha_programada | date | null=NO | def=
+  hora_programada | time without time zone | null=YES | def=
+  fecha_realizada | date | null=YES | def=
+  hora_inicio | time without time zone | null=YES | def=
+  hora_fin | time without time zone | null=YES | def=
+  codigo_inspector | integer | null=YES | def=
+  lugar | character varying | null=YES | def=
+  resultado | character varying | null=YES | def=
+  comentarios | text | null=YES | def=
+  observaciones_generales | text | null=YES | def=
+  hallazgos_principales | text | null=YES | def=
+  recomendaciones | text | null=YES | def=
+  estado | character varying | null=YES | def='Programada'::character varying
+  completada | boolean | null=YES | def=false
+  aprobada | boolean | null=YES | def=false
+  created_at | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  updated_at | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  created_by | character varying | null=YES | def=
+  updated_by | character varying | null=YES | def=
+  informe_pdf | text | null=YES | def=
+  historial_estados | text | null=YES | def=
+  estado_documental | character varying | null=YES | def=
+  resultado_evaluacion | character varying | null=YES | def=
+
+>>> TABLA: aocr_tbinforme_inspeccion
+  codigo_informe | integer | null=NO | def=nextval('aocr_tbinforme_inspeccion_codigo_informe_seq'::regclass)
+  codigo_inspeccion | integer | null=NO | def=
+  version | integer | null=NO | def=
+  titulo | character varying | null=YES | def=
+  resumen | text | null=YES | def=
+  resultado | character varying | null=YES | def=
+  observaciones | text | null=YES | def=
+  conclusiones | text | null=YES | def=
+  recomendaciones | text | null=YES | def=
+  ruta_pdf | character varying | null=YES | def=
+  finalizado | boolean | null=NO | def=false
+  correo_enviado | boolean | null=NO | def=false
+  fecha_finalizacion | timestamp without time zone | null=YES | def=
+  created_at | timestamp without time zone | null=NO | def=now()
+  created_by | integer | null=YES | def=
+  updated_at | timestamp without time zone | null=NO | def=now()
+  updated_by | integer | null=YES | def=
+  estado_informe | character varying | null=YES | def=
+  firmado_inspector | boolean | null=NO | def=false
+  firmado_dirdac | boolean | null=NO | def=false
+  ruta_documento_firmado | character varying | null=YES | def=
+  hash_documento | character varying | null=YES | def=
+  fecha_firma_1 | timestamp without time zone | null=YES | def=
+  fecha_firma_2 | timestamp without time zone | null=YES | def=
+  usuario_firma_1 | character varying | null=YES | def=
+  usuario_firma_2 | character varying | null=YES | def=
+  fecha_envio_dirdac | timestamp without time zone | null=YES | def=
+  usuario_envio_dirdac | character varying | null=YES | def=
+  antecedentes | text | null=YES | def=
+  alcance | text | null=YES | def=
+  desarrollo | text | null=YES | def=
+  evidencias | text | null=YES | def=
+  numero_licencia_inspector | character varying | null=YES | def=
+  trabajos_realizados | text | null=YES | def=
+  operacion_comercial | text | null=YES | def=
+  servicios_estaciones | text | null=YES | def=
+  notas | text | null=YES | def=
+  no_conformidades | text | null=YES | def=
+  documentos_adjuntos | text | null=YES | def=
+  otros_adjuntos | text | null=YES | def=
+  aprobado_dirdac | boolean | null=YES | def=
+  fecha_aprobacion_dirdac | timestamp without time zone | null=YES | def=
+  usuario_aprobacion_dirdac | character varying | null=YES | def=
+  motivo_rechazo | text | null=YES | def=
+  observacion_devolucion | text | null=YES | def=
+  fecha_devolucion | timestamp without time zone | null=YES | def=
+  usuario_devolucion | character varying | null=YES | def=
+  fechas_inspeccion_manual | text | null=YES | def=
+  estaciones_inspeccion_manual | text | null=YES | def=
+  documentos_adjuntos_archivos | text | null=YES | def=
+  tipo_resultado_insatisfactorio | character varying | null=YES | def=
+  notificado_rt | boolean | null=NO | def=false
+  fecha_notificacion_rt | timestamp without time zone | null=YES | def=
+  codigo_informe_anterior | integer | null=YES | def=
+
+>>> TABLA: aocr_tbfirma_documento
+  codigo_firma | integer | null=NO | def=nextval('aocr_tbfirma_documento_codigo_firma_seq'::regclass)
+  codigo_solicitud | integer | null=NO | def=
+  codigo_inspeccion | integer | null=YES | def=
+  tipo_documento | character varying | null=NO | def=
+  numero_aocr | character varying | null=YES | def=
+  nombre_archivo | character varying | null=YES | def=
+  ruta_documento | character varying | null=YES | def=
+  hash_documento | character varying | null=YES | def=
+  codigo_qr | text | null=YES | def=
+  sujeto_certificado | text | null=YES | def=
+  nombre_firmante | character varying | null=YES | def=
+  cargo_firmante | character varying | null=YES | def=
+  fecha_firma | timestamp without time zone | null=NO | def=
+  codigo_usuario | integer | null=YES | def=
+  usuario_nombre | character varying | null=YES | def=
+  created_at | timestamp without time zone | null=NO | def=now()
+  tamanio_pdf_firmado | bigint | null=YES | def=
+  firmado_por_rol | character varying | null=YES | def=
+  ruta_pdf_preliminar | character varying | null=YES | def=
+  ruta_pdf_firmado | character varying | null=YES | def=
+  hash_pdf_firmado | character varying | null=YES | def=
+  tamanio_pdf_preliminar | bigint | null=YES | def=
+  fecha_generacion | timestamp without time zone | null=YES | def=
+  nombre_director | character varying | null=YES | def=
+  cargo_director | character varying | null=YES | def=
+  estado_documento | character varying | null=YES | def=
+  version | integer | null=NO | def=1
+
+>>> TABLA: aocr_or_orden
+  id | integer | null=NO | def=
+  codigo_usuario | integer | null=YES | def=
+  codigo_solicitud | character varying | null=YES | def=
+  numero_orden | character varying | null=NO | def=
+  fecha_creacion | timestamp with time zone | null=NO | def=now()
+  estado | character varying | null=NO | def='BORRADOR'::character varying
+  observacion | text | null=YES | def=
+  subtotal | numeric | null=NO | def=0
+  admin | numeric | null=NO | def=0
+  total | numeric | null=NO | def=0
+  lugar_emision | character varying | null=YES | def=
+  compania | character varying | null=YES | def=
+  ruc_cedula | character varying | null=YES | def=
+  correo | character varying | null=YES | def=
+  telefono | character varying | null=YES | def=
+  concepto_id | integer | null=YES | def=
+  numero_fr3 | character varying | null=YES | def=
+  fecha_fr3 | timestamp without time zone | null=YES | def=
+  fecha_actualizacion | timestamp without time zone | null=YES | def=
+  compania_codigo | character varying | null=YES | def=
+  expediente_id | integer | null=YES | def=
+
+>>> TABLA: aocr_tb_factura_pago
+  id | integer | null=NO | def=nextval('aocr_tb_factura_pago_id_seq'::regclass)
+  orden_id | integer | null=NO | def=
+  pago_id | integer | null=YES | def=
+  numero_factura | character varying | null=NO | def=
+  autorizacion_factura | character varying | null=YES | def=
+  fecha_emision | date | null=NO | def=
+  subtotal | numeric | null=NO | def=
+  iva | numeric | null=NO | def=
+  total | numeric | null=NO | def=
+  observaciones | text | null=YES | def=
+  file_name | character varying | null=NO | def=
+  content_type | character varying | null=NO | def=
+  file_size | bigint | null=NO | def=
+  file_path | text | null=NO | def=
+  creado_por | character varying | null=YES | def=
+  creado_en | timestamp without time zone | null=NO | def=now()
+  fr3_estado | character varying | null=YES | def=
+  fr3_numero | character varying | null=YES | def=
+  fr3_secuencial | numeric | null=YES | def=
+  fr3_aeropuerto | character varying | null=YES | def=
+  fr3_anio | character varying | null=YES | def=
+  fr3_error | text | null=YES | def=
+  fr3_generado_en | timestamp without time zone | null=YES | def=
+  fr3_reintentos | integer | null=NO | def=0
+  updated_at | timestamp without time zone | null=YES | def=
+
+>>> TABLA: email_queue
+  id | integer | null=NO | def=nextval('email_queue_id_seq'::regclass)
+  to_address | character varying | null=NO | def=
+  subject | character varying | null=NO | def=
+  body | text | null=NO | def=
+  status | character varying | null=NO | def=
+  solicitud_id | integer | null=YES | def=
+  orden_id | integer | null=YES | def=
+  created_at | timestamp without time zone | null=NO | def=now()
+  proximo_intento | timestamp without time zone | null=NO | def=now()
+  event_key | character varying | null=YES | def=
+  error_message | text | null=YES | def=
+  intentos | integer | null=NO | def=0
+  updated_at | timestamp without time zone | null=YES | def=
+  tipo_notificacion | character varying | null=YES | def=
+  correlation_id | character varying | null=YES | def=
+
+>>> TABLA: auditoria
+
+>>> TABLA: historial_estado_solicitud
+
+>>> TABLA: usuario
+  idusuario | integer | null=NO | def=nextval('usuario_idusuario_seq'::regclass)
+  codigousuario | character varying | null=YES | def=
+  nombreusuario | character varying | null=YES | def=
+  apellidousuario | character varying | null=YES | def=
+  tipoidentificacion | character varying | null=YES | def=
+  cedulaidentificacion | character varying | null=YES | def=
+  correo | character varying | null=YES | def=
+  clave | text | null=YES | def=
+  estadoactividad | character varying | null=YES | def=
+  tipoaplicacion | character varying | null=YES | def=
+  identificaciontributaria | character varying | null=YES | def=
+  numeroruc | character varying | null=YES | def=
+  codigociudad | character varying | null=YES | def=
+  codigodependencia | character varying | null=YES | def=
+  codigosubsistema | character varying | null=YES | def=
+  codigogestion | character varying | null=YES | def=
+  codigomodulo | character varying | null=YES | def=
+  codigorol | integer | null=YES | def=
+  centrocontable | character varying | null=YES | def=
+  usuariocreado | character varying | null=YES | def=
+  fechacreado | character varying | null=YES | def=
+  horacreado | character varying | null=YES | def=
+  dispositivocreacion | character varying | null=YES | def=
+  usuariomodificado | character varying | null=YES | def=
+  fechamodificado | character varying | null=YES | def=
+  horamodificado | character varying | null=YES | def=
+  dispositivomodificacion | character varying | null=YES | def=
+  descripcionsubsistema | character varying | null=YES | def=
+  horainicio | character varying | null=YES | def=
+  horafin | character varying | null=YES | def=
+  fechasistema | character varying | null=YES | def=
+  tipohorario | character varying | null=YES | def=
+  numeroaleatorio | character varying | null=YES | def=
+  nombrecorto | character varying | null=YES | def=
+  cargo | character varying | null=YES | def=
+  estadocertificado | character varying | null=YES | def=
+  estadoautoridad | character varying | null=YES | def=
+  rol | character varying | null=YES | def=
+  fechaultimaconexion | timestamp without time zone | null=YES | def=
+  empresa_codigo | character varying | null=YES | def=
+  ruta_documento_legal | character varying | null=YES | def=
+  estado_designacion_rt | character varying | null=YES | def='pendiente'::character varying
+  fecha_revision_designacion | timestamp without time zone | null=YES | def=
+  ruta_constancia_rt | character varying | null=YES | def=
+  titulo1 | character varying | null=YES | def=
+  titulo2 | character varying | null=YES | def=
+  telefono1 | character varying | null=YES | def=
+  telefono2 | character varying | null=YES | def=
+  correo_adicional | character varying | null=YES | def=
+  oid_centro_contable | numeric | null=YES | def=
+  codigo_ciudad_adic | character varying | null=YES | def=
+  codigorol_as400 | character varying | null=YES | def=
+  must_change_password | boolean | null=YES | def=false
+  password_changed_at | timestamp without time zone | null=YES | def=
+
+>>> TABLA: rol
+  codigorol | integer | null=NO | def=nextval('rol_codigorol_seq'::regclass)
+  descripcion | character varying | null=NO | def=
+  activo | boolean | null=NO | def=true
+  fecha_registro | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  usuariocreado | character varying | null=YES | def=
+  fechacreado | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  usuariomodificado | character varying | null=YES | def=
+  fechamodificado | timestamp without time zone | null=YES | def=
+
+>>> TABLA: usuario_rol
+  idusuariorol | integer | null=NO | def=nextval('usuario_rol_idusuariorol_seq'::regclass)
+  codigousuario | character varying | null=NO | def=
+  codigorol | integer | null=NO | def=
+  fechaasignacion | timestamp without time zone | null=YES | def=CURRENT_TIMESTAMP
+  usuariocreado | character varying | null=YES | def=
+  activo | boolean | null=YES | def=true
+
+>>> TABLA: seguridad_permiso
+  id_permiso | bigint | null=NO | def=nextval('seguridad_permiso_id_permiso_seq'::regclass)
+  codigo | character varying | null=NO | def=
+  nombre | character varying | null=NO | def=
+  modulo | character varying | null=NO | def=
+  activo | boolean | null=NO | def=true
+  creado_en | timestamp without time zone | null=NO | def=now()
+  creado_por | character varying | null=YES | def=
+  actualizado_en | timestamp without time zone | null=YES | def=
+  actualizado_por | character varying | null=YES | def=
+
+>>> TABLA: seguridad_rol_permiso
+  codigorol | integer | null=NO | def=
+  id_permiso | bigint | null=NO | def=
+  activo | boolean | null=NO | def=true
+  creado_en | timestamp without time zone | null=NO | def=now()
+  creado_por | character varying | null=YES | def=
+  actualizado_en | timestamp without time zone | null=YES | def=
+  actualizado_por | character varying | null=YES | def=
+
+--- 8. RESTRICCIONES (PK, FK, UNIQUE) ---
+  [aocr_or_orden] FOREIGN KEY: fk_orden_usuario (codigo_usuario)
+  [aocr_or_orden] PRIMARY KEY: aocr_or_orden_pkey (id)
+  [aocr_or_orden] UNIQUE: aocr_or_orden_numero_orden_key (numero_orden)
+  [aocr_or_orden] UNIQUE: unq_numero_orden (numero_orden)
+  [aocr_tbfirma_documento] PRIMARY KEY: aocr_tbfirma_documento_pkey (codigo_firma)
+  [aocr_tbinforme_inspeccion] PRIMARY KEY: aocr_tbinforme_inspeccion_pkey (codigo_informe)
+  [aocr_tbinspeccion] FOREIGN KEY: fk_inspeccion_solicitud (codigo_solicitud)
+  [aocr_tbinspeccion] PRIMARY KEY: aocr_tbinspeccion_pkey (codigo_inspeccion)
+  [aocr_tbinspeccion] UNIQUE: aocr_tbinspeccion_numero_inspeccion_key (numero_inspeccion)
+  [aocr_tbsolicitud] PRIMARY KEY: aocr_tbsolicitud_pkey (codigo_solicitud)
+  [aocr_tbsolicitud] UNIQUE: aocr_tbsolicitud_numero_solicitud_key (numero_solicitud)
+  [usuario] FOREIGN KEY: fk_usuario_rol (codigorol)
+  [usuario] FOREIGN KEY: usuario_codigorol_fkey (codigorol)
+  [usuario] PRIMARY KEY: usuario_pkey (idusuario)
+  [usuario] UNIQUE: usuario_codigousuario_key (codigousuario)
+
+--- 9. ESTADOS DISTINTOS EN AOCR_TBSOLICITUD ---
+  Estado: 'En Inspeccion' -> 3 registros
+  Estado: 'En Revision' -> 2 registros
+  Estado: 'AOCR En Elaboracion' -> 1 registros
+  Estado: 'Pendiente' -> 1 registros
+  Estado: 'Pendiente Asignacion RT' -> 1 registros
+  Estado: 'SOLICITUD_AOCR_HABILITADA' -> 1 registros
+  Estado: 'Subsanada' -> 1 registros

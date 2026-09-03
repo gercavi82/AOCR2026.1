@@ -125,7 +125,18 @@
     var mostrarTipoResultadoInsatisfactorio = esResultadoInsatisfactorio && !string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorioLabel);
     var nombreInspectorFirma = firmadoInspector && !string.IsNullOrWhiteSpace(firmanteInspector) ? firmanteInspector : inspector;
     var nombreInspectorVisual = !string.IsNullOrWhiteSpace(nombreInspectorFirma) ? nombreInspectorFirma.Trim().ToUpperInvariant() : textoNoAplica.ToUpperInvariant();
-    var licenciaInspectorVisual = !string.IsNullOrWhiteSpace(licenciaInspector) ? "No. LICENCIA " + licenciaInspector.Trim() : textoNoAplica.ToUpperInvariant();
+    var cedulaInspector = !string.IsNullOrWhiteSpace(inspectorPrincipalCedula)
+        ? inspectorPrincipalCedula.Trim()
+        : (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+            ? inspeccion.InspectorPrincipalCedula.Trim()
+            : (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+                ? solicitud.TecnicoResponsableCedula.Trim()
+                : (informe != null && !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
+                    ? informe.NumeroLicenciaInspector.Trim()
+                    : string.Empty)));
+    var cedulaInspectorVisual = !string.IsNullOrWhiteSpace(cedulaInspector)
+        ? "C.I. " + cedulaInspector
+        : textoNoAplica.ToUpperInvariant();
     var firmadoDirdac = informe != null && informe.FirmadoDirdac;
     var revisadoPor = informe != null && !string.IsNullOrWhiteSpace(informe.UsuarioFirma2) ? informe.UsuarioFirma2 : null;
     var nombreDirdacVisual = !string.IsNullOrWhiteSpace(revisadoPor) ? revisadoPor.Trim().ToUpperInvariant() : "DIRECTOR / JEFATURA";
@@ -222,13 +233,16 @@
             </tbody>
         </table>
 
-        <div class="report-section-title">Notas:</div>
-        <ul class="bullet-list">
-            @foreach (var item in notasItems)
-            {
-                <li>@item</li>
-            }
-        </ul>
+        @if (!string.IsNullOrWhiteSpace(notas) && notasItems != null && notasItems.Any(item => !string.Equals(item, textoNoAplica, StringComparison.OrdinalIgnoreCase)))
+        {
+            <div class="report-section-title">Notas:</div>
+            <ul class="bullet-list">
+                @foreach (var item in notasItems)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+        }
 
         <div class="report-section-title">Resultado técnico final:</div>
         <p class="report-paragraph compact"><strong>@resultadoTecnicoLabel</strong></p>
@@ -294,7 +308,7 @@
                 }
             </div>
             <div class="signature-name">@nombreInspectorVisual</div>
-            <div class="signature-license">@licenciaInspectorVisual</div>
+            <div class="signature-license">@cedulaInspectorVisual</div>
             <div class="signature-role">FIRMA DEL TÉCNICO / INSPECTOR RESPONSABLE</div>
             <div class="signature-specialty">Nombre: @nombreInspectorVisual &nbsp; Cargo: TECNICO / INSPECTOR DGAC &nbsp; Fecha: @(informe != null && informe.FechaFirma1.HasValue ? informe.FechaFirma1.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica)</div>
         </div>

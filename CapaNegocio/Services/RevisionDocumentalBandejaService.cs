@@ -232,7 +232,9 @@ namespace CapaNegocio.Services
                 || string.Equals(claveRaw, "ENREVISIONDOCUMENTAL", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(claveRaw, "SUBSANADART", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(claveRaw, "DOCUMENTACIONSUBSANADA", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(claveRaw, "PENDIENTEREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(claveRaw, "PENDIENTEREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DEVUELTOINSPECTOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DEVUELTOAINSPECTOR", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)

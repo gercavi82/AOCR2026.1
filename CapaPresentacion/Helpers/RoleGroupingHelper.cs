@@ -5,26 +5,41 @@ using System.Text;
 
 namespace CapaPresentacion.Helpers
 {
+    /// <summary>
+    /// Helper para unificación y segregación de los 7 roles canónicos del Sistema AOCR:
+    /// 1. DIRCAV
+    /// 2. DIRDAC
+    /// 3. COORDINADOR
+    /// 4. RT
+    /// 5. FINANCIERO
+    /// 6. INSPECTOR
+    /// 7. ADMINISTRADOR
+    /// DIRCAV y DIRDAC son roles completamente diferentes con bandejas, permisos y firmas segregadas.
+    /// </summary>
     public static class RoleGroupingHelper
     {
-        public const string Administrador = "Administrador";
-        public const string Solicitante = "Solicitante";
-        public const string InspectorTecnico = "InspectorTecnico";
-        public const string DireccionJefaturaTecnica = "DireccionJefaturaTecnica";
+        // 7 ROLES CANÓNICOS
+        public const string Administrador = "ADMINISTRADOR";
+        public const string Dircav = "DIRCAV";
         public const string Dirdac = "DIRDAC";
+        public const string Coordinador = "COORDINADOR";
+        public const string Solicitante = "RT";
+        public const string Financiero = "FINANCIERO";
+        public const string InspectorTecnico = "INSPECTOR";
+
+        // Aliases legacy para compatibilidad hacia atrás
         public const string Dcav = "DCAV";
-        public const string Financiero = "Financiero";
-        public const string Coordinacion = "Coordinacion";
+        public const string Coordinacion = "COORDINADOR";
+        public const string DireccionJefaturaTecnica = "DireccionJefaturaTecnica";
 
         private static readonly string[] UnifiedRoleOrder =
         {
             Administrador,
-            Coordinacion,
+            Dircav,
             Dirdac,
-            Dcav,
-            DireccionJefaturaTecnica,
-            Financiero,
+            Coordinador,
             InspectorTecnico,
+            Financiero,
             Solicitante
         };
 
@@ -132,9 +147,9 @@ namespace CapaPresentacion.Helpers
                 .Where(role => !TechnicalRawRoles.Contains(Simplify(role)))
                 .ToList();
 
-            if (!filtered.Any(role => NormalizeSelectedRole(role).Equals(Coordinacion, StringComparison.OrdinalIgnoreCase)))
+            if (!filtered.Any(role => NormalizeSelectedRole(role).Equals(Coordinador, StringComparison.OrdinalIgnoreCase)))
             {
-                filtered.Add(Coordinacion);
+                filtered.Add(Coordinador);
             }
 
             return filtered
@@ -150,9 +165,9 @@ namespace CapaPresentacion.Helpers
                 .ToList();
 
             if (IsForcedCoordinacionUser(username) &&
-                roles.Contains(Coordinacion, StringComparer.OrdinalIgnoreCase))
+                roles.Contains(Coordinador, StringComparer.OrdinalIgnoreCase))
             {
-                return Coordinacion;
+                return Coordinador;
             }
 
             var normalizedSelected = NormalizeSelectedRole(selectedRole);
@@ -180,6 +195,28 @@ namespace CapaPresentacion.Helpers
                 return Administrador;
             }
 
+            // DIRCAV canónico (no confundir con DIRDAC)
+            if (Matches(normalized,
+                "DIRCAV",
+                "DCAV",
+                "DIRECTORDCAV",
+                "DIRECTORDIRCAV",
+                "DIRECTORCERTIFICACIONESDCAV"))
+            {
+                return Dircav;
+            }
+
+            // DIRDAC canónico (no confundir con DIRCAV ni con Dirección genérica)
+            if (Matches(normalized,
+                "DIRDAC",
+                "DIRECTORDIRDAC",
+                "DIRECTORGENERAL",
+                "DIRECTORDGAC",
+                "DGAC"))
+            {
+                return Dirdac;
+            }
+
             if (Matches(normalized,
                 "SOLICITANTE",
                 "OPERADOR",
@@ -200,32 +237,6 @@ namespace CapaPresentacion.Helpers
             }
 
             if (Matches(normalized,
-                "DIRDAC"))
-            {
-                return Dirdac;
-            }
-
-            if (Matches(normalized,
-                "DCAV",
-                "DIRECTORCERTIFICACIONESDCAV"))
-            {
-                return Dcav;
-            }
-
-            if (Matches(normalized,
-                "DIRECCION",
-                "JEFATURATECNICA",
-                "DIRECTORGENERAL",
-                "DIRECCIONJEFATURA",
-                "DIRECCIONJEFATURATECNICA",
-                "DIRECCIONYJEFATURA",
-                "DIRECCIONYJEFATURATECNICA",
-                "DIRECCIONJEFATURA_TECNICA"))
-            {
-                return DireccionJefaturaTecnica;
-            }
-
-            if (Matches(normalized,
                 "FINANCIERO",
                 "COORDINADORFINANCIERO",
                 "COORDINACIONFINANCIERA",
@@ -241,9 +252,10 @@ namespace CapaPresentacion.Helpers
                 "COORDINADORDEINSPECCIONES",
                 "COORDINACIONINSPECCIONES",
                 "COORDINACIONLEGAL",
-                "COORDINADORLEGAL"))
+                "COORDINADORLEGAL",
+                "JEFATURATECNICA"))
             {
-                return Coordinacion;
+                return Coordinador;
             }
 
             return string.IsNullOrWhiteSpace(role) ? string.Empty : role.Trim();
@@ -255,20 +267,18 @@ namespace CapaPresentacion.Helpers
             {
                 case Administrador:
                     return "Administrador";
-                case Solicitante:
-                    return "Solicitante";
-                case InspectorTecnico:
-                    return "Inspector / Técnico";
-                case DireccionJefaturaTecnica:
-                    return "Dirección / Jefatura técnica";
+                case Dircav:
+                    return "Director DIRCAV";
                 case Dirdac:
-                    return "DIRDAC";
-                case Dcav:
-                    return "DCAV";
+                    return "Director General (DIRDAC)";
+                case Coordinador:
+                    return "Coordinador";
+                case Solicitante:
+                    return "Representante Técnico (RT)";
+                case InspectorTecnico:
+                    return "Inspector";
                 case Financiero:
                     return "Financiero";
-                case Coordinacion:
-                    return "Coordinación";
                 default:
                     return string.IsNullOrWhiteSpace(role) ? "Perfil institucional" : role.Trim();
             }
@@ -289,12 +299,14 @@ namespace CapaPresentacion.Helpers
             return NormalizeSelectedRole(role).Equals(InspectorTecnico, StringComparison.OrdinalIgnoreCase);
         }
 
-        public static bool IsDireccionJefaturaTecnica(string role)
+        public static bool IsDircav(string role)
         {
-            var normalized = NormalizeSelectedRole(role);
-            return normalized.Equals(DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals(Dirdac, StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals(Dcav, StringComparison.OrdinalIgnoreCase);
+            return NormalizeSelectedRole(role).Equals(Dircav, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsDcav(string role)
+        {
+            return IsDircav(role);
         }
 
         public static bool IsDirdac(string role)
@@ -302,9 +314,12 @@ namespace CapaPresentacion.Helpers
             return NormalizeSelectedRole(role).Equals(Dirdac, StringComparison.OrdinalIgnoreCase);
         }
 
-        public static bool IsDcav(string role)
+        public static bool IsDireccionJefaturaTecnica(string role)
         {
-            return NormalizeSelectedRole(role).Equals(Dcav, StringComparison.OrdinalIgnoreCase);
+            // Solo para retrocompatibilidad controlada: no debe usarse para suplantar
+            var normalized = NormalizeSelectedRole(role);
+            return normalized.Equals(Dircav, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(Dirdac, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsFinanciero(string role)
@@ -314,7 +329,7 @@ namespace CapaPresentacion.Helpers
 
         public static bool IsCoordinacion(string role)
         {
-            return NormalizeSelectedRole(role).Equals(Coordinacion, StringComparison.OrdinalIgnoreCase);
+            return NormalizeSelectedRole(role).Equals(Coordinador, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool RolRequiereCompaniaActiva(string role)
@@ -326,8 +341,9 @@ namespace CapaPresentacion.Helpers
         {
             var normalized = NormalizeSelectedRole(role);
             return normalized.Equals(Administrador, StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals(Coordinacion, StringComparison.OrdinalIgnoreCase)
-                || IsDireccionJefaturaTecnica(normalized)
+                || normalized.Equals(Coordinador, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(Dircav, StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals(Dirdac, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(Financiero, StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals(InspectorTecnico, StringComparison.OrdinalIgnoreCase);
         }

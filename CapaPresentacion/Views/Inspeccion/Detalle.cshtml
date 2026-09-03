@@ -380,9 +380,11 @@
     var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
     var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informeTecnico != null ? informeTecnico.DocumentosAdjuntos : null);
     var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informeTecnico != null ? informeTecnico.DocumentosAdjuntosArchivos : null);
-    var numeroLicenciaInspector = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NumeroLicenciaInspector)
-        ? informeTecnico.NumeroLicenciaInspector
-        : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : string.Empty);
+    var cedulaInspector = !string.IsNullOrWhiteSpace(inspectorPrincipalCedula)
+        ? inspectorPrincipalCedula
+        : (informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NumeroLicenciaInspector)
+            ? informeTecnico.NumeroLicenciaInspector
+            : string.Empty);
     var trabajosRealizadosInforme = normalizeVisibleText(informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.TrabajosRealizados)
         ? informeTecnico.TrabajosRealizados
         : (informeTecnico != null ? informeTecnico.Resumen : string.Empty));
@@ -2646,6 +2648,18 @@
                             <span class="hero-metric-value">@fechaProgramada</span>
                         </div>
 
+                        @if (solicitud != null && Model.CodigoSolicitud > 0)
+                        {
+                            <div class="hero-metric">
+                                <span class="hero-metric-label">Oficio de Designación</span>
+                                <span class="hero-metric-value">
+                                    <a href="@Url.Action("DescargarDesignacionInspector", "Dircav", new { id = Model.CodigoSolicitud })" class="btn btn-sm btn-outline-light py-0 px-2 text-decoration-none" title="Descargar Oficio Oficial de Designación emitido por DIRCAV" target="_blank">
+                                        <i class="fas fa-file-pdf me-1 text-warning"></i>Oficio DIRCAV
+                                    </a>
+                                </span>
+                            </div>
+                        }
+
                         @if (solicitud != null)
                         {
                             <div class="hero-metric">
@@ -2719,7 +2733,10 @@
                                 TieneDocumentosSubsanadosPendientes = estadoRevisionDocumental.TieneDocumentosSubsanadosPendientes,
                                 DocumentacionAprobada = estadoRevisionDocumental.DocumentacionAprobada,
                                 PuedeAbrirLvEae = puedeAbrirLvEae,
-                                MensajeBloqueoDocumental = mensajeBloqueoLvEae
+                                MensajeBloqueoDocumental = mensajeBloqueoLvEae,
+                                Estaciones = ViewBag.EstacionesInspeccion as List<SolicitudEstacionInspeccion> ?? new List<SolicitudEstacionInspeccion>(),
+                                EstacionSeleccionadaId = ViewBag.EstacionSeleccionadaId as int?,
+                                EstadosPorEstacion = ViewBag.EstadosLvsPorEstacion as Dictionary<int, string> ?? new Dictionary<int, string>()
                             };
                             var estadoListaVentana = listaVerificacionFirmada
                                 ? "LV firmada"

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Web;
 using System.Web.Mvc;
@@ -682,7 +683,9 @@ namespace CapaPresentacion.Controllers
                         return estado == EstadoSolicitud.Pendiente
                             || estado == EstadoSolicitud.EnRevision
                             || estado == EstadoSolicitud.Observada
-                            || estado == EstadoSolicitud.AceptacionDocumental;
+                            || estado == EstadoSolicitud.AceptacionDocumental
+                            || string.Equals(s.Estado, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(s.Estado, AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase);
                     })
                     .OrderByDescending(s => s.FechaSolicitud ?? DateTime.MinValue)
                     .Take(30)
@@ -4962,6 +4965,133 @@ namespace CapaPresentacion.Controllers
             }
 
             return builder.ToString();
+        }
+
+        // =========================================================================
+        // AC-04: FLUJO REVISIÓN DOCUMENTAL COORDINADOR -> INSPECTOR / DIRCAV
+        // =========================================================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverAlInspector(int solicitudId, string comentario)
+        {
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Administrador no puede ejecutar devoluciones operativas (Regla 7).");
+            }
+
+            if (User.IsInRole("Inspector") || User.IsInRole("InspectorTecnico") || AocrRolesInstitucionales.EsInspector(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Inspector no tiene permisos para ejecutar esta accion.");
+            }
+
+            if (!User.IsInRole("Coordinador") && !User.IsInRole("CoordinadorInspecciones") && !User.IsInRole("Coordinacion")
+                && !RoleGroupingHelper.IsCoordinacion(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Solo el rol Coordinador puede devolver la revision documental al Inspector.");
+            }
+
+            if (solicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "ID de solicitud invalido.");
+            }
+
+            if (string.IsNullOrWhiteSpace(comentario))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "El comentario de devolucion es obligatorio.");
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+            if (solicitud == null)
+            {
+                return HttpNotFound("Solicitud no encontrada.");
+            }
+
+            var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
+            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido procesada previamente.");
+            }
+
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+
+            var svc = new RevisionDocumentalCoordinadorService();
+            var res = svc.DevolverAlInspector(solicitudId, coordinadorId, comentario, usuarioLogin);
+            if (!res.Ok)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Conflict, res.Mensaje);
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = res.Mensaje;
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = res.Mensaje });
+            }
+            return RedirectToAction("RevisionVerificacion");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemitirADircav(int solicitudId, string observacion)
+        {
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Administrador no puede ejecutar remisiones operativas (Regla 7).");
+            }
+
+            if (User.IsInRole("Inspector") || User.IsInRole("InspectorTecnico") || AocrRolesInstitucionales.EsInspector(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Inspector no tiene permisos para remitir a DIRCAV ni a DIRDAC.");
+            }
+
+            if (!User.IsInRole("Coordinador") && !User.IsInRole("CoordinadorInspecciones") && !User.IsInRole("Coordinacion")
+                && !RoleGroupingHelper.IsCoordinacion(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Solo el rol Coordinador puede remitir el expediente a DIRCAV.");
+            }
+
+            if (solicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "ID de solicitud invalido.");
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+            if (solicitud == null)
+            {
+                return HttpNotFound("Solicitud no encontrada.");
+            }
+
+            var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
+            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido remitida previamente.");
+            }
+
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+
+            var svc = new RevisionDocumentalCoordinadorService();
+            var res = svc.RemitirADircav(solicitudId, coordinadorId, observacion, usuarioLogin);
+            if (!res.Ok)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Conflict, res.Mensaje);
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = res.Mensaje;
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = res.Mensaje });
+            }
+            return RedirectToAction("RevisionVerificacion");
         }
     }
 }

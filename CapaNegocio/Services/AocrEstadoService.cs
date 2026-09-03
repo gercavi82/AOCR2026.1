@@ -141,6 +141,9 @@ namespace CapaNegocio.Services
                 case "SUBSANADO_RT":
                 case "DOCUMENTACION_SUBSANADA":
                 case "DOCUMENTOS_SUBSANADOS":
+                case "DEVUELTO_INSPECTOR":
+                case "DEVUELTO_A_INSPECTOR":
+                case "OBSERVADA_POR_COORDINADOR":
                     return true;
                 default:
                     return false;

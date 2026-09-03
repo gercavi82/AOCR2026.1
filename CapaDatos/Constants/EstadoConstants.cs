@@ -466,18 +466,36 @@ namespace CapaDatos.Constants
             AOCR_EnRevision,
             AOCR_Validado,
             AOCR_Legalizado,
-            AOCR_EmitidoRecibido
+            AOCR_EmitidoRecibido,
+
+            // AC-04 y AC-05: Transiciones institucionales de revisión documental y designación DIRCAV
+            AocrEstadosProceso.PendienteCoordinador,
+            AocrEstadosProceso.DevueltoInspector,
+            AocrEstadosProceso.PendienteDircav,
+            AocrEstadosProceso.DevueltoCoordinador,
+            AocrEstadosProceso.DocumentacionAceptadaDircav,
+            AocrEstadosProceso.PendienteDesignacionDircav,
+            AocrEstadosProceso.DesignacionPendienteFirmaDircav,
+            AocrEstadosProceso.DesignacionFirmadaDircav
         };
 
         private static readonly Dictionary<string, string[]> Transiciones = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             { SolicitudCreada, new[] { DocumentacionPendiente, Observada } },
             { Pendiente, new[] { EnRevision } },
-            { EnRevision, new[] { Observada, AceptacionDocumental, EnInspeccion } },
+            { EnRevision, new[] { Observada, AceptacionDocumental, EnInspeccion, AocrEstadosProceso.PendienteCoordinador } },
             { DocumentacionPendiente, new[] { Observada, AceptacionDocumental } },
             { Observada, new[] { Subsanada } },
-            { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental, EnInspeccion } },
+            { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental, EnInspeccion, AocrEstadosProceso.PendienteCoordinador } },
             { AceptacionDocumental, new[] { RequiereInspeccion, GeneradoCondicionesLimitaciones, PendienteAsignacionRT, EnInspeccion, FirmadoCoordinador } },
+            { AocrEstadosProceso.PendienteCoordinador, new[] { AocrEstadosProceso.DevueltoInspector, AocrEstadosProceso.PendienteDircav } },
+            { AocrEstadosProceso.DevueltoInspector, new[] { AocrEstadosProceso.PendienteCoordinador } },
+            { AocrEstadosProceso.PendienteDircav, new[] { AocrEstadosProceso.DevueltoCoordinador, AocrEstadosProceso.DocumentacionAceptadaDircav, RequiereInspeccion, GeneradoCondicionesLimitaciones, PendienteAsignacionRT, EnInspeccion } },
+            { AocrEstadosProceso.DevueltoCoordinador, new[] { AocrEstadosProceso.PendienteCoordinador, AocrEstadosProceso.PendienteDircav } },
+            { AocrEstadosProceso.DocumentacionAceptadaDircav, new[] { AocrEstadosProceso.PendienteDesignacionDircav, AocrEstadosProceso.DesignacionPendienteFirmaDircav } },
+            { AocrEstadosProceso.PendienteDesignacionDircav, new[] { AocrEstadosProceso.DesignacionPendienteFirmaDircav } },
+            { AocrEstadosProceso.DesignacionPendienteFirmaDircav, new[] { AocrEstadosProceso.DesignacionFirmadaDircav, AocrEstadosProceso.PendienteDesignacionDircav } },
+            { AocrEstadosProceso.DesignacionFirmadaDircav, new[] { EnInspeccion, RequiereInspeccion } },
             { RequiereInspeccion, new[] { PendienteAsignacionRT, EnInspeccion } },
             { GeneradoCondicionesLimitaciones, new[] { EnRevisionCoordinadorFinal } },
             { EnRevisionCoordinadorFinal, new[] { EnviadoDcav } },
@@ -539,6 +557,33 @@ namespace CapaDatos.Constants
                 case "DOCUMENTACION_ACEPTADA":
                 case "DOCUMENTACION ACEPTADA":
                     return AceptacionDocumental;
+                case "PENDIENTE_COORDINADOR":
+                case "PENDIENTE COORDINADOR":
+                    return AocrEstadosProceso.PendienteCoordinador;
+                case "DEVUELTO_INSPECTOR":
+                case "DEVUELTO INSPECTOR":
+                case "DEVUELTO_A_INSPECTOR":
+                    return AocrEstadosProceso.DevueltoInspector;
+                case "PENDIENTE_DIRCAV":
+                case "PENDIENTE DIRCAV":
+                case "PENDIENTE_ACEPTACION_DIRCAV":
+                    return AocrEstadosProceso.PendienteDircav;
+                case "DEVUELTO_COORDINADOR":
+                case "DEVUELTO COORDINADOR":
+                case "DEVUELTO_COORDINADOR_POR_DIRCAV":
+                    return AocrEstadosProceso.DevueltoCoordinador;
+                case "DOCUMENTACION_ACEPTADA_DIRCAV":
+                case "DOCUMENTACION ACEPTADA DIRCAV":
+                    return AocrEstadosProceso.DocumentacionAceptadaDircav;
+                case "PENDIENTE_DESIGNACION_DIRCAV":
+                case "PENDIENTE DESIGNACION DIRCAV":
+                    return AocrEstadosProceso.PendienteDesignacionDircav;
+                case "DESIGNACION_PENDIENTE_FIRMA_DIRCAV":
+                case "DESIGNACION PENDIENTE FIRMA DIRCAV":
+                    return AocrEstadosProceso.DesignacionPendienteFirmaDircav;
+                case "DESIGNACION_FIRMADA_DIRCAV":
+                case "DESIGNACION FIRMADA DIRCAV":
+                    return AocrEstadosProceso.DesignacionFirmadaDircav;
                 case "REQUIERE_INSPECCION":
                 case "REQUIERE INSPECCION":
                     return RequiereInspeccion;

@@ -1870,11 +1870,30 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult RechazarDesignacion(int id, string observacion, string returnUrl)
         {
-            var usuario = UsuarioDAO.ObtenerPorId(id);
-            if (usuario == null)
+            var rolRaw = Session["Rol"] as string ?? string.Empty;
+            var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(rolRaw);
+
+            // Regla 7: El Administrador no puede devolver designaciones operativas
+            if (string.Equals(rolRaw, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["error"] = "Usuario no encontrado.";
-                return RedirigirDespuesRevisionRT(returnUrl);
+                return new HttpStatusCodeResult(403, "El rol Administrador no puede devolver designaciones operativas de RT.");
+            }
+
+            // Permiso específico COORDINADOR_DEVOLVER_POSTULACION
+            var tienePermiso = string.Equals(rolSesion, RoleGroupingHelper.Coordinador, StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(rolSesion, "COORDINACION", StringComparison.OrdinalIgnoreCase) ||
+                               User.IsInRole("COORDINADOR") ||
+                               User.IsInRole("COORDINACION");
+            if (!tienePermiso)
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere el permiso COORDINADOR_DEVOLVER_POSTULACION.");
+            }
+
+            var coordinadorId = ObtenerUsuarioSesionId();
+            if (coordinadorId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "No se pudo determinar un UsuarioId válido para la sesión del Coordinador.");
             }
 
             var observacionNormalizada = (observacion ?? string.Empty).Trim();
@@ -1884,72 +1903,24 @@ namespace CapaPresentacion.Controllers
                 return RedirigirDespuesRevisionRT(returnUrl);
             }
 
-            UsuarioDAO.RechazarDesignacionRT(id);
+            var service = new RtDesignacionFlujoService();
+            var resultado = service.DevolverDesignacion(id, coordinadorId, rolRaw, observacionNormalizada);
 
-            string detalleSincronizacion = string.Empty;
-            try
+            if (!resultado.Exitoso)
             {
-                var rtService = new RTService();
-                var solicitudRt = rtService.GetSolicitudByUsuario(id);
-                if (solicitudRt != null)
-                {
-                    rtService.DevolverConObservaciones(solicitudRt.Id, ObtenerUsuarioSesionId(), observacionNormalizada);
-                }
-                else
-                {
-                    detalleSincronizacion = " No se encontró expediente RT para registrar la devolución en el workflow nuevo.";
-                }
-            }
-            catch (Exception exRt)
-            {
-                detalleSincronizacion = " No se pudo sincronizar la devolución en el expediente RT.";
-                LogBL.RegistrarError(
-                    "No se pudo sincronizar la devolución del expediente RT.",
-                    exRt.ToString() + " | usuarioId=" + id,
-                    "UsuarioController");
+                TempData["error"] = resultado.Mensaje;
+                return RedirigirDespuesRevisionRT(returnUrl);
             }
 
-            try
+            // Idempotencia: Si ya estaba devuelto y la petición es AJAX/API, devolver 409 Conflict
+            if (Request != null && Request.IsAjaxRequest() && resultado.YaEstabaDevuelto)
             {
-                if (!string.IsNullOrWhiteSpace(usuario.Email))
-                {
-                    var asunto = RtCorreoTextoHelper.GetAsuntoDevolucionRt();
-                    var textoDevolucion = RtCorreoTextoHelper.GetTextoDevolucionRt(new Dictionary<string, string>
-                    {
-                        { "NOMBRE", usuario.NombreCompleto ?? string.Empty },
-                        { "USUARIO", usuario.CodigoUsuario ?? string.Empty },
-                        { "MOTIVO", observacionNormalizada }
-                    });
-
-                    var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
-                    {
-                        Titulo = "Designacion RT devuelta",
-                        NombreDestinatario = usuario.NombreCompleto,
-                        MensajePrincipal = textoDevolucion,
-                        Resumen = new List<EmailFieldItem>
-                        {
-                            new EmailFieldItem("Usuario", usuario.CodigoUsuario ?? string.Empty),
-                            new EmailFieldItem("Estado", "Devuelta para correccion"),
-                            new EmailFieldItem("Observacion", observacionNormalizada)
-                        },
-                        Observaciones = observacionNormalizada,
-                        TextoCierre = "Puede actualizar sus documentos en el sistema y reenviar su designacion RT para nueva revision.",
-                        Footer = "Este es un correo automatico, por favor no responder."
-                    });
-
-                    var servicioCorreo = new EnviarCorreo();
-                    servicioCorreo.enviaMensajeCorreo(usuario.Email, asunto, cuerpo);
-                }
-            }
-            catch (Exception exCorreo)
-            {
-                LogBL.RegistrarError(
-                    "No se pudo enviar correo de devolucion RT.",
-                    exCorreo.ToString(),
-                    "UsuarioController");
+                return new HttpStatusCodeResult(409, "Conflicto: La postulación ya fue devuelta previamente.");
             }
 
-            TempData["msg"] = "Designación rechazada y devuelta para corrección." + detalleSincronizacion;
+            TempData["msg"] = resultado.YaEstabaDevuelto
+                ? "La designación ya fue devuelta previamente."
+                : "Designación devuelta para corrección. El correo ha quedado liberado para una nueva postulación.";
             return RedirigirDespuesRevisionRT(returnUrl);
         }
 

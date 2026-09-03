@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
 @using CapaDatos.Constants
 @using CapaDatos.Models
 @using CapaPresentacion.Helpers
@@ -1421,6 +1421,52 @@
                             <div class="aocr-info-value">@inspectorApoyoDetalle</div>
                         </div>
                     </div>
+
+                    @{
+                        var listaEstacionesDetalle = ViewBag.EstacionesSolicitud as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>
+                            ?? Model.Estaciones
+                            ?? Enumerable.Empty<CapaModelo.SolicitudEstacionInspeccion>();
+                    }
+                    @if (listaEstacionesDetalle != null && listaEstacionesDetalle.Any())
+                    {
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="fw-bold text-primary"><i class="fas fa-map-marker-alt me-1"></i> Estaciones y Fechas de Inspección Independientes</div>
+                                <span class="badge bg-info text-dark" style="font-size: 0.72rem;">AC-02 Multi-Estación</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Estación / Base</th>
+                                            <th class="text-center" style="width: 25%;">Fecha Inicio</th>
+                                            <th class="text-center" style="width: 25%;">Fecha Fin</th>
+                                            <th class="text-center" style="width: 20%;">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var est in listaEstacionesDetalle)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
+                                                    @if (!string.IsNullOrWhiteSpace(est.InspectorNombre))
+                                                    {
+                                                        <small class="text-muted d-block"><i class="fas fa-user-check me-1"></i>Inspector: @est.InspectorNombre</small>
+                                                    }
+                                                </td>
+                                                <td class="text-center">@(est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("dd/MM/yyyy") : "-")</td>
+                                                <td class="text-center">@(est.FechaFin != default(DateTime) ? est.FechaFin.ToString("dd/MM/yyyy") : "-")</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-secondary">@(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)</span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
         </div>

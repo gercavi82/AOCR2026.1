@@ -9,6 +9,11 @@ namespace CapaDatos.Models
         public int? TecnicoId { get; set; }
         public string CodigoUsuario { get; set; }
         public string Identificacion { get; set; }
+        public string Cedula
+        {
+            get { return Identificacion; }
+            set { Identificacion = value; }
+        }
         public string Nombres { get; set; }
         public string Apellidos { get; set; }
         public string NombreCompleto { get; set; }

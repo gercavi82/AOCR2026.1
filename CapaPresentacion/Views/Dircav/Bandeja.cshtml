@@ -1,0 +1,458 @@
+@using CapaModelo
+@using CapaModelo.Common
+@{
+    ViewBag.Title = "Bandeja Institucional DIRCAV";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var activeTab = (ViewBag.ActiveTab as string) ?? "documentacion";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h4 mb-0 text-primary"><i class="fas fa-building-shield me-2"></i>Bandeja de Gestión DIRCAV</h2>
+            <small class="text-muted">Dirección de Certificación Aeronáutica (DIRCAV) - Aceptación, Designaciones y C&L</small>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-1"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-1"></i>@TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-times-circle me-1"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Navegación por pestañas de las 8 bandejas de DIRCAV -->
+    <ul class="nav nav-tabs nav-fill mb-3" id="dircavTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "documentacion" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "documentacion" })">
+                <i class="fas fa-folder-open me-1"></i>Doc. Pendiente Aceptación
+                <span class="badge bg-danger ms-1">@ViewBag.ContadorDocumentacion</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "designaciones" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "designaciones" })">
+                <i class="fas fa-user-check me-1"></i>Designaciones Pendientes
+                <span class="badge bg-warning text-dark ms-1">@ViewBag.ContadorDesignaciones</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "informes" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "informes" })">
+                <i class="fas fa-file-alt me-1"></i>Informes por Revisar
+                <span class="badge bg-info text-dark ms-1">@ViewBag.ContadorInformes</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "condiciones" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "condiciones" })">
+                <i class="fas fa-stamp me-1"></i>Firma de Condiciones
+                <span class="badge bg-danger ms-1">@ViewBag.ContadorCondiciones</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "remision" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "remision" })">
+                <i class="fas fa-paper-plane me-1"></i>Remisión a DIRDAC
+                <span class="badge bg-primary ms-1">@ViewBag.ContadorRemision</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "devueltos" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "devueltos" })">
+                <i class="fas fa-undo me-1"></i>Expedientes Devueltos
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(activeTab == "historial" ? "active fw-bold" : "")" href="@Url.Action("Bandeja", "Dircav", new { tab = "historial" })">
+                <i class="fas fa-history me-1"></i>Historial
+            </a>
+        </li>
+    </ul>
+
+    <!-- Contenedor del Tab Activo -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            @if (activeTab == "documentacion")
+            {
+                var lista = ViewBag.DocumentacionPendiente as List<SolicitudAOCR> ?? new List<SolicitudAOCR>();
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th># Trámite</th>
+                                <th>Operador / Razón Social</th>
+                                <th>RT / Contacto</th>
+                                <th>Estaciones y Fechas (AC-02)</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!lista.Any())
+                            {
+                                <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-check-circle me-1"></i>No hay documentación pendiente de aceptación en DIRCAV.</td></tr>
+                            }
+                            @foreach (var item in lista)
+                            {
+                                var estacionesItem = item.Estaciones ?? new List<SolicitudEstacionInspeccion>();
+                                <tr>
+                                    <td><strong>@item.NumeroSolicitud</strong></td>
+                                    <td>@(item.NombreOperador ?? item.RazonSocial)</td>
+                                    <td><small class="text-muted">@(item.RepresentanteLegal ?? item.CorreoRepresentanteTecnico ?? item.Email ?? "RT")</small></td>
+                                    <td>
+                                        @if (estacionesItem.Any())
+                                        {
+                                            <ul class="list-unstyled mb-0 small">
+                                                @foreach (var est in estacionesItem)
+                                                {
+                                                    <li>
+                                                        <span class="badge bg-primary me-1">@est.EstacionCodigo</span>
+                                                        <span class="text-muted">@est.RangoFechasTexto</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Sin estaciones</span>
+                                        }
+                                    </td>
+                                    <td><span class="badge bg-secondary">@(item.TipoSolicitud == 2 ? "Renovación" : (item.TipoSolicitud == 3 ? "Modificación" : "Emisión"))</span></td>
+                                    <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="@Url.Action("Detalle", "Dircav", new { id = item.CodigoSolicitud })" class="btn btn-sm btn-outline-primary me-1" title="Ver Expediente Completo">
+                                            <i class="fas fa-eye me-1"></i>Ver
+                                        </a>
+
+                                        <!-- Botón Aceptar Documentación -->
+                                        @using (Html.BeginForm("AceptarDocumentacion", "Dircav", FormMethod.Post, new { @class = "d-inline form-aceptar-doc" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", item.CodigoSolicitud)
+                                            <button type="submit" class="btn btn-sm btn-success me-1 btn-prevenir-doble" onclick="return confirm('¿Confirma la aceptación formal de la documentación técnica del trámite @item.NumeroSolicitud?');">
+                                                <i class="fas fa-check me-1"></i>Aceptar Doc.
+                                            </button>
+                                        }
+
+                                        <!-- Botón Devolver con modal -->
+                                        <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDevolver" data-id="@item.CodigoSolicitud" data-num="@item.NumeroSolicitud">
+                                            <i class="fas fa-reply me-1"></i>Devolver
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (activeTab == "designaciones")
+            {
+                var lista = ViewBag.DesignacionesPendientes as List<SolicitudAOCR> ?? new List<SolicitudAOCR>();
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th># Trámite</th>
+                                <th>Operador</th>
+                                <th>Estaciones y Fechas (AC-02)</th>
+                                <th>Inspector Designado</th>
+                                <th>Inspector Apoyo</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!lista.Any())
+                            {
+                                <tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-check-circle me-1"></i>No hay designaciones pendientes de resolución por DIRCAV.</td></tr>
+                            }
+                            @foreach (var item in lista)
+                            {
+                                var estacionesItem = item.Estaciones ?? new List<SolicitudEstacionInspeccion>();
+                                <tr>
+                                    <td><strong>@item.NumeroSolicitud</strong></td>
+                                    <td>@(item.NombreOperador ?? item.RazonSocial)</td>
+                                    <td>
+                                        @if (estacionesItem.Any())
+                                        {
+                                            <ul class="list-unstyled mb-0 small">
+                                                @foreach (var est in estacionesItem)
+                                                {
+                                                    <li>
+                                                        <span class="badge bg-primary me-1">@est.EstacionCodigo</span>
+                                                        <span class="text-muted">@est.RangoFechasTexto</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Sin estaciones</span>
+                                        }
+                                    </td>
+                                    <td><i class="fas fa-user-check me-1 text-success"></i>@(item.TecnicoResponsableNombre ?? item.TecnicoResponsableCedula ?? "No designado")</td>
+                                    <td><i class="fas fa-user-friends me-1 text-info"></i>@(item.InspectorApoyoNombre ?? item.InspectorApoyoCedula ?? "Ninguno")</td>
+                                    <td><span class="badge bg-warning text-dark">@item.Estado</span></td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="@Url.Action("Detalle", "Dircav", new { id = item.CodigoSolicitud })" class="btn btn-sm btn-outline-primary me-1">
+                                            <i class="fas fa-search me-1"></i>Detalle
+                                        </a>
+
+                                        @if (!string.IsNullOrWhiteSpace(item.TecnicoResponsableCedula))
+                                        {
+                                            <a href="@Url.Action("VistaPreviaDesignacion", "Dircav", new { id = item.CodigoSolicitud })" target="_blank" class="btn btn-sm btn-outline-secondary me-1" title="Vista Previa del Oficio de Designación">
+                                                <i class="fas fa-file-pdf me-1"></i>Vista Previa
+                                            </a>
+
+                                            if (string.Equals(item.Estado, "DESIGNACION_FIRMADA_DIRCAV", System.StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <a href="@Url.Action("DescargarDesignacion", "Dircav", new { id = item.CodigoSolicitud })" class="btn btn-sm btn-success me-1" title="Descargar Oficio Firmado">
+                                                    <i class="fas fa-download me-1"></i>Oficio Firmado
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                using (Html.BeginForm("FirmarDesignacion", "Dircav", FormMethod.Post, new { @class = "d-inline" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    @Html.Hidden("id", item.CodigoSolicitud)
+                                                    <button type="submit" class="btn btn-sm btn-danger me-1 btn-prevenir-doble" onclick="return confirm('¿Confirma la firma formal del oficio de designación de inspectores para el trámite @item.NumeroSolicitud?');">
+                                                        <i class="fas fa-signature me-1"></i>Firmar Oficio
+                                                    </button>
+                                                }
+                                            }
+                                        }
+
+                                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalDesignar" data-id="@item.CodigoSolicitud" data-num="@item.NumeroSolicitud" data-principal="@item.TecnicoResponsableCedula" data-apoyo="@item.InspectorApoyoCedula">
+                                            <i class="fas fa-user-tag me-1"></i>@(string.IsNullOrWhiteSpace(item.TecnicoResponsableCedula) ? "Designar Inspector" : "Reasignar")
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (activeTab == "condiciones")
+            {
+                var lista = ViewBag.CondicionesPendientes as List<AocrBandejaDocumentoRow> ?? new List<AocrBandejaDocumentoRow>();
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th># Solicitud</th>
+                                <th>Operador</th>
+                                <th>Documento</th>
+                                <th>Estado Documento</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!lista.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-check-circle me-1"></i>No hay Condiciones y Limitaciones pendientes de firma por DIRCAV.</td></tr>
+                            }
+                            @foreach (var item in lista)
+                            {
+                                <tr>
+                                    <td><strong>@item.NumeroSolicitud</strong></td>
+                                    <td>@(item.NombreExplotador ?? item.CompaniasSeleccionadas ?? "Operador")</td>
+                                    <td><span class="badge bg-info text-dark">Condiciones y Limitaciones</span></td>
+                                    <td><span class="badge bg-warning text-dark">@item.EstadoDocumentoCondiciones</span></td>
+                                    <td class="text-end">
+                                        <a href="@Url.Action("Detalle", "Dircav", new { id = item.SolicitudId })" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-file-signature me-1"></i>Firmar C&L
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted">
+                    <p class="mb-0"><i class="fas fa-info-circle me-1"></i>Bandeja institucional de DIRCAV activa. Seleccione una pestaña de trabajo autorizada.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 1: Devolver al Coordinador (Motivo Obligatorio) -->
+<div class="modal fade" id="modalDevolver" tabindex="-1" aria-labelledby="modalDevolverLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("DevolverCoordinador", "Dircav", FormMethod.Post, new { id = "formDevolverDircav" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="devolverSolicitudId" value="" />
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="modalDevolverLabel"><i class="fas fa-undo me-2"></i>Devolver Expediente al Coordinador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">Trámite: <strong id="devolverNumeroSolicitud"></strong></p>
+                    <div class="mb-3">
+                        <label for="devolverMotivo" class="form-label fw-bold">Motivo técnico de devolución <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="devolverMotivo" name="motivo" rows="4" maxlength="2000" placeholder="Especifique con precisión las observaciones que impiden la aceptación de la documentación..." required></textarea>
+                        <div class="form-text">El Coordinador e Inspector recibirán esta observación institucional.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning fw-bold btn-prevenir-doble" id="btnConfirmarDevolver">
+                        <i class="fas fa-reply me-1"></i>Confirmar Devolución
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 2: Designar Formalmente al Inspector (DIRCAV) -->
+<div class="modal fade" id="modalDesignar" tabindex="-1" aria-labelledby="modalDesignarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            @using (Html.BeginForm("DesignarInspector", "Dircav", FormMethod.Post, new { id = "formDesignarDircav" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="designarSolicitudId" value="" />
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalDesignarLabel"><i class="fas fa-user-check me-2"></i>Designación Oficial de Inspectores (DIRCAV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Expediente: <strong id="designarNumeroSolicitud"></strong></p>
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>Esta designación formal asignará al Inspector a la solicitud y sus estaciones. Conforme a AC-05, el estado pasará a <code>DESIGNACION_PENDIENTE_FIRMA_DIRCAV</code> hasta la firma digital en AC-06.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="selectInspectorPrincipal" class="form-label fw-bold">Inspector Principal <span class="text-danger">*</span></label>
+                            <select class="form-select" id="selectInspectorPrincipal" name="inspectorCedula" required>
+                                <option value="">-- Seleccionar Inspector Activo --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="selectInspectorApoyo" class="form-label fw-bold">Inspector de Apoyo (Opcional)</label>
+                            <select class="form-select" id="selectInspectorApoyo" name="inspectorApoyoCedula">
+                                <option value="">-- Ninguno / No aplica --</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="designarObservacion" class="form-label fw-bold">Observación / Motivo (Requerido en Reasignación)</label>
+                            <textarea class="form-control" id="designarObservacion" name="observacion" rows="2" maxlength="1000" placeholder="Notas de designación o justificación de reasignación técnica..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold btn-prevenir-doble" id="btnConfirmarDesignar">
+                        <i class="fas fa-check-double me-1"></i>Confirmar Designación
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var inspectoresCargados = false;
+        var urlInspectores = '@Url.Action("InspectoresDisponibles", "Dircav")';
+
+        // 1. Manejo Modal Devolver
+        var modalDevolver = document.getElementById('modalDevolver');
+        if (modalDevolver) {
+            modalDevolver.addEventListener('show.bs.modal', function (event) {
+                var btn = event.relatedTarget;
+                var id = btn.getAttribute('data-id');
+                var num = btn.getAttribute('data-num');
+                document.getElementById('devolverSolicitudId').value = id;
+                document.getElementById('devolverNumeroSolicitud').textContent = num;
+                document.getElementById('devolverMotivo').value = '';
+            });
+        }
+
+        // 2. Manejo Modal Designar e Inspectores Activos
+        var modalDesignar = document.getElementById('modalDesignar');
+        if (modalDesignar) {
+            modalDesignar.addEventListener('show.bs.modal', function (event) {
+                var btn = event.relatedTarget;
+                var id = btn.getAttribute('data-id');
+                var num = btn.getAttribute('data-num');
+                var principalActual = btn.getAttribute('data-principal') || '';
+                var apoyoActual = btn.getAttribute('data-apoyo') || '';
+
+                document.getElementById('designarSolicitudId').value = id;
+                document.getElementById('designarNumeroSolicitud').textContent = num;
+                document.getElementById('designarObservacion').value = '';
+
+                cargarInspectores(principalActual, apoyoActual);
+            });
+        }
+
+        function cargarInspectores(principalActual, apoyoActual) {
+            var selP = document.getElementById('selectInspectorPrincipal');
+            var selA = document.getElementById('selectInspectorApoyo');
+
+            fetch(urlInspectores)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    selP.innerHTML = '<option value="">-- Seleccionar Inspector Activo --</option>';
+                    selA.innerHTML = '<option value="">-- Ninguno / No aplica --</option>';
+
+                    if (Array.isArray(data)) {
+                        data.forEach(function (insp) {
+                            var optP = document.createElement('option');
+                            optP.value = insp.cedula;
+                            optP.textContent = insp.nombre + ' (' + insp.cedula + ')';
+                            if (principalActual && insp.cedula.toUpperCase() === principalActual.toUpperCase()) {
+                                optP.selected = true;
+                            }
+                            selP.appendChild(optP);
+
+                            var optA = document.createElement('option');
+                            optA.value = insp.cedula;
+                            optA.textContent = insp.nombre + ' (' + insp.cedula + ')';
+                            if (apoyoActual && insp.cedula.toUpperCase() === apoyoActual.toUpperCase()) {
+                                optA.selected = true;
+                            }
+                            selA.appendChild(optA);
+                        });
+                    }
+                })
+                .catch(function (err) {
+                    console.error('Error al cargar inspectores:', err);
+                });
+        }
+
+        // 3. Prevenir doble clic en formularios
+        document.querySelectorAll('.btn-prevenir-doble').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                var f = btn.closest('form');
+                if (f && f.checkValidity()) {
+                    setTimeout(function () {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Procesando...';
+                    }, 50);
+                }
+            });
+        });
+    })();
+</script>
+

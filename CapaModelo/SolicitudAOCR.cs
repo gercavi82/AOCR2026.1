@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace CapaModelo
@@ -10,6 +10,7 @@ namespace CapaModelo
         public DateTime? FechaSolicitud { get; set; }
         public int? TipoSolicitud { get; set; }
         public string Estado { get; set; }
+        public string EstadoDocumental { get; set; }
 
         public string NombreOperador { get; set; }
         public string CodigoOaci { get; set; }
@@ -44,6 +45,7 @@ namespace CapaModelo
 
         public int CodigoUsuario { get; set; }
         public int? CodigoTecnico { get; set; }
+        public int? TecnicoResponsableId { get; set; }
         public string TecnicoResponsableCedula { get; set; }
         public string TecnicoResponsableNombre { get; set; }
         public string TecnicoResponsableTipo { get; set; }
@@ -77,6 +79,7 @@ namespace CapaModelo
         public List<Documento> Documentos { get; set; } = new List<Documento>();
         public List<Pago> Pagos { get; set; } = new List<Pago>();
         public List<Inspeccion> Inspecciones { get; set; } = new List<Inspeccion>();
+        public List<SolicitudEstacionInspeccion> Estaciones { get; set; } = new List<SolicitudEstacionInspeccion>();
         public List<Observacion> ObservacionesLista { get; set; } = new List<Observacion>();
         public List<HistorialEstado> HistorialEstados { get; set; } = new List<HistorialEstado>();
         // =========================================================

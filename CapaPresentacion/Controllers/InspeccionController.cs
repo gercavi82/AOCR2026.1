@@ -979,13 +979,53 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var solicitudLv = solicitudDetalle;
-                var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
+                var estacionService = new CapaNegocio.Services.SolicitudEstacionService();
+                var estacionesSolicitud = estacionService.ObtenerEstacionesPorSolicitud(
+                    inspeccion.CodigoSolicitud,
+                    solicitudLv,
+                    new[] { inspeccion });
+
+                ViewBag.EstacionesInspeccion = estacionesSolicitud;
+
+                // Resolver estación seleccionada (desde query string o la primera)
+                int? estacionId = null;
+                var qEstacion = Request?.QueryString["estacionId"];
+                if (!string.IsNullOrWhiteSpace(qEstacion) && int.TryParse(qEstacion, out var qEstId) && qEstId > 0)
+                {
+                    estacionId = qEstId;
+                }
+                else if (estacionesSolicitud != null && estacionesSolicitud.Any())
+                {
+                    estacionId = estacionesSolicitud.First().Id;
+                }
+                ViewBag.EstacionSeleccionadaId = estacionId;
+
+                // Calcular estado de la LV para cada estación
+                var estadosLvsPorEstacion = new Dictionary<int, string>();
+                if (estacionesSolicitud != null)
+                {
+                    foreach (var est in estacionesSolicitud)
+                    {
+                        var lvEst = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion, est.Id);
+                        estadosLvsPorEstacion[est.Id] = lvEst != null
+                            ? (lvEst.FirmadoTecnico ? CapaDatos.Constants.AocrEstadosListaVerificacion.Firmada : (lvEst.Finalizado ? CapaDatos.Constants.AocrEstadosListaVerificacion.Completa : CapaDatos.Constants.AocrEstadosListaVerificacion.Borrador))
+                            : CapaDatos.Constants.AocrEstadosListaVerificacion.NoCreada;
+                    }
+                }
+                ViewBag.EstadosLvsPorEstacion = estadosLvsPorEstacion;
+
+                var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion, estacionId);
                 if (listaVerificacion == null && UsaFlujoListaVerificacionOperacionalEae(solicitudLv))
                 {
+                    var estacionActual = estacionesSolicitud?.FirstOrDefault(e => e.Id == (estacionId ?? 0));
                     listaVerificacion = new ListaVerificacionOperacionalEae
                     {
                         CodigoInspeccion = codigoInspeccion,
-                        EstadoLista = "LV_BORRADOR"
+                        SolicitudId = inspeccion.CodigoSolicitud,
+                        EstacionId = estacionId,
+                        EstacionCodigo = estacionActual?.EstacionCodigo ?? string.Empty,
+                        EstacionNombre = estacionActual?.EstacionNombre ?? string.Empty,
+                        EstadoLista = CapaDatos.Constants.AocrEstadosListaVerificacion.Borrador
                     };
                 }
                 HidratarListaVerificacionOperacionalEae(listaVerificacion, solicitudLv, inspeccion);
@@ -1001,7 +1041,7 @@ namespace CapaPresentacion.Controllers
                 var listaFallback = new ListaVerificacionOperacionalEae
                 {
                     CodigoInspeccion = codigoInspeccion,
-                    EstadoLista = "LV_BORRADOR"
+                    EstadoLista = CapaDatos.Constants.AocrEstadosListaVerificacion.Borrador
                 };
                 HidratarListaVerificacionOperacionalEae(listaFallback, ViewBag.Solicitud as SolicitudAOCR, inspeccion);
                 ViewBag.ListaVerificacionOperacionalEae = listaFallback;
@@ -2955,16 +2995,25 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
-                var listaActual = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id);
+                var estacionIdRaw = form?["lvEstacionId"] ?? form?["estacionId"] ?? Request?.Unvalidated?.QueryString["estacionId"] ?? Request?.Unvalidated?.QueryString["lvEstacionId"];
+                int? estacionId = null;
+                if (!string.IsNullOrWhiteSpace(estacionIdRaw) && int.TryParse(estacionIdRaw, out var estParsed) && estParsed > 0)
+                {
+                    estacionId = estParsed;
+                }
+
+                var listaActual = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id, estacionId);
                 HidratarListaVerificacionOperacionalEae(listaActual, solicitud, inspeccion);
 
                 var redirectFirmaUrl = ConstruirUrlDetalle(id, new Dictionary<string, string>
                 {
-                    { "lvAutoFlow", "sign" }
+                    { "lvAutoFlow", "sign" },
+                    { "estacionId", estacionId.HasValue ? estacionId.Value.ToString() : string.Empty }
                 });
                 var redirectInformeUrl = ConstruirUrlDetalle(id, new Dictionary<string, string>
                 {
-                    { "autoOpenInformeTecnico", "true" }
+                    { "autoOpenInformeTecnico", "true" },
+                    { "estacionId", estacionId.HasValue ? estacionId.Value.ToString() : string.Empty }
                 });
 
                 if (listaActual != null && listaActual.Finalizado)
@@ -3264,6 +3313,12 @@ namespace CapaPresentacion.Controllers
                 return DevolverResultadoListaVerificacionOperacionalEae(403, "No autorizado para firmar la lista de verificación operacional.");
             }
 
+            var rolActual = ObtenerRolActual();
+            if (CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolActual) || CapaDatos.Constants.AocrRolesInstitucionales.EsDirdac(rolActual))
+            {
+                return DevolverResultadoListaVerificacionOperacionalEae(403, "Acceso denegado: Ni el Administrador ni DIRDAC pueden firmar la Lista de Verificación.");
+            }
+
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 if (esSolicitudAjax)
@@ -3288,7 +3343,14 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id = codigoInspeccion });
             }
 
-            var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
+            var estacionIdRaw = form?["lvEstacionId"] ?? form?["estacionId"] ?? Request?.Unvalidated?.QueryString["estacionId"] ?? Request?.Unvalidated?.QueryString["lvEstacionId"];
+            int? estacionId = null;
+            if (!string.IsNullOrWhiteSpace(estacionIdRaw) && int.TryParse(estacionIdRaw, out var estParsed) && estParsed > 0)
+            {
+                estacionId = estParsed;
+            }
+
+            var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion, estacionId);
             HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
             if (lista == null || !lista.Finalizado)
             {
@@ -4619,6 +4681,15 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para planificar esta inspección.");
 
             CargarNumerosVisiblesInspeccion(inspeccion);
+
+            var estacionService = new CapaNegocio.Services.SolicitudEstacionService();
+            var solicitud = inspeccion.CodigoSolicitud > 0
+                ? new SolicitudAOCRDAO().ObtenerPorId(inspeccion.CodigoSolicitud)
+                : null;
+            ViewBag.EstacionesPlanificacion = estacionService.ObtenerEstacionesPorSolicitud(
+                inspeccion.CodigoSolicitud,
+                solicitud,
+                new[] { inspeccion });
 
             return View("~/Views/Inspeccion/Planificacion.cshtml", inspeccion);
         }
@@ -6323,15 +6394,30 @@ namespace CapaPresentacion.Controllers
 
             lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(inspeccion.CodigoInspeccion);
             HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
+
+            // AC-07: Comprobar que TODAS las estaciones obligatorias cuenten con su LV completa y firmada
+            var solicitudId = solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud;
+            List<string> estacionesPendientes;
+            var todasFirmadas = _listaVerificacionOperacionalEaeDAO.TodasLasListasEstacionesFirmadas(solicitudId, inspeccion.CodigoInspeccion, out estacionesPendientes);
+
             if (lista == null || !lista.Finalizado)
             {
                 mensaje = "No se puede elaborar el Informe Técnico porque la Lista de Verificación Operacional LV/EAE aún no ha sido finalizada.";
                 return false;
             }
 
-            if (requiereListaFirmada && !lista.FirmadoTecnico)
+            if (requiereListaFirmada && (!lista.FirmadoTecnico || !todasFirmadas))
             {
-                mensaje = "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV).";
+                if (estacionesPendientes != null && estacionesPendientes.Any())
+                {
+                    mensaje = string.Format(
+                        "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV) en todas las estaciones. Pendientes: {0}.",
+                        string.Join(", ", estacionesPendientes));
+                }
+                else
+                {
+                    mensaje = "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV).";
+                }
                 return false;
             }
 
@@ -6351,7 +6437,6 @@ namespace CapaPresentacion.Controllers
             {
                 new { Nombre = "Antecedentes", Valor = informe.Antecedentes },
                 new { Nombre = "Objetivo de la inspección", Valor = informe.Resumen },
-                new { Nombre = "Alcance", Valor = informe.Alcance },
                 new { Nombre = "Desarrollo técnico", Valor = informe.Desarrollo },
                 new { Nombre = "Fecha de inspección", Valor = informe.FechasInspeccionManual },
                 new { Nombre = "Estación o cobertura inspeccionada", Valor = informe.EstacionesInspeccionManual },
@@ -6480,9 +6565,24 @@ namespace CapaPresentacion.Controllers
 
             UnificarNotasListaVerificacionOperacionalEae(items);
 
+            int? estacionId = null;
+            var estacionIdRaw = form != null ? form["lvEstacionId"] ?? form["estacionId"] : null;
+            if (!string.IsNullOrWhiteSpace(estacionIdRaw) && int.TryParse(estacionIdRaw, out var estParsed) && estParsed > 0)
+            {
+                estacionId = estParsed;
+            }
+            else if (listaActual != null && listaActual.EstacionId.HasValue)
+            {
+                estacionId = listaActual.EstacionId;
+            }
+
             var lista = new ListaVerificacionOperacionalEae
             {
                 CodigoInspeccion = codigoInspeccion,
+                SolicitudId = solicitud != null ? (int?)solicitud.CodigoSolicitud : listaActual?.SolicitudId,
+                EstacionId = estacionId,
+                TipoLista = "EAE",
+                Vigente = true,
                 EstadoLista = items.All(item => !string.IsNullOrWhiteSpace(item.EstadoCumplimiento) && !string.IsNullOrWhiteSpace(item.EstadoImplementacion)) ? "LV_COMPLETADA" : "LV_BORRADOR",
                 NombreEae = TomarCampoTexto(form, "lvNombreEae", 500, listaActual != null ? listaActual.NombreEae : string.Empty),
                 NumeroAocFechaValidez = TomarCampoTexto(form, "lvNumeroAocFechaValidez", 500, listaActual != null ? listaActual.NumeroAocFechaValidez : string.Empty),

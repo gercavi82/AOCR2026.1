@@ -198,5 +198,31 @@ namespace AOCR.Tests.Unit
             Assert.AreEqual(EstadoSolicitud.Observada, service.NormalizarDesdeLegacyCatalogo("SUBSANACION"));
             Assert.AreEqual(EstadoSolicitud.AOCR_EmitidoRecibido, service.NormalizarDesdeLegacyCatalogo("AOCR_EMITIDO"));
         }
+
+        [TestMethod]
+        public void GateE_Administrador_AccionesOperativas_DebeDenegar()
+        {
+            var service = CrearServicio();
+            var admin = new AocrAuthorizationContext
+            {
+                UserId = 1,
+                IsAuthenticated = true,
+                Roles = new List<string> { "Administrador" },
+                SelectedRole = "Administrador"
+            };
+
+            // Regla 7: El Administrador no puede aprobar, devolver, designar o firmar en representación de roles operativos
+            Assert.IsFalse(service.PuedeEjecutarAccion("AprobarPago", admin, codigoOrden: 1, modulo: "Financiero").Permitido, "Admin no debe aprobar pago");
+            Assert.IsFalse(service.PuedeEjecutarAccion("AprobarOrden", admin, codigoOrden: 1, modulo: "Financiero").Permitido, "Admin no debe aprobar orden");
+            Assert.IsFalse(service.PuedeEjecutarAccion("AsignarInspector", admin, codigoSolicitud: 1, modulo: "Coordinador").Permitido, "Admin no debe asignar inspector");
+            Assert.IsFalse(service.PuedeEjecutarAccion("AsignarInspector", admin, codigoSolicitud: 1, modulo: "Tecnico").Permitido, "Admin no debe asignar inspector en Tecnico");
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarAceptacionDocumental", admin, codigoSolicitud: 1, modulo: "CoordinacionJefatura").Permitido, "Admin no debe firmar aceptacion documental");
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarInformeInspector", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe firmar informe inspector");
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarListaVerificacionOperacionalEae", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe firmar LV inspector");
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarDireccion", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe firmar como Direccion");
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarInformeDirdac", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe firmar informe Dirdac");
+            Assert.IsFalse(service.PuedeEjecutarAccion("AprobarDecisionFinalDireccion", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe aprobar decision direccion");
+            Assert.IsFalse(service.PuedeEjecutarAccion("DevolverDecisionFinalDireccion", admin, codigoInspeccion: 1, modulo: "Inspeccion").Permitido, "Admin no debe devolver decision direccion");
+        }
     }
 }

@@ -12,6 +12,8 @@
     var estado = (ViewBag.AceptacionEstado as string ?? string.Empty).Trim();
     var observacion = (ViewBag.AceptacionObservacion as string ?? string.Empty).Trim();
     var inspector = (ViewBag.AceptacionInspector as string ?? (Model != null ? Model.TecnicoResponsableNombre : string.Empty) ?? string.Empty).Trim();
+    var estacionesDetalladas = ViewBag.AceptacionEstacionesConFechas as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>
+        ?? (Model != null && Model.Estaciones != null && Model.Estaciones.Any() ? Model.Estaciones : null);
     var documentos = ViewBag.AceptacionDocumentos as IEnumerable<string> ?? Enumerable.Empty<string>();
     var estaciones = ViewBag.AceptacionEstaciones as IEnumerable<string> ?? Enumerable.Empty<string>();
     var operador = Model == null ? string.Empty : (!string.IsNullOrWhiteSpace(Model.RazonSocial) ? Model.RazonSocial : (Model.NombreOperador ?? Model.NombreComercial));
@@ -29,6 +31,8 @@
         .oficio-destinatario { margin-bottom: 7mm; }
         .oficio p { text-align: justify; margin: 0 0 4mm; }
         .oficio ul { margin: 2mm 0 5mm 7mm; padding-left: 5mm; }
+        .tabla-estaciones th { font-weight: bold; color: #1a365d; }
+        .tabla-estaciones td { vertical-align: middle; }
         .firma { margin-top: 12mm; page-break-inside: avoid; }
         .firma-espacio { height: 19mm; }
         .firma strong { display: block; text-transform: uppercase; }
@@ -63,7 +67,7 @@
     <p>
         En referencia a la solicitud <strong>@numeroSolicitud</strong>, presentada por el Operador Aereo Extranjero
         <strong>@(string.IsNullOrWhiteSpace(operador) ? "no registrado" : operador)</strong>, esta Coordinacion informa que la documentacion
-        revisada por el Inspector asignado ha sido verificada conforme al procedimiento aplicable al tramite AOCR.
+        adjunta para el proceso de Autorizacion y Reconocimiento de Operador Extranjero (AOCR) ha sido debidamente verificada.
     </p>
 
     @if (aceptada)
@@ -77,12 +81,58 @@
 
     <p>Para dicho efecto, se @(aceptada ? "mantiene/designa" : "propone mantener/designar") al inspector <strong>@(string.IsNullOrWhiteSpace(inspector) ? "por confirmar" : inspector)</strong> para continuar con las actividades correspondientes.</p>
 
-    <p>La inspeccion se realizara conforme el siguiente detalle:</p>
-    @if (estaciones.Any())
+    <p>La inspeccion tecnica se realizara de manera independiente en cada una de las estaciones solicitadas, conforme el siguiente detalle de planificacion:</p>
+    @if (estacionesDetalladas != null && estacionesDetalladas.Any())
     {
-        <ul>
-            @foreach (var estacion in estaciones) { <li>@estacion: fecha conforme planificacion aprobada.</li> }
-        </ul>
+        <table class="tabla-estaciones" style="width: 100%; border-collapse: collapse; margin: 3mm 0 6mm 0; font-size: 11px;">
+            <thead>
+                <tr style="background-color: #f2f5f9; border-bottom: 1.5px solid #204060;">
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: left;">Estación / Aeropuerto</th>
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center; width: 22%;">Fecha Inicio</th>
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center; width: 22%;">Fecha Fin</th>
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center; width: 20%;">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var est in estacionesDetalladas)
+                {
+                    <tr>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px;">
+                            <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
+                        </td>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center;">
+                            @(est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("dd/MM/yyyy") : "Por definir")
+                        </td>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center;">
+                            @(est.FechaFin != default(DateTime) ? est.FechaFin.ToString("dd/MM/yyyy") : (est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("dd/MM/yyyy") : "Por definir"))
+                        </td>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center;">
+                            @(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (estaciones.Any())
+    {
+        <table class="tabla-estaciones" style="width: 100%; border-collapse: collapse; margin: 3mm 0 6mm 0; font-size: 11px;">
+            <thead>
+                <tr style="background-color: #f2f5f9; border-bottom: 1.5px solid #204060;">
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: left;">Estación</th>
+                    <th style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center;">Rango de Inspección</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var estacion in estaciones)
+                {
+                    <tr>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px;">@estacion</td>
+                        <td style="border: 1px solid #d0d7de; padding: 5px 8px; text-align: center;">Conforme planificación aprobada</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     }
     else
     {

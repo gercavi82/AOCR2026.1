@@ -230,6 +230,13 @@
     <Compile Include="Services\FinancieroService.cs" />
     <Compile Include="Services\FacturacionAS400Service.cs" />
     <Compile Include="Services\RTService.cs" />
+    <Compile Include="Services\RtDesignacionFlujoService.cs" />
+    <Compile Include="Services\SolicitudEstacionService.cs" />
+    <Compile Include="Services\DircavBandejaService.cs" />
+    <Compile Include="Services\DircavDesignacionService.cs" />
+    <Compile Include="Services\DesignacionDocumentoService.cs" />
+    <Compile Include="Services\ListaVerificacionService.cs" />
+    <Compile Include="Services\DirdacBandejaService.cs" />
     <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Services\OrdenInspeccionViaticosReglas.cs" />
     <Compile Include="Services\ResultadoOperacion.cs" />

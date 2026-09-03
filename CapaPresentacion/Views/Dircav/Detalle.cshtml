@@ -1,0 +1,182 @@
+@model CapaModelo.SolicitudAOCR
+@using CapaModelo
+@{
+    ViewBag.Title = "Expediente DIRCAV #" + Model.NumeroSolicitud;
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var estaciones = Model.Estaciones ?? new List<SolicitudEstacionInspeccion>();
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a href="@Url.Action("Bandeja", "Dircav")" class="btn btn-outline-secondary btn-sm mb-2"><i class="fas fa-arrow-left me-1"></i>Volver a Bandeja DIRCAV</a>
+            <h2 class="h4 mb-0 text-primary">Expediente DIRCAV: @Model.NumeroSolicitud</h2>
+            <span class="badge bg-secondary">@(Model.NombreOperador ?? Model.RazonSocial)</span>
+            <span class="badge bg-info text-dark">Estado: @Model.Estado</span>
+        </div>
+    </div>
+
+    <!-- Estaciones y Fechas Independientes (AC-02) -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-light py-2">
+            <h6 class="mb-0 fw-bold"><i class="fas fa-map-marker-alt me-1 text-danger"></i>Estaciones y Fechas de Inspección</h6>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 table-striped">
+                <thead>
+                    <tr>
+                        <th>Código OACI/IATA</th>
+                        <th>Ciudad / Nombre</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!estaciones.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-2">No registra estaciones específicas.</td></tr>
+                    }
+                    @foreach (var est in estaciones)
+                    {
+                        <tr>
+                            <td><strong>@est.EstacionCodigo</strong></td>
+                            <td>@est.EstacionNombre</td>
+                            <td>@string.Format("{0:dd/MM/yyyy}", est.FechaInicio)</td>
+                            <td>@string.Format("{0:dd/MM/yyyy}", est.FechaFin)</td>
+                            <td><span class="badge bg-secondary">@est.Estado</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Panel de Acciones Operativas DIRCAV -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-primary text-white py-2">
+            <h6 class="mb-0 fw-bold"><i class="fas fa-tools me-1"></i>Acciones Exclusivas de la Autoridad DIRCAV</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- 1. Aceptar Documentación -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i>1. Aceptación Documental</h6>
+                        <p class="small text-muted mb-2">Acepta formalmente la documentación técnica del operador para habilitar la designación.</p>
+                        @using (Html.BeginForm("AceptarDocumentacion", "Dircav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <button type="submit" class="btn btn-success btn-sm w-100"><i class="fas fa-check me-1"></i>Aceptar Documentación</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 2. Devolver al Coordinador -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-warning"><i class="fas fa-undo me-1"></i>2. Devolver a Coordinador</h6>
+                        <p class="small text-muted mb-2">Devuelve el expediente al Coordinador con observaciones de subsanación.</p>
+                        @using (Html.BeginForm("DevolverCoordinador", "Dircav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <input type="text" name="motivo" class="form-control form-control-sm mb-2" placeholder="Motivo de observación..." required />
+                            <button type="submit" class="btn btn-warning btn-sm w-100"><i class="fas fa-reply me-1"></i>Devolver a Coordinación</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 3. Designar Inspector Formalmente -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-primary"><i class="fas fa-user-check me-1"></i>3. Designar Inspector</h6>
+                        <p class="small text-muted mb-2">Designa formalmente al Inspector responsable y apoyo (AC-05).</p>
+                        @using (Html.BeginForm("DesignarInspector", "Dircav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <input type="text" name="inspectorCedula" class="form-control form-control-sm mb-1" placeholder="Cédula/Usuario Inspector Principal..." value="@Model.TecnicoResponsableCedula" required />
+                            <input type="text" name="inspectorApoyoCedula" class="form-control form-control-sm mb-1" placeholder="Cédula Inspector Apoyo (Opcional)..." value="@Model.InspectorApoyoCedula" />
+                            <input type="text" name="observacion" class="form-control form-control-sm mb-2" placeholder="Motivo o notas de designación..." />
+                            <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-user-tag me-1"></i>Designar / Reasignar Inspector</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 3.1 Oficio Oficial de Designación (AC-06) -->
+                @if (!string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula))
+                {
+                    <div class="col-md-12 mt-3">
+                        <div class="p-3 border rounded bg-white shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold text-dark mb-0"><i class="fas fa-file-contract me-1 text-primary"></i>Oficio Oficial de Designación del Inspector (DIRCAV - AC-06)</h6>
+                                @if (string.Equals(Model.Estado, "DESIGNACION_FIRMADA_DIRCAV", System.StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Oficio Firmado por DIRCAV</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pendiente de Firma Institucional DIRCAV</span>
+                                }
+                            </div>
+                            <p class="small text-muted mb-3">Documento formal con membrete oficial DGAC, equipo inspector asignado y las fechas independientes por cada estación requeridas bajo AC-02.</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="@Url.Action("VistaPreviaDesignacion", "Dircav", new { id = Model.CodigoSolicitud })" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-eye me-1"></i>Ver Vista Previa del Oficio
+                                </a>
+
+                                @if (string.Equals(Model.Estado, "DESIGNACION_FIRMADA_DIRCAV", System.StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a href="@Url.Action("DescargarDesignacion", "Dircav", new { id = Model.CodigoSolicitud })" class="btn btn-sm btn-success">
+                                        <i class="fas fa-download me-1"></i>Descargar Oficio Firmado
+                                    </a>
+                                }
+                                else
+                                {
+                                    using (Html.BeginForm("FirmarDesignacion", "Dircav", FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoSolicitud)
+                                        <button type="submit" class="btn btn-sm btn-danger btn-prevenir-doble" onclick="return confirm('¿Confirma la emisión y firma formal del oficio de designación de inspectores por parte de la Autoridad DIRCAV?');">
+                                            <i class="fas fa-signature me-1"></i>Firmar Oficialmente Oficio de Designación
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- 4. Firmar Condiciones y Limitaciones -->
+                <div class="col-md-6 mt-3">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-danger"><i class="fas fa-signature me-1"></i>4. Firmar Condiciones y Limitaciones</h6>
+                        <p class="small text-muted mb-2">Firma digital exclusiva DIRCAV de C&L previa a la remisión a DIRDAC.</p>
+                        @using (Html.BeginForm("FirmarCondiciones", "Dircav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <button type="submit" class="btn btn-danger btn-sm w-100"><i class="fas fa-file-signature me-1"></i>Firmar C&L (DIRCAV)</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 4. Remitir a DIRDAC -->
+                <div class="col-md-12 mt-3">
+                    <div class="p-3 border rounded bg-light">
+                        <h6 class="fw-bold text-primary"><i class="fas fa-paper-plane me-1"></i>4. Remitir Expediente Aprobado a DIRDAC</h6>
+                        <p class="small text-muted mb-2">Habiendo completado la revisión y firma de C&L, remite el AOCR al Director General (DIRDAC) para su firma y legalización final.</p>
+                        @using (Html.BeginForm("RemitirDIRDAC", "Dircav", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-share me-1"></i>Remitir a DIRDAC para Firma Final</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

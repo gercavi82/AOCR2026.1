@@ -75,6 +75,7 @@ namespace CapaPresentacion.Controllers
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDAO = new UsuarioInternoRTDAO();
         private readonly AocrCompaniaContextService _companiaContextService = new AocrCompaniaContextService();
         private readonly AocrProcesoActivoService _procesoActivoService = new AocrProcesoActivoService();
+        private readonly SolicitudEstacionService _solicitudEstacionService = new SolicitudEstacionService();
 
         private static readonly HashSet<string> ExtensionesPermitidasDocumentos = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -365,6 +366,126 @@ namespace CapaPresentacion.Controllers
                     "; Resultado=ERROR; Detalle=" + ex);
                 return JsonGuardado(false, "No se pudo guardar la flota por un error de base de datos. Revise el log técnico.", null);
             }
+        }
+
+        public class GuardarEstacionesRequest
+        {
+            public int CodigoSolicitud { get; set; }
+            public List<SolicitudEstacionInspeccionItemVM> Estaciones { get; set; } = new List<SolicitudEstacionInspeccionItemVM>();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryTokenFromHeader]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "GuardarProgresoRT", RequireCompanySelection = true, CodigoSolicitudParameter = "codigoSolicitud")]
+        public JsonResult GuardarEstaciones(GuardarEstacionesRequest request)
+        {
+            try
+            {
+                if (request == null || request.CodigoSolicitud <= 0)
+                {
+                    return JsonGuardado(false, "Solicitud inválida para guardar estaciones.", null);
+                }
+
+                var usuarioId = ObtenerUsuarioActualId();
+                if (usuarioId <= 0)
+                {
+                    return JsonGuardado(false, "Sesión expirada.", null, Url.Action("Login", "Account"));
+                }
+
+                if (string.IsNullOrWhiteSpace(ObtenerCompaniaActivaCodigo()))
+                {
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
+                }
+
+                var solicitud = _solicitudDAO.ObtenerPorId(request.CodigoSolicitud);
+                if (solicitud == null)
+                {
+                    return JsonGuardado(false, "La solicitud no existe.", null);
+                }
+
+                if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
+                {
+                    return JsonGuardado(false, "No tiene permisos para guardar las estaciones de esta solicitud.", null);
+                }
+
+                var estacionesMapeadas = MapearEstacionesDesdeViewModel(request.Estaciones, request.CodigoSolicitud, usuarioId);
+                var validacion = _solicitudEstacionService.ValidarEstaciones(estacionesMapeadas);
+                if (!validacion.EsValido)
+                {
+                    return JsonGuardado(false, string.Join(" ", validacion.Errores), null);
+                }
+
+                var res = _solicitudEstacionService.GuardarEstaciones(request.CodigoSolicitud, estacionesMapeadas, usuarioId);
+                if (!res.Exitoso)
+                {
+                    return JsonGuardado(false, res.Mensaje, null);
+                }
+
+                var persistidas = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(request.CodigoSolicitud, solicitud);
+
+                return JsonGuardado(
+                    true,
+                    "Estaciones y fechas de inspección guardadas correctamente.",
+                    new
+                    {
+                        solicitudId = request.CodigoSolicitud,
+                        total = persistidas.Count,
+                        estaciones = persistidas
+                    },
+                    id: request.CodigoSolicitud);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError(
+                    "[SOLICITUD_AOCR][GUARDAR_ESTACIONES] SolicitudId=" + (request != null ? request.CodigoSolicitud : 0) +
+                    "; Resultado=ERROR; Detalle=" + ex);
+                return JsonGuardado(false, "No se pudieron guardar las estaciones por un error de base de datos. " + ex.Message, null);
+            }
+        }
+
+        private List<SolicitudEstacionInspeccion> MapearEstacionesDesdeViewModel(
+            IEnumerable<SolicitudEstacionInspeccionItemVM> items,
+            int solicitudId,
+            int? usuarioId)
+        {
+            var resultado = new List<SolicitudEstacionInspeccion>();
+            if (items == null) return resultado;
+
+            foreach (var item in items)
+            {
+                if (item == null || string.IsNullOrWhiteSpace(item.EstacionCodigo)) continue;
+
+                DateTime fInicio;
+                if (!DateTime.TryParse(item.FechaInicio, out fInicio) || fInicio == default(DateTime))
+                {
+                    fInicio = DateTime.Today;
+                }
+
+                DateTime fFin;
+                if (!DateTime.TryParse(item.FechaFin, out fFin) || fFin == default(DateTime))
+                {
+                    fFin = fInicio;
+                }
+
+                resultado.Add(new SolicitudEstacionInspeccion
+                {
+                    Id = item.Id,
+                    SolicitudId = solicitudId,
+                    EstacionCodigo = item.EstacionCodigo.Trim(),
+                    EstacionNombre = !string.IsNullOrWhiteSpace(item.EstacionNombre)
+                        ? item.EstacionNombre.Trim()
+                        : SolicitudEstacionDAO.NormalizarNombreEstacion(item.EstacionCodigo, item.EstacionCodigo),
+                    FechaInicio = fInicio,
+                    FechaFin = fFin,
+                    InspectorNombre = item.InspectorNombre,
+                    Estado = !string.IsNullOrWhiteSpace(item.Estado) ? item.Estado.Trim() : "SOLICITADA",
+                    Observacion = item.Observacion,
+                    CreadoPor = usuarioId,
+                    ActualizadoPor = usuarioId
+                });
+            }
+
+            return resultado;
         }
 
         private string ObtenerTipoSolicitud(int? tipoSolicitud)
@@ -1983,6 +2104,17 @@ namespace CapaPresentacion.Controllers
 
                     System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Guardando {aeronaves.Count} aeronaves");
                     _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
+
+                    // AC-02: Guardar estaciones con fechas de inspección independientes
+                    var estacionesMapeadas = MapearEstacionesDesdeViewModel(vm.Estaciones, idFinal, usuarioId);
+                    if (estacionesMapeadas.Any())
+                    {
+                        var resEst = _solicitudEstacionService.GuardarEstaciones(idFinal, estacionesMapeadas, usuarioId);
+                        if (!resEst.Exitoso)
+                        {
+                            throw new ApplicationException(resEst.Mensaje);
+                        }
+                    }
 
                     if (Request?.Files != null && Request.Files.Count > 0)
                     {
@@ -5444,6 +5576,20 @@ namespace CapaPresentacion.Controllers
                 ViewBag.Flujo = new SolicitudAocrFlujoViewModel();
             }
 
+            // AC-02: Cargar estaciones con fechas de inspección independientes (soporta histórico)
+            try
+            {
+                var estacionesSolicitud = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(id, solicitud, inspeccionesSolicitud);
+                solicitud.Estaciones = estacionesSolicitud ?? new List<SolicitudEstacionInspeccion>();
+                ViewBag.EstacionesSolicitud = solicitud.Estaciones;
+            }
+            catch (Exception exEstaciones)
+            {
+                System.Diagnostics.Debug.WriteLine("[Detalle] Error cargando estaciones: " + exEstaciones.Message);
+                solicitud.Estaciones = new List<SolicitudEstacionInspeccion>();
+                ViewBag.EstacionesSolicitud = solicitud.Estaciones;
+            }
+
             return View(solicitud);
         }
 
@@ -5681,6 +5827,12 @@ namespace CapaPresentacion.Controllers
                 ? (inspeccion.InspectorPrincipalNombre ?? solicitud.TecnicoResponsableNombre)
                 : solicitud.TecnicoResponsableNombre;
             ViewBag.AceptacionObservacion = string.IsNullOrWhiteSpace(observacion) ? registro.ObservacionInspector : observacion.Trim();
+            var estacionesConFechas = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(
+                solicitud.CodigoSolicitud,
+                solicitud,
+                inspeccion != null ? new[] { inspeccion } : null);
+            solicitud.Estaciones = estacionesConFechas;
+            ViewBag.AceptacionEstacionesConFechas = estacionesConFechas;
             ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))
@@ -5881,6 +6033,12 @@ namespace CapaPresentacion.Controllers
                 : "DGAC-AOCR-" + (solicitud.UpdatedAt ?? DateTime.Now).Year + "-" + id.ToString("D4") + "-O";
             ViewBag.AceptacionEstado = CapaDatos.Models.EstadoRevisionDocumentalCoordinador.AceptadaCoordinador;
             ViewBag.AceptacionInspector = solicitud.TecnicoResponsableNombre;
+            var estacionesPdf = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(
+                solicitud.CodigoSolicitud,
+                solicitud,
+                _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id));
+            solicitud.Estaciones = estacionesPdf;
+            ViewBag.AceptacionEstacionesConFechas = estacionesPdf;
             ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))

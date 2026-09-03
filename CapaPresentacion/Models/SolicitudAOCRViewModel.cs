@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Web;
 using CapaModelo;
@@ -12,6 +12,7 @@ namespace CapaPresentacion.Models
 
         // OJO: usa Aeronave (si tu modelo actual es Aeronave) o AeronaveSolicitud (si usas la tabla aocr_tbaeronave_solicitud)
         public List<AeronaveSolicitud> Aeronaves { get; set; } = new List<AeronaveSolicitud>();
+        public List<SolicitudEstacionInspeccionItemVM> Estaciones { get; set; } = new List<SolicitudEstacionInspeccionItemVM>();
 
         public List<Documento> DocumentosExistentes { get; set; } = new List<Documento>();
 
@@ -58,6 +59,18 @@ namespace CapaPresentacion.Models
         public string CodigoIata { get; set; }
         public string CodigoNumeroCia { get; set; }
         public string Nombre { get; set; }
+    }
+
+    public class SolicitudEstacionInspeccionItemVM
+    {
+        public int Id { get; set; }
+        public string EstacionCodigo { get; set; }
+        public string EstacionNombre { get; set; }
+        public string FechaInicio { get; set; }
+        public string FechaFin { get; set; }
+        public string InspectorNombre { get; set; }
+        public string Estado { get; set; }
+        public string Observacion { get; set; }
     }
 
     public class SubsanacionViewModel

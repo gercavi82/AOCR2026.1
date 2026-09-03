@@ -79,8 +79,8 @@ namespace AOCR.Tests.Unit
         {
             var rt = Slice(Read("CapaPresentacion/Controllers/RTController.cs"), "ActionResult DescargarSubsanacionNc", "\n    }");
             StringAssert.Contains(rt, "RutaPdfSubsanacionRt");
-            StringAssert.Contains(rt, "Path.GetFullPath");
-            StringAssert.Contains(rt, "App_Data/SubsanacionesNC");
+            StringAssert.Contains(rt, "DocumentoSeguroService");
+            StringAssert.Contains(rt, "FileStorageHelper");
         }
 
         [TestMethod]

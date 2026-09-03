@@ -57,8 +57,6 @@ namespace CapaPresentacion.Helpers
         private static readonly string[] DocumentosAdjuntosBase = new[]
         {
             "LISTA DE VERIFICACION",
-            "REPORTE DE INFRACCION",
-            "REPORTE DE SUSPENSION DE FUNCIONES",
             "EVIDENCIAS DE LA INSPECCION"
         };
 

@@ -6,7 +6,7 @@ namespace CapaNegocio.Services
 {
     /// <summary>
     /// Regla compartida por bandejas y contadores de firma institucional.
-    /// Evita que el badge cuente una colección distinta de la pantalla destino.
+    /// Segrega la firma de Condiciones y Limitaciones (DIRCAV) de la firma de AOCR (DIRDAC).
     /// </summary>
     public static class AocrFirmaPendientePolicy
     {
@@ -35,14 +35,45 @@ namespace CapaNegocio.Services
 
         public static bool EsAocrPendienteFirma(AocrBandejaDocumentoRow fila)
         {
-            return fila != null
-                && string.Equals(fila.EstadoDocumentoAocr, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase);
+            if (fila == null) return false;
+            if (fila.FirmaReconocimientoId.GetValueOrDefault() > 0) return false;
+            if (fila.TipoSolicitud == 3) return false;
+
+            if (!string.IsNullOrWhiteSpace(fila.EstadoDocumentoAocr))
+            {
+                return string.Equals(fila.EstadoDocumentoAocr, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fila.EstadoDocumentoAocr, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fila.EstadoDocumentoAocr, AocrEstadosProceso.AocrListoParaFirma, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fila.EstadoDocumentoCondiciones))
+            {
+                // Si la fila solo tiene estado de condiciones, no asumir AOCR pendiente
+                return false;
+            }
+
+            return fila.CertificadoId.GetValueOrDefault() <= 0;
         }
 
         public static bool EsCondicionesPendienteFirma(AocrBandejaDocumentoRow fila)
         {
-            return fila != null
-                && string.Equals(fila.EstadoDocumentoCondiciones, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase);
+            if (fila == null) return false;
+            if (fila.FirmaCondicionesId.GetValueOrDefault() > 0) return false;
+
+            if (!string.IsNullOrWhiteSpace(fila.EstadoDocumentoCondiciones))
+            {
+                return string.Equals(fila.EstadoDocumentoCondiciones, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fila.EstadoDocumentoCondiciones, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(fila.EstadoDocumentoCondiciones, AocrEstadosProceso.CondicionesListasParaFirma, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fila.EstadoDocumentoAocr))
+            {
+                // Si la fila solo tiene estado de AOCR, no asumir Condiciones pendiente
+                return false;
+            }
+
+            return fila.CertificadoId.GetValueOrDefault() <= 0;
         }
     }
 }

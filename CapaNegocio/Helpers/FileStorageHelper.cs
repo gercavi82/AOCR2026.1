@@ -192,7 +192,7 @@ namespace CapaNegocio.Helpers
             return MapVirtualPath(normalizedPath);
         }
 
-        private static string MapVirtualPath(string virtualPath)
+        public static string MapVirtualPath(string virtualPath)
         {
             if (string.IsNullOrWhiteSpace(virtualPath)) return virtualPath;
             if (HttpContext.Current != null && virtualPath.StartsWith("~"))

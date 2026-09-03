@@ -284,6 +284,8 @@
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Controllers\ParametroController.cs" />
     <Compile Include="Controllers\CoordinacionJefaturaController.cs" />
+    <Compile Include="Controllers\DircavController.cs" />
+    <Compile Include="Controllers\DirdacController.cs" />
     <Compile Include="Controllers\CorreoInstitucionalController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />

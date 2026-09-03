@@ -26,7 +26,7 @@ namespace AOCR.Tests.Unit
         public void Inspeccion_MatrizDebeIncluirAccionesCriticasLvInforme()
         {
             var service = new AocrAuthorizationService(new FakeUsuarioAS400DAO(), new FakeEmpresaAS400DAO());
-            var contexto = new AocrAuthorizationContext
+            var contextoAdmin = new AocrAuthorizationContext
             {
                 UserId = 1,
                 IsAuthenticated = true,
@@ -34,23 +34,25 @@ namespace AOCR.Tests.Unit
                 SelectedRole = "Administrador"
             };
 
-            Assert.IsTrue(service.TieneAccesoModulo("Inspeccion", contexto));
+            Assert.IsTrue(service.TieneAccesoModulo("Inspeccion", contextoAdmin));
 
-            var acciones = new[]
+            var accionesAdminPermitidas = new[]
             {
                 "ConfirmarRevisionDocumentalInspector",
                 "GuardarListaVerificacionOperacionalEae",
                 "FinalizarInformeTecnico",
-                "FirmarInformeInspector",
-                "RevisionDireccion",
-                "AprobarDecisionFinalDireccion"
+                "RevisionDireccion"
             };
 
-            foreach (var accion in acciones)
+            foreach (var accion in accionesAdminPermitidas)
             {
-                var resultado = service.PuedeEjecutarAccion(accion, contexto, modulo: "Inspeccion");
+                var resultado = service.PuedeEjecutarAccion(accion, contextoAdmin, modulo: "Inspeccion");
                 Assert.IsTrue(resultado.Permitido, "Administrador debe poder invocar " + accion + ". Motivo=" + resultado.Motivo);
             }
+
+            // Regla 7: El Administrador no puede firmar ni aprobar en representacion de roles operativos
+            Assert.IsFalse(service.PuedeEjecutarAccion("FirmarInformeInspector", contextoAdmin, modulo: "Inspeccion").Permitido, "Admin no debe firmar informe inspector");
+            Assert.IsFalse(service.PuedeEjecutarAccion("AprobarDecisionFinalDireccion", contextoAdmin, modulo: "Inspeccion").Permitido, "Admin no debe aprobar decision direccion");
         }
 
         [TestMethod]

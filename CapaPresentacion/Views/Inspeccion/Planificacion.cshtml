@@ -41,6 +41,45 @@
     </div>
 </div>
 
+@{
+    var estacionesPlan = ViewBag.EstacionesPlanificacion as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>;
+}
+@if (estacionesPlan != null && estacionesPlan.Any())
+{
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title"><i class="glyphicon glyphicon-map-marker"></i> Estaciones y Fechas Independientes de Inspección (AC-02)</h3>
+        </div>
+        <div class="panel-body table-responsive">
+            <table class="table table-bordered table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Estación / Aeropuerto</th>
+                        <th class="text-center" style="width: 25%;">Fecha Inicio</th>
+                        <th class="text-center" style="width: 25%;">Fecha Fin</th>
+                        <th class="text-center" style="width: 20%;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var est in estacionesPlan)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
+                            </td>
+                            <td class="text-center">@(est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("dd/MM/yyyy") : "-")</td>
+                            <td class="text-center">@(est.FechaFin != default(DateTime) ? est.FechaFin.ToString("dd/MM/yyyy") : "-")</td>
+                            <td class="text-center">
+                                <span class="label label-info">@(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 @using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal" }))
 {
     @Html.AntiForgeryToken()

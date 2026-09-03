@@ -26,6 +26,22 @@ namespace CapaNegocio.Services
             return (_dashboardDao.ObtenerControlDocumental(maxRows) ?? new List<DashboardInspeccionDocumentoData>()).Count;
         }
 
+        public List<SolicitudAOCR> ObtenerRevisionesPendientesCoordinador()
+        {
+            var todas = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
+            return todas.Where(s =>
+                string.Equals(s.Estado, AocrEstadosProceso.PendienteCoordinador, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s.Estado, EstadoSolicitud.AceptacionDocumental, System.StringComparison.OrdinalIgnoreCase)
+            )
+            .OrderByDescending(s => s.UpdatedAt ?? s.FechaSolicitud ?? System.DateTime.MinValue)
+            .ToList();
+        }
+
+        public int ContarRevisionesPendientesCoordinador()
+        {
+            return ObtenerRevisionesPendientesCoordinador().Count;
+        }
+
         public int ContarRevisionFormalAocr()
         {
             var estados = new[]

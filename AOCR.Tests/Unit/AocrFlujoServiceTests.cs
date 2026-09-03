@@ -67,5 +67,28 @@ namespace AOCR.Tests.Unit
         {
             Assert.IsTrue(_flujo.EsTransicionPermitida(EstadoSolicitud.AceptacionDocumental, EstadoSolicitud.PendienteAsignacionRT));
         }
+
+        [TestMethod]
+        public void RolPuedeEjecutarAccion_AdministradorAccionesOperativas_DebeDenegar()
+        {
+            // REGLA 7: El Administrador no puede aprobar, devolver, designar o firmar en representación de roles operativos.
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.AprobarPago), "Admin no debe aprobar pago");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.AceptarDocumentacion), "Admin no debe aceptar documentacion");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.DevolverRtObservaciones), "Admin no debe devolver observaciones");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.AsignarInspector), "Admin no debe asignar inspector");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.FirmarListaVerificacion), "Admin no debe firmar LV");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.FirmarInformeTecnico), "Admin no debe firmar informe tecnico");
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("Administrador", AocrFlujoAcciones.FirmarAocrFinal), "Admin no debe firmar AOCR final");
+
+            // Validar que los roles operativos legítimos SÍ pueden
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Financiero", AocrFlujoAcciones.AprobarPago));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Coordinacion", AocrFlujoAcciones.AceptarDocumentacion));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Coordinador", AocrFlujoAcciones.DevolverRtObservaciones));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Coordinacion", AocrFlujoAcciones.AsignarInspector));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Inspector", AocrFlujoAcciones.FirmarListaVerificacion));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("InspectorTecnico", AocrFlujoAcciones.FirmarInformeTecnico));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("DIRDAC", AocrFlujoAcciones.FirmarAocrFinal));
+            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("DCAV", AocrFlujoAcciones.LiberarDocumentosFinales));
+        }
     }
 }

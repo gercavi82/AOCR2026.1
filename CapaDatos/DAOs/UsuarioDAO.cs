@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -6,6 +6,7 @@ using System.Linq;
 using Npgsql;
 using Dapper;
 using CapaModelo;
+using CapaModelo.RT;
 
 namespace CapaDatos.DAOs
 {
@@ -686,7 +687,30 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
 
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                string sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(correo) = LOWER(@correo)";
+                conn.Open();
+                bool tieneColumnaLiberado = ExisteColumna(conn, "usuario", "correo_liberado");
+
+                string sql;
+                if (tieneColumnaLiberado)
+                {
+                    sql = @"SELECT COUNT(*) FROM usuario 
+                            WHERE LOWER(correo) = LOWER(@correo) 
+                              AND (
+                                  activo = true 
+                                  OR (COALESCE(correo_liberado, FALSE) = FALSE 
+                                      AND LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado'))
+                              );";
+                }
+                else
+                {
+                    sql = @"SELECT COUNT(*) FROM usuario 
+                            WHERE LOWER(correo) = LOWER(@correo) 
+                              AND (
+                                  activo = true 
+                                  OR LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado')
+                              );";
+                }
+
                 int count = conn.ExecuteScalar<int>(sql, new { correo = correo.Trim() });
                 return count > 0;
             }
@@ -838,10 +862,220 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
 
         public static void RechazarDesignacionRT(int idUsuario)
         {
+            DevolverDesignacionRTTransaccional(idUsuario, 0, "Devolución de designación RT");
+        }
+
+        /// <summary>
+        /// AC-01: Devuelve la designación provisional de RT de forma transaccional,
+        /// liberando la reserva del correo para permitir una nueva postulación corregida,
+        /// protegiendo a los usuarios activos y registrando auditoría formal.
+        /// </summary>
+        public static ResultadoDevolucionRT DevolverDesignacionRTTransaccional(
+            int idUsuario,
+            int coordinadorId,
+            string observacion)
+        {
+            var resultado = new ResultadoDevolucionRT
+            {
+                UsuarioId = idUsuario
+            };
+
+            var observacionLimpia = (observacion ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(observacionLimpia))
+            {
+                resultado.Exitoso = false;
+                resultado.Mensaje = "Debe ingresar una observación para devolver la designación RT.";
+                return resultado;
+            }
+
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                string sql = @"UPDATE usuario SET estado_designacion_rt = 'rechazado', fecha_revision_designacion = NOW() WHERE idusuario = @id";
-                conn.Execute(sql, new { id = idUsuario });
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        bool tieneColumnaCorreoOrig = ExisteColumna(conn, tx, "usuario", "correo_original");
+                        bool tieneColumnaLiberado = ExisteColumna(conn, tx, "usuario", "correo_liberado");
+                        bool tieneColumnaFechaDev = ExisteColumna(conn, tx, "usuario", "fecha_devolucion_designacion");
+                        bool tieneColumnaCoordDev = ExisteColumna(conn, tx, "usuario", "coordinador_devolucion_id");
+                        bool tieneColumnaObsDev = ExisteColumna(conn, tx, "usuario", "observacion_devolucion");
+
+                        string sqlConsulta = @"
+                            SELECT 
+                                idusuario AS Id,
+                                codigousuario AS CodigoUsuario,
+                                COALESCE(nombrecompleto, '') AS NombreCompleto,
+                                correo AS Email,
+                                activo AS Activo,
+                                COALESCE(estado_designacion_rt, '') AS EstadoDesignacionRT
+                            FROM usuario
+                            WHERE idusuario = @id
+                            FOR UPDATE;";
+
+                        var usuario = conn.QueryFirstOrDefault<Usuario>(sqlConsulta, new { id = idUsuario }, tx);
+
+                        if (usuario == null)
+                        {
+                            tx.Rollback();
+                            resultado.Exitoso = false;
+                            resultado.Mensaje = "Usuario no encontrado.";
+                            return resultado;
+                        }
+
+                        resultado.CodigoUsuario = usuario.CodigoUsuario;
+                        resultado.NombreCompleto = usuario.NombreCompleto;
+
+                        // 1. REGLA FUNCIONAL: Si el usuario ya está activo, NO se puede devolver ni liberar su correo
+                        if (usuario.Activo)
+                        {
+                            tx.Rollback();
+                            resultado.Exitoso = false;
+                            resultado.Mensaje = "No se puede devolver la designación de un usuario activo.";
+                            return resultado;
+                        }
+
+                        // 2. Si ya fue aceptado formalmente
+                        if (string.Equals((usuario.EstadoDesignacionRT ?? string.Empty).Trim(), "aceptado", StringComparison.OrdinalIgnoreCase))
+                        {
+                            tx.Rollback();
+                            resultado.Exitoso = false;
+                            resultado.Mensaje = "No se puede devolver una designación RT que ya fue aceptada previamente.";
+                            return resultado;
+                        }
+
+                        // 3. IDEMPOTENCIA: Si ya fue devuelta previamente (ej. doble clic o repetición)
+                        var estadoActual = (usuario.EstadoDesignacionRT ?? string.Empty).Trim().ToLowerInvariant();
+                        if (estadoActual == "devuelto" || estadoActual == "rechazado")
+                        {
+                            string correoResguardo = null;
+                            if (tieneColumnaCorreoOrig)
+                            {
+                                correoResguardo = conn.ExecuteScalar<string>(
+                                    "SELECT correo_original FROM usuario WHERE idusuario = @id",
+                                    new { id = idUsuario }, tx);
+                            }
+
+                            resultado.CorreoOriginal = !string.IsNullOrWhiteSpace(correoResguardo)
+                                ? correoResguardo
+                                : usuario.Email;
+                            resultado.Exitoso = true;
+                            resultado.YaEstabaDevuelto = true;
+                            resultado.CorreoLiberado = true;
+                            resultado.Mensaje = "La designación ya fue devuelta previamente.";
+                            tx.Commit();
+                            return resultado;
+                        }
+
+                        // 4. Determinar correo original a resguardar
+                        string correoOriginal = (usuario.Email ?? string.Empty).Trim();
+                        resultado.CorreoOriginal = correoOriginal;
+
+                        // Correo liberado: añadimos sufijo para liberar la reserva del correo en la tabla
+                        string correoSufijoLiberado = string.Format("{0}.devuelto.{1}", correoOriginal, idUsuario);
+
+                        // 5. Construir actualización dinámica según columnas presentes
+                        var sets = new List<string>
+                        {
+                            "estado_designacion_rt = 'devuelto'",
+                            "fecha_revision_designacion = NOW()",
+                            "correo = @correoLiberado"
+                        };
+
+                        if (tieneColumnaCorreoOrig)
+                        {
+                            sets.Add("correo_original = COALESCE(NULLIF(correo_original, ''), @correoOriginal)");
+                        }
+                        if (tieneColumnaLiberado)
+                        {
+                            sets.Add("correo_liberado = TRUE");
+                        }
+                        if (tieneColumnaFechaDev)
+                        {
+                            sets.Add("fecha_devolucion_designacion = NOW()");
+                        }
+                        if (tieneColumnaCoordDev)
+                        {
+                            sets.Add("coordinador_devolucion_id = @coordinadorId");
+                        }
+                        if (tieneColumnaObsDev)
+                        {
+                            sets.Add("observacion_devolucion = @observacion");
+                        }
+
+                        string sqlUpdate = "UPDATE usuario SET " + string.Join(", ", sets) + " WHERE idusuario = @id;";
+                        conn.Execute(sqlUpdate, new
+                        {
+                            id = idUsuario,
+                            correoLiberado = correoSufijoLiberado,
+                            correoOriginal = correoOriginal,
+                            coordinadorId = coordinadorId > 0 ? (int?)coordinadorId : null,
+                            observacion = observacionLimpia
+                        }, tx);
+
+                        // 6. Actualizar expediente en django_aocr_registro_rt si existe
+                        if (ExisteTabla(conn, tx, "django_aocr_registro_rt"))
+                        {
+                            string sqlRt = @"
+                                UPDATE django_aocr_registro_rt
+                                SET estado = 'DEVUELTO_CON_OBSERVACIONES',
+                                    observacion_actual = @observacion,
+                                    actualizado_en = NOW()
+                                WHERE usuario_rt_id = @id;";
+                            conn.Execute(sqlRt, new { id = idUsuario, observacion = observacionLimpia }, tx);
+
+                            var solId = conn.ExecuteScalar<int?>(
+                                "SELECT id FROM django_aocr_registro_rt WHERE usuario_rt_id = @id ORDER BY id DESC LIMIT 1;",
+                                new { id = idUsuario }, tx);
+                            resultado.SolicitudRtId = solId;
+
+                            if (solId.HasValue && ExisteTabla(conn, tx, "django_aocr_registro_rt_historial"))
+                            {
+                                string sqlHistorial = @"
+                                    INSERT INTO django_aocr_registro_rt_historial
+                                        (solicitud_id, estado, usuario_id, observacion, creado_en)
+                                    VALUES
+                                        (@solId, 'DEVUELTO_CON_OBSERVACIONES', @coordinadorId, @observacion, NOW());";
+                                conn.Execute(sqlHistorial, new
+                                {
+                                    solId = solId.Value,
+                                    coordinadorId = coordinadorId > 0 ? (int?)coordinadorId : null,
+                                    observacion = observacionLimpia
+                                }, tx);
+                            }
+                        }
+
+                        // 7. Auditoría dentro de la transacción
+                        if (ExisteTabla(conn, tx, "aocr_tbauditoria"))
+                        {
+                            string sqlAuditoria = @"
+                                INSERT INTO aocr_tbauditoria
+                                    (modulo, accion, usuario_id, detalle, fecha)
+                                VALUES
+                                    ('USUARIOS_RT', 'DEVOLUCION_DESIGNACION_RT', @coordinadorId, @detalle, NOW());";
+                            string detalleAuditoria = string.Format("Devolución de designación RT. PostulanteId={0}; Codigo={1}; CorreoLiberado={2}; Obs={3}",
+                                idUsuario, usuario.CodigoUsuario, correoOriginal, observacionLimpia);
+                            conn.Execute(sqlAuditoria, new
+                            {
+                                coordinadorId = coordinadorId > 0 ? (int?)coordinadorId : null,
+                                detalle = detalleAuditoria
+                            }, tx);
+                        }
+
+                        tx.Commit();
+                        resultado.Exitoso = true;
+                        resultado.CorreoLiberado = true;
+                        resultado.Mensaje = "Designación devuelta y correo liberado para nueva postulación.";
+                        return resultado;
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        resultado.Exitoso = false;
+                        resultado.Mensaje = "Error en base de datos al devolver la designación: " + ex.Message;
+                        return resultado;
+                    }
+                }
             }
         }
 

@@ -19,7 +19,7 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(view, "id=\"btnFinalizarRevisionDocumental\"");
             StringAssert.Contains(view, "finalizar: window.__finalizarRevisionDocumentalActual === true");
             StringAssert.Contains(controller, "pendientes <= 0 && request.Finalizar");
-            StringAssert.Contains(controller, "PENDIENTE_REVISION_COORDINADOR");
+            Assert.IsTrue(controller.Contains("PENDIENTE_COORDINADOR") || controller.Contains("PENDIENTE_REVISION_COORDINADOR"));
             StringAssert.Contains(controller, "GenerarYPersistirOficioRevisionDocumental");
         }
 

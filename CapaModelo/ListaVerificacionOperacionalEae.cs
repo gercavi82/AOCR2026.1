@@ -8,6 +8,12 @@ namespace CapaModelo
     {
         public int CodigoListaVerificacion { get; set; }
         public int CodigoInspeccion { get; set; }
+        public int? SolicitudId { get; set; }
+        public int? EstacionId { get; set; }
+        public string EstacionCodigo { get; set; }
+        public string EstacionNombre { get; set; }
+        public string TipoLista { get; set; } = "EAE";
+        public bool Vigente { get; set; } = true;
         public int Version { get; set; }
         public int? CodigoListaAnterior { get; set; }
         public int? CodigoNoConformidadOrigen { get; set; }
@@ -43,7 +49,9 @@ namespace CapaModelo
 
         public ListaVerificacionOperacionalEae()
         {
-            EstadoLista = "BORRADOR";
+            EstadoLista = "LV_BORRADOR";
+            TipoLista = "EAE";
+            Vigente = true;
             NombreEae = string.Empty;
             NumeroAocFechaValidez = string.Empty;
             DireccionEstadoExplotador = string.Empty;
@@ -73,8 +81,7 @@ namespace CapaModelo
                 && !string.IsNullOrWhiteSpace(DireccionEstadoReconocimiento)
                 && !string.IsNullOrWhiteSpace(TiposAeronaves)
                 && !string.IsNullOrWhiteSpace(TipoOperacion)
-                && !string.IsNullOrWhiteSpace(InspectorResponsable)
-                && Items.All(item => item != null && item.EstaCompleto());
+                && Items.All(item => item.EstaCompleto());
         }
     }
 

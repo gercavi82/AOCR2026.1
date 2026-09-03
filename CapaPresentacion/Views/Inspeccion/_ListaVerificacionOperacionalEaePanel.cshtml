@@ -1085,6 +1085,40 @@
             </div>
         </div>
 
+        @if (vm.Estaciones != null && vm.Estaciones.Count > 0)
+        {
+            var estacionActiva = vm.Estaciones.FirstOrDefault(e => e.Id == (vm.EstacionSeleccionadaId ?? 0)) ?? vm.Estaciones.First();
+            <div class="aocr-estaciones-nav mb-3 p-3 bg-white border rounded shadow-sm">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-primary"><i class="fas fa-map-marker-alt me-1"></i> Estaciones Solicitadas (AC-07: Una LV independiente por estación)</span>
+                    <span class="badge bg-light text-dark border">Total: @vm.Estaciones.Count</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var est in vm.Estaciones)
+                    {
+                        var esActiva = (vm.EstacionSeleccionadaId.HasValue && vm.EstacionSeleccionadaId.Value == est.Id)
+                            || (!vm.EstacionSeleccionadaId.HasValue && est.Id == estacionActiva.Id);
+                        var estadoEst = vm.EstadosPorEstacion != null && vm.EstadosPorEstacion.ContainsKey(est.Id)
+                            ? vm.EstadosPorEstacion[est.Id]
+                            : "LV_NO_CREADA";
+                        var badgeClass = estadoEst == "LV_FIRMADA" ? "success" : (estadoEst == "LV_COMPLETA" ? "primary" : (estadoEst == "LV_BORRADOR" ? "warning" : "secondary"));
+                        var urlEstacion = Url.Action("Detalle", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = est.Id, lvAutoOpen = "true" });
+
+                        <a href="@urlEstacion" class="btn btn-sm @(esActiva ? "btn-primary shadow-sm" : "btn-outline-secondary") d-flex align-items-center gap-2">
+                            <strong><i class="fas fa-plane-arrival me-1"></i>@(string.IsNullOrWhiteSpace(est.EstacionCodigo) ? "Estación #" + est.Id : est.EstacionCodigo)</strong>
+                            <span>@(string.IsNullOrWhiteSpace(est.EstacionNombre) ? "" : " - " + est.EstacionNombre)</span>
+                            <span class="badge bg-@badgeClass ms-1">@estadoEst</span>
+                        </a>
+                    }
+                </div>
+                <div class="mt-2 pt-2 border-top small text-muted d-flex flex-wrap justify-content-between">
+                    <span><strong>Estación Activa:</strong> @(estacionActiva.EstacionCodigo) (@estacionActiva.EstacionNombre)</span>
+                    <span><strong>Fechas Inspección:</strong> @(estacionActiva.FechaInicio != default(DateTime) ? estacionActiva.FechaInicio.ToString("dd/MM/yyyy") : "Por definir") al @(estacionActiva.FechaFin != default(DateTime) ? estacionActiva.FechaFin.ToString("dd/MM/yyyy") : "Por definir")</span>
+                    <span><strong>Versión LV:</strong> v@(lista.Version > 0 ? lista.Version : 1)</span>
+                </div>
+            </div>
+        }
+
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
             <div>
                 <span class="badge bg-@estadoClass">@estadoLabel</span>
@@ -1139,6 +1173,7 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
                         <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
+                        <input type="hidden" name="lvEstacionId" value="@(vm.EstacionSeleccionadaId ?? lista.EstacionId)" />
 
                         <div class="row g-3">
                             <div class="col-md-6 mb-3">
@@ -1211,6 +1246,8 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
                 <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
+                <input type="hidden" name="lvEstacionId" id="lvEstacionId" value="@(vm.EstacionSeleccionadaId ?? lista.EstacionId)" />
+                <input type="hidden" name="solicitudId" id="lvSolicitudId" value="@(vm.Solicitud != null ? vm.Solicitud.CodigoSolicitud : 0)" />
                 <input type="hidden" name="lvSubmitAction" value="guardar" />
                 <div class="alert alert-warning alert-inline lv-validation-message d-none mb-3" data-lv-validation-message="true" role="alert"></div>
 

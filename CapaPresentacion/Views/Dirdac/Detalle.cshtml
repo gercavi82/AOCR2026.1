@@ -1,0 +1,77 @@
+@model CapaModelo.SolicitudAOCR
+@{
+    ViewBag.Title = "Revisión Final DIRDAC #" + Model.NumeroSolicitud;
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var tieneFirmaDircav = ViewBag.TieneFirmaDircav != null && (bool)ViewBag.TieneFirmaDircav;
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a href="@Url.Action("Bandeja", "Dirdac")" class="btn btn-outline-secondary btn-sm mb-2"><i class="fas fa-arrow-left me-1"></i>Volver a Bandeja DIRDAC</a>
+            <h2 class="h4 mb-0 text-danger">Revisión y Firma DIRDAC: @Model.NumeroSolicitud</h2>
+            <span class="badge bg-secondary">@(Model.NombreOperador ?? Model.RazonSocial)</span>
+            <span class="badge bg-info text-dark">Estado: @Model.Estado</span>
+        </div>
+    </div>
+
+    <!-- Verificación previa de firma DIRCAV -->
+    <div class="alert @(tieneFirmaDircav ? "alert-success" : "alert-warning") mb-3" role="alert">
+        <i class="fas @(tieneFirmaDircav ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+        <strong>Control Previo de Firma DIRCAV:</strong>
+        @(tieneFirmaDircav ? "Condiciones y Limitaciones cuenta con la firma electrónica válida de DIRCAV." : "Advertencia: El documento de Condiciones y Limitaciones debe estar firmado por DIRCAV antes de emitir el AOCR definitivo.")
+    </div>
+
+    <!-- Panel de Acciones Exclusivas DIRDAC -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-danger text-white py-2">
+            <h6 class="mb-0 fw-bold"><i class="fas fa-stamp me-1"></i>Acciones Exclusivas del Director General (DIRDAC)</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- 1. Firmar y Legalizar AOCR -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-danger"><i class="fas fa-certificate me-1"></i>1. Legalizar y Firmar AOCR</h6>
+                        <p class="small text-muted mb-2">Firma digital institucional y legalización oficial del Certificado AOCR para el operador extranjero.</p>
+                        @using (Html.BeginForm("FirmarAOCR", "Dirdac", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <button type="submit" class="btn btn-danger btn-sm w-100"><i class="fas fa-signature me-1"></i>Firmar AOCR Oficial (DIRDAC)</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 2. Devolver Expediente a DIRCAV -->
+                <div class="col-md-6">
+                    <div class="p-3 border rounded h-100 bg-light">
+                        <h6 class="fw-bold text-warning"><i class="fas fa-undo me-1"></i>2. Devolver a DIRCAV</h6>
+                        <p class="small text-muted mb-2">Devuelve el expediente al Director DIRCAV con motivo y observaciones de corrección obligatorias.</p>
+                        @using (Html.BeginForm("DevolverDIRCAV", "Dirdac", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <input type="text" name="motivo" class="form-control form-control-sm mb-2" placeholder="Motivo obligatorio de devolución a DIRCAV..." required />
+                            <button type="submit" class="btn btn-warning btn-sm w-100"><i class="fas fa-reply me-1"></i>Devolver Expediente a DIRCAV</button>
+                        }
+                    </div>
+                </div>
+
+                <!-- 3. Confirmar Conclusión y Entrega -->
+                <div class="col-md-12 mt-3">
+                    <div class="p-3 border rounded bg-light">
+                        <h6 class="fw-bold text-success"><i class="fas fa-check-double me-1"></i>3. Confirmar Culminación de Trámite</h6>
+                        <p class="small text-muted mb-2">Una vez firmado el AOCR y las Condiciones y Limitaciones, culmina formalmente el proceso y notifica al RT e Inspectores para la descarga de los documentos oficiales.</p>
+                        @using (Html.BeginForm("ConfirmarLegalizacion", "Dirdac", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.CodigoSolicitud)
+                            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-box-check me-1"></i>Confirmar Culminación y Notificar Entrega</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

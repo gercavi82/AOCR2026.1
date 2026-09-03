@@ -81,6 +81,13 @@ namespace CapaPresentacion.Models.ViewModels
         public bool PuedeAbrirLvEae { get; set; }
         public string MensajeBloqueoDocumental { get; set; }
 
+        // AC-07: Soporte para estaciones independientes
+        public List<SolicitudEstacionInspeccion> Estaciones { get; set; }
+        public int? EstacionSeleccionadaId { get; set; }
+        public string EstacionSeleccionadaCodigo { get; set; }
+        public string EstacionSeleccionadaNombre { get; set; }
+        public Dictionary<int, string> EstadosPorEstacion { get; set; }
+
         public ListaVerificacionOperacionalEaePanelVm()
         {
             Solicitud = new SolicitudAOCR();
@@ -91,6 +98,8 @@ namespace CapaPresentacion.Models.ViewModels
             AccesosDocumentales = new DocumentoWorkflowActionsVm();
             MensajeBloqueoEdicion = string.Empty;
             MensajeBloqueoDocumental = string.Empty;
+            Estaciones = new List<SolicitudEstacionInspeccion>();
+            EstadosPorEstacion = new Dictionary<int, string>();
         }
     }
 

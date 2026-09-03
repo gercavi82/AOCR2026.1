@@ -202,12 +202,15 @@
                             </div>
                         </div>
                         <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingDesarrollo"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesarrollo" aria-expanded="false" aria-controls="collapseDesarrollo">Alcance y desarrollo técnico</button></h2>
+                            <h2 class="accordion-header" id="headingDesarrollo"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesarrollo" aria-expanded="false" aria-controls="collapseDesarrollo">Desarrollo técnico</button></h2>
                             <div id="collapseDesarrollo" class="accordion-collapse collapse" aria-labelledby="headingDesarrollo" data-bs-parent="#accordionRevisionDireccion">
                                 <div class="accordion-body">
-                                    <h3 class="h6">Alcance</h3>
-                                    <p>@renderMultiline(vm.Alcance)</p>
-                                    <h3 class="h6 mt-3">Desarrollo técnico</h3>
+                                    @if (!string.IsNullOrWhiteSpace(vm.Alcance))
+                                    {
+                                        <h3 class="h6">Alcance</h3>
+                                        <p>@renderMultiline(vm.Alcance)</p>
+                                        <h3 class="h6 mt-3">Desarrollo técnico</h3>
+                                    }
                                     <p>@renderMultiline(vm.DesarrolloTecnico)</p>
                                 </div>
                             </div>

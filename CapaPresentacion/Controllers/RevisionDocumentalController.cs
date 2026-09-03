@@ -35,6 +35,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspectorIdentityService _inspectorIdentityService;
         private readonly IAocrEstadoService _estadoService;
         private readonly RevisionDocumentalCoordinadorService _coordinadorRevisionService;
+        private readonly SolicitudAocrCorreoService _correoService;
 
         public RevisionDocumentalController()
         {
@@ -49,6 +50,7 @@ namespace CapaPresentacion.Controllers
             _inspectorIdentityService = new InspectorIdentityService();
             _estadoService = new AocrEstadoService();
             _coordinadorRevisionService = new RevisionDocumentalCoordinadorService();
+            _correoService = new SolicitudAocrCorreoService();
         }
 
         public ActionResult Index()
@@ -493,21 +495,30 @@ namespace CapaPresentacion.Controllers
                 var resumenFinal = ConstruirResumenRevisionDocumental(documentosCierre, revisionesResumen, true);
                 if (!_solicitudDao.CambiarEstado(
                     solicitud.CodigoSolicitud,
-                    EstadoSolicitud.AceptacionDocumental,
+                    AocrEstadosProceso.PendienteCoordinador,
                     usuarioId,
                     "Revision finalizada por Inspector y pendiente de decision de Coordinacion. " + resumenFinal))
                 {
                     return JsonRevisionError(400, "No se pudo actualizar el estado de la solicitud tras la revision documental.", solicitud.CodigoSolicitud, "Fallo cambio estado");
                 }
 
-                siguienteEstado = EstadoSolicitud.AceptacionDocumental;
+                siguienteEstado = AocrEstadosProceso.PendienteCoordinador;
                 _solicitudAocrInfraBl.RegistrarEventoHistorialRevision(
                     solicitud.CodigoSolicitud,
                     null,
-                    "PENDIENTE_REVISION_COORDINADOR",
+                    "PENDIENTE_COORDINADOR",
                     "Revision finalizada por Inspector. Oficio " + finalizacion.Registro.NumeroOficio + " generado. LV e Informe Tecnico bloqueados hasta decision de Coordinacion.",
                     usuarioId,
                     usuarioRegistro);
+
+                try
+                {
+                    _correoService.NotificarEvento(solicitud, "PENDIENTE_COORDINADOR", "Revision finalizada por Inspector.");
+                }
+                catch (Exception exNotif)
+                {
+                    Trace.TraceWarning("[NOTIF][PENDIENTE_COORDINADOR] SolicitudId=" + solicitud.CodigoSolicitud + "; Error=" + exNotif.Message);
+                }
 
                 Trace.TraceInformation(
                     "[REV_DOC][BANDEJA_COORDINADOR_OK] SolicitudId=" + solicitud.CodigoSolicitud +

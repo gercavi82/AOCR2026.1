@@ -452,6 +452,47 @@ namespace CapaNegocio.Services
                         }
                     };
 
+                // --- AC-04: FLUJO REVISIÓN DOCUMENTAL INSPECTOR -> COORDINADOR -> DIRCAV ---
+                case "PENDIENTE_COORDINADOR":
+                case "REVISION_FINALIZADA_INSPECTOR":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Revisión documental finalizada por Inspector #" + solicitud.CodigoSolicitud,
+                        Titulo = "Revisión documental finalizada",
+                        Mensaje = "El Inspector asignado ha completado la revisión documental de la solicitud AOCR #" + solicitud.CodigoSolicitud + ". El expediente se encuentra en la bandeja de Coordinación para su verificación y remisión a DIRCAV.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
+                        }
+                    };
+
+                case "DEVUELTO_INSPECTOR":
+                case "REVISION_DEVUELTA_INSPECTOR":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Revisión documental devuelta por Coordinador #" + solicitud.CodigoSolicitud,
+                        Titulo = "Revisión documental devuelta",
+                        Mensaje = "La Coordinación ha devuelto la revisión documental de la solicitud AOCR #" + solicitud.CodigoSolicitud + " con observaciones que deben ser subsanadas por el Inspector asignado.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoInspectorAsignado
+                        }
+                    };
+
+                case "PENDIENTE_DIRCAV":
+                case "REVISION_REMITIDA_DIRCAV":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Expediente remitido a DIRCAV #" + solicitud.CodigoSolicitud,
+                        Titulo = "Expediente documental remitido a DIRCAV",
+                        Mensaje = "La Coordinación ha verificado la revisión documental y remitido oficialmente el expediente de la solicitud AOCR #" + solicitud.CodigoSolicitud + " a la Dirección de Certificación Aeronáutica (DIRCAV).",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoDireccionFinal,
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
+                        }
+                    };
+
                 // --- NUEVOS EVENTOS DEL FLUJO BPMN ---
 
                 case "OBSERVADA":
