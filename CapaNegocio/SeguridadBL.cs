@@ -25,6 +25,9 @@ namespace CapaNegocio
                 ,{ AocrFinalWorkflowService.PermisoBandejaDirdac, new[] { "DIRDAC" } }
                 ,{ AocrFinalWorkflowService.PermisoDevolverDircav, new[] { "DIRDAC" } }
                 ,{ AocrFinalWorkflowService.PermisoFirmarAocr, new[] { "DIRDAC" } }
+                ,{ EntregaFinalService.PermisoSolicitar, new[] { "DIRDAC" } }
+                ,{ EntregaFinalService.PermisoConsultaInstitucional, new[] { "DIRDAC", "DIRCAV", "DCAV", "Coordinador", "Coordinacion" } }
+                ,{ EntregaFinalService.PermisoAuditoria, new[] { "Administrador" } }
             };
 
         public static bool InfraestructuraPermisosDisponible()

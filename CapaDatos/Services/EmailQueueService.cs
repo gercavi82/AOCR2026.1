@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
@@ -69,6 +70,7 @@ namespace CapaDatos.Services
         public string ContentType { get; set; }
         public string FilePath { get; set; }
         public long? FileSize { get; set; }
+        public string Sha256 { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 
@@ -310,9 +312,9 @@ namespace CapaDatos.Services
 
                 const string sqlInsertAttachment = @"
                     INSERT INTO email_attachment
-                        (email_queue_id, file_name, content_type, file_path, file_size, created_at)
+                        (email_queue_id, file_name, content_type, file_path, file_size, sha256, created_at)
                     VALUES
-                        (@email_queue_id, @file_name, @content_type, @file_path, @file_size, @created_at)";
+                        (@email_queue_id, @file_name, @content_type, @file_path, @file_size, @sha256, @created_at)";
 
                 foreach (var attachment in adjuntos)
                 {
@@ -325,6 +327,7 @@ namespace CapaDatos.Services
                         AddParameter(cmd, "@content_type", attachment.ContentType ?? "application/octet-stream", NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@file_path", attachment.FilePath ?? string.Empty, NpgsqlDbType.Text);
                         AddParameter(cmd, "@file_size", attachment.FileSize ?? 0L, NpgsqlDbType.Bigint);
+                        AddParameter(cmd, "@sha256", (object)attachment.Sha256 ?? DBNull.Value, NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
                     }, tx);
                 }
@@ -343,13 +346,15 @@ namespace CapaDatos.Services
                     content_type VARCHAR(120) NOT NULL,
                     file_path TEXT NOT NULL,
                     file_size BIGINT,
+                    sha256 VARCHAR(64),
                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                     CONSTRAINT fk_email_attachment_queue
                         FOREIGN KEY (email_queue_id) REFERENCES public.email_queue(id) ON DELETE CASCADE
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_email_attachment_queue_id
-                    ON public.email_attachment(email_queue_id);";
+                    ON public.email_attachment(email_queue_id);
+                ALTER TABLE public.email_attachment ADD COLUMN IF NOT EXISTS sha256 VARCHAR(64);";
 
             ExecuteNonQuery(conn, sql, null, tx);
         }
@@ -387,6 +392,8 @@ namespace CapaDatos.Services
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS tipo_notificacion VARCHAR(120);
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS message_id VARCHAR(255);
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS sent_at TIMESTAMP;
 
                     CREATE INDEX IF NOT EXISTS idx_email_queue_status_next
                         ON public.email_queue(status, proximo_intento);
@@ -441,6 +448,7 @@ namespace CapaDatos.Services
                 if (item != null)
                 {
                     item.Adjuntos = ObtenerAdjuntos(conn, item.Id);
+                    ActualizarEntregaFinalSinInterrumpir(item.Id, "ENVIANDO", null, null);
                 }
 
                 return item;
@@ -544,6 +552,7 @@ namespace CapaDatos.Services
                     });
                 }
             });
+            ActualizarEntregaFinalSinInterrumpir(id, estado, null, error);
             return Task.CompletedTask;
         }
 
@@ -553,6 +562,8 @@ namespace CapaDatos.Services
                 UPDATE email_queue SET
                     status = 'ENVIADO',
                     error_message = NULL,
+                    message_id = @message_id,
+                    sent_at = NOW(),
                     updated_at = NOW()
                 WHERE id = @id";
 
@@ -568,6 +579,7 @@ namespace CapaDatos.Services
                     ExecuteNonQuery(conn, sqlConCampos, cmd =>
                     {
                         AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@message_id", (object)messageId ?? DBNull.Value, NpgsqlDbType.Varchar);
                     });
                 }
                 catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
@@ -578,6 +590,7 @@ namespace CapaDatos.Services
                     });
                 }
             });
+            ActualizarEntregaFinalSinInterrumpir(id, "ENVIADO", messageId, null);
             return Task.CompletedTask;
         }
 
@@ -619,8 +632,21 @@ namespace CapaDatos.Services
                 }
             });
 
+            ActualizarEntregaFinalSinInterrumpir(id, "PENDIENTE", null, null);
             _logger.LogInfo(string.Format("Email {0} reprogramado para {1:HH:mm:ss}", id, proximoIntento));
             return Task.CompletedTask;
+        }
+
+        private void ActualizarEntregaFinalSinInterrumpir(int emailQueueId, string estado, string messageId, string error)
+        {
+            try
+            {
+                new CapaDatos.DAOs.EntregaFinalDAO().ActualizarDesdeCola(emailQueueId, estado, messageId, error);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { ErrorCode = "ENTREGA_FINAL_TRACKING_ERROR" });
+            }
         }
 
         private EmailQueueItem MapearItem(System.Data.IDataReader reader)
@@ -648,7 +674,7 @@ namespace CapaDatos.Services
         private List<EmailAttachmentItem> ObtenerAdjuntos(NpgsqlConnection conn, int emailQueueId)
         {
             const string sql = @"
-                SELECT id, email_queue_id, file_name, content_type, file_path, file_size, created_at
+                SELECT id, email_queue_id, file_name, content_type, file_path, file_size, sha256, created_at
                 FROM email_attachment
                 WHERE email_queue_id = @email_queue_id
                 ORDER BY id";
@@ -671,6 +697,7 @@ namespace CapaDatos.Services
                                 ContentType = GetString(reader, "content_type"),
                                 FilePath = GetString(reader, "file_path"),
                                 FileSize = GetValue<long?>(reader, "file_size"),
+                                Sha256 = GetString(reader, "sha256"),
                                 CreatedAt = GetNullableDateTime(reader, "created_at")
                             });
                         }
@@ -1021,15 +1048,41 @@ namespace CapaDatos.Services
                     return false;
                 }
 
+                if (attachment.FileSize.HasValue && attachment.FileSize.Value > 0 && content.LongLength != attachment.FileSize.Value)
+                {
+                    error = "El tamaño del adjunto no coincide con la evidencia registrada.";
+                    return false;
+                }
+
+                if (!string.Equals(attachment.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase)
+                    || content.Length < 5 || System.Text.Encoding.ASCII.GetString(content, 0, 5) != "%PDF-")
+                {
+                    error = "El adjunto no es un PDF válido.";
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(attachment.Sha256))
+                {
+                    using (var sha = SHA256.Create())
+                    {
+                        var actual = BitConverter.ToString(sha.ComputeHash(content)).Replace("-", string.Empty);
+                        if (!string.Equals(actual, attachment.Sha256, StringComparison.OrdinalIgnoreCase))
+                        {
+                            error = "El hash SHA-256 del adjunto no coincide con la evidencia registrada.";
+                            return false;
+                        }
+                    }
+                }
+
                 fileName = !string.IsNullOrWhiteSpace(attachment.FileName)
                     ? attachment.FileName
                     : Path.GetFileName(resolvedPath);
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                error = "Error leyendo adjunto: " + ex.Message;
+                error = "No fue posible leer el adjunto autorizado.";
                 return false;
             }
         }

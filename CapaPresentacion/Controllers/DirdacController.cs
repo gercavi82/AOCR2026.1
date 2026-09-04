@@ -65,6 +65,7 @@ namespace CapaPresentacion.Controllers
         {
             if (request == null) return Responder(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió evidencia de firma."));
             request.Actor = CrearActor(AocrFinalWorkflowService.PermisoFirmarAocr);
+            request.BaseUrl = ConstruirBaseUrl();
             var raizRelativa = "~/App_Data/Uploads/AOCR/Firmados/" + request.SolicitudId + "/";
             if (string.IsNullOrWhiteSpace(request.RutaPdfFirmado)
                 || !request.RutaPdfFirmado.Replace('\\', '/').StartsWith(raizRelativa.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase))

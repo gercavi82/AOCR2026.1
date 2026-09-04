@@ -569,6 +569,7 @@ namespace CapaPresentacion.Controllers
                         NombreFirmante = nombreFirmante,
                         CargoFirmante = contexto.Documento != null ? contexto.Documento.CargoFirmante : "Dirección General de Aviación Civil",
                         SujetoCertificado = resultadoFirma.SujetoCertificado,
+                        BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/'),
                         Actor = new AocrWorkflowActor
                         {
                             UsuarioId = ObtenerUsuarioActualId(), UsuarioNombre = ObtenerUsuarioActualNombre(), RolActivo = rolActivo,

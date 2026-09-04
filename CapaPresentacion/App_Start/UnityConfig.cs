@@ -35,6 +35,8 @@ namespace CapaPresentacion
             container.RegisterType<IUserContextAccessor, UserContextAccessor>(new HierarchicalLifetimeManager());
             container.RegisterType<IAocrFinalWorkflowRepository, AocrFinalWorkflowDAO>(new HierarchicalLifetimeManager());
             container.RegisterType<IAocrFinalWorkflowService, AocrFinalWorkflowService>(new HierarchicalLifetimeManager());
+            container.RegisterType<IEntregaFinalRepository, EntregaFinalDAO>(new HierarchicalLifetimeManager());
+            container.RegisterType<IEntregaFinalService, EntregaFinalService>(new HierarchicalLifetimeManager());
             
             // GATE 1: Nuevo servicio de contexto de usuario
             container.RegisterType<CapaNegocio.Interfaces.IUsuarioContextoService, CapaNegocio.Services.UsuarioContextoService>(new HierarchicalLifetimeManager());

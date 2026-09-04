@@ -56,6 +56,7 @@ namespace CapaNegocio.Services
         private readonly InspeccionInformeDAO _inspeccionInformeDao;
         private readonly HallazgoDAO _hallazgoDao;
         private readonly IAocrFinalWorkflowRepository _workflowRepository;
+        private readonly IEntregaFinalService _entregaFinalService;
 
         public const string PermisoRemitirDirdac = "DIRCAV_REMITIR_DIRDAC";
         public const string PermisoBandejaDirdac = "DIRDAC_VER_BANDEJA";
@@ -69,11 +70,18 @@ namespace CapaNegocio.Services
             _inspeccionInformeDao = new InspeccionInformeDAO();
             _hallazgoDao = new HallazgoDAO();
             _workflowRepository = new AocrFinalWorkflowDAO();
+            _entregaFinalService = new EntregaFinalService();
         }
 
         public AocrFinalWorkflowService(IAocrFinalWorkflowRepository workflowRepository)
         {
             _workflowRepository = workflowRepository ?? throw new ArgumentNullException("workflowRepository");
+        }
+
+        public AocrFinalWorkflowService(IAocrFinalWorkflowRepository workflowRepository, IEntregaFinalService entregaFinalService)
+        {
+            _workflowRepository = workflowRepository ?? throw new ArgumentNullException("workflowRepository");
+            _entregaFinalService = entregaFinalService;
         }
 
         public AocrWorkflowResult RemitirAocrDirdac(RemitirAocrDirdacRequest request)
@@ -121,7 +129,38 @@ namespace CapaNegocio.Services
                 return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud, documento y versiones esperadas son obligatorios.");
             if (string.IsNullOrWhiteSpace(request.RutaPdfFirmado) || request.TamanioPdfFirmado <= 4 || !EsSha256(request.HashPdfFirmado))
                 return AocrWorkflowResult.Error(400, "FIRMA_INVALIDA", "La evidencia PDF firmada y su hash SHA-256 son obligatorios.");
-            return EjecutarSeguro(() => _workflowRepository.FirmarLegalizarAocr(request));
+            var resultado = EjecutarSeguro(() => _workflowRepository.FirmarLegalizarAocr(request));
+            if (resultado.Exito && string.Equals(resultado.EstadoNuevo, AocrEstadosProceso.FirmasCompletas, StringComparison.OrdinalIgnoreCase)
+                && _entregaFinalService != null)
+            {
+                var entrega = _entregaFinalService.Solicitar(new SolicitarEntregaFinalRequest
+                {
+                    SolicitudId = request.SolicitudId,
+                    VersionExpedienteEsperada = resultado.VersionNueva,
+                    IdempotencyKey = "ENTREGA_FINAL:" + request.SolicitudId + ":" + request.VersionAocrEsperada,
+                    BaseUrl = request.BaseUrl,
+                    Actor = new EntregaFinalActor
+                    {
+                        UsuarioId = request.Actor.UsuarioId,
+                        UsuarioNombre = request.Actor.UsuarioNombre,
+                        RolActivo = request.Actor.RolActivo,
+                        Ip = request.Actor.Ip,
+                        TienePermiso = request.Actor.TienePermiso
+                    }
+                });
+                if (entrega.Exito)
+                {
+                    resultado.Mensaje += " La entrega final quedó disponible y encolada para RT e Inspector.";
+                    resultado.EstadoNuevo = entrega.EstadoExpediente;
+                    resultado.VersionNueva = entrega.VersionExpediente;
+                    resultado.CorrelationId = entrega.CorrelationId;
+                }
+                else
+                {
+                    resultado.Mensaje += " La legalización quedó confirmada; la entrega debe reintentarse de forma idempotente.";
+                }
+            }
+            return resultado;
         }
 
         public AocrWorkflowResult EvaluarFirmasCompletas(int solicitudId, long versionEsperada, AocrWorkflowActor actor)

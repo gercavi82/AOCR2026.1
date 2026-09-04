@@ -44,6 +44,7 @@ namespace CapaModelo
         public string NombreFirmante { get; set; }
         public string CargoFirmante { get; set; }
         public string SujetoCertificado { get; set; }
+        public string BaseUrl { get; set; }
     }
 
     public sealed class AocrWorkflowResult

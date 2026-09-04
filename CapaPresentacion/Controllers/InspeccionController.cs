@@ -10109,5 +10109,24 @@ namespace CapaPresentacion.Controllers
             TempData["Success"] = resultado.Mensaje;
             return RedirectToAction("CondicionesLimitaciones", new { id });
         }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [Route("Inspector/DocumentosFinales")]
+        [Route("Inspeccion/DocumentosFinales")]
+        public ActionResult DocumentosFinales()
+        {
+            if (!EsRolInspectorSeleccionado()) return new HttpStatusCodeResult(403, "Acceso exclusivo del Inspector activo.");
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            if (ctx == null || ctx.UsuarioId <= 0) return new HttpStatusCodeResult(401);
+            var actor = new EntregaFinalActor
+            {
+                UsuarioId = ctx.UsuarioId,
+                UsuarioNombre = ctx.Nombre,
+                RolActivo = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : ROL_INSPECTOR,
+                Ip = Request != null ? Request.UserHostAddress : null
+            };
+            return View("DocumentosFinales", new EntregaFinalService().ListarDocumentos(actor));
+        }
     }
 }

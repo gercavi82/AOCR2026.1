@@ -32,6 +32,7 @@ namespace CapaPresentacion.Controllers
         private readonly DocumentoSubsanacionService _documentoSubsanacionService = new DocumentoSubsanacionService();
         private readonly InspectorIdentityService _inspectorIdentityService = new InspectorIdentityService();
         private readonly CapaNegocio.Interfaces.IUsuarioContextoService _usuarioContexto = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IUsuarioContextoService>() ?? new CapaNegocio.Services.UsuarioContextoService();
+        private readonly CapaNegocio.Interfaces.IEntregaFinalService _entregaFinalService = System.Web.Mvc.DependencyResolver.Current.GetService<CapaNegocio.Interfaces.IEntregaFinalService>() ?? new CapaNegocio.Services.EntregaFinalService();
         private readonly string _rutaDocumentos;
 
         public DocumentoController()
@@ -1747,6 +1748,28 @@ namespace CapaPresentacion.Controllers
                 .Select(x => Path.GetFileName((x ?? string.Empty).Trim()))
                 .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
                 ?? string.Empty;
+        }
+
+        [HttpGet]
+        public ActionResult DescargarFinal(int documentoId)
+        {
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            if (ctx == null || ctx.UsuarioId <= 0) return new HttpStatusCodeResult(401);
+            var rol = Convert.ToString(Session != null ? Session["Rol"] : null);
+            var codigo = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            var actor = new EntregaFinalActor
+            {
+                UsuarioId = ctx.UsuarioId,
+                UsuarioNombre = ctx.Nombre,
+                RolActivo = rol,
+                CompaniaCodigo = CompaniaActivaSessionHelper.ObtenerCodigo(Session),
+                CompaniaNombre = CompaniaActivaSessionHelper.ObtenerNombre(Session),
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = SeguridadBL.UsuarioTienePermiso(codigo, EntregaFinalService.PermisoConsultaInstitucional, new[] { rol })
+            };
+            var result = _entregaFinalService.AutorizarDescarga(documentoId, actor);
+            if (!result.Autorizada) return new HttpStatusCodeResult(result.HttpStatusCode, result.Mensaje);
+            return File(result.RutaFisica, result.MimeType, Path.GetFileName(result.NombreArchivo));
         }
 
         private JsonResult JsonError(int statusCode, string mensaje)

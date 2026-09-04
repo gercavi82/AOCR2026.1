@@ -149,6 +149,8 @@ WHERE codigo_documento=@documento AND vigente=TRUE AND hash_pdf_firmado IS NULL;
                 RegistrarTrazabilidad(cn, tx, key, "AOCR_FIRMADA_DIRDAC", actual, firmado, request.Actor, request.NombreFirmante, aocr.Id, aocr.Version, request.HashPdfFirmado);
                 var completo = CambiarProceso(cn, tx, firmado, AocrEstadosProceso.FirmasCompletas, "FIRMAS_COMPLETAS", AocrRolesInstitucionales.Coordinador, request.Actor, "Firmas DIRCAV y DIRDAC vigentes y compatibles.");
                 RegistrarTrazabilidad(cn, tx, key + ":FIRMAS_COMPLETAS", "FIRMAS_COMPLETAS", firmado, completo, request.Actor, null, aocr.Id, aocr.Version, request.HashPdfFirmado);
+                RegistrarTrazabilidad(cn, tx, key + ":ENTREGA_FINAL_SOLICITADA", "ENTREGA_FINAL_SOLICITADA", completo, completo, request.Actor,
+                    "AC-12 debe resolver RT, Inspector y documentos después del commit.", aocr.Id, aocr.Version, request.HashPdfFirmado);
                 EncolarAUsuariosRol(cn, tx, AocrRolesInstitucionales.DircavSqlTokens, request.SolicitudId, key,
                     "AOCR_FIRMADA_DIRDAC", "AOCR firmado y legalizado por DIRDAC", string.Empty, "/Dircav/Bandeja");
                 return Exito("FIRMAS_COMPLETAS", "AOCR firmado por DIRDAC; ambas firmas quedaron verificadas. AC-11 no realiza la entrega.", actual, completo, aocr.Id, key);

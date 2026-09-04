@@ -194,6 +194,8 @@
     <Compile Include="Services\InspectorBandejaService.cs" />
     <Compile Include="Services\AocrFinalWorkflowService.cs" />
     <Compile Include="Interfaces\IAocrFinalWorkflowService.cs" />
+    <Compile Include="Interfaces\IEntregaFinalService.cs" />
+    <Compile Include="Services\EntregaFinalService.cs" />
     <Compile Include="Services\AocrFinalizacionService.cs" />
     <Compile Include="Services\AocrProcesoNotificacionService.cs" />
     <Compile Include="Services\AocrEstadoService.cs" />

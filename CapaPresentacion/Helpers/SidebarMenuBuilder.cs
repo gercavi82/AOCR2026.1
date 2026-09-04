@@ -1945,7 +1945,7 @@ namespace CapaPresentacion.Helpers
                     bloquearNuevaOrden && !context.TieneSolicitudRtHabilitada ? AocrProcesoActivoService.MensajeBloqueoGenerico : string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-solicitud", context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? "Continuar Solicitud AOCR" : (DebeMostrarSeguimientoSolicitudRt(context) ? "Ver seguimiento AOCR" : "Continuar solicitud"), context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? "fas fa-file-signature" : (DebeMostrarSeguimientoSolicitudRt(context) ? "fas fa-route" : "fas fa-file-signature"), "SolicitudAOCR", ResolverAccionSolicitudRtSidebar(context, "FormularioEmisionAOCR"), ResolverRouteValuesSolicitudRtSidebar(context, 1), context.Badges.RtActiveRequests, "info", true, context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt || context.PuedeAbrirFormularioEmisionRt || context.TieneSolicitudRtHabilitada ? string.Empty : context.MensajeBloqueoRtSidebar));
                 actions.Add(CreateQuickAction(context, "qa-subsanar", "Ver subsanaciones", "fas fa-screwdriver-wrench", "SolicitudAOCR", "MisSolicitudes", null, context.Badges.RtPendingSubsanations, "warning", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-finales", "Descargar final", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments, "success", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-finales", "Documentos finales", "fas fa-file-circle-check", "RT", "DocumentosFinales", null, context.Badges.RtFinalDocuments, "success", true, true, string.Empty));
             }
 
             if (context.EsInspectorRol)
@@ -1954,6 +1954,7 @@ namespace CapaPresentacion.Helpers
                 actions.Add(CreateQuickAction(context, "qa-inspecciones", "Mis inspecciones", "fas fa-plane-departure", "Inspeccion", "Index", null, context.Badges.InspectorTotalInspections, "neutral", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-informe", "Informe Técnico", "fas fa-file-lines", "Informe", "Index", null, 0, "neutral", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-aocr-corregir", "AOCR por corregir", "fas fa-certificate", "Inspeccion", "Index", new { estado = "OBSERVADA" }, context.Badges.InspectorObservedInspections, "warning", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-finales-inspector", "Documentos finales", "fas fa-file-circle-check", "Inspeccion", "DocumentosFinales", null, 0, "success", true, true, string.Empty));
             }
 
             if (context.EsCoordinadorRol || context.EsLegalRol)

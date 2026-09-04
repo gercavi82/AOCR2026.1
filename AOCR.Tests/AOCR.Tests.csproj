@@ -72,6 +72,7 @@
     <Compile Include="Unit\Ac09DepuracionInformeTecnicoTests.cs" />
     <Compile Include="Unit\Ac10CondicionesLimitacionesTests.cs" />
     <Compile Include="Unit\Ac11LegalizacionWorkflowTests.cs" />
+    <Compile Include="Unit\Ac12EntregaFinalTests.cs" />
     <Compile Include="Integration\DiagnosticoRolesIntegrationTests.cs" />
     <Compile Include="Unit\AocrModificationAuthorizationTests.cs" />
     <Compile Include="Unit\ApplicationVirtualPathTests.cs" />

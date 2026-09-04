@@ -25,11 +25,14 @@ namespace CapaPresentacion.Controllers
         private readonly RTService _service = new RTService();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly IUsuarioContextoService _usuarioContexto;
+        private readonly IEntregaFinalService _entregaFinalService;
 
         public RTController()
         {
             _usuarioContexto = DependencyResolver.Current.GetService<IUsuarioContextoService>() 
                 ?? new UsuarioContextoService();
+            _entregaFinalService = DependencyResolver.Current.GetService<IEntregaFinalService>()
+                ?? new EntregaFinalService();
         }
 
         private bool TryObtenerUsuarioActualId(out int usuarioId) { usuarioId = ObtenerUsuarioId(); return usuarioId > 0; }
@@ -502,6 +505,25 @@ namespace CapaPresentacion.Controllers
             TempData["Success"] = "La subsanación ha sido enviada exitosamente para revisión del Inspector.";
             return RedirectToAction("Detalle", "SolicitudAOCR", new { id = nc.CodigoSolicitud });
 #pragma warning restore 162
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS)]
+        public ActionResult DocumentosFinales()
+        {
+            int usuarioId;
+            if (!TryObtenerUsuarioActualId(out usuarioId)) return new HttpStatusCodeResult(401);
+            var rol = Convert.ToString(Session != null ? Session["Rol"] : null);
+            var actor = new EntregaFinalActor
+            {
+                UsuarioId = usuarioId,
+                UsuarioNombre = User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                RolActivo = rol,
+                CompaniaCodigo = CapaPresentacion.Helpers.CompaniaActivaSessionHelper.ObtenerCodigo(Session),
+                CompaniaNombre = CapaPresentacion.Helpers.CompaniaActivaSessionHelper.ObtenerNombre(Session),
+                Ip = Request != null ? Request.UserHostAddress : null
+            };
+            return View(_entregaFinalService.ListarDocumentos(actor));
         }
 
         [HttpGet]

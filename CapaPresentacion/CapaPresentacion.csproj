@@ -286,6 +286,7 @@
     <Compile Include="Controllers\CoordinacionJefaturaController.cs" />
     <Compile Include="Controllers\DircavController.cs" />
     <Compile Include="Controllers\DirdacController.cs" />
+    <Compile Include="Controllers\FlujoController.cs" />
     <Compile Include="Controllers\CorreoInstitucionalController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
@@ -3032,6 +3033,9 @@
     <Content Include="Views\SolicitudAOCR\GeneradasFirmadas.cshtml" />
     <Content Include="Views\SolicitudAOCR\Modificacion.cshtml" />
     <Content Include="Views\RT\Registro.cshtml" />
+    <Content Include="Views\RT\DocumentosFinales.cshtml" />
+    <Content Include="Views\Inspeccion\DocumentosFinales.cshtml" />
+    <Content Include="Views\Administrador\EstadoEntrega.cshtml" />
     <Content Include="Views\RT\Declaracion.cshtml" />
     <Content Include="Views\RT\Designacion.cshtml" />
     <Content Include="Views\RT\DeclaracionPdf.cshtml" />
