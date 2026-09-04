@@ -202,6 +202,50 @@
         }, 220);
     }
 
+    function validarCompletitudCliente(form) {
+        var headerFields = [
+            { id: 'lvNombreEae', label: 'Nombre del EAE' },
+            { id: 'lvNumeroAocFechaValidez', label: 'N AOC / Validez' },
+            { id: 'lvDireccionEstadoExplotador', label: 'Dirección en el Estado del explotador' },
+            { id: 'lvDireccionEstadoReconocimiento', label: 'Dirección en el Estado de reconocimiento' },
+            { id: 'lvTiposAeronaves', label: 'Tipos de aeronaves' },
+            { id: 'lvTipoOperacion', label: 'Tipo de operación' },
+            { id: 'lvInspectorResponsable', label: 'Inspector responsable' }
+        ];
+
+        for (var i = 0; i < headerFields.length; i++) {
+            var input = form.querySelector('[name="' + headerFields[i].id + '"], #' + headerFields[i].id);
+            if (input && !input.value.trim()) {
+                return 'Complete el campo de cabecera de la LV: ' + headerFields[i].label;
+            }
+        }
+
+        var serverFields = form.querySelectorAll('.lv-server-field[data-field="cumplimiento"]');
+        for (var j = 0; j < serverFields.length; j++) {
+            var code = serverFields[j].getAttribute('data-item-code');
+            var implField = form.querySelector('.lv-server-field[data-field="implementacion"][data-item-code="' + code + '"]');
+            var commField = form.querySelector('.lv-server-field[data-field="comentarios"][data-item-code="' + code + '"]');
+
+            var cump = (serverFields[j].value || '').trim();
+            var impl = implField ? (implField.value || '').trim() : '';
+            var comm = commField ? (commField.value || '').trim() : '';
+
+            if ((!cump || !impl) && !comm) {
+                return 'Debe seleccionar el estado de cumplimiento/implementación o registrar una observación para el ítem: ' + code;
+            }
+
+            if (cump.toUpperCase() === 'NO_SATISFACTORIO' && !comm) {
+                return 'Ingrese una observación en Pruebas / Notas / Comentarios para el requisito con resultado No Satisfactorio: ' + code;
+            }
+
+            if (impl.toUpperCase() === 'NO_IMPLEMENTADO' && !comm) {
+                return 'Ingrese una observación en Pruebas / Notas / Comentarios para el requisito No Implementado: ' + code;
+            }
+        }
+
+        return null;
+    }
+
     function bindLvEditorForm(form) {
         if (!form || form.getAttribute('data-lv-auto-flow-bound') === 'true') {
             return;
@@ -220,6 +264,13 @@
                 : (form.getAttribute('data-lv-last-action') || 'guardar');
 
             if (action !== 'finalizar') {
+                return;
+            }
+
+            var errorValidacion = validarCompletitudCliente(form);
+            if (errorValidacion) {
+                event.preventDefault();
+                notify('warning', errorValidacion);
                 return;
             }
 

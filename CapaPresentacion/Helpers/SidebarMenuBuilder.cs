@@ -808,6 +808,11 @@ namespace CapaPresentacion.Helpers
                     snapshot.ExecutiveApprovalQueue = contadoresDireccion.BandejaEjecutivaAprobacion;
                     snapshot.DirdacPendingSignatures = contadoresDireccion.FirmasPendientesDirdac;
                     snapshot.DcavPendingConditions = contadoresDireccion.CondicionesPendientesDcav;
+                    if (context.EsDirdacRol)
+                    {
+                        snapshot.DirdacPendingSignatures = new AocrFinalWorkflowService().ObtenerBandejaDirdac().TotalPendientes;
+                        snapshot.ExecutiveApprovalQueue = snapshot.DirdacPendingSignatures;
+                    }
                 }
             }
             catch (Exception ex)
@@ -1503,9 +1508,9 @@ namespace CapaPresentacion.Helpers
             }
             else if (context.EsDirdacRol)
             {
-                group.Items.Add(CreateItem(context, "dirdac-revision-informes", "AOCR pendientes de revisión", "Revisión del expediente aprobado por DIRCAV y verificación de firmas previas.", "fas fa-file-invoice", "Dirdac", "Bandeja", new { tab = "revision" }, PendingBadge(context.Badges.ExecutiveApprovalQueue), "warning", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "tab", "revision", string.Empty));
-                group.Items.Add(CreateItem(context, "dirdac-aocr-pendientes", "AOCR pendientes de firma", "Legalización y firma digital exclusiva de documentos AOCR.", "fas fa-signature", "Dirdac", "Bandeja", new { tab = "firma", DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoAocr }, PendingBadge(context.Badges.DirdacPendingSignatures), "danger", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "DocumentoPendiente", AocrFirmaPendientePolicy.DocumentoAocr, string.Empty));
-                group.Items.Add(CreateItem(context, "dirdac-aocr-firmados", "Procesos concluidos", "Consulte expedientes concluidos y entrega oficial a RT e Inspector.", "fas fa-file-circle-check", "Dirdac", "Bandeja", new { tab = "concluidos" }, null, "success", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "tab", "concluidos", string.Empty));
+                group.Items.Add(CreateItem(context, "dirdac-revision-informes", "AOCR pendientes de revisión", "Revisión del expediente aprobado por DIRCAV y verificación de firmas previas.", "fas fa-file-invoice", "Dirdac", "BandejaAocr", null, PendingBadge(context.Badges.DirdacPendingSignatures), "warning", true, true, string.Empty, new[] { "BandejaAocr", "Detalle" }, null, null, string.Empty));
+                group.Items.Add(CreateItem(context, "dirdac-aocr-pendientes", "AOCR pendientes de legalización", "Firma digital exclusiva DIRDAC.", "fas fa-signature", "Dirdac", "BandejaAocr", new { DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoAocr }, PendingBadge(context.Badges.DirdacPendingSignatures), "danger", true, true, string.Empty, new[] { "BandejaAocr", "Detalle" }, "DocumentoPendiente", AocrFirmaPendientePolicy.DocumentoAocr, string.Empty));
+                group.Items.Add(CreateItem(context, "dirdac-aocr-firmados", "Trazabilidad AOCR", "Consulta del historial institucional sin acciones de entrega.", "fas fa-history", "Dirdac", "BandejaAocr", null, null, "info", true, true, string.Empty, new[] { "BandejaAocr", "Detalle" }, null, null, string.Empty));
             }
             else if (context.EsCoordinadorRol || context.EsLegalRol)
             {

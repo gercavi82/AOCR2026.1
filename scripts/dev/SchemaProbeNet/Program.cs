@@ -9,6 +9,7 @@ if (args.Length < 1 || string.IsNullOrWhiteSpace(args[0]))
 
 var connectionString = args[0];
 var sqlFilePath = args.Length > 1 ? args[1] : null;
+var rollbackAfterValidation = args.Any(a => string.Equals(a, "--rollback", StringComparison.OrdinalIgnoreCase));
 var tables = new[]
 {
     "aocr_tbaeronave_solicitud",
@@ -26,7 +27,7 @@ try
 
     if (!string.IsNullOrWhiteSpace(sqlFilePath))
     {
-        await ExecuteSqlFileAsync(cn, sqlFilePath);
+        await ExecuteSqlFileAsync(cn, sqlFilePath, rollbackAfterValidation);
         return;
     }
 
@@ -70,7 +71,7 @@ catch (Exception ex)
     Environment.ExitCode = 1;
 }
 
-static async Task ExecuteSqlFileAsync(NpgsqlConnection cn, string sqlFilePath)
+static async Task ExecuteSqlFileAsync(NpgsqlConnection cn, string sqlFilePath, bool rollbackAfterValidation)
 {
     if (!File.Exists(sqlFilePath))
     {
@@ -78,6 +79,16 @@ static async Task ExecuteSqlFileAsync(NpgsqlConnection cn, string sqlFilePath)
     }
 
     var sql = await File.ReadAllTextAsync(sqlFilePath);
+    if (rollbackAfterValidation)
+    {
+        sql = System.Text.RegularExpressions.Regex.Replace(sql, @"(?im)^\s*(BEGIN|COMMIT);\s*$", string.Empty);
+        await using var tx = await cn.BeginTransactionAsync();
+        await using var validationCommand = new NpgsqlCommand(sql, cn, tx);
+        await validationCommand.ExecuteNonQueryAsync();
+        await tx.RollbackAsync();
+        Console.WriteLine("VALIDACION_DDL_OK_ROLLBACK");
+        return;
+    }
     await using var cmd = new NpgsqlCommand(sql, cn);
     await using var reader = await cmd.ExecuteReaderAsync();
 

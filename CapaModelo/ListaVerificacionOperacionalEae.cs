@@ -71,17 +71,86 @@ namespace CapaModelo
             Items = new List<ListaVerificacionOperacionalEaeItem>();
         }
 
+        public bool ValidarCompletitud(out List<string> errores)
+        {
+            errores = new List<string>();
+
+            if (Items == null || Items.Count == 0)
+            {
+                errores.Add("La lista de verificación operacional EAE no contiene ítems configurados.");
+                return false;
+            }
+
+            var camposCabeceraPendientes = new[]
+            {
+                new { Nombre = "Nombre del EAE / Nombre comercial del EAE", Valor = NombreEae },
+                new { Nombre = "N AOC / Fecha de expedicion / Validez", Valor = NumeroAocFechaValidez },
+                new { Nombre = "Direccion del EAE en el Estado del explotador", Valor = DireccionEstadoExplotador },
+                new { Nombre = "Direccion del EAE en el Estado que emite el reconocimiento", Valor = DireccionEstadoReconocimiento },
+                new { Nombre = "Tipo/s de aeronave/s", Valor = TiposAeronaves },
+                new { Nombre = "Tipo de operacion", Valor = TipoOperacion },
+                new { Nombre = "Inspector responsable de la aprobacion", Valor = InspectorResponsable }
+            };
+
+            var campoPendiente = camposCabeceraPendientes.FirstOrDefault(campo => string.IsNullOrWhiteSpace(campo.Valor));
+            if (campoPendiente != null)
+            {
+                errores.Add("Complete el campo de cabecera de la LV: " + campoPendiente.Nombre);
+                return false;
+            }
+
+            var itemsValidables = Items
+                .Where(item => item != null && !item.EsNotaOrientacion)
+                .ToList();
+            if (itemsValidables.Count == 0)
+            {
+                itemsValidables = Items
+                    .Where(item => item != null)
+                    .ToList();
+            }
+
+            var itemSinEstadosNiObservacion = itemsValidables.FirstOrDefault(item =>
+                (string.IsNullOrWhiteSpace(item.EstadoCumplimiento)
+                    || string.IsNullOrWhiteSpace(item.EstadoImplementacion))
+                && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+            if (itemSinEstadosNiObservacion != null)
+            {
+                errores.Add("Debe seleccionar el estado de cumplimiento/implementación o registrar una observación en la columna 14 para la orientación: " + itemSinEstadosNiObservacion.ObtenerEtiqueta());
+                return false;
+            }
+
+            foreach (var grupo in itemsValidables
+                .GroupBy(item => !string.IsNullOrWhiteSpace(item.CodigoPregunta) ? item.CodigoPregunta.Trim() : (item.Codigo ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                var comentarioGrupo = grupo
+                    .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
+                    .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+
+                var itemCumplimientoNoSatisfactorio = grupo.FirstOrDefault(item =>
+                    string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase));
+                if (itemCumplimientoNoSatisfactorio != null && string.IsNullOrWhiteSpace(comentarioGrupo))
+                {
+                    errores.Add("Ingrese una observación en Pruebas / Notas / Comentarios para el requisito: " + itemCumplimientoNoSatisfactorio.ObtenerEtiqueta());
+                    return false;
+                }
+            }
+
+            var itemNoImplementadoSinObservacion = itemsValidables.FirstOrDefault(item =>
+                string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+            if (itemNoImplementadoSinObservacion != null)
+            {
+                errores.Add("Ingrese una observación en Pruebas / Notas / Comentarios para la orientación: " + itemNoImplementadoSinObservacion.ObtenerEtiqueta());
+                return false;
+            }
+
+            return errores.Count == 0;
+        }
+
         public bool EstaCompleta()
         {
-            return Items != null
-                && Items.Count > 0
-                && !string.IsNullOrWhiteSpace(NombreEae)
-                && !string.IsNullOrWhiteSpace(NumeroAocFechaValidez)
-                && !string.IsNullOrWhiteSpace(DireccionEstadoExplotador)
-                && !string.IsNullOrWhiteSpace(DireccionEstadoReconocimiento)
-                && !string.IsNullOrWhiteSpace(TiposAeronaves)
-                && !string.IsNullOrWhiteSpace(TipoOperacion)
-                && Items.All(item => item.EstaCompleto());
+            List<string> errores;
+            return ValidarCompletitud(out errores);
         }
     }
 
@@ -125,6 +194,30 @@ namespace CapaModelo
                     || !string.IsNullOrWhiteSpace(PruebasNotasComentarios))
                 && (!string.Equals(EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase)
                     || !string.IsNullOrWhiteSpace(PruebasNotasComentarios));
+        }
+
+        public string ObtenerEtiqueta()
+        {
+            var codigo = !string.IsNullOrWhiteSpace(CodigoPregunta)
+                ? CodigoPregunta.Trim()
+                : (Codigo ?? string.Empty).Trim();
+            var orientacion = (OrientacionEvidencia ?? string.Empty).Replace("\r\n", " ").Replace("\n", " ").Trim();
+            if (orientacion.Length > 120)
+            {
+                orientacion = orientacion.Substring(0, 117).TrimEnd() + "...";
+            }
+
+            if (string.IsNullOrWhiteSpace(orientacion))
+            {
+                return codigo;
+            }
+
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return orientacion;
+            }
+
+            return codigo + " - " + orientacion;
         }
     }
 }

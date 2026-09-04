@@ -136,7 +136,7 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                         ValidarRolFirma(tipo, request.Rol);
                         var doc = CargarDocumentoParaUpdate(cn, tx, request.SolicitudId, tipo);
                         var estadoFirmado = tipo == TipoAocr ? AocrEstadosProceso.AocrFirmadoDirdac : AocrEstadosProceso.CondicionesFirmadasDcav;
-                        var estadoPendiente = tipo == TipoAocr ? AocrEstadosProceso.PendienteFirmaAocrDirdac : AocrEstadosProceso.PendienteFirmaCondicionesDcav;
+                        var estadoPendiente = tipo == TipoAocr ? AocrEstadosProceso.AocrPendienteDirdac : AocrEstadosProceso.PendienteFirmaCondicionesDcav;
 
                         if (doc != null && string.Equals(doc.Estado, estadoFirmado, StringComparison.OrdinalIgnoreCase))
                         {
@@ -194,18 +194,18 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
                         var actualFirmado = new DocumentoFinalEvidencia { DocumentoId = doc.CodigoDocumento, InspeccionId = request.InspeccionId, Version = doc.VersionDocumento, TipoDocumento = tipo, RutaPdf = request.RutaPdfFirmado, HashPdf = request.HashPdfFirmado, TamanioPdf = request.TamanioPdfFirmado };
                         var aocrFirmado = modificacionSoloCondiciones ? null : (tipo == TipoAocr ? actualFirmado : otraFirmaVerificada);
                         var condicionesFirmadas = tipo == TipoCondiciones ? actualFirmado : otraFirmaVerificada;
-                        FinalizarExpedienteYEncolarRt(cn, tx, request, aocrFirmado, condicionesFirmadas);
+                        MarcarFirmasCompletasAc11(cn, tx, request, aocrFirmado, condicionesFirmadas);
                         tx.Commit();
                         return new DocumentosFinalesResultado
                         {
                             Exitoso = true,
                             Finalizado = true,
-                            EstadoExpediente = AocrEstadosProceso.Finalizado,
+                            EstadoExpediente = AocrEstadosProceso.FirmasCompletas,
                             EstadoAocr = modificacionSoloCondiciones ? "NO_APLICA" : AocrEstadosProceso.AocrFirmadoDirdac,
                             EstadoCondiciones = AocrEstadosProceso.CondicionesFirmadasDcav,
                             Mensaje = modificacionSoloCondiciones
-                                ? "La firma DCAV fue verificada. La modificación finalizó y el correo único al RT quedó en cola."
-                                : "Ambas firmas fueron verificadas. El expediente finalizo y el correo unico al RT quedo en cola."
+                                ? "La firma DCAV fue verificada. El expediente quedó en FIRMAS_COMPLETAS, pendiente de entrega en AC-12."
+                                : "Ambas firmas fueron verificadas. El expediente quedó en FIRMAS_COMPLETAS, pendiente de entrega en AC-12."
                         };
                     }
                     catch
@@ -217,12 +217,26 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
             }
         }
 
+        private static void MarcarFirmasCompletasAc11(NpgsqlConnection cn, NpgsqlTransaction tx, DocumentoFinalFirmaRequest request, DocumentoFinalEvidencia aocr, DocumentoFinalEvidencia condiciones)
+        {
+            if (condiciones == null) throw new InvalidOperationException("Las Condiciones y Limitaciones firmadas son obligatorias.");
+            if (aocr != null && aocr.Version != condiciones.Version)
+                throw new InvalidOperationException("Las versiones firmadas de AOCR y CL no son compatibles.");
+            CambiarEstadoExpediente(cn, tx, request.SolicitudId, request.InspeccionId, AocrEstadosProceso.FirmasCompletas,
+                "FIRMAS_COMPLETAS", "COORDINADOR", request.UsuarioId, "Firmas DIRCAV y DIRDAC vigentes y compatibles.");
+            ActualizarEstadoSolicitud(cn, tx, request.SolicitudId, AocrEstadosProceso.FirmasCompletas, request.UsuarioId);
+            RegistrarEvento(cn, tx, "FIRMAS_COMPLETAS:" + request.SolicitudId + ":" + (aocr != null ? aocr.Version : 0) + ":" + condiciones.Version,
+                "FIRMAS_COMPLETAS", request.SolicitudId, request.InspeccionId, request.UsuarioId, request.UsuarioNombre,
+                AocrEstadosProceso.DocumentosFinalesEnFirma, AocrEstadosProceso.FirmasCompletas, "AC-11 completo; entrega reservada para AC-12.");
+        }
+
+        // Compatibilidad de código para las pruebas y el futuro AC-12. AC-11 no invoca este método.
         private static void FinalizarExpedienteYEncolarRt(NpgsqlConnection cn, NpgsqlTransaction tx, DocumentoFinalFirmaRequest request, DocumentoFinalEvidencia aocr, DocumentoFinalEvidencia condiciones)
         {
             if (condiciones == null) throw new InvalidOperationException("Las Condiciones y Limitaciones firmadas son obligatorias para finalizar el expediente.");
             var soloCondiciones = aocr == null;
             var rt = ResolverRt(cn, tx, request.SolicitudId);
-            if (rt == null) throw new InvalidOperationException("No fue posible resolver el RT real con correo valido para la entrega final.");
+            if (rt == null) throw new InvalidOperationException("No fue posible resolver el RT real con correo válido para la entrega final.");
             CambiarEstadoExpediente(cn, tx, request.SolicitudId, request.InspeccionId, AocrEstadosProceso.Finalizado,
                 "ENTREGA_DOCUMENTOS_FINALES", "RT", request.UsuarioId, soloCondiciones ? "Condiciones firmadas verificadas para modificación." : "Ambos documentos cuentan con la firma institucional requerida.");
             ActualizarEstadoSolicitud(cn, tx, request.SolicitudId, AocrEstadosProceso.Finalizado, request.UsuarioId);
@@ -243,8 +257,8 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
                 ParaNombre = rt.Nombre,
                 Asunto = "Sistema AOCR - documentos finales firmados",
                 Cuerpo = soloCondiciones
-                    ? "<p>La modificación AOCR ha finalizado. Se adjuntan las Condiciones y Limitaciones firmadas por DCAV.</p>"
-                    : "<p>El expediente AOCR ha finalizado. Se adjuntan el AOCR firmado por DIRDAC y las Condiciones y Limitaciones firmadas por DCAV.</p>",
+                    ? "<p>La modificación AOCR ha finalizado. Se adjuntan las Condiciones y Limitaciones firmadas por DIRCAV.</p>"
+                    : "<p>El expediente AOCR ha finalizado. Se adjuntan el AOCR firmado por DIRDAC y las Condiciones y Limitaciones firmadas por DIRCAV.</p>",
                 Estado = EstadoEmail.Pendiente,
                 SolicitudId = request.SolicitudId,
                 EventKey = eventKey,
@@ -514,7 +528,12 @@ WHERE s.codigo_solicitud=@solicitud AND COALESCE(u.estadoactividad::text,'1')='1
             using (var cmd = new NpgsqlCommand(sql, cn, tx))
             {
                 cmd.Parameters.AddWithValue("@solicitud", solicitudId);
-                using (var rd=cmd.ExecuteReader()) { if (!rd.Read()) return null; var email=S(rd,"correo"); return EmailValido(email) ? new Destinatario { UsuarioId=I(rd,"idusuario"),Email=email,Nombre=S(rd,"nombre") } : null; }
+                using (var rd=cmd.ExecuteReader())
+                {
+                    if (!rd.Read()) return null;
+                    var email=S(rd,"correo");
+                    return EmailValido(email) ? new Destinatario { UsuarioId=I(rd,"idusuario"),Email=email,Nombre=S(rd,"nombre") } : null;
+                }
             }
         }
 

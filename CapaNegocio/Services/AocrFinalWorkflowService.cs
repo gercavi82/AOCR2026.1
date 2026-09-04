@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
+using CapaDatos.Interfaces;
 using CapaModelo;
 using CapaModelo.Common;
+using CapaNegocio.Interfaces;
 
 namespace CapaNegocio.Services
 {
@@ -47,12 +49,18 @@ namespace CapaNegocio.Services
         public AocrFinalWorkflowDecision Decision { get; set; }
     }
 
-    public class AocrFinalWorkflowService
+    public class AocrFinalWorkflowService : IAocrFinalWorkflowService
     {
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService;
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
         private readonly InspeccionInformeDAO _inspeccionInformeDao;
         private readonly HallazgoDAO _hallazgoDao;
+        private readonly IAocrFinalWorkflowRepository _workflowRepository;
+
+        public const string PermisoRemitirDirdac = "DIRCAV_REMITIR_DIRDAC";
+        public const string PermisoBandejaDirdac = "DIRDAC_VER_BANDEJA";
+        public const string PermisoDevolverDircav = "DIRDAC_DEVOLVER_DIRCAV";
+        public const string PermisoFirmarAocr = "DIRDAC_FIRMAR_AOCR";
 
         public AocrFinalWorkflowService()
         {
@@ -60,6 +68,93 @@ namespace CapaNegocio.Services
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
             _inspeccionInformeDao = new InspeccionInformeDAO();
             _hallazgoDao = new HallazgoDAO();
+            _workflowRepository = new AocrFinalWorkflowDAO();
+        }
+
+        public AocrFinalWorkflowService(IAocrFinalWorkflowRepository workflowRepository)
+        {
+            _workflowRepository = workflowRepository ?? throw new ArgumentNullException("workflowRepository");
+        }
+
+        public AocrWorkflowResult RemitirAocrDirdac(RemitirAocrDirdacRequest request)
+        {
+            var error = ValidarActor(request != null ? request.Actor : null, AocrRolesInstitucionales.EsDircav, "DIRCAV", PermisoRemitirDirdac);
+            if (error != null) return error;
+            if (request == null || request.SolicitudId <= 0 || request.DocumentoId <= 0 || request.VersionEsperada <= 0 || request.VersionAocrEsperada <= 0)
+                return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud, documento y versiones esperadas son obligatorios.");
+            return EjecutarSeguro(() => _workflowRepository.RemitirAocrDirdac(request));
+        }
+
+        public BandejaAocrDirdacViewModel ObtenerBandejaDirdac()
+        {
+            return new BandejaAocrDirdacViewModel { Expedientes = _workflowRepository.ListarBandejaDirdac() };
+        }
+
+        public DetalleAocrDirdacViewModel ObtenerDetalleDirdac(int solicitudId)
+        {
+            return solicitudId <= 0 ? null : _workflowRepository.ObtenerDetalleDirdac(solicitudId);
+        }
+
+        public BandejaAocrDirdacItemViewModel ObtenerContextoRemisionDircav(int solicitudId)
+        {
+            return solicitudId <= 0 ? null : _workflowRepository.ObtenerContextoRemisionDircav(solicitudId);
+        }
+
+        public AocrWorkflowResult DevolverAocrDircav(DevolverAocrDircavRequest request)
+        {
+            var error = ValidarActor(request != null ? request.Actor : null, AocrRolesInstitucionales.EsDirdac, "DIRDAC", PermisoDevolverDircav);
+            if (error != null) return error;
+            if (request == null || request.SolicitudId <= 0 || request.VersionEsperada <= 0)
+                return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud y versión esperada son obligatorias.");
+            var observacion = (request.Observacion ?? string.Empty).Trim();
+            if (observacion.Length < 10 || observacion.Length > 2000 || observacion.Any(char.IsControl))
+                return AocrWorkflowResult.Error(400, "OBSERVACION_INVALIDA", "La observación debe contener entre 10 y 2000 caracteres válidos.");
+            request.Observacion = observacion;
+            return EjecutarSeguro(() => _workflowRepository.DevolverAocrDircav(request));
+        }
+
+        public AocrWorkflowResult FirmarLegalizarAocr(FirmarLegalizarAocrRequest request)
+        {
+            var error = ValidarActor(request != null ? request.Actor : null, AocrRolesInstitucionales.EsDirdac, "DIRDAC", PermisoFirmarAocr);
+            if (error != null) return error;
+            if (request == null || request.SolicitudId <= 0 || request.DocumentoId <= 0 || request.VersionEsperada <= 0 || request.VersionAocrEsperada <= 0)
+                return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud, documento y versiones esperadas son obligatorios.");
+            if (string.IsNullOrWhiteSpace(request.RutaPdfFirmado) || request.TamanioPdfFirmado <= 4 || !EsSha256(request.HashPdfFirmado))
+                return AocrWorkflowResult.Error(400, "FIRMA_INVALIDA", "La evidencia PDF firmada y su hash SHA-256 son obligatorios.");
+            return EjecutarSeguro(() => _workflowRepository.FirmarLegalizarAocr(request));
+        }
+
+        public AocrWorkflowResult EvaluarFirmasCompletas(int solicitudId, long versionEsperada, AocrWorkflowActor actor)
+        {
+            var error = ValidarActor(actor, AocrRolesInstitucionales.EsDirdac, "DIRDAC", PermisoFirmarAocr);
+            if (error != null) return error;
+            if (solicitudId <= 0 || versionEsperada <= 0) return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud y versión son obligatorias.");
+            return EjecutarSeguro(() => _workflowRepository.EvaluarFirmasCompletas(solicitudId, versionEsperada, actor));
+        }
+
+        private static AocrWorkflowResult ValidarActor(AocrWorkflowActor actor, Func<string, bool> rolValido, string rolEsperado, string permiso)
+        {
+            if (actor == null || actor.UsuarioId <= 0 || string.IsNullOrWhiteSpace(actor.UsuarioNombre))
+                return AocrWorkflowResult.Error(401, "NO_AUTENTICADO", "No existe una identidad autenticada válida.");
+            if (!rolValido(actor.RolActivo) || AocrRolesInstitucionales.EsAdministrador(actor.RolActivo))
+                return AocrWorkflowResult.Error(403, "ROL_NO_AUTORIZADO", "La operación es exclusiva del rol activo " + rolEsperado + ".");
+            if (!actor.TienePermiso)
+                return AocrWorkflowResult.Error(403, "PERMISO_REQUERIDO", "Falta el permiso granular " + permiso + ".");
+            return null;
+        }
+
+        private static AocrWorkflowResult EjecutarSeguro(Func<AocrWorkflowResult> operacion)
+        {
+            try { return operacion(); }
+            catch (UnauthorizedAccessException ex) { return AocrWorkflowResult.Error(403, "ACCESO_DENEGADO", ex.Message); }
+            catch (InvalidOperationException ex) { return AocrWorkflowResult.Error(409, "CONFLICTO", ex.Message); }
+            catch (Exception) { return AocrWorkflowResult.Error(500, "ERROR_INTERNO", "No fue posible completar la operación; la transacción fue revertida."); }
+        }
+
+        private static bool EsSha256(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length != 64) return false;
+            return value.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
         }
 
         public AocrFinalWorkflowValidationResult ValidarInspeccionSatisfactoriaParaAocr(int codigoSolicitud)

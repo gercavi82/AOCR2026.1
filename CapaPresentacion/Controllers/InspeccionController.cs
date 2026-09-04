@@ -45,6 +45,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionHistorialDAO _historialDAO;
         private readonly InspeccionInformeDAO _informeDAO;
         private readonly ListaVerificacionOperacionalEaeDAO _listaVerificacionOperacionalEaeDAO;
+        private readonly ListaVerificacionService _listaVerificacionService;
         private readonly DocumentoInspeccionDAO _documentoDAO;
         private readonly UsuarioInternoRTDAO _usuarioInternoRTDAO;
         private readonly AocrFirmaPosicionDocumentoDAO _firmaPosicionDocumentoDAO;
@@ -118,6 +119,7 @@ namespace CapaPresentacion.Controllers
             _historialDAO = new InspeccionHistorialDAO();
             _informeDAO = new InspeccionInformeDAO();
             _listaVerificacionOperacionalEaeDAO = new ListaVerificacionOperacionalEaeDAO();
+            _listaVerificacionService = new ListaVerificacionService();
             _documentoDAO = new DocumentoInspeccionDAO();
             _usuarioInternoRTDAO = new UsuarioInternoRTDAO();
             _firmaPosicionDocumentoDAO = new AocrFirmaPosicionDocumentoDAO();
@@ -6583,7 +6585,7 @@ namespace CapaPresentacion.Controllers
                 EstacionId = estacionId,
                 TipoLista = "EAE",
                 Vigente = true,
-                EstadoLista = items.All(item => !string.IsNullOrWhiteSpace(item.EstadoCumplimiento) && !string.IsNullOrWhiteSpace(item.EstadoImplementacion)) ? "LV_COMPLETADA" : "LV_BORRADOR",
+                EstadoLista = AocrEstadosListaVerificacion.Borrador,
                 NombreEae = TomarCampoTexto(form, "lvNombreEae", 500, listaActual != null ? listaActual.NombreEae : string.Empty),
                 NumeroAocFechaValidez = TomarCampoTexto(form, "lvNumeroAocFechaValidez", 500, listaActual != null ? listaActual.NumeroAocFechaValidez : string.Empty),
                 DireccionEstadoExplotador = TomarCampoTexto(form, "lvDireccionEstadoExplotador", 1000, listaActual != null ? listaActual.DireccionEstadoExplotador : string.Empty),
@@ -6605,6 +6607,12 @@ namespace CapaPresentacion.Controllers
             };
 
             CompletarCabeceraListaVerificacionOperacionalEae(lista, solicitud);
+
+            string mensajeCompletitud;
+            lista.EstadoLista = ValidarListaVerificacionOperacionalEaeParaFinalizar(lista, out mensajeCompletitud)
+                ? AocrEstadosListaVerificacion.Completa
+                : AocrEstadosListaVerificacion.EnProceso;
+
             return lista;
         }
 
@@ -6673,38 +6681,7 @@ namespace CapaPresentacion.Controllers
 
         private bool ValidarListaVerificacionOperacionalEaeParaFinalizar(ListaVerificacionOperacionalEae lista, out string mensaje)
         {
-            mensaje = string.Empty;
-            if (lista == null)
-            {
-                mensaje = "No existe una lista de verificación operacional EAE para procesar.";
-                return false;
-            }
-
-            if (lista.Items == null || lista.Items.Count == 0)
-            {
-                mensaje = "La lista de verificación operacional EAE no contiene ítems configurados.";
-                return false;
-            }
-
-            var camposCabeceraPendientes = new[]
-            {
-                new { Nombre = "Nombre del EAE / Nombre comercial del EAE", Valor = lista.NombreEae },
-                new { Nombre = "N AOC / Fecha de expedicion / Validez", Valor = lista.NumeroAocFechaValidez },
-                new { Nombre = "Direccion del EAE en el Estado del explotador", Valor = lista.DireccionEstadoExplotador },
-                new { Nombre = "Direccion del EAE en el Estado que emite el reconocimiento", Valor = lista.DireccionEstadoReconocimiento },
-                new { Nombre = "Tipo/s de aeronave/s", Valor = lista.TiposAeronaves },
-                new { Nombre = "Tipo de operacion", Valor = lista.TipoOperacion },
-                new { Nombre = "Inspector responsable de la aprobacion", Valor = lista.InspectorResponsable }
-            };
-
-            var campoPendiente = camposCabeceraPendientes.FirstOrDefault(campo => string.IsNullOrWhiteSpace(campo.Valor));
-            if (campoPendiente != null)
-            {
-                mensaje = "Complete el campo de cabecera de la LV: " + campoPendiente.Nombre;
-                return false;
-            }
-
-            return ValidarListaVerificacionOperacionalEaeSegunObservaciones(lista, out mensaje);
+            return _listaVerificacionService.ValidarCompletitudParaFinalizar(lista, out mensaje);
         }
 
         private static string ObtenerEtiquetaItemListaVerificacionOperacionalEae(ListaVerificacionOperacionalEaeItem item)
@@ -10015,6 +9992,122 @@ namespace CapaPresentacion.Controllers
             
             TempData["NotificacionExito"] = "Borrador de especificaciones guardado correctamente.";
             return RedirectToAction("PendientesEmisionAocr");
+        }
+
+        // =====================================================================
+        // AC-10: GENERACIÓN Y REVISIÓN DE CONDICIONES Y LIMITACIONES (INSPECTOR)
+        // =====================================================================
+
+        [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [Route("Inspector/CondicionesLimitaciones/{id?}")]
+        [Route("Inspeccion/CondicionesLimitaciones/{id?}")]
+        public ActionResult CondicionesLimitaciones(int id)
+        {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere tener activo el rol Inspector.");
+
+            try
+            {
+                var service = new CapaNegocio.Services.CondicionesLimitacionesService();
+                var usuarioId = ObtenerCodigoUsuario();
+                var rol = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : "INSPECTOR";
+
+                var vm = service.ObtenerOConstruirViewModel(id, usuarioId, rol);
+                return View("~/Views/Inspeccion/CondicionesLimitaciones.cshtml", vm);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("PendientesEmisionAocr");
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [ValidateAntiForgeryToken]
+        [Route("Inspector/GenerarBorradorCl")]
+        [Route("Inspeccion/GenerarBorradorCl")]
+        public ActionResult GenerarBorradorCl(CapaModelo.DTOs.CondicionesLimitacionesSaveRequest request)
+        {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol Inspector.");
+
+            if (request == null)
+                return new HttpStatusCodeResult(400, "Solicitud inválida.");
+
+            var service = new CapaNegocio.Services.CondicionesLimitacionesService();
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = User != null && User.Identity != null ? User.Identity.Name : "Inspector";
+            var rol = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : "INSPECTOR";
+
+            var resultado = service.GuardarBorrador(request, usuarioId, usuarioNombre, rol);
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 409)
+                    return new HttpStatusCodeResult(409, resultado.Mensaje);
+                if (resultado.HttpStatusCode == 403)
+                    return new HttpStatusCodeResult(403, resultado.Mensaje);
+                return new HttpStatusCodeResult(resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            return RedirectToAction("CondicionesLimitaciones", new { id = request.SolicitudId });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [Route("Inspector/VistaPreviaCl/{id}")]
+        [Route("Inspeccion/VistaPreviaCl/{id}")]
+        public ActionResult VistaPreviaCl(int id)
+        {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol Inspector.");
+
+            try
+            {
+                var service = new CapaNegocio.Services.CondicionesLimitacionesService();
+                var usuarioId = ObtenerCodigoUsuario();
+                var rol = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : "INSPECTOR";
+
+                var pdfBytes = service.GenerarVistaPrevia(id, usuarioId, rol);
+                Response.AppendHeader("Content-Disposition", $"inline; filename=VistaPrevia_CL_{id}.pdf");
+                return File(pdfBytes, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return new HttpStatusCodeResult(400, ex.Message);
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [ValidateAntiForgeryToken]
+        [Route("Inspector/RemitirClCoordinador")]
+        [Route("Inspeccion/RemitirClCoordinador")]
+        public ActionResult RemitirClCoordinador(int id, string observacion)
+        {
+            if (!EsRolInspectorSeleccionado())
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol Inspector.");
+
+            var service = new CapaNegocio.Services.CondicionesLimitacionesService();
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = User != null && User.Identity != null ? User.Identity.Name : "Inspector";
+            var rol = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : "INSPECTOR";
+
+            var resultado = service.RemitirACoordinador(id, usuarioId, usuarioNombre, rol, observacion);
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 409) return new HttpStatusCodeResult(409, resultado.Mensaje);
+                return new HttpStatusCodeResult(resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            return RedirectToAction("CondicionesLimitaciones", new { id });
         }
     }
 }

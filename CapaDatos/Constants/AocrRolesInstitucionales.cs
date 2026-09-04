@@ -96,6 +96,16 @@ namespace CapaDatos.Constants
             return Coincide(rol, AdministradorSqlTokens);
         }
 
+        public static readonly string[] RtSqlTokens =
+        {
+            "RT", "REPRESENTANTETECNICO", "REPRESENTANTE_TECNICO", "SOLICITANTE", "OPERADOR", "EXPLOTADOR"
+        };
+
+        public static bool EsRt(string rol)
+        {
+            return Coincide(rol, RtSqlTokens);
+        }
+
         public static bool EsDirdac(string rol)
         {
             return Coincide(rol, DirdacSqlTokens);

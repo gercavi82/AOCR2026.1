@@ -262,6 +262,7 @@
     <Compile Include="DAOs\AocrFirmaDocumentoDAO.cs" />
     <Compile Include="DAOs\AocrDocumentoGeneradoDAO.cs" />
     <Compile Include="DAOs\DocumentosFinalesWorkflowDAO.cs" />
+    <Compile Include="DAOs\AocrFinalWorkflowDAO.cs" />
     <Compile Include="DAOs\AocrFirmaPosicionDocumentoDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />
@@ -328,6 +329,7 @@
     <Compile Include="DAOs\InspeccionDAO.cs" />
     <Compile Include="DAOs\SolicitudEstacionDAO.cs" />
     <Compile Include="DAOs\AocrDesignacionDAO.cs" />
+    <Compile Include="DAOs\CondicionesLimitacionesDAO.cs" />
     <Compile Include="Entidades\ArchivoSubido.cs" />
     <Compile Include="Entidades\DetalleOrden.cs" />
     <Compile Include="Entidades\OrdenRecaudacionConcepto.cs" />
@@ -394,6 +396,7 @@
     <Compile Include="Interfaces\IEmpresaAS400DAO.cs" />
     <Compile Include="Entidades\Fr3OutboxEvent.cs" />
     <Compile Include="Interfaces\IFr3OutboxDAO.cs" />
+    <Compile Include="Interfaces\IAocrFinalWorkflowRepository.cs" />
     <Compile Include="DAOs\Fr3OutboxDAO.cs" />
     <Compile Include="DAOs\Fr3OutboxWorkerDAO.cs" />
   </ItemGroup>

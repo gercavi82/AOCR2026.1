@@ -25,8 +25,8 @@ codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado 
 22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
-26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 20:22:00 | 
-27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 20:22:00 | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 4/9/2026 14:24:32 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 4/9/2026 14:24:32 | 
 28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 
@@ -177,6 +177,7 @@ TABLA: aocr_tbcertificado
 TABLA: aocr_tbchecklist
 TABLA: aocr_tbchecklist_item
 TABLA: aocr_tbchecklist_solicitud
+TABLA: aocr_tbcondiciones_limitaciones
 TABLA: aocr_tbcorreo_institucional
 TABLA: aocr_tbcorreo_institucional_historial
 TABLA: aocr_tbdocumento
@@ -735,8 +736,8 @@ TABLA: vw_subsanaciones_pendientes
   [usuario] UNIQUE: usuario_codigousuario_key (codigousuario)
 
 --- 9. ESTADOS DISTINTOS EN AOCR_TBSOLICITUD ---
+  Estado: 'En Revision' -> 4 registros
   Estado: 'En Inspeccion' -> 3 registros
-  Estado: 'En Revision' -> 2 registros
   Estado: 'AOCR En Elaboracion' -> 1 registros
   Estado: 'Pendiente' -> 1 registros
   Estado: 'Pendiente Asignacion RT' -> 1 registros

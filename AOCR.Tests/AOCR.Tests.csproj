@@ -68,7 +68,10 @@
     <Compile Include="Unit\Ac05DircavAceptacionYDesignacionTests.cs" />
     <Compile Include="Unit\Ac06DesignacionPdfDircavTests.cs" />
     <Compile Include="Unit\Ac07ListaVerificacionPorEstacionTests.cs" />
+    <Compile Include="Unit\Ac08ValidacionCompletitudLvTests.cs" />
     <Compile Include="Unit\Ac09DepuracionInformeTecnicoTests.cs" />
+    <Compile Include="Unit\Ac10CondicionesLimitacionesTests.cs" />
+    <Compile Include="Unit\Ac11LegalizacionWorkflowTests.cs" />
     <Compile Include="Integration\DiagnosticoRolesIntegrationTests.cs" />
     <Compile Include="Unit\AocrModificationAuthorizationTests.cs" />
     <Compile Include="Unit\ApplicationVirtualPathTests.cs" />

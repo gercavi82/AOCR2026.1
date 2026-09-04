@@ -54,6 +54,7 @@
     <Compile Include="FirmaDocumentoResultado.cs" />
     <Compile Include="AocrDocumentoGenerado.cs" />
     <Compile Include="DocumentosFinalesResultado.cs" />
+    <Compile Include="AocrFinalWorkflowModels.cs" />
     <Compile Include="AocrFirmaPosicionDocumento.cs" />
     <Compile Include="Auditoria.cs" />
     <Compile Include="Certificado.cs" />
@@ -117,6 +118,10 @@
     <Compile Include="SolicitudEstacionInspeccion.cs" />
     <Compile Include="AocrDesignacionInspector.cs" />
     <Compile Include="DTOs\DesignacionPdfViewModel.cs" />
+    <Compile Include="DTOs\CondicionesLimitacionesViewModel.cs" />
+    <Compile Include="DTOs\CondicionesLimitacionesPdfViewModel.cs" />
+    <Compile Include="AocrEstadoCl.cs" />
+    <Compile Include="CondicionesLimitaciones.cs" />
     <Compile Include="Usuario.cs" />
     <Compile Include="UsuarioCompaniaRT.cs" />
     <Compile Include="RT\CompaniaModel.cs" />

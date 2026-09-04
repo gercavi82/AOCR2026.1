@@ -26,7 +26,7 @@ namespace CapaDatos.DAOs
                 : ConexionDAO.CadenaConexion;
         }
 
-        public ListaVerificacionOperacionalEae ObtenerUltimaPorInspeccion(int codigoInspeccion, int? estacionId = null)
+        public virtual ListaVerificacionOperacionalEae ObtenerUltimaPorInspeccion(int codigoInspeccion, int? estacionId = null)
         {
             using (var cn = new NpgsqlConnection(_cs))
             {
@@ -41,7 +41,7 @@ namespace CapaDatos.DAOs
             return ObtenerUltimaPorInspeccion(codigoInspeccion, estacionId);
         }
 
-        public ListaVerificacionOperacionalEae ObtenerPorId(int codigoListaVerificacion)
+        public virtual ListaVerificacionOperacionalEae ObtenerPorId(int codigoListaVerificacion)
         {
             using (var cn = new NpgsqlConnection(_cs))
             {
@@ -148,7 +148,7 @@ namespace CapaDatos.DAOs
             }
         }
 
-        public ListaVerificacionOperacionalEae GuardarBorrador(ListaVerificacionOperacionalEae lista, int usuarioId)
+        public virtual ListaVerificacionOperacionalEae GuardarBorrador(ListaVerificacionOperacionalEae lista, int usuarioId)
         {
             if (lista == null)
             {
@@ -286,7 +286,7 @@ namespace CapaDatos.DAOs
             }
         }
 
-        public void MarcarFinalizada(int codigoListaVerificacion, string rutaPdf, string estadoLista, int usuarioId)
+        public virtual void MarcarFinalizada(int codigoListaVerificacion, string rutaPdf, string estadoLista, int usuarioId)
         {
             using (var cn = new NpgsqlConnection(_cs))
             {
@@ -326,7 +326,7 @@ namespace CapaDatos.DAOs
             MarcarFirmada(codigoListaVerificacion, rutaDocumentoFirmado, hashDocumento, usuarioFirma, fechaFirma, estadoLista, usuarioId);
         }
 
-        public void MarcarFirmada(
+        public virtual void MarcarFirmada(
             int codigoListaVerificacion,
             string rutaDocumentoFirmado,
             string hashDocumento,
@@ -394,7 +394,7 @@ namespace CapaDatos.DAOs
         /// <summary>
         /// Comprueba si todas las estaciones obligatorias de una solicitud cuentan con su LV completada y firmada.
         /// </summary>
-        public bool TodasLasListasEstacionesFirmadas(int solicitudId, int inspeccionId, out List<string> estacionesPendientes)
+        public virtual bool TodasLasListasEstacionesFirmadas(int solicitudId, int inspeccionId, out List<string> estacionesPendientes)
         {
             estacionesPendientes = new List<string>();
             if (solicitudId <= 0 && inspeccionId <= 0) return true;

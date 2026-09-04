@@ -13,6 +13,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
 using CapaModelo.Common;
+using CapaModelo.DTOs;
 using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
@@ -45,6 +46,7 @@ namespace CapaPresentacion.Controllers
         private readonly InformeTecnicoEstadoService _informeTecnicoEstadoService = new InformeTecnicoEstadoService();
         private readonly AocrFinalizacionService _aocrFinalizacionService = new AocrFinalizacionService();
         private readonly AocrProcesoNotificacionService _aocrProcesoNotificacionService = new AocrProcesoNotificacionService();
+        private readonly CondicionesLimitacionesService _condicionesService = new CondicionesLimitacionesService();
 
         [Authorize(Roles = "Direccion,JefaturaTecnica,DireccionJefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
@@ -5093,5 +5095,133 @@ namespace CapaPresentacion.Controllers
             }
             return RedirectToAction("RevisionVerificacion");
         }
+
+        #region AC-10: Revisión de Condiciones y Limitaciones (Coordinador)
+
+        [HttpGet]
+        [Route("Coordinador/RevisionCl/{id:int}")]
+        [Route("CoordinacionJefatura/RevisionCl/{id:int}")]
+        public ActionResult RevisionCl(int id)
+        {
+            var rolSesion = Session["Rol"] as string ?? string.Empty;
+            if (!AocrRolesInstitucionales.EsCoordinador(rolSesion) && !User.IsInRole("Coordinador") && !User.IsInRole("Coordinacion"))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: Solo el Coordinador puede revisar las Condiciones y Limitaciones.");
+            }
+
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "ID de solicitud inválido.");
+            }
+
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+
+            try
+            {
+                var vm = _condicionesService.ObtenerOConstruirViewModel(id, usuarioId, rolSesion);
+                if (vm == null)
+                {
+                    return HttpNotFound("No se encontró la solicitud o el documento de Condiciones y Limitaciones.");
+                }
+
+                return View(vm);
+            }
+            catch (KeyNotFoundException)
+            {
+                return HttpNotFound("Solicitud no encontrada.");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al cargar la revisión de Condiciones y Limitaciones: " + ex.Message;
+                return RedirectToAction("DashboardInspeccion");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Coordinador/DevolverClInspector")]
+        [Route("CoordinacionJefatura/DevolverClInspector")]
+        public ActionResult DevolverClInspector(CondicionesLimitacionesTransicionRequest request)
+        {
+            var rolSesion = Session["Rol"] as string ?? string.Empty;
+            if (!AocrRolesInstitucionales.EsCoordinador(rolSesion) && !User.IsInRole("Coordinador") && !User.IsInRole("Coordinacion"))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: Solo el Coordinador puede devolver a Inspección.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "Datos de solicitud inválidos.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Observacion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "La observación obligatoria es requerida para devolver al Inspector.");
+            }
+
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+
+            var resultado = _condicionesService.DevolverAInspector(request.SolicitudId, usuarioId, usuarioLogin, rolSesion, request.Observacion);
+
+            if (!resultado.Exitoso)
+            {
+                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = resultado.Mensaje;
+
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = resultado.Mensaje, estado = resultado.Estado });
+            }
+
+            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Coordinador/RemitirClDircav")]
+        [Route("CoordinacionJefatura/RemitirClDircav")]
+        public ActionResult RemitirClDircav(CondicionesLimitacionesTransicionRequest request)
+        {
+            var rolSesion = Session["Rol"] as string ?? string.Empty;
+            if (!AocrRolesInstitucionales.EsCoordinador(rolSesion) && !User.IsInRole("Coordinador") && !User.IsInRole("Coordinacion"))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: Solo el Coordinador puede remitir a DIRCAV.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "Datos de solicitud inválidos.");
+            }
+
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+
+            var resultado = _condicionesService.RemitirADircav(request.SolicitudId, usuarioId, usuarioLogin, rolSesion, request.Observacion);
+
+            if (!resultado.Exitoso)
+            {
+                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = resultado.Mensaje;
+
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = resultado.Mensaje, estado = resultado.Estado });
+            }
+
+            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+        }
+
+        #endregion
     }
 }
+

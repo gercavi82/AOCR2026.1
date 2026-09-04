@@ -2,12 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
+using CapaModelo.DTOs;
 using CapaNegocio;
+using CapaNegocio.Interfaces;
 using CapaNegocio.Services;
 using CapaPresentacion.Filters;
 using CapaPresentacion.Helpers;
@@ -30,6 +33,8 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionDAO _inspeccionDao;
         private readonly AocrFirmaDocumentoDAO _firmaDao;
         private readonly SolicitudEstacionService _estacionService;
+        private readonly CondicionesLimitacionesService _condicionesService;
+        private readonly IAocrFinalWorkflowService _finalWorkflowService;
 
         public DircavController()
         {
@@ -40,6 +45,8 @@ namespace CapaPresentacion.Controllers
             _inspeccionDao = new InspeccionDAO();
             _firmaDao = new AocrFirmaDocumentoDAO();
             _estacionService = new SolicitudEstacionService();
+            _condicionesService = new CondicionesLimitacionesService();
+            _finalWorkflowService = new AocrFinalWorkflowService();
         }
 
         public DircavController(
@@ -49,7 +56,9 @@ namespace CapaPresentacion.Controllers
             InspeccionDAO inspeccionDao,
             AocrFirmaDocumentoDAO firmaDao,
             SolicitudEstacionService estacionService,
-            DesignacionDocumentoService documentoDesignacionService = null)
+            DesignacionDocumentoService documentoDesignacionService = null,
+            CondicionesLimitacionesService condicionesService = null,
+            IAocrFinalWorkflowService finalWorkflowService = null)
         {
             _bandejaService = bandejaService;
             _designacionService = designacionService;
@@ -58,6 +67,8 @@ namespace CapaPresentacion.Controllers
             _inspeccionDao = inspeccionDao;
             _firmaDao = firmaDao;
             _estacionService = estacionService;
+            _condicionesService = condicionesService ?? new CondicionesLimitacionesService();
+            _finalWorkflowService = finalWorkflowService ?? new AocrFinalWorkflowService();
         }
 
         private string ObtenerRolActual()
@@ -167,6 +178,7 @@ namespace CapaPresentacion.Controllers
             solicitud.Estaciones = _estacionService.ObtenerEstacionesPorSolicitud(
                 id, solicitud, _inspeccionDao.ListarPorSolicitud(id));
             ViewBag.EstacionesSolicitud = solicitud.Estaciones;
+            ViewBag.ContextoRemisionDirdac = _finalWorkflowService.ObtenerContextoRemisionDircav(id);
 
             return View(solicitud);
         }
@@ -470,9 +482,9 @@ namespace CapaPresentacion.Controllers
             {
                 return HttpNotFound(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return new HttpStatusCodeResult(500, ex.Message);
+                return new HttpStatusCodeResult(500, "No fue posible generar el documento de designación.");
             }
         }
 
@@ -509,9 +521,9 @@ namespace CapaPresentacion.Controllers
             {
                 return HttpNotFound(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return new HttpStatusCodeResult(500, ex.Message);
+                return new HttpStatusCodeResult(500, "No fue posible descargar el documento de designación.");
             }
         }
 
@@ -549,32 +561,147 @@ namespace CapaPresentacion.Controllers
         }
 
         // =======================================================
-        // 8. FIRMAR CONDICIONES Y LIMITACIONES (EXCLUSIVO DIRCAV)
+        // 8. AC-10: REVISIÓN, DEVOLUCIÓN Y FIRMA DE CONDICIONES Y LIMITACIONES (EXCLUSIVO DIRCAV)
         // =======================================================
+        [HttpGet]
+        [Route("Dircav/RevisionCl/{id:int}")]
+        public ActionResult RevisionCl(int id)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: El rol Administrador no puede revisar ni firmar Condiciones y Limitaciones (Regla 7).");
+            }
+            if (AocrRolesInstitucionales.EsDirdac(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: DIRDAC no participa en la revisión ni firma de Condiciones y Limitaciones.");
+            }
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol DIRCAV para revisar Condiciones y Limitaciones.");
+            }
+
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID de solicitud inválido.");
+
+            var usuarioId = ObtenerUsuarioIdActual();
+            try
+            {
+                var vm = _condicionesService.ObtenerOConstruirViewModel(id, usuarioId, rolActual);
+                if (vm == null) return HttpNotFound("No se encontró el documento de Condiciones y Limitaciones.");
+
+                return View(vm);
+            }
+            catch (KeyNotFoundException)
+            {
+                return HttpNotFound("Solicitud no encontrada.");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al cargar la revisión de Condiciones y Limitaciones: " + ex.Message;
+                return RedirectToAction("Bandeja", new { tab = "condiciones" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Dircav/DevolverClCoordinador")]
+        public ActionResult DevolverClCoordinador(CondicionesLimitacionesTransicionRequest request)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual) || AocrRolesInstitucionales.EsDirdac(rolActual) || (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV")))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo DIRCAV puede devolver Condiciones y Limitaciones a Coordinación.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(400, "Datos de solicitud inválidos.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Observacion))
+            {
+                return new HttpStatusCodeResult(400, "La observación motivada es obligatoria para devolver a Coordinación.");
+            }
+
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            var resultado = _condicionesService.DevolverACoordinador(request.SolicitudId, usuarioId, usuarioLogin, rolActual, request.Observacion);
+            if (!resultado.Exitoso)
+            {
+                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = resultado.Mensaje, estado = resultado.Estado });
+            }
+
+            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Dircav/FirmarCondicionesLimitaciones")]
+        public ActionResult FirmarCondicionesLimitaciones(CondicionesLimitacionesFirmaRequest request)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: El rol Administrador no puede firmar Condiciones y Limitaciones (Regla 7).");
+            }
+            if (AocrRolesInstitucionales.EsDirdac(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: DIRDAC no puede firmar Condiciones y Limitaciones.");
+            }
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede firmar institucionalmente las Condiciones y Limitaciones.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(400, "Datos de solicitud inválidos.");
+            }
+
+            request.DircavUsuarioId = ObtenerUsuarioIdActual();
+            request.DircavUsuarioNombre = ObtenerUsuarioLoginActual();
+            request.RolSolicitante = rolActual;
+
+            var resultado = _condicionesService.FirmarCondicionesLimitaciones(request);
+            if (!resultado.Exitoso)
+            {
+                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new
+                {
+                    ok = true,
+                    message = resultado.Mensaje,
+                    estado = resultado.Estado,
+                    documentoId = resultado.DocumentoId,
+                    hashPdf = resultado.HashPdf,
+                    expedienteFinalizado = resultado.ExpedienteFinalizado,
+                    idempotente = resultado.Idempotente
+                });
+            }
+
+            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarCondiciones(int id, string passwordCertificado)
         {
-            if (!EsDircavAutorizado())
+            return FirmarCondicionesLimitaciones(new CondicionesLimitacionesFirmaRequest
             {
-                return new HttpStatusCodeResult(403, "Acceso denegado: La firma de Condiciones y Limitaciones es exclusiva del rol DIRCAV.");
-            }
-
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
-
-            if (string.Equals(solicitud.Estado, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(solicitud.Estado, AocrEstadosProceso.Finalizado, StringComparison.OrdinalIgnoreCase))
-            {
-                return new HttpStatusCodeResult(409, "Conflicto: Las Condiciones y Limitaciones ya se encuentran firmadas o el expediente finalizado.");
-            }
-
-            solicitud.Estado = AocrEstadosProceso.ClFirmadaDircav;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            TempData["Success"] = "Condiciones y Limitaciones firmadas digitalmente por DIRCAV. Listo para remisión a DIRDAC.";
-            return RedirectToAction("Bandeja", new { tab = "condiciones" });
+                SolicitudId = id,
+                PasswordCertificado = passwordCertificado
+            });
         }
 
         // =======================================================
@@ -582,7 +709,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult RemitirDIRDAC(int id, string observacion)
+        public ActionResult RemitirDIRDACLegacy(int id, string observacion)
         {
             if (!EsDircavAutorizado())
             {
@@ -607,6 +734,40 @@ namespace CapaPresentacion.Controllers
 
             TempData["Success"] = "Expediente y AOCR remitidos formalmente al Director General (DIRDAC) para su firma y legalización.";
             return RedirectToAction("Bandeja", new { tab = "remision" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission(AocrFinalWorkflowService.PermisoRemitirDirdac)]
+        public ActionResult RemitirAocrDirdac(RemitirAocrDirdacRequest request)
+        {
+            if (request == null) return JsonWorkflow(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la remisión."));
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            request.Actor = new AocrWorkflowActor
+            {
+                UsuarioId = ObtenerUsuarioIdActual(),
+                UsuarioNombre = ObtenerUsuarioLoginActual(),
+                RolActivo = rol,
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { rol })
+            };
+            request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
+            return JsonWorkflow(_finalWorkflowService.RemitirAocrDirdac(request));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemitirDIRDAC(int id, string observacion, long versionEsperada = 0, int documentoId = 0, int versionAocrEsperada = 0)
+        {
+            return RemitirAocrDirdac(new RemitirAocrDirdacRequest { SolicitudId=id,Observacion=observacion,VersionEsperada=versionEsperada,DocumentoId=documentoId,VersionAocrEsperada=versionAocrEsperada });
+        }
+
+        private ActionResult JsonWorkflow(AocrWorkflowResult result)
+        {
+            Response.StatusCode = result.HttpStatusCode > 0 ? result.HttpStatusCode : (result.Exito ? 200 : 500);
+            Response.TrySkipIisCustomErrors = true;
+            return Json(new AocrWorkflowResponse { Ok=result.Exito,Codigo=result.Codigo,Mensaje=result.Mensaje,Estado=result.EstadoNuevo,Version=result.VersionNueva,CorrelationId=result.CorrelationId });
         }
     }
 }

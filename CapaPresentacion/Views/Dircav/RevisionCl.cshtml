@@ -1,0 +1,360 @@
+@model CapaModelo.DTOs.CondicionesLimitacionesViewModel
+@{
+    ViewBag.Title = "Revisión y Firma de Condiciones y Limitaciones (DIRCAV) - Expediente #" + Model.SolicitudId;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var esFirmado = Model.TienePdfFirmado || Model.ClFirmadaDircav;
+}
+
+<div class="container-fluid px-3 py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb aocr-breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Bandeja", "Dircav")"><i class="fas fa-inbox me-1"></i>Bandeja DIRCAV</a></li>
+            <li class="breadcrumb-item"><a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.SolicitudId })">Solicitud #@Model.NumeroSolicitud</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Firma Institucional CL</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h2 class="h3 mb-1 text-primary fw-bold">
+                <i class="fas fa-stamp me-2"></i>Condiciones y Limitaciones - Firma Institucional DIRCAV
+            </h2>
+            <p class="text-muted mb-0">
+                Expediente: <strong>@Model.NumeroSolicitud</strong> | Operador: <strong>@Model.Compania</strong> | AOCR: <strong>@(string.IsNullOrWhiteSpace(Model.NumeroAocr) ? "Por Legalizar" : Model.NumeroAocr)</strong>
+            </p>
+        </div>
+        <div class="mt-2 mt-md-0 d-flex align-items-center gap-2">
+            <span class="badge @Model.EstadoBadgeCss fs-6 p-2 shadow-sm">
+                <i class="fas fa-info-circle me-1"></i>@Model.EstadoEtiqueta
+            </span>
+            <span class="badge bg-secondary fs-6 p-2">v@(Model.Version)</span>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    @if (TempData["Success"] != null || TempData["NotificacionMensaje"] != null)
+    {
+        var msg = TempData["Success"] ?? TempData["NotificacionMensaje"];
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@msg
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Panel de Estado de Firma e Integridad -->
+    @if (esFirmado)
+    {
+        <div class="card border-success shadow-sm mb-4">
+            <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-certificate me-2"></i>Documento Oficial Firmado Institucionalmente</span>
+                <span><i class="fas fa-check-double me-1"></i>Firma Válida</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <dl class="row mb-0 small">
+                            <dt class="col-4 text-muted">Firmado por:</dt>
+                            <dd class="col-8 fw-bold text-success">@(Model.DircavNombre ?? "Autoridad DIRCAV")</dd>
+
+                            <dt class="col-4 text-muted">Fecha de Firma:</dt>
+                            <dd class="col-8">@(Model.FechaFirmaDircav.HasValue ? Model.FechaFirmaDircav.Value.ToString("dd/MM/yyyy HH:mm:ss") : "N/A")</dd>
+
+                            <dt class="col-4 text-muted">Cód. Verificación:</dt>
+                            <dd class="col-8 font-monospace fw-bold">@(Model.CodigoVerificacion ?? "N/A")</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 bg-light rounded border small">
+                            <div class="text-muted fw-bold mb-1"><i class="fas fa-fingerprint me-1"></i>Hash SHA-256 (Inmutabilidad):</div>
+                            <div class="text-break font-monospace text-dark user-select-all" style="font-size: 0.8rem;">
+                                @(Model.HashPdfFirmado ?? Model.HashPdf ?? "N/A")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cierre Institucional Dual -->
+                <div class="mt-3 pt-3 border-top d-flex flex-wrap justify-content-between align-items-center">
+                    <div>
+                        @if (Model.ExpedienteListoParaCierre)
+                        {
+                            <span class="badge bg-success p-2">
+                                <i class="fas fa-award me-1"></i>Requisitos de Cierre Dual Completos (CL firmada por DIRCAV + AOCR firmado por DIRDAC)
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark p-2">
+                                <i class="fas fa-hourglass-half me-1"></i>CL Firmada por DIRCAV - Esperando firma de AOCR por DIRDAC para cierre y entrega final
+                            </span>
+                        }
+                    </div>
+                    <div class="mt-2 mt-sm-0">
+                        <a href="@Url.Action("DescargarCondicionesLimitaciones", "Documento", new { id = Model.SolicitudId })" class="btn btn-success fw-bold">
+                            <i class="fas fa-file-download me-1"></i>Descargar PDF Oficial Firmado
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3">
+        <!-- Columna Izquierda: Trazabilidad y Estaciones -->
+        <div class="col-lg-4">
+            <!-- Trazabilidad del Dictamen -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light fw-bold">
+                    <i class="fas fa-history me-2 text-primary"></i>Trazabilidad de Dictamen
+                </div>
+                <div class="card-body small">
+                    <div class="mb-2">
+                        <span class="text-muted d-block">1. Elaborado por (Inspector):</span>
+                        <strong>@(Model.InspectorNombre ?? "Inspector Asignado")</strong>
+                        <div class="text-muted small">Fecha Inf. Técnico: @(Model.FechaInformeTecnico.HasValue ? Model.FechaInformeTecnico.Value.ToString("dd/MM/yyyy") : "N/A")</div>
+                    </div>
+                    <div class="mb-2">
+                        <span class="text-muted d-block">2. Revisado por (Coordinador):</span>
+                        <strong>@(Model.CoordinadorNombre ?? "Coordinación")</strong>
+                        <div class="text-muted small">Fecha Revisión: @(Model.FechaRevisionCoordinador.HasValue ? Model.FechaRevisionCoordinador.Value.ToString("dd/MM/yyyy") : "N/A")</div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.ObservacionCoordinador))
+                    {
+                        <div class="p-2 bg-light rounded fst-italic text-secondary mt-1">
+                            "@Model.ObservacionCoordinador"
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Estaciones AC-02 -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-map-marker-alt me-2 text-success"></i>Estaciones Autorizadas (AC-02)</span>
+                    <span class="badge bg-primary">@(Model.Estaciones?.Count ?? 0)</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Estaciones != null && Model.Estaciones.Any())
+                    {
+                        <div class="list-group list-group-flush small">
+                            @foreach (var est in Model.Estaciones)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <strong class="text-primary">@est.EstacionCodigo - @est.EstacionNombre</strong>
+                                        <span class="badge bg-success">@est.Estado</span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="far fa-calendar-alt me-1"></i>@est.FechaInicio.ToString("dd/MM/yyyy") al @est.FechaFin.ToString("dd/MM/yyyy")
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted small">Sin estaciones configuradas.</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Flota -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light fw-bold">
+                    <i class="fas fa-plane me-2 text-info"></i>Flota y Equipos Autorizados
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Aeronaves != null && Model.Aeronaves.Any())
+                    {
+                        <ul class="list-group list-group-flush small">
+                            @foreach (var aero in Model.Aeronaves)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>@aero.Marca @aero.Modelo</strong>
+                                        <div class="text-muted small">Matrícula: @aero.Matricula</div>
+                                    </div>
+                                    <span class="badge bg-secondary">Serie: @aero.Serie</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Contenido Técnico y Acciones DIRCAV -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-dark">
+                        <i class="fas fa-file-alt me-2 text-primary"></i>Especificaciones Técnicas para Dictamen DIRCAV
+                    </h5>
+                    <div>
+                        <a href="@Url.Action("DescargarCondicionesLimitaciones", "Documento", new { id = Model.SolicitudId, vistaPrevia = true })" target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-eye me-1"></i>Vista Previa Oficial
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">RUTAS AUTORIZADAS</label>
+                        <div class="p-3 bg-light rounded border">@Model.RutasAutorizadas</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">ALCANCE DE LAS OPERACIONES</label>
+                        <div class="p-3 bg-light rounded border">@Model.AlcanceAutorizado</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">CONDICIONES APROBADAS (RDAC 129)</label>
+                        <div class="p-3 bg-light rounded border" style="white-space: pre-wrap;">@Model.CondicionesAprobadas</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">LIMITACIONES REGULATORIAS</label>
+                        <div class="p-3 bg-light rounded border" style="white-space: pre-wrap;">@Model.Limitaciones</div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Observaciones))
+                    {
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small">OBSERVACIONES TÉCNICAS</label>
+                            <div class="p-3 bg-light rounded border" style="white-space: pre-wrap;">@Model.Observaciones</div>
+                        </div>
+                    }
+
+                    <!-- Barra de Acciones DIRCAV -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top">
+                        <a href="@Url.Action("Bandeja", "Dircav", new { tab = "condiciones" })" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Volver a Bandeja DIRCAV
+                        </a>
+
+                        <div class="mt-2 mt-sm-0">
+                            @if (Model.PuedeDevolverCoordinador)
+                            {
+                                <button type="button" class="btn btn-warning me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#modalDevolverCoordinador">
+                                    <i class="fas fa-reply me-1"></i>Devolver a Coordinación
+                                </button>
+                            }
+
+                            @if (Model.PuedeFirmarDircav)
+                            {
+                                <button type="button" class="btn btn-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#modalFirmarDircav">
+                                    <i class="fas fa-signature me-1"></i>Firmar Institucionalmente CL
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Devolver a Coordinación -->
+@if (Model.PuedeDevolverCoordinador)
+{
+    <div class="modal fade" id="modalDevolverCoordinador" tabindex="-1" aria-labelledby="modalDevolverCoordinadorLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                @using (Html.BeginForm("DevolverClCoordinador", "Dircav", FormMethod.Post, new { id = "formDevolverDircav" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("SolicitudId", Model.SolicitudId)
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title" id="modalDevolverCoordinadorLabel">
+                            <i class="fas fa-reply me-2"></i>Devolver Documento a Coordinación
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning small mb-3">
+                            <i class="fas fa-exclamation-triangle me-1"></i>La observación motivada es <strong>obligatoria</strong>. El documento pasará a estado <strong>CL_DEVUELTA_COORDINADOR</strong>.
+                        </div>
+                        <div class="mb-3">
+                            <label for="obsDevolucionDircav" class="form-label fw-bold">Motivo técnico de devolución <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="obsDevolucionDircav" name="Observacion" rows="4" placeholder="Especifique con detalle las razones técnicas o regulatorias para la devolución..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning fw-bold" id="btnConfirmarDevolverDircav">
+                            <i class="fas fa-reply me-1"></i>Confirmar Devolución
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal: Firmar Institucionalmente CL (Exclusivo DIRCAV) -->
+@if (Model.PuedeFirmarDircav)
+{
+    <div class="modal fade" id="modalFirmarDircav" tabindex="-1" aria-labelledby="modalFirmarLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                @using (Html.BeginForm("FirmarCondicionesLimitaciones", "Dircav", FormMethod.Post, new { id = "formFirmarDircav" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("SolicitudId", Model.SolicitudId)
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="modalFirmarLabel">
+                            <i class="fas fa-signature me-2"></i>Firma Institucional de Condiciones y Limitaciones
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info small mb-3">
+                            <i class="fas fa-shield-alt me-1"></i>Usted está a punto de estampar la <strong>firma institucional exclusiva de la Autoridad DIRCAV</strong> sobre las Condiciones y Limitaciones del trámite <strong>#@Model.NumeroSolicitud</strong>.
+                            El sistema generará el PDF inmutable, sellará el hash SHA-256 e incorporará el código de verificación oficial.
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="passwordCertificado" class="form-label fw-bold">Contraseña del Certificado / Token Digital:</label>
+                            <input type="password" class="form-control" id="passwordCertificado" name="PasswordCertificado" placeholder="Ingrese su clave de firma digital institucional..." autocomplete="current-password" />
+                            <div class="form-text">Si el ambiente opera con firma institucional del servidor, deje en blanco para validación automática.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4" id="btnConfirmarFirmarDircav">
+                            <i class="fas fa-stamp me-1"></i>Firmar y Legalizar Documento
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            $('#formDevolverDircav').on('submit', function () {
+                var btn = $('#btnConfirmarDevolverDircav');
+                if (btn.length) {
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Devolviendo...');
+                }
+            });
+
+            $('#formFirmarDircav').on('submit', function () {
+                var btn = $('#btnConfirmarFirmarDircav');
+                if (btn.length) {
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Firmando y generando PDF...');
+                }
+            });
+        });
+    </script>
+}

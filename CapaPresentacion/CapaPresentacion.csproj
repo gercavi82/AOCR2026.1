@@ -3018,6 +3018,8 @@
     <Content Include="Views\Direccion\Editar.cshtml" />
     <Content Include="Views\Direccion\Eliminar.cshtml" />
     <Content Include="Views\Direccion\Index.cshtml" />
+    <Content Include="Views\Dirdac\Bandeja.cshtml" />
+    <Content Include="Views\Dirdac\Detalle.cshtml" />
     <Content Include="Views\Financiero\TodasOrdenes.cshtml" />
     <Content Include="Views\ReportesFinancieros\Index.cshtml" />
     <Content Include="Views\ReportesFinancieros\_Filtros.cshtml" />

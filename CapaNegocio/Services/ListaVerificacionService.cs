@@ -187,8 +187,51 @@ namespace CapaNegocio.Services
         #region Guardado, Finalización y Firma
 
         /// <summary>
+        /// AC-08: Valida la completitud exhaustiva de la LV (cabecera e ítems obligatorios).
+        /// Garantiza que no pueda ser guardada como completa, finalizada o firmada con ítems pendientes.
+        /// </summary>
+        public bool ValidarCompletitudParaFinalizar(ListaVerificacionOperacionalEae lista, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (lista == null)
+            {
+                mensaje = "No existe una lista de verificación operacional EAE para procesar.";
+                return false;
+            }
+
+            AsegurarItemsDeserializados(lista);
+
+            List<string> errores;
+            if (!lista.ValidarCompletitud(out errores))
+            {
+                mensaje = errores != null && errores.Count > 0 ? errores[0] : "La lista de verificación contiene ítems incompletos.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private void AsegurarItemsDeserializados(ListaVerificacionOperacionalEae lista)
+        {
+            if (lista == null) return;
+            if (lista.Items != null && lista.Items.Count > 0) return;
+            if (string.IsNullOrWhiteSpace(lista.ItemsJson) || lista.ItemsJson.Trim() == "[]") return;
+
+            try
+            {
+                lista.Items = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ListaVerificacionOperacionalEaeItem>>(lista.ItemsJson)
+                    ?? new List<ListaVerificacionOperacionalEaeItem>();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
+        /// <summary>
         /// Guarda el borrador o avance de respuestas de la LV.
         /// Si la LV ya está firmada, arroja InvalidOperationException (inmutabilidad estricta).
+        /// AC-08: Asigna LV_COMPLETA solo si la validación exhaustiva de completitud es exitosa; de lo contrario queda en LV_EN_PROCESO.
         /// </summary>
         public ListaVerificacionOperacionalEae GuardarRespuestas(ListaVerificacionOperacionalEae lista, int usuarioId, string rol)
         {
@@ -206,7 +249,10 @@ namespace CapaNegocio.Services
                 throw new InvalidOperationException("Conflicto (409): La lista de verificación ya se encuentra firmada oficialmente y es inmutable.");
             }
 
-            lista.EstadoLista = lista.EstaCompleta() ? AocrEstadosListaVerificacion.Completa : AocrEstadosListaVerificacion.EnProceso;
+            string mensajeComp;
+            lista.EstadoLista = ValidarCompletitudParaFinalizar(lista, out mensajeComp)
+                ? AocrEstadosListaVerificacion.Completa
+                : AocrEstadosListaVerificacion.EnProceso;
             lista.Vigente = true;
 
             return _lvDao.GuardarBorrador(lista, usuarioId);
@@ -214,6 +260,7 @@ namespace CapaNegocio.Services
 
         /// <summary>
         /// Finaliza formalmente la LV antes de la firma digital.
+        /// AC-08: Bloquea si existe algún ítem aplicable o campo de cabecera incompleto.
         /// </summary>
         public void FinalizarLista(int codigoLv, int usuarioId, string rol)
         {
@@ -230,12 +277,19 @@ namespace CapaNegocio.Services
                 throw new InvalidOperationException("La lista de verificación ya está firmada.");
             }
 
+            string mensaje;
+            if (!ValidarCompletitudParaFinalizar(lv, out mensaje))
+            {
+                throw new InvalidOperationException(mensaje);
+            }
+
             _lvDao.MarcarFinalizada(codigoLv, lv.RutaPdf, AocrEstadosListaVerificacion.Completa, usuarioId);
         }
 
         /// <summary>
         /// Firma digital o institucionalmente la LV correspondiente a la estación.
         /// Garantiza inmutabilidad y sella los metadatos de autoría y fecha.
+        /// AC-08: Bloquea si la LV no está finalizada o contiene ítems incompletos.
         /// </summary>
         public void FirmarLista(
             int codigoLv,
@@ -256,6 +310,17 @@ namespace CapaNegocio.Services
             if (lv.FirmadoTecnico)
             {
                 throw new InvalidOperationException("La lista de verificación ya se encuentra firmada y es inmutable.");
+            }
+
+            if (!lv.Finalizado)
+            {
+                throw new InvalidOperationException("Debe finalizar la lista de verificación operacional EAE antes de firmarla.");
+            }
+
+            string mensaje;
+            if (!ValidarCompletitudParaFinalizar(lv, out mensaje))
+            {
+                throw new InvalidOperationException(mensaje);
             }
 
             _lvDao.MarcarFirmada(

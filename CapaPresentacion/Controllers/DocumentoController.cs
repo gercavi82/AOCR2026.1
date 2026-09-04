@@ -472,6 +472,52 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        // GET: Documento/DescargarCondicionesLimitaciones/5?vistaPrevia=false
+        [HttpGet]
+        public ActionResult DescargarCondicionesLimitaciones(int id, bool vistaPrevia = false)
+        {
+            try
+            {
+                if (id <= 0) return new HttpStatusCodeResult(HttpStatusCode.BadRequest, "ID de solicitud inválido.");
+
+                int usuarioId;
+                TryObtenerUsuarioActualId(out usuarioId);
+                var rolActual = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+
+                if (AocrRolesInstitucionales.EsAdministrador(rolActual))
+                {
+                    return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: El rol Administrador no puede descargar este documento (Regla 7).");
+                }
+
+                var clSvc = new CondicionesLimitacionesService();
+
+                if (vistaPrevia)
+                {
+                    var previewBytes = clSvc.GenerarVistaPrevia(id, usuarioId, rolActual);
+                    Response.Headers["X-Content-Type-Options"] = "nosniff";
+                    return File(previewBytes, "application/pdf");
+                }
+
+                string nombreArchivo;
+                var bytes = clSvc.ObtenerDocumentoParaDescarga(id, usuarioId, rolActual, out nombreArchivo);
+
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                return File(bytes, "application/pdf", nombreArchivo);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, ex.Message);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.InternalServerError, "Error al descargar Condiciones y Limitaciones: " + ex.Message);
+            }
+        }
+
         #endregion
 
         #region Gestión (Eliminar / Aprobar / Rechazar)

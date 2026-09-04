@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.DAOs;
+using CapaNegocio.Services;
 
 namespace CapaNegocio
 {
@@ -20,6 +21,10 @@ namespace CapaNegocio
                 { "LEGAL_REVISAR_SOLICITUD", new[] { "Administrador", "CoordinacionLegal", "CoordinadorLegal" } },
                 { "LEGAL_GENERAR_CERTIFICADO", new[] { "Administrador", "CoordinacionLegal", "CoordinadorLegal", "DirectorGeneral" } },
                 { "ORD_ANULAR", new[] { "Administrador", "Solicitante", "Operador" } }
+                ,{ AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { "DIRCAV", "DCAV" } }
+                ,{ AocrFinalWorkflowService.PermisoBandejaDirdac, new[] { "DIRDAC" } }
+                ,{ AocrFinalWorkflowService.PermisoDevolverDircav, new[] { "DIRDAC" } }
+                ,{ AocrFinalWorkflowService.PermisoFirmarAocr, new[] { "DIRDAC" } }
             };
 
         public static bool InfraestructuraPermisosDisponible()

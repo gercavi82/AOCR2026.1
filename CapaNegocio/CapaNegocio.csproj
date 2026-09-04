@@ -193,6 +193,7 @@
     <Compile Include="Services\InformeTecnicoEstadoService.cs" />
     <Compile Include="Services\InspectorBandejaService.cs" />
     <Compile Include="Services\AocrFinalWorkflowService.cs" />
+    <Compile Include="Interfaces\IAocrFinalWorkflowService.cs" />
     <Compile Include="Services\AocrFinalizacionService.cs" />
     <Compile Include="Services\AocrProcesoNotificacionService.cs" />
     <Compile Include="Services\AocrEstadoService.cs" />
@@ -236,6 +237,7 @@
     <Compile Include="Services\DircavDesignacionService.cs" />
     <Compile Include="Services\DesignacionDocumentoService.cs" />
     <Compile Include="Services\ListaVerificacionService.cs" />
+    <Compile Include="Services\CondicionesLimitacionesService.cs" />
     <Compile Include="Services\DirdacBandejaService.cs" />
     <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Services\OrdenInspeccionViaticosReglas.cs" />

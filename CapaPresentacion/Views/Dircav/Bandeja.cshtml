@@ -272,8 +272,8 @@
                                     <td><span class="badge bg-info text-dark">Condiciones y Limitaciones</span></td>
                                     <td><span class="badge bg-warning text-dark">@item.EstadoDocumentoCondiciones</span></td>
                                     <td class="text-end">
-                                        <a href="@Url.Action("Detalle", "Dircav", new { id = item.SolicitudId })" class="btn btn-sm btn-danger">
-                                            <i class="fas fa-file-signature me-1"></i>Firmar C&L
+                                        <a href="@Url.Action("RevisionCl", "Dircav", new { id = item.SolicitudId })" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-file-contract me-1"></i>Revisar / Firmar CL
                                         </a>
                                     </td>
                                 </tr>

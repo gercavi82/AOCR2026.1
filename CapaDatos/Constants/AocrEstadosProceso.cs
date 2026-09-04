@@ -29,7 +29,10 @@ namespace CapaDatos.Constants
 
         // 3. Etapa de Revisión Final Documental
         public const string PendienteRevisionFinalCoordinador = "PENDIENTE_REVISION_FINAL_COORDINADOR";
+        public const string PaqueteBorradorInspector = "PAQUETE_BORRADOR_INSPECTOR";
+        public const string DevueltoInspectorFinal = "DEVUELTO_INSPECTOR_FINAL";
         public const string PendienteRevisionFinalDircav = "PENDIENTE_REVISION_FINAL_DIRCAV";
+        public const string DevueltoCoordinadorFinal = "DEVUELTO_COORDINADOR_FINAL";
         public const string DevueltoCoordinadorFinalDircav = "DEVUELTO_COORDINADOR_FINAL_DIRCAV";
 
         // 4. Etapa de Condiciones y Limitaciones (Firma Exclusiva DIRCAV)
@@ -47,11 +50,13 @@ namespace CapaDatos.Constants
         public const string AocrPendienteDirdac = "AOCR_PENDIENTE_DIRDAC";
         public const string PendienteFirmaAocrDirdac = "PENDIENTE_FIRMA_AOCR_DIRDAC";
         public const string DevueltoDircavPorDirdac = "DEVUELTO_DIRCAV_POR_DIRDAC";
+        public const string DevueltoDircav = "DEVUELTO_DIRCAV";
         public const string AocrFirmadaDirdac = "AOCR_FIRMADA_DIRDAC";
         public const string AocrFirmadoDirdac = "AOCR_FIRMADO_DIRDAC";
 
         // 6. Cierre Institucional
         public const string FirmasCompletas = "FIRMAS_COMPLETAS";
+        public const string ListoParaEntrega = "LISTO_PARA_ENTREGA";
         public const string Entregado = "ENTREGADO";
         public const string DocumentosEntregados = "DOCUMENTOS_ENTREGADOS";
         public const string DocumentacionFinalCompleta = "DOCUMENTACION_FINAL_COMPLETA";

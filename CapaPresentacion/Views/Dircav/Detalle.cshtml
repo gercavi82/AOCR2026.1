@@ -168,11 +168,15 @@
                     <div class="p-3 border rounded bg-light">
                         <h6 class="fw-bold text-primary"><i class="fas fa-paper-plane me-1"></i>4. Remitir Expediente Aprobado a DIRDAC</h6>
                         <p class="small text-muted mb-2">Habiendo completado la revisión y firma de C&L, remite el AOCR al Director General (DIRDAC) para su firma y legalización final.</p>
-                        @using (Html.BeginForm("RemitirDIRDAC", "Dircav", FormMethod.Post))
+                        @{ var contextoRemision = ViewBag.ContextoRemisionDirdac as CapaModelo.BandejaAocrDirdacItemViewModel; }
+                        @using (Html.BeginForm("RemitirAocrDirdac", "Dircav", FormMethod.Post, new { data_confirm = "¿Remitir el AOCR vigente a DIRDAC?" }))
                         {
                             @Html.AntiForgeryToken()
-                            @Html.Hidden("id", Model.CodigoSolicitud)
-                            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-share me-1"></i>Remitir a DIRDAC para Firma Final</button>
+                            @Html.Hidden("SolicitudId", Model.CodigoSolicitud)
+                            @Html.Hidden("DocumentoId", contextoRemision != null ? contextoRemision.DocumentoId : 0)
+                            @Html.Hidden("VersionAocrEsperada", contextoRemision != null ? contextoRemision.VersionDocumento : 0)
+                            @Html.Hidden("VersionEsperada", contextoRemision != null ? contextoRemision.VersionExpediente : 0)
+                            <button type="submit" class="btn btn-primary btn-sm btn-prevenir-doble" @(contextoRemision == null ? "disabled" : null)><i class="fas fa-share me-1"></i>Remitir a DIRDAC para Firma Final</button>
                         }
                     </div>
                 </div>

@@ -1,199 +1,125 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+using System.IO;
+using System.Security.Cryptography;
 using System.Web.Mvc;
 using CapaDatos.Constants;
-using CapaDatos.DAOs;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Interfaces;
 using CapaNegocio.Services;
 using CapaPresentacion.Filters;
-using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion.Controllers
 {
-    /// <summary>
-    /// Controlador exclusivo para el rol DIRDAC (Director General de Aviación Civil).
-    /// Maneja la revisión del AOCR, legalización y firma exclusiva del AOCR, devolución con
-    /// observaciones a DIRCAV y confirmación de conclusión formal del trámite.
-    /// Bloquea terminantemente acciones operativas del Administrador (Regla 7) y de DIRCAV.
-    /// </summary>
-    [Authorize(Roles = "DIRDAC,Administrador")]
+    /// <summary>Superficie MVC exclusiva DIRDAC para AC-11.</summary>
+    [Authorize(Roles = "DIRDAC")]
     public class DirdacController : Controller
     {
-        private readonly DirdacBandejaService _bandejaService;
-        private readonly SolicitudAOCRDAO _solicitudDao;
-        private readonly CertificadoDAO _certificadoDao;
-        private readonly AocrFirmaDocumentoDAO _firmaDao;
+        private readonly IAocrFinalWorkflowService _workflow;
 
-        public DirdacController()
+        public DirdacController() : this(new AocrFinalWorkflowService()) { }
+
+        public DirdacController(IAocrFinalWorkflowService workflow)
         {
-            _bandejaService = new DirdacBandejaService();
-            _solicitudDao = new SolicitudAOCRDAO();
-            _certificadoDao = new CertificadoDAO();
-            _firmaDao = new AocrFirmaDocumentoDAO();
+            _workflow = workflow ?? throw new ArgumentNullException("workflow");
         }
 
-        public DirdacController(
-            DirdacBandejaService bandejaService,
-            SolicitudAOCRDAO solicitudDao,
-            CertificadoDAO certificadoDao,
-            AocrFirmaDocumentoDAO firmaDao)
-        {
-            _bandejaService = bandejaService;
-            _solicitudDao = solicitudDao;
-            _certificadoDao = certificadoDao;
-            _firmaDao = firmaDao;
-        }
-
-        private bool EsDirdacAutorizado()
-        {
-            var rolActual = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
-            // Solo rol activo DIRDAC; el Administrador no puede ejecutar acciones operativas
-            return AocrRolesInstitucionales.EsDirdac(rolActual);
-        }
-
-        // =======================================================
-        // 1. BANDEJA INSTITUCIONAL DIRDAC
-        // =======================================================
         [HttpGet]
-        public ActionResult Bandeja(string tab = "revision")
+        [RequirePermission(AocrFinalWorkflowService.PermisoBandejaDirdac)]
+        public ActionResult BandejaAocr()
         {
-            if (!EsDirdacAutorizado() && !User.IsInRole("DIRDAC"))
-            {
-                return new HttpStatusCodeResult(403, "No tiene permisos para acceder a la bandeja DIRDAC.");
-            }
-
-            ViewBag.ActiveTab = tab ?? "revision";
-            ViewBag.ContadorRevision = _bandejaService.ContarAocrPendientesRevision();
-            ViewBag.ContadorFirma = _bandejaService.ContarAocrPendientesFirma();
-            ViewBag.ContadorDevueltos = _bandejaService.ContarExpedientesDevueltosDircav();
-
-            ViewBag.AocrPendientesRevision = _bandejaService.ObtenerAocrPendientesRevision();
-            ViewBag.AocrPendientesFirma = _bandejaService.ObtenerAocrPendientesFirma();
-            ViewBag.ExpedientesDevueltos = _bandejaService.ObtenerExpedientesDevueltosDircav();
-            ViewBag.AocrFirmados = _bandejaService.ObtenerAocrFirmados();
-            ViewBag.ProcesosConcluidos = _bandejaService.ObtenerProcesosConcluidos();
-            ViewBag.Historial = _bandejaService.ObtenerHistorialGestionados();
-
-            return View();
+            if (!EsDirdacActivo()) return new HttpStatusCodeResult(403, "La bandeja es exclusiva del rol activo DIRDAC.");
+            return View("Bandeja", _workflow.ObtenerBandejaDirdac());
         }
 
-        // =======================================================
-        // 2. DETALLE DE AOCR Y EXPEDIENTE PARA DIRDAC
-        // =======================================================
         [HttpGet]
+        public ActionResult Bandeja(string tab = null)
+        {
+            return RedirectToAction("BandejaAocr");
+        }
+
+        [HttpGet]
+        [RequirePermission(AocrFinalWorkflowService.PermisoBandejaDirdac)]
         public ActionResult Detalle(int id)
         {
-            if (id <= 0) return new HttpStatusCodeResult(400, "ID de solicitud inválido.");
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
-
-            // Confirmar que Condiciones y Limitaciones tiene firma DIRCAV
-            var firmaDircav = _firmaDao.ObtenerUltimoPorSolicitudTipo(id, "CONDICIONES")
-                ?? _firmaDao.ObtenerUltimoPorSolicitudTipo(id, "CONDICIONES_LIMITACIONES");
-            ViewBag.TieneFirmaDircav = firmaDircav != null;
-
-            return View(solicitud);
+            if (!EsDirdacActivo()) return new HttpStatusCodeResult(403);
+            var model = _workflow.ObtenerDetalleDirdac(id);
+            return model == null ? (ActionResult)HttpNotFound("Expediente AOCR no encontrado o no visible para DIRDAC.") : View(model);
         }
 
-        // =======================================================
-        // 3. FIRMAR Y LEGALIZAR AOCR (EXCLUSIVO DIRDAC)
-        // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult FirmarAOCR(int id, string passwordCertificado)
+        [RequirePermission(AocrFinalWorkflowService.PermisoDevolverDircav)]
+        public ActionResult DevolverAocrDircav(DevolverAocrDircavRequest request)
         {
-            if (!EsDirdacAutorizado())
-            {
-                return new HttpStatusCodeResult(403, "Acceso denegado: La firma y legalización del AOCR es exclusiva del rol DIRDAC.");
-            }
-
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
-
-            if (string.Equals(solicitud.Estado, AocrEstadosProceso.AocrFirmadaDirdac, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(solicitud.Estado, AocrEstadosProceso.Finalizado, StringComparison.OrdinalIgnoreCase))
-            {
-                return new HttpStatusCodeResult(409, "Conflicto: El AOCR ya se encuentra firmado o el proceso finalizado.");
-            }
-
-            var firmaDircav = _firmaDao.ObtenerUltimoPorSolicitudTipo(id, "CONDICIONES")
-                ?? _firmaDao.ObtenerUltimoPorSolicitudTipo(id, "CONDICIONES_LIMITACIONES");
-            var clFirmada = firmaDircav != null
-                || string.Equals(solicitud.Estado, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(solicitud.Estado, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase);
-
-            if (!clFirmada)
-            {
-                return new HttpStatusCodeResult(409, "Conflicto: No se puede legalizar el AOCR sin la firma previa obligatoria de DIRCAV en Condiciones y Limitaciones.");
-            }
-
-            solicitud.Estado = AocrEstadosProceso.AocrFirmadaDirdac;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            TempData["Success"] = "Documento AOCR firmado y legalizado formalmente por la Dirección General (DIRDAC).";
-            return RedirectToAction("Bandeja", new { tab = "firma" });
+            if (request == null) return Responder(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la solicitud de devolución."));
+            request.Actor = CrearActor(AocrFinalWorkflowService.PermisoDevolverDircav);
+            request.BaseUrl = ConstruirBaseUrl();
+            return Responder(_workflow.DevolverAocrDircav(request));
         }
 
-        // =======================================================
-        // 4. DEVOLVER EXPEDIENTE A DIRCAV (DIRDAC)
-        // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult DevolverDIRCAV(int id, string motivo)
+        [RequirePermission(AocrFinalWorkflowService.PermisoFirmarAocr)]
+        public ActionResult FirmarLegalizarAocr(FirmarLegalizarAocrRequest request)
         {
-            if (!EsDirdacAutorizado())
+            if (request == null) return Responder(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió evidencia de firma."));
+            request.Actor = CrearActor(AocrFinalWorkflowService.PermisoFirmarAocr);
+            var raizRelativa = "~/App_Data/Uploads/AOCR/Firmados/" + request.SolicitudId + "/";
+            if (string.IsNullOrWhiteSpace(request.RutaPdfFirmado)
+                || !request.RutaPdfFirmado.Replace('\\', '/').StartsWith(raizRelativa.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase))
+                return Responder(AocrWorkflowResult.Error(400, "RUTA_FIRMA_INVALIDA", "La evidencia firmada no pertenece al almacenamiento controlado del expediente."));
+            var fisica = Server.MapPath(request.RutaPdfFirmado);
+            if (string.IsNullOrWhiteSpace(fisica) || !System.IO.File.Exists(fisica) || new FileInfo(fisica).Length != request.TamanioPdfFirmado)
+                return Responder(AocrWorkflowResult.Error(409, "EVIDENCIA_NO_EXISTE", "El PDF firmado no existe o cambió en almacenamiento."));
+            using (var sha = SHA256.Create())
+            using (var stream = System.IO.File.OpenRead(fisica))
             {
-                return new HttpStatusCodeResult(403, "Solo el rol DIRDAC puede devolver el expediente a DIRCAV.");
+                var calculado = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty).ToLowerInvariant();
+                if (!string.Equals(calculado, request.HashPdfFirmado, StringComparison.OrdinalIgnoreCase))
+                    return Responder(AocrWorkflowResult.Error(409, "HASH_INVALIDO", "El hash del PDF firmado no coincide con la evidencia almacenada."));
             }
-
-            if (string.IsNullOrWhiteSpace(motivo))
-            {
-                TempData["Error"] = "El motivo de la devolución a DIRCAV es obligatorio.";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
-
-            if (string.Equals(solicitud.Estado, AocrEstadosProceso.Finalizado, StringComparison.OrdinalIgnoreCase))
-            {
-                return new HttpStatusCodeResult(409, "Conflicto: No se puede devolver un trámite concluido.");
-            }
-
-            solicitud.Estado = AocrEstadosProceso.DevueltoDircavPorDirdac;
-            solicitud.Observaciones = motivo;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            TempData["Warning"] = "Expediente devuelto a DIRCAV con las observaciones requeridas.";
-            return RedirectToAction("Bandeja", new { tab = "revision" });
+            return Responder(_workflow.FirmarLegalizarAocr(request));
         }
 
-        // =======================================================
-        // 5. CONFIRMAR LEGALIZACIÓN Y CIERRE FORMAL (DIRDAC)
-        // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult ConfirmarLegalizacion(int id)
+        public ActionResult DevolverDIRCAV(int id, string motivo, long versionEsperada = 0)
         {
-            if (!EsDirdacAutorizado())
+            return DevolverAocrDircav(new DevolverAocrDircavRequest { SolicitudId = id, Observacion = motivo, VersionEsperada = versionEsperada });
+        }
+
+        private bool EsDirdacActivo()
+        {
+            return AocrRolesInstitucionales.EsDirdac(Convert.ToString(Session != null ? Session["Rol"] : null));
+        }
+
+        private AocrWorkflowActor CrearActor(string permiso)
+        {
+            var rol = Convert.ToString(Session != null ? Session["Rol"] : null);
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            var idRaw = Convert.ToString(Session != null ? (Session["UsuarioId"] ?? Session["CodigoUsuario"]) : null);
+            int id; int.TryParse(idRaw, out id);
+            return new AocrWorkflowActor
             {
-                return new HttpStatusCodeResult(403, "Solo el rol DIRDAC puede confirmar la conclusión institucional del trámite.");
-            }
+                UsuarioId = id,
+                UsuarioNombre = User != null && User.Identity != null ? User.Identity.Name : codigoUsuario,
+                RolActivo = rol,
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, permiso, new[] { rol })
+            };
+        }
 
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
+        private string ConstruirBaseUrl()
+        {
+            return Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
+        }
 
-            solicitud.Estado = AocrEstadosProceso.Finalizado;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            TempData["Success"] = "Trámite AOCR legalizado y finalizado exitosamente. Notificado a RT e Inspector.";
-            return RedirectToAction("Bandeja", new { tab = "concluidos" });
+        private ActionResult Responder(AocrWorkflowResult result)
+        {
+            Response.StatusCode = result.HttpStatusCode > 0 ? result.HttpStatusCode : (result.Exito ? 200 : 500);
+            Response.TrySkipIisCustomErrors = true;
+            return Json(new AocrWorkflowResponse { Ok=result.Exito,Codigo=result.Codigo,Mensaje=result.Mensaje,Estado=result.EstadoNuevo,Version=result.VersionNueva,CorrelationId=result.CorrelationId });
         }
     }
 }
