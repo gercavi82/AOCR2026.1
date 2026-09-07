@@ -57,6 +57,7 @@ namespace CapaNegocio.Services
         private readonly HallazgoDAO _hallazgoDao;
         private readonly IAocrFinalWorkflowRepository _workflowRepository;
         private readonly IEntregaFinalService _entregaFinalService;
+        private readonly AocrProcesoNotificacionService _notificacionService;
 
         public const string PermisoRemitirDirdac = "DIRCAV_REMITIR_DIRDAC";
         public const string PermisoBandejaDirdac = "DIRDAC_VER_BANDEJA";
@@ -71,17 +72,20 @@ namespace CapaNegocio.Services
             _hallazgoDao = new HallazgoDAO();
             _workflowRepository = new AocrFinalWorkflowDAO();
             _entregaFinalService = new EntregaFinalService();
+            _notificacionService = new AocrProcesoNotificacionService();
         }
 
         public AocrFinalWorkflowService(IAocrFinalWorkflowRepository workflowRepository)
         {
             _workflowRepository = workflowRepository ?? throw new ArgumentNullException("workflowRepository");
+            _notificacionService = new AocrProcesoNotificacionService();
         }
 
         public AocrFinalWorkflowService(IAocrFinalWorkflowRepository workflowRepository, IEntregaFinalService entregaFinalService)
         {
             _workflowRepository = workflowRepository ?? throw new ArgumentNullException("workflowRepository");
             _entregaFinalService = entregaFinalService;
+            _notificacionService = new AocrProcesoNotificacionService();
         }
 
         public AocrWorkflowResult RemitirAocrDirdac(RemitirAocrDirdacRequest request)
@@ -90,7 +94,19 @@ namespace CapaNegocio.Services
             if (error != null) return error;
             if (request == null || request.SolicitudId <= 0 || request.DocumentoId <= 0 || request.VersionEsperada <= 0 || request.VersionAocrEsperada <= 0)
                 return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud, documento y versiones esperadas son obligatorios.");
-            return EjecutarSeguro(() => _workflowRepository.RemitirAocrDirdac(request));
+            
+            var resultado = EjecutarSeguro(() => _workflowRepository.RemitirAocrDirdac(request));
+            
+            if (resultado.Exito && _notificacionService != null)
+            {
+                try
+                {
+                    _notificacionService.NotificarAocrRemitidoDirdac(request.SolicitudId);
+                }
+                catch { /* No bloquear la transacción si la notificación falla */ }
+            }
+            
+            return resultado;
         }
 
         public BandejaAocrDirdacViewModel ObtenerBandejaDirdac()
@@ -118,7 +134,19 @@ namespace CapaNegocio.Services
             if (observacion.Length < 10 || observacion.Length > 2000 || observacion.Any(char.IsControl))
                 return AocrWorkflowResult.Error(400, "OBSERVACION_INVALIDA", "La observación debe contener entre 10 y 2000 caracteres válidos.");
             request.Observacion = observacion;
-            return EjecutarSeguro(() => _workflowRepository.DevolverAocrDircav(request));
+            
+            var resultado = EjecutarSeguro(() => _workflowRepository.DevolverAocrDircav(request));
+            
+            if (resultado.Exito && _notificacionService != null)
+            {
+                try
+                {
+                    _notificacionService.NotificarAocrDevueltoDircav(request.SolicitudId, observacion);
+                }
+                catch { /* No bloquear la transacción si la notificación falla */ }
+            }
+            
+            return resultado;
         }
 
         public AocrWorkflowResult FirmarLegalizarAocr(FirmarLegalizarAocrRequest request)
@@ -129,7 +157,19 @@ namespace CapaNegocio.Services
                 return AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "Solicitud, documento y versiones esperadas son obligatorios.");
             if (string.IsNullOrWhiteSpace(request.RutaPdfFirmado) || request.TamanioPdfFirmado <= 4 || !EsSha256(request.HashPdfFirmado))
                 return AocrWorkflowResult.Error(400, "FIRMA_INVALIDA", "La evidencia PDF firmada y su hash SHA-256 son obligatorios.");
+            
             var resultado = EjecutarSeguro(() => _workflowRepository.FirmarLegalizarAocr(request));
+            
+            // Notificar firma exitosa
+            if (resultado.Exito && _notificacionService != null)
+            {
+                try
+                {
+                    _notificacionService.NotificarAocrFirmadoDirdac(request.SolicitudId, request.Actor.UsuarioNombre);
+                }
+                catch { /* No bloquear la transacción si la notificación falla */ }
+            }
+            
             if (resultado.Exito && string.Equals(resultado.EstadoNuevo, AocrEstadosProceso.FirmasCompletas, StringComparison.OrdinalIgnoreCase)
                 && _entregaFinalService != null)
             {
@@ -154,6 +194,16 @@ namespace CapaNegocio.Services
                     resultado.EstadoNuevo = entrega.EstadoExpediente;
                     resultado.VersionNueva = entrega.VersionExpediente;
                     resultado.CorrelationId = entrega.CorrelationId;
+                    
+                    // Notificar cierre institucional
+                    if (_notificacionService != null)
+                    {
+                        try
+                        {
+                            _notificacionService.NotificarFirmasCompletas(request.SolicitudId);
+                        }
+                        catch { /* No bloquear si la notificación falla */ }
+                    }
                 }
                 else
                 {

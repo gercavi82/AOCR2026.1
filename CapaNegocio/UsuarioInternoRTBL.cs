@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
+using CapaModelo.RT;
 
 namespace CapaNegocio
 {
@@ -94,6 +95,18 @@ namespace CapaNegocio
             return _dao.ExisteCorreoInstitucional(correo, excluirId);
         }
 
+        /// <summary>
+        /// AC-01: Valida contextualmente la disponibilidad del correo de un Representante Técnico.
+        /// Diferencia entre: email en proceso activo vs email liberado por devolución.
+        /// </summary>
+        public static ResultadoValidacionCorreoRT ValidarCorreoRepresentante(
+            string correo,
+            string identificacion = null,
+            string companiaCodigo = null)
+        {
+            return UsuarioDAO.PuedeUsarseCorreoRepresentante(correo, identificacion, companiaCodigo);
+        }
+
         public static bool ExisteTecnicoActivo(int tecnicoId, int? excluirId = null)
         {
             return _dao.ExisteTecnicoActivo(tecnicoId, excluirId);
@@ -152,10 +165,21 @@ namespace CapaNegocio
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(registro.CorreoInstitucional) && ExisteCorreoInstitucional(registro.CorreoInstitucional, esEdicion ? (int?)registro.Id : null))
+            // AC-01: Validación contextual de correo (Representante Técnico)
+            if (!string.IsNullOrWhiteSpace(registro.CorreoInstitucional))
             {
-                mensaje = "El correo institucional ya está asignado a otro usuario interno activo.";
-                return false;
+                var identificacion = (registro.Identificacion ?? string.Empty).Trim();
+                var validacionCorreo = UsuarioDAO.PuedeUsarseCorreoRepresentante(
+                    registro.CorreoInstitucional,
+                    identificacion: identificacion,
+                    companiaCodigo: null, // No se pasa compañía en nivel de usuario interno
+                    excluirUsuarioId: null);
+
+                if (!validacionCorreo.Valido)
+                {
+                    mensaje = validacionCorreo.Mensaje;
+                    return false;
+                }
             }
 
             return true;

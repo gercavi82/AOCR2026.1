@@ -10,6 +10,7 @@
     <RootNamespace>AOCR.Tests</RootNamespace>
     <AssemblyName>AOCR.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <IsTestProject>true</IsTestProject>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>

@@ -61,6 +61,97 @@ namespace CapaNegocio.Services
             RegistrarEventoGate8("DOCUMENTOS_FIRMADOS", solicitudId, "CONDICIONES_LIMITACIONES");
         }
 
+        // =======================================================
+        // AC-11: NOTIFICACIONES DE REMISIÓN A DIRDAC
+        // =======================================================
+        public void NotificarAocrRemitidoDirdac(int solicitudId)
+        {
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+                if (solicitud == null) return;
+
+                NotificarEventoSimple(solicitudId, "AOCR_REMITIDO_DIRDAC", 
+                    "Sistema AOCR - AOCR remitido a DIRDAC",
+                    $"El AOCR para la solicitud {solicitud.NumeroSolicitud} fue remitido a DIRDAC para su firma y legalización.");
+                
+                Trace.TraceInformation("[AC11_NOTIF] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_REMITIDO_DIRDAC;");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[AC11_NOTIF_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_REMITIDO_DIRDAC; Exception=" + ex.Message);
+            }
+        }
+
+        public void NotificarAocrDevueltoDircav(int solicitudId, string observacion = "")
+        {
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+                if (solicitud == null) return;
+
+                var msg = $"El AOCR para la solicitud {solicitud.NumeroSolicitud} fue devuelto a DIRCAV por DIRDAC";
+                if (!string.IsNullOrWhiteSpace(observacion))
+                {
+                    msg += $". Observación: {observacion}";
+                }
+
+                NotificarEventoSimple(solicitudId, "AOCR_DEVUELTO_DIRCAV",
+                    "Sistema AOCR - AOCR devuelto a DIRCAV",
+                    msg);
+
+                Trace.TraceInformation("[AC11_NOTIF] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_DEVUELTO_DIRCAV;");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[AC11_NOTIF_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_DEVUELTO_DIRCAV; Exception=" + ex.Message);
+            }
+        }
+
+        public void NotificarAocrFirmadoDirdac(int solicitudId, string firmante = "")
+        {
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+                if (solicitud == null) return;
+
+                var msg = $"El AOCR para la solicitud {solicitud.NumeroSolicitud} fue firmado por DIRDAC";
+                if (!string.IsNullOrWhiteSpace(firmante))
+                {
+                    msg += $" ({firmante})";
+                }
+
+                NotificarEventoSimple(solicitudId, "AOCR_FIRMADO_DIRDAC",
+                    "Sistema AOCR - AOCR firmado por DIRDAC",
+                    msg);
+
+                Trace.TraceInformation("[AC11_NOTIF] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_FIRMADO_DIRDAC; Firmante=" + (firmante ?? "") + ";");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[AC11_NOTIF_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=AOCR_FIRMADO_DIRDAC; Exception=" + ex.Message);
+            }
+        }
+
+        public void NotificarFirmasCompletas(int solicitudId)
+        {
+            try
+            {
+                var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+                if (solicitud == null) return;
+
+                NotificarEventoSimple(solicitudId, "FIRMAS_COMPLETAS",
+                    "Sistema AOCR - Firmas institucionales completas",
+                    $"El expediente {solicitud.NumeroSolicitud} ha completado las firmas institucionales (DIRCAV en C&L y DIRDAC en AOCR). Listo para entrega.");
+
+                Trace.TraceInformation("[AC11_NOTIF] SolicitudId=" + solicitudId + "; TipoEvento=FIRMAS_COMPLETAS;");
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[AC11_NOTIF_ERROR] SolicitudId=" + solicitudId + "; TipoEvento=FIRMAS_COMPLETAS; Exception=" + ex.Message);
+            }
+        }
+
         public bool NotificarProcesoAocrFinalizado(int solicitudId)
         {
             Trace.TraceInformation("[NOTIF_AOCR][EVENT_IN] SolicitudId=" + solicitudId + "; TipoEvento=" + EventoFinalRt + ";");

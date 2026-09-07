@@ -786,6 +786,28 @@ namespace CapaPresentacion.Controllers
             return RemitirAocrDirdac(new RemitirAocrDirdacRequest { SolicitudId=id,Observacion=observacion,VersionEsperada=versionEsperada,DocumentoId=documentoId,VersionAocrEsperada=versionAocrEsperada });
         }
 
+        // =======================================================
+        // 10. DEVOLVER AOCR DESDE DIRDAC (AC-11)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverAocrDirdac(DevolverAocrDircavRequest request)
+        {
+            if (request == null) return JsonWorkflow(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la devolución."));
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            request.Actor = new AocrWorkflowActor
+            {
+                UsuarioId = ObtenerUsuarioIdActual(),
+                UsuarioNombre = ObtenerUsuarioLoginActual(),
+                RolActivo = rol,
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = true
+            };
+            request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
+            return JsonWorkflow(_finalWorkflowService.DevolverAocrDircav(request));
+        }
+
         private ActionResult JsonWorkflow(AocrWorkflowResult result)
         {
             Response.StatusCode = result.HttpStatusCode > 0 ? result.HttpStatusCode : (result.Exito ? 200 : 500);
