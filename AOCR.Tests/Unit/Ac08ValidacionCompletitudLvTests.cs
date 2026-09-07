@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
@@ -19,7 +21,8 @@ namespace AOCR.Tests.Unit
         public void Setup()
         {
             _fakeDao = new FakeListaVerificacionDAO();
-            _service = new ListaVerificacionService(_fakeDao, null, null, null);
+            _service = new ListaVerificacionService(_fakeDao, new FakeEstaciones(), new FakeInspecciones(), null,
+                resolverIdentidad: id => new InspectorIdentityInfo { Ids = new HashSet<int> { id } });
         }
 
         private ListaVerificacionOperacionalEae CrearLvValidaCompleta()
@@ -39,31 +42,16 @@ namespace AOCR.Tests.Unit
                 InspectorResponsable = "Juan Inspector",
                 CargoInspector = "Inspector de Operaciones",
                 FechaLista = DateTime.Now,
-                Items = new List<ListaVerificacionOperacionalEaeItem>
+                Items = new ListaVerificacionCatalogService().ObtenerCatalogoPreguntas().Select(item =>
                 {
-                    new ListaVerificacionOperacionalEaeItem
+                    if (!item.EsNotaOrientacion)
                     {
-                        Codigo = "129-1",
-                        CodigoPregunta = "129-1",
-                        PreguntaRequisito = "Requisito 1",
-                        OrientacionEvidencia = "Orientación 1",
-                        EstadoCumplimiento = "SATISFACTORIO",
-                        EstadoImplementacion = "IMPLEMENTADO",
-                        PruebasNotasComentarios = "Verificado en manual de operaciones",
-                        EsNotaOrientacion = false
-                    },
-                    new ListaVerificacionOperacionalEaeItem
-                    {
-                        Codigo = "129-2",
-                        CodigoPregunta = "129-2",
-                        PreguntaRequisito = "Requisito 2",
-                        OrientacionEvidencia = "Orientación 2",
-                        EstadoCumplimiento = "SATISFACTORIO",
-                        EstadoImplementacion = "IMPLEMENTADO",
-                        PruebasNotasComentarios = "Documentación completa",
-                        EsNotaOrientacion = false
+                        item.EstadoCumplimiento = "SATISFACTORIO";
+                        item.EstadoImplementacion = "IMPLEMENTADO";
+                        item.PruebasNotasComentarios = "";
                     }
-                }
+                    return item;
+                }).ToList()
             };
         }
 
@@ -120,7 +108,7 @@ namespace AOCR.Tests.Unit
 
             Assert.IsFalse(resultado);
             Assert.IsFalse(lv.EstaCompleta());
-            Assert.IsTrue(errores.Any(e => e.Contains("Debe seleccionar el estado de cumplimiento")));
+            Assert.IsTrue(errores.Any(e => e.Contains("Seleccione un resultado de cumplimiento")));
         }
 
         [TestMethod]
@@ -135,11 +123,11 @@ namespace AOCR.Tests.Unit
 
             Assert.IsFalse(resultado);
             Assert.IsFalse(lv.EstaCompleta());
-            Assert.IsTrue(errores.Any(e => e.Contains("Debe seleccionar el estado de cumplimiento/implementación")));
+            Assert.IsTrue(errores.Any(e => e.Contains("Seleccione un resultado de implementación")));
         }
 
         [TestMethod]
-        public void Test06_ItemSinEstados_PeroConObservacion_EsCompleto()
+        public void Test06_ItemSinEstados_ObservacionNoSustituyeResultado()
         {
             var lv = CrearLvValidaCompleta();
             lv.Items[0].EstadoCumplimiento = "";
@@ -149,8 +137,8 @@ namespace AOCR.Tests.Unit
             List<string> errores;
             var resultado = lv.ValidarCompletitud(out errores);
 
-            Assert.IsTrue(resultado);
-            Assert.IsTrue(lv.EstaCompleta());
+            Assert.IsFalse(resultado);
+            Assert.IsFalse(lv.EstaCompleta());
         }
 
         [TestMethod]
@@ -165,7 +153,7 @@ namespace AOCR.Tests.Unit
 
             Assert.IsFalse(resultado);
             Assert.IsFalse(lv.EstaCompleta());
-            Assert.IsTrue(errores.Any(e => e.Contains("Ingrese una observación en Pruebas / Notas / Comentarios")));
+            Assert.IsTrue(errores.Any(e => e.Contains("Ingrese una observación")));
         }
 
         [TestMethod]
@@ -180,7 +168,7 @@ namespace AOCR.Tests.Unit
 
             Assert.IsFalse(resultado);
             Assert.IsFalse(lv.EstaCompleta());
-            Assert.IsTrue(errores.Any(e => e.Contains("Ingrese una observación en Pruebas / Notas / Comentarios")));
+            Assert.IsTrue(errores.Any(e => e.Contains("Ingrese una observación")));
         }
 
         [TestMethod]
@@ -243,7 +231,7 @@ namespace AOCR.Tests.Unit
                 _service.FinalizarLista(lv.CodigoListaVerificacion, 99, AocrRolesInstitucionales.Inspector);
             });
 
-            Assert.IsTrue(ex.Message.Contains("Debe seleccionar el estado de cumplimiento") || ex.Message.Contains("incomplet"));
+            Assert.IsTrue(ex.Message.Contains("Seleccione un resultado de cumplimiento") || ex.Message.Contains("incomplet"));
         }
 
         [TestMethod]
@@ -260,7 +248,7 @@ namespace AOCR.Tests.Unit
                 _service.FirmarLista(lv.CodigoListaVerificacion, "Inspector", "HASH123", "ruta.pdf", 99, AocrRolesInstitucionales.Inspector);
             });
 
-            Assert.IsTrue(ex.Message.Contains("Debe seleccionar el estado de cumplimiento") || ex.Message.Contains("incomplet"));
+            Assert.IsTrue(ex.Message.Contains("Seleccione un resultado de cumplimiento") || ex.Message.Contains("incomplet"));
         }
 
         [TestMethod]
@@ -316,6 +304,48 @@ namespace AOCR.Tests.Unit
                 _service.FirmarLista(lv.CodigoListaVerificacion, "Inspector", "HASH", "ruta", 99, AocrRolesInstitucionales.Inspector);
             });
             Assert.IsTrue(ex2.Message.Contains("ya se encuentra firmada") || ex2.Message.Contains("inmutable"));
+        }
+
+        [TestMethod]
+        public void Test16_TodosLosElementosObligatoriosTienenControlEnFormulario()
+        {
+            var root = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            const string vista = "CapaPresentacion/Views/Inspeccion/_ListaVerificacionOperacionalEaePanel.cshtml";
+            while (root != null && !File.Exists(Path.Combine(root.FullName, vista))) root = root.Parent;
+            Assert.IsNotNull(root, "Debe encontrarse el formulario real para verificar cobertura del catálogo.");
+            var source = File.ReadAllText(Path.Combine(root.FullName, vista));
+            var catalogo = new ListaVerificacionCatalogService().ObtenerCatalogoPreguntas();
+            var grupos = catalogo.GroupBy(i => i.CodigoPregunta).ToDictionary(g => g.Key, g => g.ToList());
+            var controlesImplementacion = new HashSet<string>();
+            var controlesCumplimiento = new HashSet<string>();
+            foreach (Match fila in Regex.Matches(source, @"new LvOficialFilaPanel\s*\{(.*?)\}", RegexOptions.Singleline))
+            {
+                var requisito = Regex.Match(fila.Value, "RequirementCode\\s*=\\s*\"([^\"]+)\"").Groups[1].Value;
+                if (!grupos.ContainsKey(requisito)) continue;
+                if (Regex.IsMatch(fila.Value, @"ShowCompliance\s*=\s*true")) controlesCumplimiento.Add(requisito);
+                if (Regex.IsMatch(fila.Value, @"ShowImplementation\s*=\s*false")) continue;
+                var indices = Regex.Match(fila.Value, @"ResponseIndices\s*=\s*IndicesOficialPanel\(([^)]*)\)").Groups[1].Value;
+                foreach (Match indice in Regex.Matches(indices, @"\d+"))
+                    controlesImplementacion.Add(grupos[requisito][int.Parse(indice.Value)].Codigo);
+            }
+            foreach (var item in catalogo.Where(i => !i.EsNotaOrientacion))
+            {
+                Assert.IsTrue(controlesCumplimiento.Contains(item.CodigoPregunta), "Falta control de cumplimiento: " + item.Codigo);
+                Assert.IsTrue(controlesImplementacion.Contains(item.Codigo), "Falta control de implementación: " + item.Codigo);
+            }
+        }
+
+        private class FakeInspecciones : InspeccionDAO
+        {
+            public override Inspeccion ObtenerPorId(int id) => new Inspeccion
+                { CodigoInspeccion = id, CodigoSolicitud = 200, CodigoInspector = 99 };
+        }
+
+        private class FakeEstaciones : SolicitudEstacionDAO
+        {
+            public override List<SolicitudEstacionInspeccion> ListarPorSolicitud(int id) =>
+                new List<SolicitudEstacionInspeccion> { new SolicitudEstacionInspeccion
+                    { Id = 300, SolicitudId = id, Activo = true } };
         }
 
         private class FakeListaVerificacionDAO : ListaVerificacionOperacionalEaeDAO

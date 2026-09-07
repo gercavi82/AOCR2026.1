@@ -14,6 +14,7 @@ namespace CapaModelo
         public string Titulo { get; set; }
         public string Resumen { get; set; }
         public string Antecedentes { get; set; }
+        public string BaseLegal { get; set; }
         public string Alcance { get; set; }
         public string Desarrollo { get; set; }
         public string Evidencias { get; set; }

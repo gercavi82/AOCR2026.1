@@ -5,6 +5,7 @@ using System.Data;
 using System.IO;
 using Npgsql;
 using CapaDatos.Constants;
+using CapaDatos.Catalogos;
 using CapaModelo;
 
 namespace CapaDatos.DAOs
@@ -20,14 +21,21 @@ namespace CapaDatos.DAOs
         private readonly string _cs;
 
         public ListaVerificacionOperacionalEaeDAO()
+            : this(null)
         {
-            _cs = !string.IsNullOrWhiteSpace(ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString)
+        }
+
+        public ListaVerificacionOperacionalEaeDAO(string connectionString)
+        {
+            _cs = connectionString ?? (!string.IsNullOrWhiteSpace(ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString)
                 ? ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString
-                : ConexionDAO.CadenaConexion;
+                : ConexionDAO.CadenaConexion);
         }
 
         public virtual ListaVerificacionOperacionalEae ObtenerUltimaPorInspeccion(int codigoInspeccion, int? estacionId = null)
         {
+            if (estacionId.HasValue && estacionId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(estacionId), "La estación debe tener un identificador persistente positivo.");
             using (var cn = new NpgsqlConnection(_cs))
             {
                 cn.Open();
@@ -155,133 +163,165 @@ namespace CapaDatos.DAOs
                 throw new ArgumentNullException(nameof(lista));
             }
 
+            var estado = AocrEstadosListaVerificacion.Normalizar(lista.EstadoLista);
+            if (lista.Finalizado || lista.FirmadoTecnico
+                || (estado != AocrEstadosListaVerificacion.Borrador
+                    && estado != AocrEstadosListaVerificacion.EnProceso && estado != AocrEstadosListaVerificacion.Completa))
+                throw new InvalidOperationException("El borrador no puede forzar un cierre o firma de la LV.");
+            lista.EstadoLista = estado;
+            if (estado == AocrEstadosListaVerificacion.Completa)
+                ExigirCompletitudPersistida(lista);
+
             using (var cn = new NpgsqlConnection(_cs))
             {
                 cn.Open();
                 EnsureSchema(cn);
 
-                var ultima = ObtenerUltimaPorInspeccionInterno(cn, lista.CodigoInspeccion, lista.EstacionId);
-                if (ultima != null && !ultima.Finalizado && !ultima.FirmadoTecnico)
+                using (var tx = cn.BeginTransaction())
                 {
-                    const string updateSql = @"
-                        UPDATE public.aocr_tblv_operacional_eae
-                           SET estado_lista = @estado_lista,
-                               nombre_eae = @nombre_eae,
-                               numero_aoc_fecha_validez = @numero_aoc_fecha_validez,
-                               direccion_estado_explotador = @direccion_estado_explotador,
-                               direccion_estado_reconocimiento = @direccion_estado_reconocimiento,
-                               tipos_aeronaves = @tipos_aeronaves,
-                               tipo_operacion = @tipo_operacion,
-                               fecha_lista = @fecha_lista,
-                               inspector_responsable = @inspector_responsable,
-                               cargo_inspector = @cargo_inspector,
-                               resumen_verificacion = @resumen_verificacion,
-                               observaciones_generales = @observaciones_generales,
-                               resultado_general = @resultado_general,
-                               items_json = @items_json,
-                               solicitud_id = COALESCE(@solicitud_id, solicitud_id),
-                               estacion_id = @estacion_id,
-                               tipo_lista = @tipo_lista,
-                               vigente = TRUE,
-                               updated_at = NOW(),
-                               updated_by = @updated_by
-                         WHERE codigo_lv = @codigo_lv;";
+                    // Serialize creation and edits for this inspection, including an absent LV.
+                    using (var scope = new NpgsqlCommand(@"
+                        SELECT codigo_solicitud FROM public.aocr_tbinspeccion
+                        WHERE codigo_inspeccion = @id FOR UPDATE;", cn, tx))
+                    {
+                        scope.Parameters.AddWithValue("@id", lista.CodigoInspeccion);
+                        var solicitud = scope.ExecuteScalar();
+                        if (solicitud == null || solicitud == DBNull.Value)
+                            throw new InvalidOperationException("La inspección no existe.");
+                        if (lista.SolicitudId.HasValue && lista.SolicitudId != Convert.ToInt32(solicitud))
+                            throw new InvalidOperationException("La LV no pertenece a la solicitud de la inspección.");
+                        lista.SolicitudId = Convert.ToInt32(solicitud);
+                    }
+                    using (var scope = new NpgsqlCommand(@"
+                        SELECT COUNT(*) FROM public.aocr_tbsolicitud_estacion
+                        WHERE solicitud_id = @solicitud AND activo = TRUE
+                          AND (@estacion IS NULL OR (id = @estacion
+                            AND (inspeccion_id IS NULL OR inspeccion_id = @inspeccion)));", cn, tx))
+                    {
+                        scope.Parameters.AddWithValue("@solicitud", lista.SolicitudId.Value);
+                        scope.Parameters.AddWithValue("@estacion", NpgsqlTypes.NpgsqlDbType.Integer, (object)lista.EstacionId ?? DBNull.Value);
+                        scope.Parameters.AddWithValue("@inspeccion", lista.CodigoInspeccion);
+                        var count = Convert.ToInt32(scope.ExecuteScalar());
+                        if ((lista.EstacionId.HasValue && (lista.EstacionId <= 0 || count != 1))
+                            || (!lista.EstacionId.HasValue && count > 0))
+                            throw new InvalidOperationException("Seleccione una estación válida de esta inspección.");
+                    }
+                    var ultima = ObtenerUltimaPorInspeccionInterno(cn, lista.CodigoInspeccion, lista.EstacionId, true);
+                    if ((lista.CodigoListaVerificacion > 0 && (ultima == null
+                            || ultima.CodigoListaVerificacion != lista.CodigoListaVerificacion))
+                        || (ultima != null && lista.CodigoListaVerificacion == 0)
+                        || (ultima != null && lista.Version > 0 && ultima.Version != lista.Version))
+                        throw new InvalidOperationException("Conflicto (409): la identidad o versión de la LV cambió. Recargue la estación.");
+                    if (ultima != null && (ultima.Finalizado || ultima.FirmadoTecnico || !ultima.Vigente
+                        || AocrEstadosListaVerificacion.EstaFirmada(ultima.EstadoLista)
+                        || AocrEstadosListaVerificacion.Normalizar(ultima.EstadoLista) == AocrEstadosListaVerificacion.Anulada))
+                        throw new InvalidOperationException("Conflicto (409): la LV está cerrada y no admite modificaciones.");
+                    if (ultima != null && !ultima.Finalizado && !ultima.FirmadoTecnico)
+                    {
+                        const string updateSql = @"
+                            UPDATE public.aocr_tblv_operacional_eae
+                               SET estado_lista = @estado_lista,
+                                   nombre_eae = @nombre_eae,
+                                   numero_aoc_fecha_validez = @numero_aoc_fecha_validez,
+                                   direccion_estado_explotador = @direccion_estado_explotador,
+                                   direccion_estado_reconocimiento = @direccion_estado_reconocimiento,
+                                   tipos_aeronaves = @tipos_aeronaves,
+                                   tipo_operacion = @tipo_operacion,
+                                   fecha_lista = @fecha_lista,
+                                   inspector_responsable = @inspector_responsable,
+                                   cargo_inspector = @cargo_inspector,
+                                   resumen_verificacion = @resumen_verificacion,
+                                   observaciones_generales = @observaciones_generales,
+                                   resultado_general = @resultado_general,
+                                   items_json = @items_json,
+                                   vigente = TRUE,
+                                   updated_at = NOW(),
+                                   updated_by = @updated_by
+                             WHERE codigo_lv = @codigo_lv AND finalizado = FALSE AND firmado_tecnico = FALSE;";
 
-                    using (var cmd = new NpgsqlCommand(updateSql, cn))
+                        using (var cmd = new NpgsqlCommand(updateSql, cn))
+                        {
+                            Bind(cmd, lista, usuarioId);
+                            cmd.Parameters.AddWithValue("@codigo_lv", ultima.CodigoListaVerificacion);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        var guardada = ObtenerPorIdInterno(cn, ultima.CodigoListaVerificacion);
+                        tx.Commit();
+                        return guardada;
+                    }
+
+                    var version = ultima != null ? ultima.Version + 1 : 1;
+                    const string insertSql = @"
+                        INSERT INTO public.aocr_tblv_operacional_eae
+                        (
+                            codigo_inspeccion,
+                            solicitud_id,
+                            estacion_id,
+                            tipo_lista,
+                            vigente,
+                            version,
+                            estado_lista,
+                            nombre_eae,
+                            numero_aoc_fecha_validez,
+                            direccion_estado_explotador,
+                            direccion_estado_reconocimiento,
+                            tipos_aeronaves,
+                            tipo_operacion,
+                            fecha_lista,
+                            inspector_responsable,
+                            cargo_inspector,
+                            resumen_verificacion,
+                            observaciones_generales,
+                            resultado_general,
+                            items_json,
+                            finalizado,
+                            firmado_tecnico,
+                            created_at,
+                            created_by,
+                            updated_at,
+                            updated_by
+                        )
+                        VALUES
+                        (
+                            @codigo_inspeccion,
+                            @solicitud_id,
+                            @estacion_id,
+                            @tipo_lista,
+                            TRUE,
+                            @version,
+                            @estado_lista,
+                            @nombre_eae,
+                            @numero_aoc_fecha_validez,
+                            @direccion_estado_explotador,
+                            @direccion_estado_reconocimiento,
+                            @tipos_aeronaves,
+                            @tipo_operacion,
+                            @fecha_lista,
+                            @inspector_responsable,
+                            @cargo_inspector,
+                            @resumen_verificacion,
+                            @observaciones_generales,
+                            @resultado_general,
+                            @items_json,
+                            FALSE,
+                            FALSE,
+                            NOW(),
+                            @created_by,
+                            NOW(),
+                            @updated_by
+                        )
+                        RETURNING codigo_lv;";
+
+                    using (var cmd = new NpgsqlCommand(insertSql, cn))
                     {
                         Bind(cmd, lista, usuarioId);
-                        cmd.Parameters.AddWithValue("@codigo_lv", ultima.CodigoListaVerificacion);
-                        cmd.ExecuteNonQuery();
+                        cmd.Parameters.AddWithValue("@version", version);
+                        var codigo = Convert.ToInt32(cmd.ExecuteScalar());
+                        var creada = ObtenerPorIdInterno(cn, codigo);
+                        tx.Commit();
+                        return creada;
                     }
-
-                    return ObtenerPorIdInterno(cn, ultima.CodigoListaVerificacion);
-                }
-
-                // Inactivar vigencia previa si existe
-                if (ultima != null)
-                {
-                    const string inactivaSql = @"
-                        UPDATE public.aocr_tblv_operacional_eae
-                           SET vigente = FALSE,
-                               updated_at = NOW(),
-                               updated_by = @updated_by
-                         WHERE codigo_lv = @codigo_lv;";
-                    using (var cmdInac = new NpgsqlCommand(inactivaSql, cn))
-                    {
-                        cmdInac.Parameters.AddWithValue("@codigo_lv", ultima.CodigoListaVerificacion);
-                        cmdInac.Parameters.AddWithValue("@updated_by", usuarioId);
-                        cmdInac.ExecuteNonQuery();
-                    }
-                }
-
-                var version = ultima != null ? ultima.Version + 1 : 1;
-                const string insertSql = @"
-                    INSERT INTO public.aocr_tblv_operacional_eae
-                    (
-                        codigo_inspeccion,
-                        solicitud_id,
-                        estacion_id,
-                        tipo_lista,
-                        vigente,
-                        version,
-                        estado_lista,
-                        nombre_eae,
-                        numero_aoc_fecha_validez,
-                        direccion_estado_explotador,
-                        direccion_estado_reconocimiento,
-                        tipos_aeronaves,
-                        tipo_operacion,
-                        fecha_lista,
-                        inspector_responsable,
-                        cargo_inspector,
-                        resumen_verificacion,
-                        observaciones_generales,
-                        resultado_general,
-                        items_json,
-                        finalizado,
-                        firmado_tecnico,
-                        created_at,
-                        created_by,
-                        updated_at,
-                        updated_by
-                    )
-                    VALUES
-                    (
-                        @codigo_inspeccion,
-                        @solicitud_id,
-                        @estacion_id,
-                        @tipo_lista,
-                        TRUE,
-                        @version,
-                        @estado_lista,
-                        @nombre_eae,
-                        @numero_aoc_fecha_validez,
-                        @direccion_estado_explotador,
-                        @direccion_estado_reconocimiento,
-                        @tipos_aeronaves,
-                        @tipo_operacion,
-                        @fecha_lista,
-                        @inspector_responsable,
-                        @cargo_inspector,
-                        @resumen_verificacion,
-                        @observaciones_generales,
-                        @resultado_general,
-                        @items_json,
-                        FALSE,
-                        FALSE,
-                        NOW(),
-                        @created_by,
-                        NOW(),
-                        @updated_by
-                    )
-                    RETURNING codigo_lv;";
-
-                using (var cmd = new NpgsqlCommand(insertSql, cn))
-                {
-                    Bind(cmd, lista, usuarioId);
-                    cmd.Parameters.AddWithValue("@version", version);
-                    var codigo = Convert.ToInt32(cmd.ExecuteScalar());
-                    return ObtenerPorIdInterno(cn, codigo);
                 }
             }
         }
@@ -293,6 +333,19 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 EnsureSchema(cn);
 
+                using (var tx = System.Transactions.Transaction.Current == null ? cn.BeginTransaction() : null)
+                {
+                    using (var bloqueo = new NpgsqlCommand("SELECT codigo_lv FROM public.aocr_tblv_operacional_eae WHERE codigo_lv = @id FOR UPDATE", cn))
+                    {
+                        bloqueo.Parameters.AddWithValue("@id", codigoListaVerificacion);
+                        bloqueo.ExecuteScalar();
+                    }
+                    var actual = ObtenerPorIdInterno(cn, codigoListaVerificacion);
+                    if (actual == null || actual.FirmadoTecnico || AocrEstadosListaVerificacion.EstaFirmada(actual.EstadoLista)
+                        || AocrEstadosListaVerificacion.Normalizar(actual.EstadoLista) == AocrEstadosListaVerificacion.Anulada)
+                        throw new InvalidOperationException("La LV no existe, esta anulada o ya esta firmada.");
+                    ExigirCompletitudPersistida(actual);
+
                 const string sql = @"
                     UPDATE public.aocr_tblv_operacional_eae
                        SET finalizado = TRUE,
@@ -301,17 +354,28 @@ namespace CapaDatos.DAOs
                            ruta_pdf = CASE WHEN @ruta_pdf IS NOT NULL AND LENGTH(TRIM(@ruta_pdf)) > 0 THEN @ruta_pdf ELSE ruta_pdf END,
                            updated_at = NOW(),
                            updated_by = @updated_by
-                     WHERE codigo_lv = @codigo_lv;";
+                     WHERE codigo_lv = @codigo_lv AND finalizado = FALSE AND firmado_tecnico = FALSE AND vigente = TRUE;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    cmd.Parameters.AddWithValue("@estado_lista", string.IsNullOrWhiteSpace(estadoLista) ? AocrEstadosListaVerificacion.Completa : estadoLista);
+                    cmd.Parameters.AddWithValue("@estado_lista", AocrEstadosListaVerificacion.Completa);
                     cmd.Parameters.AddWithValue("@ruta_pdf", (object)(rutaPdf ?? string.Empty));
                     cmd.Parameters.AddWithValue("@updated_by", usuarioId);
                     cmd.Parameters.AddWithValue("@codigo_lv", codigoListaVerificacion);
-                    cmd.ExecuteNonQuery();
+                    if (cmd.ExecuteNonQuery() != 1)
+                        throw new InvalidOperationException("Conflicto (409): la LV cambió de estado o ya fue firmada.");
+                }
+                    tx?.Commit();
                 }
             }
+        }
+
+        private static void ExigirCompletitudPersistida(ListaVerificacionOperacionalEae lista)
+        {
+            // Evaluar el JSON que realmente se almacena, no un objeto Items divergente.
+            lista.Items = new ListaVerificacionCatalogo().HidratarRespuestas(lista.ItemsJson);
+            var validacion = lista.EvaluarCompletitud();
+            if (!validacion.EsValida) throw new ListaVerificacionIncompletaException(validacion);
         }
 
         public void RegistrarFirmaTecnico(
@@ -340,6 +404,19 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 EnsureSchema(cn);
 
+                using (var tx = System.Transactions.Transaction.Current == null ? cn.BeginTransaction() : null)
+                {
+                    using (var bloqueo = new NpgsqlCommand("SELECT codigo_lv FROM public.aocr_tblv_operacional_eae WHERE codigo_lv = @id FOR UPDATE", cn))
+                    {
+                        bloqueo.Parameters.AddWithValue("@id", codigoListaVerificacion);
+                        bloqueo.ExecuteScalar();
+                    }
+                    var actual = ObtenerPorIdInterno(cn, codigoListaVerificacion);
+                    if (actual == null || actual.FirmadoTecnico || AocrEstadosListaVerificacion.EstaFirmada(actual.EstadoLista)
+                        || AocrEstadosListaVerificacion.Normalizar(actual.EstadoLista) == AocrEstadosListaVerificacion.Anulada)
+                        throw new InvalidOperationException("La LV no existe, esta anulada o ya esta firmada.");
+                    ExigirCompletitudPersistida(actual);
+
                 const string sql = @"
                     UPDATE public.aocr_tblv_operacional_eae
                        SET firmado_tecnico = TRUE,
@@ -351,18 +428,21 @@ namespace CapaDatos.DAOs
                            ruta_documento_firmado = @ruta_documento_firmado,
                            updated_at = NOW(),
                            updated_by = @updated_by
-                     WHERE codigo_lv = @codigo_lv;";
+                     WHERE codigo_lv = @codigo_lv AND finalizado = TRUE AND firmado_tecnico = FALSE AND vigente = TRUE;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
                     cmd.Parameters.AddWithValue("@fecha_firma", fechaFirma);
                     cmd.Parameters.AddWithValue("@usuario_firma", (object)(usuarioFirma ?? string.Empty));
                     cmd.Parameters.AddWithValue("@hash_documento", (object)(hashDocumento ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@estado_lista", string.IsNullOrWhiteSpace(estadoLista) ? AocrEstadosListaVerificacion.Firmada : estadoLista);
+                    cmd.Parameters.AddWithValue("@estado_lista", AocrEstadosListaVerificacion.Firmada);
                     cmd.Parameters.AddWithValue("@ruta_documento_firmado", (object)(rutaDocumentoFirmado ?? string.Empty));
                     cmd.Parameters.AddWithValue("@updated_by", usuarioId);
                     cmd.Parameters.AddWithValue("@codigo_lv", codigoListaVerificacion);
-                    cmd.ExecuteNonQuery();
+                    if (cmd.ExecuteNonQuery() != 1)
+                        throw new InvalidOperationException("Conflicto (409): la LV cambió de estado o ya fue firmada.");
+                }
+                    tx?.Commit();
                 }
             }
         }
@@ -409,13 +489,14 @@ namespace CapaDatos.DAOs
                     SELECT id, estacion_codigo, estacion_nombre
                       FROM public.aocr_tbsolicitud_estacion
                      WHERE solicitud_id = @solicitud_id
-                       AND activo = TRUE
+                       AND activo = TRUE AND (inspeccion_id IS NULL OR inspeccion_id = @inspeccion_id)
                   ORDER BY id ASC;";
 
                 var listaEstaciones = new List<Tuple<int, string, string>>();
                 using (var cmd = new NpgsqlCommand(sqlEstaciones, cn))
                 {
                     cmd.Parameters.AddWithValue("@solicitud_id", solicitudId);
+                    cmd.Parameters.AddWithValue("@inspeccion_id", inspeccionId);
                     using (var rd = cmd.ExecuteReader())
                     {
                         while (rd.Read())
@@ -458,7 +539,7 @@ namespace CapaDatos.DAOs
             }
         }
 
-        private ListaVerificacionOperacionalEae ObtenerUltimaPorInspeccionInterno(NpgsqlConnection cn, int codigoInspeccion, int? estacionId)
+        private ListaVerificacionOperacionalEae ObtenerUltimaPorInspeccionInterno(NpgsqlConnection cn, int codigoInspeccion, int? estacionId, bool bloquear = false)
         {
             var sql = @"
                 SELECT lv.*, 
@@ -472,8 +553,12 @@ namespace CapaDatos.DAOs
             {
                 sql += " AND lv.estacion_id = @estacion_id ";
             }
+            else
+            {
+                sql += " AND (lv.estacion_id IS NULL OR lv.estacion_id <= 0) ";
+            }
 
-            sql += " ORDER BY lv.version DESC LIMIT 1;";
+            sql += " ORDER BY lv.version DESC, lv.codigo_lv DESC LIMIT 1" + (bloquear ? " FOR UPDATE OF lv" : "") + ";";
 
             using (var cmd = new NpgsqlCommand(sql, cn))
             {

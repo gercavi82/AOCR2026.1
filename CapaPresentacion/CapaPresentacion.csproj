@@ -619,6 +619,7 @@
     <Content Include="Scripts\aocr-datatables.js" />
     <Content Include="Scripts\aocr-informe-tecnico-modal.js" />
     <Content Include="Scripts\aocr-lv-eae-flujo-automatico.js" />
+    <Content Include="Scripts\aocr-lv-eae-validacion.js" />
     <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\aocr-formulario-emision.js" />
     <Content Include="Scripts\app\global.js" />

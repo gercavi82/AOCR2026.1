@@ -53,13 +53,14 @@ namespace CapaModelo.DTOs
             NumeroDesignacion = string.Empty;
             Compania = string.Empty;
             NombreOperador = string.Empty;
-            PaisOperador = "Ecuador";
-            TipoOperacion = "Transporte Aéreo Regular";
-            TipoSolicitud = "Emisión";
+            PaisOperador = string.Empty;
+            TipoOperacion = string.Empty;
+            TipoSolicitud = string.Empty;
+            NumeroAoc = string.Empty;
             ResponsableTecnico = string.Empty;
             InspectorPrincipalNombre = string.Empty;
-            InspectorPrincipalCargo = "Inspector de Operaciones / Aeronavegabilidad";
-            AutoridadDircavNombre = "Autoridad DIRCAV";
+            InspectorPrincipalCargo = string.Empty;
+            AutoridadDircavNombre = string.Empty;
         }
     }
 

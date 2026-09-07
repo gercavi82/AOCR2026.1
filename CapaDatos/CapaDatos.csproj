@@ -273,6 +273,7 @@
     <Compile Include="DAOs\AeronaveSolicitudDAO.cs" />
     <Compile Include="DAOs\ChecklistItemDAO.cs" />
     <Compile Include="DAOs\ListaVerificacionOperacionalEaeDAO.cs" />
+    <Compile Include="Catalogos\ListaVerificacionCatalogo.cs" />
     <Compile Include="DAOs\ConceptoDAO.cs" />
     <Compile Include="DAOs\DatosPDF.cs" />
     <Compile Include="DAOs\OrdenRecaudacionPdfDto.cs" />

@@ -6,6 +6,18 @@ namespace CapaPresentacion.Helpers
 {
     public static class InformeTecnicoTemplateHelper
     {
+        // Mantiene el texto histórico en la presentación sin copiarlo a campos nuevos.
+        public static string ConsolidarTexto(string primero, string segundo)
+        {
+            primero = (primero ?? string.Empty).Trim();
+            segundo = (segundo ?? string.Empty).Trim();
+            if (primero.Length == 0) return segundo;
+            if (segundo.Length == 0) return primero;
+            if (segundo.IndexOf(primero, StringComparison.OrdinalIgnoreCase) >= 0) return segundo;
+            if (primero.IndexOf(segundo, StringComparison.OrdinalIgnoreCase) >= 0) return primero;
+            return primero + Environment.NewLine + Environment.NewLine + segundo;
+        }
+
         public sealed class DocumentoAdjuntoArchivoItem
         {
             public string Categoria { get; set; }

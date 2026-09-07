@@ -238,6 +238,7 @@
     <Compile Include="Services\DircavBandejaService.cs" />
     <Compile Include="Services\DircavDesignacionService.cs" />
     <Compile Include="Services\DesignacionDocumentoService.cs" />
+    <Compile Include="Services\ListaVerificacionCatalogService.cs" />
     <Compile Include="Services\ListaVerificacionService.cs" />
     <Compile Include="Services\CondicionesLimitacionesService.cs" />
     <Compile Include="Services\DirdacBandejaService.cs" />

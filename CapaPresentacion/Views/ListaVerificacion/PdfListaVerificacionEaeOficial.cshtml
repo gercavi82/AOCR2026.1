@@ -677,7 +677,7 @@
                     <tr><td class="field-row"><span class="field-label">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</span> <span class="field-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento:</span> <span class="field-value">@direccionReconocimiento</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">5. Tipo/s de aeronave/s (marca, modelo, número de serie):</span> <span class="field-value">@texto(lista != null ? lista.TiposAeronaves : null)</span></td></tr>
-                    <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null)@(!string.IsNullOrWhiteSpace(lista != null ? lista.EstacionCodigo : null) ? " | Estación: " + lista.EstacionCodigo + (!string.IsNullOrWhiteSpace(lista.EstacionNombre) ? " - " + lista.EstacionNombre : "") : "")</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">7. Fecha:</span> <span class="field-value">@fechaLista</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">8. Inspector responsable de la aprobación:</span> <span class="field-value">@texto(lista != null ? lista.InspectorResponsable : null)</span></td></tr>
                 </tbody>

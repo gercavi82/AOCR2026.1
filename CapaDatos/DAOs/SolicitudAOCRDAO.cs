@@ -523,7 +523,7 @@ namespace CapaDatos.DAOs
         // ============================
         // OBTENER INDIVIDUAL
         // ============================
-        public SolicitudAOCR ObtenerPorId(int id)
+        public virtual SolicitudAOCR ObtenerPorId(int id)
         {
             using (var cn = new NpgsqlConnection(ConnectionString))
             {

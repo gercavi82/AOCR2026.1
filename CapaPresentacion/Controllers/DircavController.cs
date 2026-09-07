@@ -528,6 +528,29 @@ namespace CapaPresentacion.Controllers
         }
 
         // =======================================================
+        // 11. ALIASES CANÓNICOS AC-06: /GenerarPdf y /Firmar
+        // =======================================================
+        [HttpGet]
+        public ActionResult GenerarPdf(int id)
+        {
+            return VistaPreviaDesignacion(id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult GenerarPdf(int id, string dummy = null)
+        {
+            return VistaPreviaDesignacion(id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Firmar(int id, string passwordCertificado)
+        {
+            return FirmarDesignacion(id, passwordCertificado);
+        }
+
+        // =======================================================
         // 7. REVISAR INFORME TÉCNICO (DIRCAV)
         // =======================================================
         [HttpPost]

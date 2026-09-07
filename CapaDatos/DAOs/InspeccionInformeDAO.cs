@@ -14,6 +14,11 @@ namespace CapaDatos.DAOs
         private static readonly object SyncLock = new object();
         private static bool _schemaReady;
 
+        public InspeccionInformeDAO(string connectionString)
+        {
+            _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        }
+
         public InspeccionInformeDAO()
         {
             var settings = ConfigurationManager.ConnectionStrings["AOCRConnection"];
@@ -36,6 +41,7 @@ namespace CapaDatos.DAOs
                            titulo,
                            resumen,
                            antecedentes,
+                           base_legal,
                            alcance,
                            desarrollo,
                            evidencias,
@@ -110,6 +116,7 @@ namespace CapaDatos.DAOs
                            titulo,
                            resumen,
                            antecedentes,
+                           base_legal,
                            alcance,
                            desarrollo,
                            evidencias,
@@ -159,6 +166,7 @@ namespace CapaDatos.DAOs
                           titulo,
                           resumen,
                           antecedentes,
+                          base_legal,
                           alcance,
                           desarrollo,
                           evidencias,
@@ -394,6 +402,7 @@ WHERE u.finalizado=TRUE
                         SET titulo = @titulo,
                             resumen = @resumen,
                             antecedentes = @antecedentes,
+                            base_legal = @base_legal,
                             alcance = @alcance,
                             desarrollo = @desarrollo,
                             evidencias = @evidencias,
@@ -437,6 +446,7 @@ WHERE u.finalizado=TRUE
                         titulo,
                         resumen,
                         antecedentes,
+                        base_legal,
                         alcance,
                         desarrollo,
                         evidencias,
@@ -471,6 +481,7 @@ WHERE u.finalizado=TRUE
                         @titulo,
                         @resumen,
                         @antecedentes,
+                        @base_legal,
                         @alcance,
                         @desarrollo,
                         @evidencias,
@@ -784,6 +795,7 @@ WHERE u.finalizado=TRUE
             cmd.Parameters.AddWithValue("@titulo", (object)informe.Titulo ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@resumen", (object)informe.Resumen ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@antecedentes", (object)informe.Antecedentes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@base_legal", (object)informe.BaseLegal ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@alcance", (object)informe.Alcance ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@desarrollo", (object)informe.Desarrollo ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@evidencias", (object)informe.Evidencias ?? DBNull.Value);
@@ -816,6 +828,7 @@ WHERE u.finalizado=TRUE
                 Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
                 Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
                 Antecedentes = dr["antecedentes"] == DBNull.Value ? null : dr["antecedentes"].ToString(),
+                BaseLegal = dr["base_legal"] == DBNull.Value ? null : dr["base_legal"].ToString(),
                 Alcance = dr["alcance"] == DBNull.Value ? null : dr["alcance"].ToString(),
                 Desarrollo = dr["desarrollo"] == DBNull.Value ? null : dr["desarrollo"].ToString(),
                 Evidencias = dr["evidencias"] == DBNull.Value ? null : dr["evidencias"].ToString(),
@@ -893,6 +906,7 @@ WHERE u.finalizado=TRUE
                         titulo VARCHAR(250),
                         resumen TEXT,
                         antecedentes TEXT,
+                        base_legal TEXT,
                         alcance TEXT,
                         desarrollo TEXT,
                         evidencias TEXT,
@@ -948,6 +962,7 @@ WHERE u.finalizado=TRUE
 
                 const string alterSql = @"
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS antecedentes TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS base_legal TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS alcance TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS desarrollo TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS evidencias TEXT;
@@ -999,6 +1014,7 @@ WHERE u.finalizado=TRUE
                        titulo,
                        resumen,
                        antecedentes,
+                       base_legal,
                        alcance,
                        desarrollo,
                        evidencias,
@@ -1063,6 +1079,7 @@ WHERE u.finalizado=TRUE
                        titulo,
                        resumen,
                        antecedentes,
+                       base_legal,
                        alcance,
                        desarrollo,
                        evidencias,

@@ -1,4 +1,4 @@
-﻿using System.Web.Mvc;
+using System.Web.Mvc;
 using System.Web.Routing;
 
 namespace CapaPresentacion
@@ -78,6 +78,36 @@ namespace CapaPresentacion
                 name: "InformeTecnicoFirmarDireccion",
                 url: "InformeTecnico/FirmarDireccion",
                 defaults: new { controller = "Inspeccion", action = "FirmarDireccion" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoModal",
+                url: "InformeTecnico/ModalInformeTecnico/{codigoInspeccion}",
+                defaults: new { controller = "Inspeccion", action = "ModalInformeTecnico", codigoInspeccion = UrlParameter.Optional }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoPrevisualizar",
+                url: "InformeTecnico/PrevisualizarInformeTecnico",
+                defaults: new { controller = "Inspeccion", action = "PrevisualizarInformeTecnico" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoVerPreview",
+                url: "InformeTecnico/VerPreviewInformeTecnico",
+                defaults: new { controller = "Inspeccion", action = "VerPreviewInformeTecnico" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoGuardar",
+                url: "InformeTecnico/GuardarInformeTecnico",
+                defaults: new { controller = "Inspeccion", action = "GuardarInformeTecnico" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoDescargarPdf",
+                url: "InformeTecnico/DescargarInformeTecnicoPdf/{id}",
+                defaults: new { controller = "Inspeccion", action = "DescargarInformeTecnicoPdf", id = UrlParameter.Optional }
             );
 
             routes.MapRoute(

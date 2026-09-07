@@ -50,6 +50,9 @@ namespace CapaDatos.Constants
                     return EnProceso;
 
                 case "LV_COMPLETA":
+                case "LV_COMPLETADA":
+                case "COMPLETADA":
+                case "LV_FINALIZADA":
                 case "COMPLETA":
                 case "FINALIZADA":
                 case "COMPLETO":

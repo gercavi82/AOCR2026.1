@@ -68,16 +68,14 @@
         ? informe.Antecedentes
         : string.Format("La inspección AOCR #{0} se deriva de la solicitud {1}. La LV/EAE asociada se encuentra {2}.", numeroInspeccionVisual, numeroSolicitudVisual, vm.LvEaeFinalizada ? "finalizada" : "pendiente");
     var objetivoTexto = informe.Resumen ?? string.Empty;
-    var alcanceTexto = informe.Alcance ?? string.Empty;
     var desarrolloTexto = informe.Desarrollo ?? string.Empty;
     var hallazgosTexto = informe.NoConformidades ?? string.Empty;
-    var observacionesTexto = informe.Observaciones ?? string.Empty;
     var conclusionesTexto = informe.Conclusiones ?? string.Empty;
     var recomendacionesTexto = informe.Recomendaciones ?? string.Empty;
     var notasTexto = informe.Notas ?? string.Empty;
     var otrosAdjuntosTexto = informe.OtrosAdjuntos ?? string.Empty;
     var fechasInspeccionManual = informe.FechasInspeccionManual ?? string.Empty;
-    var estacionesInspeccionManual = informe.EstacionesInspeccionManual ?? string.Empty;
+    var lugarCanonico = inspeccion.Lugar ?? string.Empty;
     var numeroLicenciaInspector = !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
         ? informe.NumeroLicenciaInspector
         : inspectorCedula;
@@ -210,11 +208,16 @@
                                 <div class="aocr-info-card">
                                     <h6 class="aocr-section-title">Objetivo de la inspección</h6>
                                     <textarea name="resumen" class="form-control aocr-textarea-lg" placeholder="Describa el objetivo técnico de la inspección.">@objetivoTexto</textarea>
-                                    @Html.Hidden("alcance", alcanceTexto)
+                                </div>
+
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Base legal</h6>
+                                    <textarea name="baseLegal" class="form-control aocr-textarea-lg" placeholder="Registre las normas y referencias aplicables.">@informe.BaseLegal</textarea>
                                 </div>
 
                                 <div class="aocr-info-card">
                                     <h6 class="aocr-section-title">Cobertura operativa y datos base</h6>
+                                    <p><strong>Tipo de inspección:</strong> @inspeccion.Tipo</p>
                                     <div class="aocr-form-grid aocr-form-grid-split">
                                         <div class="aocr-form-field">
                                             <label for="fechasInspeccionManualFieldModal">Fecha o rango de inspección</label>
@@ -228,7 +231,7 @@
                                         </div>
                                         <div class="aocr-form-field">
                                             <label for="estacionesInspeccionManualFieldModal">Estación o cobertura</label>
-                                            <input type="text" id="estacionesInspeccionManualFieldModal" name="estacionesInspeccionManual" class="form-control" value="@estacionesInspeccionManual" placeholder="UIO, GYE, MEC, LTX u otra cobertura" />
+                                            <input type="text" id="estacionesInspeccionManualFieldModal" class="form-control" value="@lugarCanonico" readonly="readonly" />
                                         </div>
                                         <div class="aocr-form-field">
                                             <label>Cédula del inspector</label>
@@ -272,6 +275,10 @@
                                 <div class="aocr-info-card">
                                     <h6 class="aocr-section-title">Desarrollo técnico</h6>
                                     <textarea name="desarrollo" class="form-control aocr-textarea-xl" placeholder="Describa el análisis técnico efectuado, verificaciones, contrastes, cumplimiento y criterios aplicados.">@desarrolloTexto</textarea>
+                                    @if (!string.IsNullOrWhiteSpace(informe.Alcance))
+                                    {
+                                        <div class="aocr-field-help" style="white-space:pre-wrap"><strong>Antecedente de alcance conservado:</strong> @informe.Alcance</div>
+                                    }
                                 </div>
 
                                 <div class="aocr-info-card">
@@ -318,17 +325,7 @@
                                         @Html.Hidden("notas", notasTexto)
                                     </div>
 
-                                    <div class="aocr-info-card"
-                                         data-resultado-section="SATISFACTORIO"
-                                         @(mostrarObservacionesResultado ? null : "style=\"display:none;\"")>
-                                        <h6 class="aocr-section-title">Observaciones</h6>
-                                        <textarea name="observaciones" class="form-control aocr-textarea-lg" placeholder="Registre observaciones técnicas, restricciones o condiciones particulares.">@observacionesTexto</textarea>
-                                        <div class="aocr-field-help">Este bloque solo aplica cuando el resultado técnico final es satisfactorio.</div>
-                                    </div>
-
-                                    <div class="aocr-info-card"
-                                         data-resultado-section="INSATISFACTORIO"
-                                         @(mostrarHallazgosResultado ? null : "style=\"display:none;\"")>
+                                    <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Hallazgos técnicos</h6>
                                         <textarea name="noConformidades" class="form-control aocr-textarea-lg" placeholder="Registre los hallazgos técnicos. Puede usar una línea por hallazgo o bloque técnico.">@hallazgosTexto</textarea>
                                         <div class="aocr-field-help">Puede registrar un hallazgo por línea para facilitar la lectura del borrador y del PDF.</div>
@@ -339,6 +336,10 @@
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Conclusiones</h6>
                                         <textarea name="conclusiones" class="form-control aocr-textarea-lg" placeholder="Emita la conclusión técnica del informe.">@conclusionesTexto</textarea>
+                                        @if (!string.IsNullOrWhiteSpace(informe.Observaciones))
+                                        {
+                                            <div class="aocr-field-help" style="white-space:pre-wrap"><strong>Observaciones históricas conservadas:</strong> @informe.Observaciones</div>
+                                        }
                                     </div>
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Recomendaciones</h6>
@@ -599,12 +600,15 @@
                 @if (puedeEditar)
                 {
                     <button type="button" class="btn btn-secondary" data-aocr-submit-mode="guardar">Guardar borrador</button>
-                    <button type="button" class="btn btn-info text-white" data-aocr-preview-button="true">Previsualizar</button>
                     <button type="button" class="btn btn-primary" data-aocr-submit-mode="finalizar">Finalizar Informe Técnico</button>
                 }
                 else if (vm.ExistePdfInformeTecnico)
                 {
                     <a href="@vm.UrlVerPdf" target="_blank" rel="noopener" class="btn btn-outline-primary">Ver PDF</a>
+                }
+                @if (vm.PuedeGestionarInformeTecnico && (puedeEditar || vm.ExisteInformeTecnico))
+                {
+                    <button type="button" class="btn btn-info text-white" data-aocr-preview-button="true">Previsualizar</button>
                 }
             </div>
         </div>

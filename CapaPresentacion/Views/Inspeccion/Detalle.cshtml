@@ -202,13 +202,13 @@
     var usarDocumentoLvPersistido = listaVerificacionFirmada && tieneListaVerificacionOperacionalEae;
     var listaVerificacionOperacionalEaeUrl = Model != null && Model.CodigoInspeccion > 0
         ? (usarDocumentoLvPersistido
-            ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
-            : Url.Action("VerLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
+            ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion, estacionId = ViewBag.EstacionSeleccionadaId })
+            : Url.Action("VerLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion, estacionId = ViewBag.EstacionSeleccionadaId }))
         : string.Empty;
     var listaVerificacionOperacionalEaeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
         ? (usarDocumentoLvPersistido
-            ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
-            : Url.Action("DescargarLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
+            ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion, estacionId = ViewBag.EstacionSeleccionadaId })
+            : Url.Action("DescargarLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion, estacionId = ViewBag.EstacionSeleccionadaId }))
         : string.Empty;
     var urlDetalleSolicitudBase = Model != null && Model.CodigoSolicitud > 0
         ? Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })
@@ -2720,8 +2720,8 @@
                                 CodigoInspeccion = Model.CodigoInspeccion,
                                 Solicitud = solicitud,
                                 ListaVerificacion = listaVerificacionOperacionalEae,
-                                PuedeEditar = (esInspector || esAdministrador) && puedeAbrirLvEae,
-                                PuedeFirmar = (esInspector || esAdministrador) && puedeAbrirLvEae && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
+                                PuedeEditar = (ViewBag.PuedeOperarLvEstacion as bool? ?? false) && puedeAbrirLvEae,
+                                PuedeFirmar = (ViewBag.PuedeOperarLvEstacion as bool? ?? false) && puedeAbrirLvEae && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
                                 EstaFirmada = listaVerificacionFirmada,
                                 UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
                                 UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
@@ -3894,6 +3894,7 @@
         })();
     </script>
     <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-informe-tecnico-modal.js")"></script>
+    <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-lv-eae-validacion.js")"></script>
     <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-lv-eae-flujo-automatico.js")"></script>
 }
 

@@ -96,6 +96,13 @@ namespace CapaNegocio.Services
                 }
             }
 
+            var companiaPersistida = !string.IsNullOrWhiteSpace(solicitud.RazonSocial) 
+                ? solicitud.RazonSocial.Trim() 
+                : (!string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador.Trim() : string.Empty);
+            var operadorPersistido = !string.IsNullOrWhiteSpace(solicitud.NombreOperador) 
+                ? solicitud.NombreOperador.Trim() 
+                : (!string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? solicitud.RazonSocial.Trim() : string.Empty);
+
             var vm = new DesignacionPdfViewModel
             {
                 DesignacionId = designacion.Id,
@@ -104,15 +111,15 @@ namespace CapaNegocio.Services
                 NumeroDesignacion = $"DIRCAV-DESIG-{solicitudId:D5}-v{designacion.Version}",
                 Version = designacion.Version,
                 Estado = designacion.Estado,
-                Compania = solicitud.RazonSocial ?? solicitud.NombreOperador ?? "Operador Aéreo Extranjero",
-                NombreOperador = solicitud.NombreOperador ?? solicitud.RazonSocial,
-                PaisOperador = !string.IsNullOrWhiteSpace(solicitud.Pais) ? solicitud.Pais : "Estado del Explotador",
-                NumeroAoc = solicitud.NumeroAOC ?? "AOC-RDAC129",
-                TipoOperacion = !string.IsNullOrWhiteSpace(solicitud.TipoOperacion) ? solicitud.TipoOperacion : "Transporte Aéreo Regular",
+                Compania = companiaPersistida,
+                NombreOperador = operadorPersistido,
+                PaisOperador = !string.IsNullOrWhiteSpace(solicitud.Pais) ? solicitud.Pais.Trim() : string.Empty,
+                NumeroAoc = !string.IsNullOrWhiteSpace(solicitud.NumeroAOC) ? solicitud.NumeroAOC.Trim() : string.Empty,
+                TipoOperacion = !string.IsNullOrWhiteSpace(solicitud.TipoOperacion) ? solicitud.TipoOperacion.Trim() : string.Empty,
                 TipoSolicitud = solicitud.TipoSolicitud == 2 ? "Renovación" : (solicitud.TipoSolicitud == 3 ? "Modificación" : "Emisión"),
-                ResponsableTecnico = solicitud.RepresentanteLegal ?? "Responsable Técnico Designado",
-                CedulaRt = solicitud.CedulaRepresentante ?? string.Empty,
-                EmailRt = solicitud.CorreoRepresentanteTecnico ?? solicitud.Email ?? string.Empty,
+                ResponsableTecnico = !string.IsNullOrWhiteSpace(solicitud.RepresentanteLegal) ? solicitud.RepresentanteLegal.Trim() : string.Empty,
+                CedulaRt = !string.IsNullOrWhiteSpace(solicitud.CedulaRepresentante) ? solicitud.CedulaRepresentante.Trim() : string.Empty,
+                EmailRt = !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico) ? solicitud.CorreoRepresentanteTecnico.Trim() : (!string.IsNullOrWhiteSpace(solicitud.Email) ? solicitud.Email.Trim() : string.Empty),
                 InspectorPrincipalNombre = designacion.InspectorNombre,
                 InspectorPrincipalCedula = designacion.InspectorCedula,
                 InspectorPrincipalCargo = "Inspector de Operaciones / Aeronavegabilidad",
@@ -172,13 +179,13 @@ namespace CapaNegocio.Services
                 doc.AddTitle($"Oficio de Designación - Solicitud #{model.NumeroSolicitud}");
                 doc.Open();
 
-                // Fuentes
-                var fuenteTitulo = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 13, BaseColor.BLACK);
-                var fuenteSubtitulo = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, new BaseColor(27, 79, 114));
-                var fuenteNegrita = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 9, BaseColor.BLACK);
-                var fuenteNormal = FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.BLACK);
-                var fuentePequena = FontFactory.GetFont(FontFactory.HELVETICA, 8, BaseColor.DARK_GRAY);
-                var fuenteAviso = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 8, new BaseColor(180, 40, 40));
+                // Fuentes con codificación CP1252 para soporte completo de caracteres especiales y tildes
+                var fuenteTitulo = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 13, Font.BOLD, BaseColor.BLACK);
+                var fuenteSubtitulo = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 10, Font.BOLD, new BaseColor(27, 79, 114));
+                var fuenteNegrita = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 9, Font.BOLD, BaseColor.BLACK);
+                var fuenteNormal = FontFactory.GetFont(FontFactory.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 9, Font.NORMAL, BaseColor.BLACK);
+                var fuentePequena = FontFactory.GetFont(FontFactory.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 8, Font.NORMAL, BaseColor.DARK_GRAY);
+                var fuenteAviso = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED, 8, Font.BOLD, new BaseColor(180, 40, 40));
 
                 // 1. Título y Oficio
                 var tablaEncabezado = new PdfPTable(2) { WidthPercentage = 100 };

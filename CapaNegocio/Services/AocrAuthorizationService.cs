@@ -165,6 +165,7 @@ namespace CapaNegocio.Services
             { "Inspeccion/AprobarNcSubsanacionDocumental", new[] { "Coordinacion", "DireccionJefaturaTecnica" } },
             { "Inspeccion/SolicitarNueva", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Documento/RevisarDocumentos", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion/PrevisualizarInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/ModalInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/RevisionDireccion", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/AprobarDecisionFinalDireccion", new[] { "DireccionJefaturaTecnica" } },
@@ -622,7 +623,9 @@ namespace CapaNegocio.Services
                 if (!esAdministrador
                     && (Comparer.Equals(accion, "GuardarInformeTecnico")
                     || Comparer.Equals(accion, "FinalizarInformeTecnico")
-                    || Comparer.Equals(accion, "ModalInformeTecnico")))
+                    || (Comparer.Equals(accion, "ModalInformeTecnico")
+                        && !rolesInspeccion.Contains("Coordinacion", Comparer)
+                        && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer))))
                 {
                     if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
                     {

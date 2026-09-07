@@ -64,6 +64,7 @@
     <Compile Include="AeronaveSolicitud.cs" />
     <Compile Include="ChecklistItem.cs" />
     <Compile Include="ListaVerificacionOperacionalEae.cs" />
+    <Compile Include="ValidadorListaVerificacion.cs" />
     <Compile Include="ChecklistSolicitud.cs" />
     <Compile Include="Common\EmailTemplateModel.cs" />
     <Compile Include="Common\EmailTemplateRenderer.cs" />

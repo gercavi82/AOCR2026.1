@@ -269,10 +269,9 @@ namespace CapaPresentacion.Models.ViewModels
         public string TipoResultadoInsatisfactorio { get; set; }
         public string Antecedentes { get; set; }
         public string Objetivo { get; set; }
-        public string Alcance { get; set; }
+        public string BaseLegal { get; set; }
         public string DesarrolloTecnico { get; set; }
         public string Hallazgos { get; set; }
-        public string ObservacionesInspector { get; set; }
         public string Conclusiones { get; set; }
         public string Recomendaciones { get; set; }
         public string UrlPdfInformeFirmadoInspector { get; set; }
@@ -308,10 +307,9 @@ namespace CapaPresentacion.Models.ViewModels
             TipoResultadoInsatisfactorio = string.Empty;
             Antecedentes = string.Empty;
             Objetivo = string.Empty;
-            Alcance = string.Empty;
+            BaseLegal = string.Empty;
             DesarrolloTecnico = string.Empty;
             Hallazgos = string.Empty;
-            ObservacionesInspector = string.Empty;
             Conclusiones = string.Empty;
             Recomendaciones = string.Empty;
             UrlPdfInformeFirmadoInspector = string.Empty;

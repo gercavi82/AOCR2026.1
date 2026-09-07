@@ -92,8 +92,12 @@
         });
     }
 
-    function submitFormAsAjax(form, submitter) {
+    function submitFormAsAjax(form, submitter, guardarBorrador) {
         var formData = new FormData(form);
+        if (guardarBorrador) {
+            formData.set('lvSubmitAction', 'guardar');
+            formData.set('finalizar', 'false');
+        }
         var headers = { 'X-Requested-With': 'XMLHttpRequest' };
         var antiForgeryInput = form.querySelector('input[name="__RequestVerificationToken"]')
             || document.querySelector('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]')
@@ -130,7 +134,7 @@
                     message: 'La sesi\u00f3n expir\u00f3 o la aplicaci\u00f3n se reinici\u00f3. Inicie sesi\u00f3n nuevamente y vuelva a finalizar la LV/EAE.'
                 };
 
-                if (handleUnauthorizedPayload(loginPayload)) {
+                if (!guardarBorrador && handleUnauthorizedPayload(loginPayload)) {
                     return null;
                 }
 
@@ -138,15 +142,57 @@
             }
 
             return readResponsePayload(response).then(function (payload) {
-                if (handleUnauthorizedPayload(payload)) {
+                if (!guardarBorrador && handleUnauthorizedPayload(payload)) {
                     return null;
                 }
 
                 if (!response.ok || !payload || payload.success === false) {
-                    throw new Error(payload && payload.message ? payload.message : 'No se pudo completar la operación.');
+                    if (payload && payload.pendientes && window.AOCRValidacionLv && form.getAttribute('data-lv-resultados')) {
+                        window.AOCRValidacionLv.mostrar(form, payload, true);
+                    }
+                    throw new Error(payload && payload.message ? payload.message : 'No se pudo completar la operacion.');
                 }
 
                 return payload;
+            });
+        });
+    }
+
+    function bindStationNavigation(form) {
+        var dirty = false;
+        var saving = false;
+        form.addEventListener('input', function () { dirty = true; });
+        form.addEventListener('change', function () { dirty = true; });
+        Array.prototype.forEach.call(document.querySelectorAll('.aocr-estaciones-nav a'), function (link) {
+            link.addEventListener('click', function (event) {
+                if (!dirty && !saving) return;
+                event.preventDefault();
+                if (saving) return;
+                if (window.validarComentariosLvEae && !window.validarComentariosLvEae(form, false)) return;
+                saving = true;
+                form.setAttribute('data-lv-station-saving', 'true');
+                setButtonsBusy(form, true);
+                var request = submitFormAsAjax(form, null, true);
+                // FormData already captured the current station and its answers.
+                var inputs = Array.prototype.filter.call(form.querySelectorAll('input, textarea, select'), function (input) {
+                    return !input.disabled;
+                });
+                inputs.forEach(function (input) { input.disabled = true; });
+                request.then(function (payload) {
+                    if (!payload || payload.success !== true || payload.finalized || payload.signed)
+                        throw new Error('No se pudo guardar el avance. La LV pudo cambiar de estado; conserve sus cambios y revise la estación.');
+                    var identity = form.querySelector('input[name="lvCodigoLista"]');
+                    if (identity && payload.codigoLista) identity.value = payload.codigoLista;
+                    dirty = false;
+                    window.location.assign(link.href);
+                }).catch(function (error) {
+                    notify('error', error.message || 'No se pudo guardar el avance. Permanece en la estación actual.');
+                }).then(function () {
+                    saving = false;
+                    form.removeAttribute('data-lv-station-saving');
+                    inputs.forEach(function (input) { input.disabled = false; });
+                    setButtonsBusy(form, false);
+                });
             });
         });
     }
@@ -203,47 +249,9 @@
     }
 
     function validarCompletitudCliente(form) {
-        var headerFields = [
-            { id: 'lvNombreEae', label: 'Nombre del EAE' },
-            { id: 'lvNumeroAocFechaValidez', label: 'N AOC / Validez' },
-            { id: 'lvDireccionEstadoExplotador', label: 'Dirección en el Estado del explotador' },
-            { id: 'lvDireccionEstadoReconocimiento', label: 'Dirección en el Estado de reconocimiento' },
-            { id: 'lvTiposAeronaves', label: 'Tipos de aeronaves' },
-            { id: 'lvTipoOperacion', label: 'Tipo de operación' },
-            { id: 'lvInspectorResponsable', label: 'Inspector responsable' }
-        ];
-
-        for (var i = 0; i < headerFields.length; i++) {
-            var input = form.querySelector('[name="' + headerFields[i].id + '"], #' + headerFields[i].id);
-            if (input && !input.value.trim()) {
-                return 'Complete el campo de cabecera de la LV: ' + headerFields[i].label;
-            }
-        }
-
-        var serverFields = form.querySelectorAll('.lv-server-field[data-field="cumplimiento"]');
-        for (var j = 0; j < serverFields.length; j++) {
-            var code = serverFields[j].getAttribute('data-item-code');
-            var implField = form.querySelector('.lv-server-field[data-field="implementacion"][data-item-code="' + code + '"]');
-            var commField = form.querySelector('.lv-server-field[data-field="comentarios"][data-item-code="' + code + '"]');
-
-            var cump = (serverFields[j].value || '').trim();
-            var impl = implField ? (implField.value || '').trim() : '';
-            var comm = commField ? (commField.value || '').trim() : '';
-
-            if ((!cump || !impl) && !comm) {
-                return 'Debe seleccionar el estado de cumplimiento/implementación o registrar una observación para el ítem: ' + code;
-            }
-
-            if (cump.toUpperCase() === 'NO_SATISFACTORIO' && !comm) {
-                return 'Ingrese una observación en Pruebas / Notas / Comentarios para el requisito con resultado No Satisfactorio: ' + code;
-            }
-
-            if (impl.toUpperCase() === 'NO_IMPLEMENTADO' && !comm) {
-                return 'Ingrese una observación en Pruebas / Notas / Comentarios para el requisito No Implementado: ' + code;
-            }
-        }
-
-        return null;
+        if (!window.AOCRValidacionLv) return 'No se pudo cargar la validacion. Recargue la pagina.';
+        var resultado = window.AOCRValidacionLv.validar(form, true);
+        return resultado.esValida ? null : resultado.message;
     }
 
     function bindLvEditorForm(form) {
@@ -252,8 +260,13 @@
         }
 
         form.setAttribute('data-lv-auto-flow-bound', 'true');
+        bindStationNavigation(form);
 
         form.addEventListener('submit', function (event) {
+            if (form.getAttribute('data-lv-station-saving') === 'true') {
+                event.preventDefault();
+                return;
+            }
             if (event.defaultPrevented) {
                 return;
             }

@@ -15,7 +15,7 @@ namespace CapaDatos.DAOs
             return ConexionDAO.CrearConexion(); // Asegúrate de tener esta clase
         }
 
-        public void Registrar(Auditoria log)
+        public virtual void Registrar(Auditoria log)
         {
             if (log == null)
                 throw new ArgumentNullException(nameof(log));

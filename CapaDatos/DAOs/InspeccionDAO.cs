@@ -24,7 +24,7 @@ namespace CapaDatos.DAOs
                 : ConexionDAO.CadenaConexion;
         }
 
-        public Inspeccion ObtenerPorId(int id)
+        public virtual Inspeccion ObtenerPorId(int id)
         {
             using (var cn = new NpgsqlConnection(_cs))
             {

@@ -44,7 +44,7 @@ namespace CapaDatos.DAOs
         /// Lista las estaciones activas asociadas a una solicitud AOCR.
         /// Si no existen registros en la tabla aditiva, aplica fallback de compatibilidad histórica.
         /// </summary>
-        public List<SolicitudEstacionInspeccion> ListarPorSolicitud(int solicitudId)
+        public virtual List<SolicitudEstacionInspeccion> ListarPorSolicitud(int solicitudId)
         {
             if (solicitudId <= 0) return new List<SolicitudEstacionInspeccion>();
 

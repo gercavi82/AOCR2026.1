@@ -136,15 +136,18 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void Test08_RevisionDireccion_AlcanceOpcionalSinTitulosHuerfanos()
+        public void Test08_RevisionDireccion_AlcanceIntegradoSinSeccionDuplicada()
         {
             var rutaRevision = @"c:\proyectos\AOCR\CapaPresentacion\Views\InformeTecnico\RevisionDireccion.cshtml";
             Assert.IsTrue(File.Exists(rutaRevision), "Debe existir RevisionDireccion.cshtml.");
 
             var contenido = File.ReadAllText(rutaRevision);
 
-            // Debe condicionar la subsección Alcance
-            StringAssert.Contains(contenido, "@if (!string.IsNullOrWhiteSpace(vm.Alcance))", "En RevisionDireccion, Alcance debe ser condicional para evitar títulos huérfanos.");
+            Assert.IsFalse(contenido.Contains("vm.Alcance"), "El alcance se presenta dentro del desarrollo consolidado.");
+            StringAssert.Contains(contenido, "@renderMultiline(vm.DesarrolloTecnico)");
+            var consolidado = CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.ConsolidarTexto("Historia", "Desarrollo");
+            StringAssert.Contains(consolidado, "Historia");
+            StringAssert.Contains(consolidado, "Desarrollo");
         }
 
         [TestMethod]

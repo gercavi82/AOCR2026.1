@@ -400,7 +400,12 @@
         }
 
         var resultadoSeleccionado = form.querySelector('input[name="resultado"]:checked');
-        if (!isResultadoInsatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
+        var resultado = normalizeResultado(resultadoSeleccionado ? resultadoSeleccionado.value : '');
+        if (resultado !== 'SATISFACTORIO' && resultado !== 'INSATISFACTORIO') {
+            notify('error', 'Seleccione un resultado: SATISFACTORIO o INSATISFACTORIO.');
+            return false;
+        }
+        if (resultado !== 'INSATISFACTORIO') {
             return true;
         }
 
@@ -751,15 +756,6 @@
             formData.delete('tipoResultadoInsatisfactorio');
         }
 
-        if (isResultadoSatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
-            formData.set('noConformidades', '');
-        } else if (isResultadoInsatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
-            formData.set('observaciones', '');
-        } else {
-            formData.set('observaciones', '');
-            formData.set('noConformidades', '');
-        }
-
         return formData;
     }
 
@@ -840,6 +836,22 @@
             return;
         }
 
+        syncGeneratedDocumentFields(form);
+        if (submitMode === 'finalizar') {
+            var campos = ['antecedentes', 'resumen', 'baseLegal', 'desarrollo', 'noConformidades', 'conclusiones', 'recomendaciones', 'fechasInspeccionManual'];
+            var pendientes = campos.filter(function (nombre) {
+                var campo = form.querySelector('[name="' + nombre + '"]');
+                var vacio = !campo || !campo.value.trim();
+                if (campo) campo.setAttribute('aria-invalid', vacio ? 'true' : 'false');
+                return vacio;
+            });
+            if (pendientes.length) {
+                notify('error', 'Complete los campos obligatorios: ' + pendientes.join(', ') + '.');
+                var primero = form.querySelector('[name="' + pendientes[0] + '"]');
+                if (primero) primero.focus();
+                return;
+            }
+        }
         if (!validateInsatisfactorioSelection(form, submitMode)) {
             return;
         }

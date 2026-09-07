@@ -20,6 +20,8 @@ namespace CapaNegocio.Services
         private readonly InspeccionDAO _inspeccionDao;
         private readonly SolicitudAOCRDAO _solicitudDao;
         private readonly AuditoriaDAO _auditoriaDao;
+        private readonly ListaVerificacionCatalogService _catalogService;
+        private readonly Func<int, InspectorIdentityInfo> _resolverIdentidad;
 
         public ListaVerificacionService()
         {
@@ -28,6 +30,8 @@ namespace CapaNegocio.Services
             _inspeccionDao = new InspeccionDAO();
             _solicitudDao = new SolicitudAOCRDAO();
             _auditoriaDao = new AuditoriaDAO();
+            _catalogService = new ListaVerificacionCatalogService();
+            _resolverIdentidad = id => new InspectorIdentityService().ObtenerIdentidadInspector(id, null, null);
         }
 
         public ListaVerificacionService(
@@ -35,13 +39,17 @@ namespace CapaNegocio.Services
             SolicitudEstacionDAO estacionDao,
             InspeccionDAO inspeccionDao,
             SolicitudAOCRDAO solicitudDao,
-            AuditoriaDAO auditoriaDao = null)
+            AuditoriaDAO auditoriaDao = null,
+            ListaVerificacionCatalogService catalogService = null,
+            Func<int, InspectorIdentityInfo> resolverIdentidad = null)
         {
             _lvDao = lvDao ?? new ListaVerificacionOperacionalEaeDAO();
             _estacionDao = estacionDao ?? new SolicitudEstacionDAO();
             _inspeccionDao = inspeccionDao ?? new InspeccionDAO();
             _solicitudDao = solicitudDao ?? new SolicitudAOCRDAO();
             _auditoriaDao = auditoriaDao ?? new AuditoriaDAO();
+            _catalogService = catalogService ?? new ListaVerificacionCatalogService();
+            _resolverIdentidad = resolverIdentidad ?? (id => new InspectorIdentityService().ObtenerIdentidadInspector(id, null, null));
         }
 
         #region Validaciones de Autorización Institucional (Segregación de Roles)
@@ -82,6 +90,29 @@ namespace CapaNegocio.Services
 
         #endregion
 
+        private Inspeccion ValidarContexto(int? solicitudId, int inspeccionId, int? estacionId, int usuarioId, string rol)
+        {
+            var inspeccion = _inspeccionDao.ObtenerPorId(inspeccionId);
+            if (inspeccion == null || (solicitudId.HasValue && solicitudId != inspeccion.CodigoSolicitud))
+                throw new InvalidOperationException("La inspección no pertenece al trámite indicado.");
+            var estaciones = _estacionDao.ListarPorSolicitud(inspeccion.CodigoSolicitud);
+            var estacion = estaciones.FirstOrDefault(e => e.Id == estacionId && e.Activo);
+            if ((estacionId.HasValue && (estacion == null || estacionId <= 0
+                    || (estacion.InspeccionId.HasValue && estacion.InspeccionId != inspeccionId)))
+                || (!estacionId.HasValue && estaciones.Any(e => e.Activo)))
+                throw new InvalidOperationException("Seleccione una estación válida de esta inspección.");
+            if (AocrRolesInstitucionales.EsInspector(rol))
+            {
+                var identidad = _resolverIdentidad(usuarioId);
+                var asignado = inspeccion.CodigoInspector.HasValue && identidad.Ids.Contains(inspeccion.CodigoInspector.Value);
+                asignado = asignado || identidad.Identificadores.Contains(inspeccion.InspectorPrincipalCedula ?? "")
+                    || identidad.Identificadores.Contains(inspeccion.InspectorApoyoCedula ?? "");
+                if (!asignado || (estacion?.InspectorId > 0 && !identidad.Ids.Contains(estacion.InspectorId.Value)))
+                    throw new UnauthorizedAccessException("El inspector no está asignado a esta inspección o estación.");
+            }
+            return inspeccion;
+        }
+
         #region Operaciones de Consulta e Inicio Idempotente por Estación
 
         /// <summary>
@@ -101,14 +132,17 @@ namespace CapaNegocio.Services
                 throw new UnauthorizedAccessException("Acceso denegado: rol no autorizado para consultar listas de verificación.");
             }
 
+            ValidarContexto(solicitudId, inspeccionId, estacionId, usuarioId, rol);
+
             // 1. Buscar si ya existe una LV registrada para esta inspección y estación
             var lvExistente = _lvDao.ObtenerUltimaPorInspeccion(inspeccionId, estacionId);
             if (lvExistente != null)
             {
+                AsegurarItemsDeserializados(lvExistente);
                 return lvExistente;
             }
 
-            // 2. Si no existe y el usuario tiene rol de Inspector, crear el borrador inicial de forma idempotente
+            // 2. Si no existe y el usuario tiene rol de Inspector, crear el borrador inicial de forma idempotente con el catálogo común
             if (EsRolAutorizadoOperacion(rol))
             {
                 var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
@@ -131,6 +165,7 @@ namespace CapaNegocio.Services
                     }
                 }
 
+                var catalogo = _catalogService.ObtenerCatalogoPreguntas();
                 var nueva = new ListaVerificacionOperacionalEae
                 {
                     CodigoInspeccion = inspeccionId,
@@ -154,12 +189,14 @@ namespace CapaNegocio.Services
                     ResumenVerificacion = string.Empty,
                     ObservacionesGenerales = string.Empty,
                     ResultadoGeneral = "SATISFACTORIO",
-                    ItemsJson = "[]",
+                    ItemsJson = ListaVerificacionCatalogService.SerializarRespuestas(catalogo),
+                    Items = catalogo,
                     Finalizado = false,
                     FirmadoTecnico = false
                 };
 
                 var guardada = _lvDao.GuardarBorrador(nueva, usuarioId);
+                AsegurarItemsDeserializados(guardada);
 
                 // Auditoría
                 try
@@ -192,40 +229,26 @@ namespace CapaNegocio.Services
         /// </summary>
         public bool ValidarCompletitudParaFinalizar(ListaVerificacionOperacionalEae lista, out string mensaje)
         {
-            mensaje = string.Empty;
-            if (lista == null)
-            {
-                mensaje = "No existe una lista de verificación operacional EAE para procesar.";
-                return false;
-            }
+            var resultado = EvaluarCompletitud(lista);
+            mensaje = resultado.EsValida ? string.Empty : resultado.Mensaje;
+            return resultado.EsValida;
+        }
 
-            AsegurarItemsDeserializados(lista);
-
-            List<string> errores;
-            if (!lista.ValidarCompletitud(out errores))
-            {
-                mensaje = errores != null && errores.Count > 0 ? errores[0] : "La lista de verificación contiene ítems incompletos.";
-                return false;
-            }
-
-            return true;
+        public ValidacionListaVerificacionResultado EvaluarCompletitud(ListaVerificacionOperacionalEae lista)
+        {
+            if (lista == null) return ValidadorListaVerificacion.Evaluar(null);
+            // Nunca confiar en la cantidad enviada ni en EsNotaOrientacion del cliente.
+            lista.Items = _catalogService.HidratarRespuestas(lista.ItemsJson, lista.Items);
+            return lista.EvaluarCompletitud();
         }
 
         private void AsegurarItemsDeserializados(ListaVerificacionOperacionalEae lista)
         {
             if (lista == null) return;
             if (lista.Items != null && lista.Items.Count > 0) return;
-            if (string.IsNullOrWhiteSpace(lista.ItemsJson) || lista.ItemsJson.Trim() == "[]") return;
 
-            try
-            {
-                lista.Items = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ListaVerificacionOperacionalEaeItem>>(lista.ItemsJson)
-                    ?? new List<ListaVerificacionOperacionalEaeItem>();
-            }
-            catch
-            {
-                // ignored
-            }
+            // Reutilizar catálogo común oficial para hidratar, garantizando que nunca quede en blanco
+            lista.Items = _catalogService.HidratarRespuestas(lista.ItemsJson, lista.Items);
         }
 
         /// <summary>
@@ -242,9 +265,11 @@ namespace CapaNegocio.Services
                 throw new UnauthorizedAccessException("Acceso denegado: solo el Inspector asignado puede registrar respuestas en la Lista de Verificación.");
             }
 
+            ValidarContexto(lista.SolicitudId, lista.CodigoInspeccion, lista.EstacionId, usuarioId, rol);
+
             // Comprobar estado previo para evitar sobreescritura de LV firmada
             var previa = _lvDao.ObtenerUltimaPorInspeccion(lista.CodigoInspeccion, lista.EstacionId);
-            if (previa != null && previa.FirmadoTecnico)
+            if (previa != null && (previa.FirmadoTecnico || previa.Finalizado || !previa.Vigente))
             {
                 throw new InvalidOperationException("Conflicto (409): La lista de verificación ya se encuentra firmada oficialmente y es inmutable.");
             }
@@ -254,6 +279,7 @@ namespace CapaNegocio.Services
                 ? AocrEstadosListaVerificacion.Completa
                 : AocrEstadosListaVerificacion.EnProceso;
             lista.Vigente = true;
+            lista.ItemsJson = ListaVerificacionCatalogService.SerializarRespuestas(lista.Items);
 
             return _lvDao.GuardarBorrador(lista, usuarioId);
         }
@@ -271,6 +297,7 @@ namespace CapaNegocio.Services
 
             var lv = _lvDao.ObtenerPorId(codigoLv);
             if (lv == null) throw new KeyNotFoundException("Lista de verificación no encontrada.");
+            ValidarContexto(lv.SolicitudId, lv.CodigoInspeccion, lv.EstacionId, usuarioId, rol);
 
             if (lv.FirmadoTecnico)
             {
@@ -306,6 +333,7 @@ namespace CapaNegocio.Services
 
             var lv = _lvDao.ObtenerPorId(codigoLv);
             if (lv == null) throw new KeyNotFoundException("Lista de verificación no encontrada.");
+            ValidarContexto(lv.SolicitudId, lv.CodigoInspeccion, lv.EstacionId, usuarioId, rol);
 
             if (lv.FirmadoTecnico)
             {

@@ -479,6 +479,7 @@
     var tienePdf = !string.IsNullOrWhiteSpace(vm.UrlVisualizacion);
     var firmada = vm.EstaFirmada || (lista.Finalizado && lista.FirmadoTecnico);
     var finalizada = lista.Finalizado;
+    var validacionLv = lista.EvaluarCompletitud();
     var estado = (lista.EstadoLista ?? "LV_BORRADOR").ToUpperInvariant();
     var operadorArchivoLv = PdfFileNameHelper.PrimerValorNoVacio(
         lista.NombreEae,
@@ -516,6 +517,9 @@
 }
 
 <style>
+    .lv-item-pendiente > td { background-color: #fff5e6 !important; }
+    .lv-item-pendiente { outline: 2px solid #a95b00; outline-offset: -2px; }
+    .lv-pending-badge { display: block; color: #7a3700; font-weight: bold; font-size: 0.8rem; margin-top: 0.5rem; }
     #bloqueListaVerificacionOperacionalEae .aocr-lv-wrapper {
         width: 100%;
     }
@@ -1090,7 +1094,7 @@
             var estacionActiva = vm.Estaciones.FirstOrDefault(e => e.Id == (vm.EstacionSeleccionadaId ?? 0)) ?? vm.Estaciones.First();
             <div class="aocr-estaciones-nav mb-3 p-3 bg-white border rounded shadow-sm">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="fw-bold text-primary"><i class="fas fa-map-marker-alt me-1"></i> Estaciones Solicitadas (AC-07: Una LV independiente por estación)</span>
+                    <span class="fw-bold text-primary"><i class="fas fa-map-marker-alt me-1"></i> Listas de verificación por estación</span>
                     <span class="badge bg-light text-dark border">Total: @vm.Estaciones.Count</span>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
@@ -1163,7 +1167,12 @@
             </div>
         }
 
-        @if (finalizada && !firmada && vm.PuedeFirmar)
+        @if (finalizada && !firmada && !validacionLv.EsValida)
+        {
+            <div class="alert alert-warning" role="alert">@validacionLv.Mensaje</div>
+        }
+
+        @if (finalizada && !firmada && vm.PuedeFirmar && validacionLv.EsValida)
         {
             <div class="card mt-4 border-0 bg-light mb-3" data-lv-signature-section="true">
                 <div class="card-body">
@@ -1174,6 +1183,7 @@
                         <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
                         <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
                         <input type="hidden" name="lvEstacionId" value="@(vm.EstacionSeleccionadaId ?? lista.EstacionId)" />
+                <input type="hidden" name="lvCodigoLista" value="@lista.CodigoListaVerificacion" />
 
                         <div class="row g-3">
                             <div class="col-md-6 mb-3">
@@ -1241,22 +1251,25 @@
 
         @if (vm.PuedeEditar && !firmada)
         {
-            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4", novalidate = "novalidate" }))
+            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4", novalidate = "novalidate", data_lv_resultados = Newtonsoft.Json.JsonConvert.SerializeObject(new { cumplimientos = ValidadorListaVerificacion.Cumplimientos, implementaciones = ValidadorListaVerificacion.Implementaciones }) }))
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
                 <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
                 <input type="hidden" name="lvEstacionId" id="lvEstacionId" value="@(vm.EstacionSeleccionadaId ?? lista.EstacionId)" />
+                <input type="hidden" name="lvCodigoLista" value="@lista.CodigoListaVerificacion" />
                 <input type="hidden" name="solicitudId" id="lvSolicitudId" value="@(vm.Solicitud != null ? vm.Solicitud.CodigoSolicitud : 0)" />
                 <input type="hidden" name="lvSubmitAction" value="guardar" />
                 <div class="alert alert-warning alert-inline lv-validation-message d-none mb-3" data-lv-validation-message="true" role="alert"></div>
 
+                <div class="alert alert-warning" data-lv-pendientes="true" role="status" aria-live="polite">@validacionLv.Mensaje</div>
+
                 <div class="lv-hidden-sync-fields" style="display:none;">
                     @foreach (var itemSync in items.Where(item => item != null && !item.EsNotaOrientacion && !string.IsNullOrWhiteSpace(item.Codigo)))
                     {
-                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="cumplimiento" name="@("lvItem_" + itemSync.Codigo + "_cumplimiento")" value="@(itemSync.EstadoCumplimiento ?? string.Empty)" />
-                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="implementacion" name="@("lvItem_" + itemSync.Codigo + "_implementacion")" value="@(itemSync.EstadoImplementacion ?? string.Empty)" />
-                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-field="comentarios" name="@("lvItem_" + itemSync.Codigo + "_comentarios")" value="@(itemSync.PruebasNotasComentarios ?? string.Empty)" />
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-question-code="@itemSync.CodigoPregunta" data-field="cumplimiento" name="@("lvItem_" + itemSync.Codigo + "_cumplimiento")" value="@(itemSync.EstadoCumplimiento ?? string.Empty)" />
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-question-code="@itemSync.CodigoPregunta" data-field="implementacion" name="@("lvItem_" + itemSync.Codigo + "_implementacion")" value="@(itemSync.EstadoImplementacion ?? string.Empty)" />
+                        <input type="hidden" class="lv-server-field" data-item-code="@itemSync.Codigo" data-question-code="@itemSync.CodigoPregunta" data-field="comentarios" name="@("lvItem_" + itemSync.Codigo + "_comentarios")" value="@(itemSync.PruebasNotasComentarios ?? string.Empty)" />
                     }
                 </div>
 
@@ -1348,7 +1361,7 @@
                                 {
                                     etiquetaFila = etiquetaFila.Substring(0, 157).TrimEnd() + "...";
                                 }
-                                <tr class="lv-official-edit-row" data-lv-requirement-code="@fila.RequirementCode" data-lv-row-key="@fila.RowKey">
+                                <tr class="lv-official-edit-row" data-lv-item-codes="@targetFila" data-lv-requirement-code="@fila.RequirementCode" data-lv-row-key="@fila.RowKey">
                                     <td class="aocr-lv-col-ref @(fila.ReferenceLines.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Referencia">
                                         @if (fila.ReferenceLines.Any())
                                         {
@@ -1454,7 +1467,7 @@
                 <div class="d-flex flex-column flex-md-row gap-2 mt-3 lv-operacional-actions aocr-lv-actions">
                     @if (tienePdf)
                     {
-                        <a class="btn btn-outline-secondary" href="@Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })" target="_blank" rel="noopener">
+                        <a class="btn btn-outline-secondary" href="@Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = vm.EstacionSeleccionadaId ?? lista.EstacionId })" target="_blank" rel="noopener">
                             <i class="fas fa-file-pdf me-1"></i> Ver PDF
                         </a>
                     }
@@ -1896,61 +1909,14 @@
         }
     }
 
+    window.sincronizarCamposLvEae = sincronizarCamposLvEae;
     window.validarComentariosLvEae = function (form, requiereConfirmacion) {
-        if (!form) {
-            return true;
-        }
-
+        if (!form) return false;
         clearValidationMessage(form);
         sincronizarCamposLvEae(form);
-
-        if (!requiereConfirmacion) {
-            return true;
-        }
-
-        var missingHeaderField = getMissingHeaderField(form);
-        if (missingHeaderField) {
-            return showValidationMessage(form, 'Falta completar el campo "' + getHeaderFieldLabel(missingHeaderField) + '" antes de finalizar la LV/EAE.', missingHeaderField);
-        }
-
-        var implementationGroups = form.querySelectorAll('.lv-visible-implementation-group');
-        for (var i = 0; i < implementationGroups.length; i++) {
-            var implementationGroup = implementationGroups[i];
-            var row = implementationGroup.closest('.lv-official-edit-row');
-            if (!row) {
-                continue;
-            }
-
-            var requirementCode = row.getAttribute('data-lv-requirement-code') || '';
-            var rowLabel = implementationGroup.getAttribute('data-row-label') || requirementCode || ('fila ' + (i + 1));
-            var complianceSelected = obtenerCumplimientoSeleccionado(form, requirementCode);
-            var implementationSelected = implementationGroup.querySelector('.lv-visible-implementacion:checked');
-            var commentField = row.querySelector('.lv-visible-comentarios');
-            var commentValue = commentField && commentField.value ? commentField.value.trim() : '';
-
-            if ((!complianceSelected || !implementationSelected) && !commentValue) {
-                var focusTarget = commentField || implementationGroup.querySelector('.lv-visible-implementacion') || (obtenerCumplimientoSeleccionado(form, requirementCode) ? null : form.querySelector('.lv-visible-compliance-group[data-requirement-code="' + escapeAttributeValue(requirementCode) + '"] .lv-visible-cumplimiento'));
-                return showValidationMessage(form, 'Debe seleccionar el estado de cumplimiento/implementación o registrar una observación en la columna 14 para ' + rowLabel + '.', focusTarget);
-            }
-
-            if (implementationSelected && implementationSelected.value === 'NO_IMPLEMENTADO' && !commentValue) {
-                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para ' + rowLabel + ' cuando el estado de implementación sea No implementado.', commentField || implementationGroup.querySelector('.lv-visible-implementacion'));
-            }
-        }
-
-        var complianceGroups = form.querySelectorAll('.lv-visible-compliance-group');
-        for (var j = 0; j < complianceGroups.length; j++) {
-            var complianceGroup = complianceGroups[j];
-            var complianceSelected = complianceGroup.querySelector('.lv-visible-cumplimiento:checked');
-            var requirementCode = complianceGroup.getAttribute('data-requirement-code') || ('requisito ' + (j + 1));
-            if (complianceSelected && complianceSelected.value === 'NO_SATISFACTORIO' && !requisitoTieneComentario(form, requirementCode)) {
-                var requirementRows = obtenerComentariosRequisito(form, requirementCode);
-                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para el requisito ' + requirementCode + ' cuando el estado de cumplimiento sea No satisfactorio.', requirementRows.length > 0 ? requirementRows[0] : complianceGroup.querySelector('.lv-visible-cumplimiento'));
-            }
-        }
-
-        clearValidationMessage(form);
-        return !requiereConfirmacion || confirm('Confirma que desea finalizar la Lista de Verificacion Operacional (LV) y generar el PDF?');
+        if (!requiereConfirmacion) return true;
+        if (!window.AOCRValidacionLv) return showValidationMessage(form, 'No se pudo cargar la validacion. Recargue la pagina.', null);
+        return window.AOCRValidacionLv.validar(form, true).esValida;
     };
 
     var forms = document.querySelectorAll('#bloqueListaVerificacionOperacionalEae form[action*="GuardarListaVerificacionOperacionalEae"]');

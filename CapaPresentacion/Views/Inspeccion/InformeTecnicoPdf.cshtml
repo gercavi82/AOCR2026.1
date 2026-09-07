@@ -69,7 +69,7 @@
             ? inspeccion.FechaProgramada.Value.Year.ToString()
             : DateTime.Now.Year.ToString());
     var numeroInspeccion = string.Format("DGAC-INS-{0}-{1}", anioInspeccion, referenciaSolicitudInspeccion);
-    var operador = solicitud != null ? solicitud.NombreOperador : null;
+    var operador = solicitud != null ? (solicitud.RazonSocial ?? solicitud.NombreOperador) : null;
     var licenciaInspector = informe != null && !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
         ? informe.NumeroLicenciaInspector
         : (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
@@ -82,10 +82,10 @@
     var notas = informe != null ? informe.Notas : null;
     var observaciones = informe != null ? informe.Observaciones : null;
     var hallazgosTecnicos = informe != null ? informe.NoConformidades : null;
-    var conclusiones = informe != null ? informe.Conclusiones : null;
+    var conclusiones = informe != null ? InformeTecnicoTemplateHelper.ConsolidarTexto(informe.Conclusiones, informe.Observaciones) : null;
     var recomendaciones = informe != null ? informe.Recomendaciones : null;
     var fechasInspeccionManual = informe != null ? informe.FechasInspeccionManual : null;
-    var estacionesInspeccionManual = informe != null ? informe.EstacionesInspeccionManual : null;
+    var estacionesInspeccionManual = inspeccion != null ? inspeccion.Lugar : null;
     var servicios = InformeTecnicoTemplateHelper.GetServicioRows(informe != null ? informe.ServiciosEstaciones : null);
     var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informe != null ? informe.DocumentosAdjuntos : null);
     var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informe != null ? informe.DocumentosAdjuntosArchivos : null);
@@ -101,12 +101,7 @@
     var esResultadoSatisfactorio = InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultadoTecnico);
     var esResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoTecnico);
     var notasItems = obtenerItemsOTextoNoAplica(notas);
-    var observacionesItems = esResultadoSatisfactorio
-        ? obtenerItemsOTextoNoAplica(observaciones)
-        : new List<string> { textoNoAplica };
-    var hallazgosTecnicosItems = esResultadoInsatisfactorio
-        ? obtenerItemsOTextoNoAplica(hallazgosTecnicos)
-        : new List<string> { textoNoAplica };
+    var hallazgosTecnicosItems = obtenerItemsOTextoNoAplica(hallazgosTecnicos);
     var conclusionesItems = obtenerItemsOTextoNoAplica(conclusiones);
     var recomendacionesItems = obtenerItemsOTextoNoAplica(recomendaciones);
     var otrosAdjuntosItems = obtenerItemsOTextoNoAplica(informe != null ? informe.OtrosAdjuntos : null);
@@ -156,6 +151,10 @@
         .report-order { margin-bottom: 14px; font-size: 10pt; }
         .report-section-title { margin: 16px 0 8px; font-weight: bold; font-size: 10.5pt; text-transform: uppercase; }
         .report-paragraph { margin: 0 0 10px; line-height: 1.75; text-align: justify; }
+        .narrative { white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; }
+        .report-section-title { page-break-after: avoid; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
         .report-paragraph.compact { margin-bottom: 6px; }
         .fill-inline { display: inline-block; min-width: 160px; padding: 0 4px 2px; border-bottom: 1px solid #222; font-weight: bold; text-align: center; }
         .fill-inline.wide { min-width: 240px; }
@@ -196,18 +195,19 @@
             <span class="fill-inline wide">@textoDocumento(numeroInspeccion, textoNoAplica)</span>
         </div>
 
-        <div class="report-section-title">TRABAJOS REALIZADOS:</div>
-        <p class="report-paragraph">
-            En cumplimiento del Art. 110 del Código Aeronáutico, entre
-            <span class="fill-inline">@fechaInspeccionTexto</span>
-            se realizó la inspección a la(s) estación(es) de
-            <span class="fill-inline wide">@estacionesTextoArt110</span>
-            con el fin de verificar que la compañía
-            <span class="fill-inline wide">@textoDocumento(operador, textoNoAplica)</span>
-            cuenta con instalaciones, facilidades y personal técnico - operativo que brinda asistencia en tierra a sus operaciones comerciales, en la(s) cual(es) se verificó lo siguiente:
-        </p>
-
-        <p class="report-paragraph">La operación comercial de <span class="fill-inline wide">@textoDocumento(operador, textoNoAplica)</span> será asistida por:</p>
+        <p class="report-paragraph compact"><strong>Operador:</strong> @textoDocumento(operador, textoNoAplica)</p>
+        <p class="report-paragraph compact"><strong>Base / lugar:</strong> @estacionesTextoArt110</p>
+        <p class="report-paragraph compact"><strong>Tipo de inspección:</strong> @textoDocumento(inspeccion != null ? inspeccion.Tipo : null, textoNoAplica)</p>
+        <p class="report-paragraph compact"><strong>Fecha:</strong> @fechaInspeccionTexto</p>
+        <p class="report-paragraph compact"><strong>Inspector:</strong> @textoDocumento(inspector, textoNoAplica)</p>
+        <div class="report-section-title">1. ANTECEDENTES</div>
+        <p class="report-paragraph narrative">@(informe != null ? informe.Antecedentes : null)</p>
+        <div class="report-section-title">2. OBJETIVO</div>
+        <p class="report-paragraph narrative">@(informe != null ? informe.Resumen : null)</p>
+        <div class="report-section-title">3. BASE LEGAL</div>
+        <p class="report-paragraph narrative">@textoDocumento(informe != null ? informe.BaseLegal : null, "No registrada en el informe original.")</p>
+        <div class="report-section-title">4. DESARROLLO DEL PROCESO</div>
+        <p class="report-paragraph narrative">@(informe != null ? InformeTecnicoTemplateHelper.ConsolidarTexto(informe.Alcance, informe.Desarrollo) : null)</p>
 
         <table class="coverage-table">
             <thead>
@@ -251,15 +251,7 @@
             <p class="report-paragraph compact">Tipo de resultado insatisfactorio: <strong>@tipoResultadoInsatisfactorioLabel</strong></p>
         }
 
-        <div class="report-section-title">Observaciones:</div>
-        <ul class="bullet-list">
-            @foreach (var item in observacionesItems)
-            {
-                <li>@item</li>
-            }
-        </ul>
-
-        <div class="report-section-title">Hallazgos técnicos:</div>
+        <div class="report-section-title">5. HALLAZGOS</div>
         <ul class="bullet-list">
             @foreach (var item in hallazgosTecnicosItems)
         {
@@ -267,7 +259,7 @@
         }
         </ul>
 
-        <div class="report-section-title">Conclusiones:</div>
+        <div class="report-section-title">6. CONCLUSIONES</div>
         <ul class="bullet-list">
             @foreach (var item in conclusionesItems)
             {
@@ -275,7 +267,7 @@
             }
         </ul>
 
-        <div class="report-section-title">Recomendaciones:</div>
+        <div class="report-section-title">7. RECOMENDACIONES</div>
         <ul class="bullet-list">
             @foreach (var item in recomendacionesItems)
             {
