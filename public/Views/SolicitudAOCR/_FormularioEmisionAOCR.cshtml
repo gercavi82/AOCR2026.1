@@ -2287,6 +2287,8 @@
       camposBase.NumeroAOC = datosMapeados.NumeroAOC || '';
       camposBase.AeropuertosEcuador = datosMapeados.AeropuertosEcuador || '';
       camposBase.AeropuertosEcuadorOtros = datosMapeados.AeropuertosEcuadorOtros || '';
+      var estacionesOperaciones = typeof obtenerEstacionesDesdeTabla === 'function' ? obtenerEstacionesDesdeTabla() : [];
+      return { seccion: seccion, solicitud: camposBase, estaciones: estacionesOperaciones };
     }
     return { seccion: seccion, solicitud: camposBase };
   }

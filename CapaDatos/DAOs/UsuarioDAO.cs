@@ -459,18 +459,38 @@ namespace CapaDatos.DAOs
                     "fechacreado"
                 };
 
+                var estadoActividadValor = usuario.Activo ? "'1'" : "'0'";
+
                 var valores = new List<string>
                 {
                     "@CodigoUsuario",
                     "@Contrasena",
                     "@Email",
-                    "'1'",
+                    estadoActividadValor,
                     "@NombreUsuario",
                     "@Rol",
                     "@EmpresaCodigo",
                     "@RutaDocumentoLegal",
                     "NOW()"
                 };
+
+                if (ExisteColumna(conn, "usuario", "correo_liberado"))
+                {
+                    columnas.Add("correo_liberado");
+                    valores.Add("FALSE");
+                }
+
+                if (ExisteColumna(conn, "usuario", "correo_original"))
+                {
+                    columnas.Add("correo_original");
+                    valores.Add("@Email");
+                }
+
+                if (ExisteColumna(conn, "usuario", "estado_designacion_rt"))
+                {
+                    columnas.Add("estado_designacion_rt");
+                    valores.Add("@EstadoDesignacionRT");
+                }
 
                 if (ExisteColumna(conn, "usuario", "apellidousuario"))
                 {
@@ -492,7 +512,8 @@ namespace CapaDatos.DAOs
                     ApellidoUsuario = string.IsNullOrWhiteSpace(apellidoUsuario) ? null : apellidoUsuario,
                     Rol = usuario.Rol,
                     EmpresaCodigo = usuario.EmpresaCodigo,
-                    RutaDocumentoLegal = usuario.RutaDocumentoLegal
+                    RutaDocumentoLegal = usuario.RutaDocumentoLegal,
+                    EstadoDesignacionRT = string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) ? "pendiente" : usuario.EstadoDesignacionRT
                 });
             }
         }
@@ -694,9 +715,9 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                 if (tieneColumnaLiberado)
                 {
                     sql = @"SELECT COUNT(*) FROM usuario 
-                            WHERE LOWER(correo) = LOWER(@correo) 
+                            WHERE LOWER(TRIM(correo)) = LOWER(TRIM(@correo)) 
                               AND (
-                                  activo = true 
+                                  (estadoactividad = '1' /* activo = true */ AND LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado'))
                                   OR (COALESCE(correo_liberado, FALSE) = FALSE 
                                       AND LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado'))
                               );";
@@ -704,15 +725,217 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                 else
                 {
                     sql = @"SELECT COUNT(*) FROM usuario 
-                            WHERE LOWER(correo) = LOWER(@correo) 
+                            WHERE LOWER(TRIM(correo)) = LOWER(TRIM(@correo)) 
                               AND (
-                                  activo = true 
+                                  (estadoactividad = '1' /* activo = true */ AND LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado'))
                                   OR LOWER(COALESCE(estado_designacion_rt, '')) NOT IN ('devuelto', 'rechazado')
                               );";
                 }
 
                 int count = conn.ExecuteScalar<int>(sql, new { correo = correo.Trim() });
                 return count > 0;
+            }
+        }
+
+        /// <summary>
+        /// AC-01: Valida la disponibilidad contextual del correo de un Representante Técnico.
+        /// Evalúa la relación: RT + Compañía + Trámite/Designación + Estado.
+        /// Diferencia entre correo asociado a trámite activo vs registros devueltos/liberados.
+        /// </summary>
+        public static ResultadoValidacionCorreoRT PuedeUsarseCorreoRepresentante(
+            string correo,
+            string identificacion = null,
+            string companiaCodigo = null,
+            int? excluirUsuarioId = null)
+        {
+            var resultado = new ResultadoValidacionCorreoRT();
+
+            if (string.IsNullOrWhiteSpace(correo))
+            {
+                resultado.Valido = false;
+                resultado.Mensaje = "El correo electrónico es requerido.";
+                return resultado;
+            }
+
+            var correoNorm = correo.Trim().ToLowerInvariant();
+            var idNorm = (identificacion ?? string.Empty).Trim().ToUpperInvariant();
+            var ciaNorm = (companiaCodigo ?? string.Empty).Trim().ToUpperInvariant();
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                // 1. Consultar usuarios en la tabla usuario que tengan este correo
+                var sql = @"
+                    SELECT 
+                        idusuario AS Id,
+                        codigousuario AS CodigoUsuario,
+                        COALESCE(nombreusuario, '') AS NombreUsuario,
+                        COALESCE(apellidousuario, '') AS ApellidoUsuario,
+                        COALESCE(correo, '') AS Email,
+                        (estadoactividad = '1') AS Activo,
+                        COALESCE(estado_designacion_rt, '') AS EstadoDesignacionRT,
+                        COALESCE(empresa_codigo, '') AS EmpresaCodigo
+                    FROM usuario
+                    WHERE LOWER(TRIM(correo)) = @correo
+                      AND (@excluirId IS NULL OR idusuario <> @excluirId)
+                    ORDER BY idusuario DESC;";
+
+                var usuarios = conn.Query<Usuario>(sql, new { correo = correoNorm, excluirId = excluirUsuarioId }).ToList();
+
+                // Caso 1: Si no existe ningún usuario con este correo en la tabla usuario
+                if (usuarios.Count == 0)
+                {
+                    // Verificar si en django_aocr_registro_rt hay un trámite activo
+                    if (ExisteTabla(conn, null, "django_aocr_registro_rt"))
+                    {
+                        var sqlRt = @"
+                            SELECT id, usuario_rt_id, identificacion, estado 
+                            FROM django_aocr_registro_rt 
+                            WHERE LOWER(TRIM(email)) = @correo 
+                              AND estado NOT IN ('DEVUELTO_CON_OBSERVACIONES', 'RECHAZADA_INSPECTOR')
+                            ORDER BY id DESC LIMIT 1;";
+                        var regRt = conn.QueryFirstOrDefault(sqlRt, new { correo = correoNorm });
+                        if (regRt != null)
+                        {
+                            string idRt = (regRt.identificacion ?? string.Empty).ToString().Trim().ToUpperInvariant();
+                            bool mismaPersona = !string.IsNullOrWhiteSpace(idNorm) && idNorm == idRt;
+
+                            if (!mismaPersona)
+                            {
+                                resultado.Valido = false;
+                                resultado.Mensaje = "El correo se encuentra asociado a un trámite activo de Representante Técnico.";
+                                return resultado;
+                            }
+                        }
+                    }
+
+                    resultado.Valido = true;
+                    resultado.Mensaje = "Correo disponible.";
+                    return resultado;
+                }
+
+                // 2. Existen usuarios con este correo.
+                // Evaluar si alguno está formalmente aceptado y activo
+                var usuarioActivo = usuarios.FirstOrDefault(u =>
+                    u.Activo && string.Equals((u.EstadoDesignacionRT ?? string.Empty).Trim(), "aceptado", StringComparison.OrdinalIgnoreCase));
+
+                if (usuarioActivo != null)
+                {
+                    var idUsuarioActivo = ObtenerIdentificacionPrincipal(usuarioActivo.Id).ToUpperInvariant();
+                    var codUsuarioActivo = (usuarioActivo.CodigoUsuario ?? string.Empty).ToUpperInvariant();
+
+                    bool mismaPersona = !string.IsNullOrWhiteSpace(idNorm) &&
+                        (idNorm == idUsuarioActivo || idNorm == codUsuarioActivo);
+
+                    if (!mismaPersona && !string.IsNullOrWhiteSpace(idNorm))
+                    {
+                        // Caso 2: Bloqueo estricto por usuario activo perteneciente a otro titular
+                        resultado.Valido = false;
+                        resultado.Mensaje = "Este correo ya está registrado y activo para otro usuario en el sistema.";
+                        resultado.UsuarioActivoExistente = true;
+                        resultado.UsuarioIdExistente = usuarioActivo.Id;
+                        return resultado;
+                    }
+
+                    // Es la misma persona
+                    resultado.MismaPersona = true;
+                    resultado.UsuarioActivoExistente = true;
+                    resultado.UsuarioIdExistente = usuarioActivo.Id;
+                    resultado.CodigoUsuarioExistente = usuarioActivo.CodigoUsuario;
+                    resultado.EstadoDesignacionExistente = usuarioActivo.EstadoDesignacionRT;
+
+                    var daoCompanias = new UsuarioCompaniaRTDAO();
+                    bool yaTieneCia = !string.IsNullOrWhiteSpace(ciaNorm) &&
+                        daoCompanias.UsuarioTieneCompaniaAsignada(usuarioActivo.Id, ciaNorm);
+
+                    if (yaTieneCia)
+                    {
+                        // Caso 4: RT existente y misma compañía
+                        resultado.Valido = true;
+                        resultado.EsReutilizable = true;
+                        resultado.MultiCompaniaPermitida = false;
+                        resultado.Mensaje = "El usuario ya se encuentra registrado y activo para esta compañía.";
+                    }
+                    else
+                    {
+                        // Caso 5: RT existente para otra compañía (multi-compañía)
+                        resultado.Valido = true;
+                        resultado.EsReutilizable = true;
+                        resultado.MultiCompaniaPermitida = true;
+                        resultado.Mensaje = "Usuario RT existente. Se autoriza la vinculación a la nueva compañía.";
+                    }
+
+                    return resultado;
+                }
+
+                // 3. Evaluar si hay algún usuario con designación pendiente de revisión
+                var usuarioPendiente = usuarios.FirstOrDefault(u =>
+                    string.Equals((u.EstadoDesignacionRT ?? string.Empty).Trim(), "pendiente", StringComparison.OrdinalIgnoreCase));
+
+                if (usuarioPendiente != null)
+                {
+                    var idUsuarioPend = ObtenerIdentificacionPrincipal(usuarioPendiente.Id).ToUpperInvariant();
+                    var codUsuarioPend = (usuarioPendiente.CodigoUsuario ?? string.Empty).ToUpperInvariant();
+                    bool mismaPersona = !string.IsNullOrWhiteSpace(idNorm) &&
+                        (idNorm == idUsuarioPend || idNorm == codUsuarioPend);
+
+                    if (!mismaPersona && !string.IsNullOrWhiteSpace(idNorm))
+                    {
+                        // Caso 2: Bloqueo estricto por trámite activo en revisión
+                        resultado.Valido = false;
+                        resultado.Mensaje = "Este correo se encuentra asociado a una postulación de RT actualmente en proceso de revisión.";
+                        return resultado;
+                    }
+
+                    resultado.Valido = true;
+                    resultado.EsReutilizable = true;
+                    resultado.MismaPersona = true;
+                    resultado.UsuarioIdExistente = usuarioPendiente.Id;
+                    resultado.CodigoUsuarioExistente = usuarioPendiente.CodigoUsuario;
+                    resultado.EstadoDesignacionExistente = usuarioPendiente.EstadoDesignacionRT;
+                    resultado.Mensaje = "Ya existe una postulación de RT en revisión para este usuario.";
+                    return resultado;
+                }
+
+                // 4. Caso 3 y Caso 6: Todos los usuarios con este correo tienen designación devuelta o rechazada
+                var usuarioDevuelto = usuarios.FirstOrDefault(u =>
+                    string.Equals((u.EstadoDesignacionRT ?? string.Empty).Trim(), "devuelto", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals((u.EstadoDesignacionRT ?? string.Empty).Trim(), "rechazado", StringComparison.OrdinalIgnoreCase));
+
+                if (usuarioDevuelto != null)
+                {
+                    var idUsuarioDev = ObtenerIdentificacionPrincipal(usuarioDevuelto.Id).ToUpperInvariant();
+                    var codUsuarioDev = (usuarioDevuelto.CodigoUsuario ?? string.Empty).ToUpperInvariant();
+                    bool mismaPersona = !string.IsNullOrWhiteSpace(idNorm) &&
+                        (idNorm == idUsuarioDev || idNorm == codUsuarioDev);
+
+                    if (mismaPersona)
+                    {
+                        // Caso 6: Reenvío posterior a devolución por el mismo postulante
+                        resultado.Valido = true;
+                        resultado.EsReutilizable = true;
+                        resultado.MismaPersona = true;
+                        resultado.UsuarioIdExistente = usuarioDevuelto.Id;
+                        resultado.CodigoUsuarioExistente = usuarioDevuelto.CodigoUsuario;
+                        resultado.EstadoDesignacionExistente = usuarioDevuelto.EstadoDesignacionRT;
+                        resultado.Mensaje = "Designación previa devuelta. El usuario puede reenviar y subsanar su documentación.";
+                        return resultado;
+                    }
+                    else
+                    {
+                        // Caso 3: Correo liberado tras devolución, utilizado para nuevo postulante
+                        resultado.Valido = true;
+                        resultado.EsReutilizable = false;
+                        resultado.MismaPersona = false;
+                        resultado.Mensaje = "El correo ha quedado liberado por devolución de la designación anterior y puede ser utilizado.";
+                        return resultado;
+                    }
+                }
+
+                resultado.Valido = true;
+                resultado.Mensaje = "Correo disponible.";
+                return resultado;
             }
         }
 
@@ -905,9 +1128,9 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                             SELECT 
                                 idusuario AS Id,
                                 codigousuario AS CodigoUsuario,
-                                COALESCE(nombrecompleto, '') AS NombreCompleto,
+                                COALESCE(nombreusuario, '') AS NombreCompleto,
                                 correo AS Email,
-                                activo AS Activo,
+                                (estadoactividad = '1') AS Activo,
                                 COALESCE(estado_designacion_rt, '') AS EstadoDesignacionRT
                             FROM usuario
                             WHERE idusuario = @id
@@ -967,19 +1190,17 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                             return resultado;
                         }
 
-                        // 4. Determinar correo original a resguardar
+                        // 4. Determinar correo original a resguardar (sin mutación destructiva del campo correo)
                         string correoOriginal = (usuario.Email ?? string.Empty).Trim();
                         resultado.CorreoOriginal = correoOriginal;
-
-                        // Correo liberado: añadimos sufijo para liberar la reserva del correo en la tabla
-                        string correoSufijoLiberado = string.Format("{0}.devuelto.{1}", correoOriginal, idUsuario);
+                        resultado.CorreoLiberado = true;
 
                         // 5. Construir actualización dinámica según columnas presentes
                         var sets = new List<string>
                         {
                             "estado_designacion_rt = 'devuelto'",
-                            "fecha_revision_designacion = NOW()",
-                            "correo = @correoLiberado"
+                            "estadoactividad = '0'",
+                            "fecha_revision_designacion = NOW()"
                         };
 
                         if (tieneColumnaCorreoOrig)
@@ -1007,7 +1228,6 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                         conn.Execute(sqlUpdate, new
                         {
                             id = idUsuario,
-                            correoLiberado = correoSufijoLiberado,
                             correoOriginal = correoOriginal,
                             coordinadorId = coordinadorId > 0 ? (int?)coordinadorId : null,
                             observacion = observacionLimpia
@@ -1074,6 +1294,109 @@ VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
                         resultado.Exitoso = false;
                         resultado.Mensaje = "Error en base de datos al devolver la designación: " + ex.Message;
                         return resultado;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// AC-01: Reutiliza la identidad de un RT existente cuya designación anterior fue devuelta o rechazada,
+        /// actualizando sus datos, restableciendo el estado a 'pendiente' y resguardando la no duplicidad de usuario (Caso 4 y Caso 6).
+        /// Protegido contra condiciones de carrera concurrentes mediante bloqueo de fila (FOR UPDATE) (Caso 7).
+        /// </summary>
+        public static bool ReutilizarUsuarioPostulacionDevuelta(
+            int idUsuario,
+            string nombres,
+            string apellidos,
+            string rutaDocumentoLegal,
+            string passwordHash = null,
+            string empresaCodigoPrincipal = null)
+        {
+            if (idUsuario <= 0) return false;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // Bloqueo de fila para proteger contra condiciones de carrera (Caso 7)
+                        var sqlLock = "SELECT idusuario FROM usuario WHERE idusuario = @id FOR UPDATE;";
+                        var idBloqueado = conn.ExecuteScalar<int?>(sqlLock, new { id = idUsuario }, tx);
+                        if (!idBloqueado.HasValue)
+                        {
+                            tx.Rollback();
+                            return false;
+                        }
+
+                        bool tieneColumnaLiberado = ExisteColumna(conn, tx, "usuario", "correo_liberado");
+                        bool tieneColumnaApellidos = ExisteColumna(conn, tx, "usuario", "apellidousuario");
+
+                        var sets = new List<string>
+                        {
+                            "estado_designacion_rt = 'pendiente'",
+                            "estadoactividad = '0'",
+                            "ruta_documento_legal = COALESCE(@rutaDoc, ruta_documento_legal)",
+                            "fecha_revision_designacion = NULL",
+                            "ruta_constancia_rt = NULL"
+                        };
+
+                        if (tieneColumnaLiberado)
+                        {
+                            sets.Add("correo_liberado = FALSE");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(nombres))
+                        {
+                            sets.Add("nombreusuario = @nombre");
+                        }
+
+                        if (tieneColumnaApellidos && !string.IsNullOrWhiteSpace(apellidos))
+                        {
+                            sets.Add("apellidousuario = @apellido");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(passwordHash))
+                        {
+                            sets.Add("clave = @clave");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(empresaCodigoPrincipal))
+                        {
+                            sets.Add("empresa_codigo = @empresaCodigo");
+                        }
+
+                        string sqlUpdate = "UPDATE usuario SET " + string.Join(", ", sets) + " WHERE idusuario = @id;";
+                        conn.Execute(sqlUpdate, new
+                        {
+                            id = idUsuario,
+                            nombre = (nombres ?? string.Empty).Trim().ToUpperInvariant(),
+                            apellido = (apellidos ?? string.Empty).Trim().ToUpperInvariant(),
+                            rutaDoc = rutaDocumentoLegal,
+                            clave = passwordHash,
+                            empresaCodigo = empresaCodigoPrincipal
+                        }, tx);
+
+                        // Sincronizar expediente en django_aocr_registro_rt
+                        if (ExisteTabla(conn, tx, "django_aocr_registro_rt"))
+                        {
+                            var sqlRt = @"
+                                UPDATE django_aocr_registro_rt
+                                SET estado = 'PENDIENTE_ACEPTACION_COORDINADOR',
+                                    observacion_actual = 'Postulación RT actualizada y reenviada para revisión.',
+                                    actualizado_en = NOW()
+                                WHERE usuario_rt_id = @id;";
+                            conn.Execute(sqlRt, new { id = idUsuario }, tx);
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
                     }
                 }
             }

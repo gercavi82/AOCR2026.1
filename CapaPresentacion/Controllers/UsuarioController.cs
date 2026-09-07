@@ -64,7 +64,7 @@ namespace CapaPresentacion.Controllers
         
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public JsonResult ValidarCorreo(string correo)
+        public JsonResult ValidarCorreo(string correo, string identificacion = null, string companiaCodigo = null)
         {
             try
             {
@@ -73,14 +73,22 @@ namespace CapaPresentacion.Controllers
                     return Json(new { valido = false, mensaje = "El correo es requerido" });
                 }
 
-                var existe = UsuarioDAO.ExisteCorreo(correo);
+                var flujoService = new RtDesignacionFlujoService();
+                var resultado = flujoService.ValidarDisponibilidadCorreo(correo, identificacion, companiaCodigo);
 
-                if (existe)
+                if (!resultado.Valido)
                 {
-                    return Json(new { valido = false, mensaje = "Este correo ya está registrado" });
+                    return Json(new { valido = false, mensaje = resultado.Mensaje });
                 }
 
-                return Json(new { valido = true });
+                return Json(new
+                {
+                    valido = true,
+                    mensaje = resultado.Mensaje,
+                    esReutilizacion = resultado.EsReutilizable,
+                    mismaPersona = resultado.MismaPersona,
+                    multiCompania = resultado.MultiCompaniaPermitida
+                });
             }
             catch (Exception ex)
             {
@@ -210,17 +218,14 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = "Debe seleccionar al menos una compañía a representar." });
                 }
 
-                // Validar unicidad antes de insertar
-                if (UsuarioDAO.ExisteCorreo(correo))
-                {
-                    return Json(new { success = false, message = "Este correo ya está registrado" });
-                }
+                // AC-01: Validación contextual de correo (RT + compañía + solicitud/designación + estado)
+                var companiaPrincipalCodigo = companiasDeclaracion.Count > 0 ? companiasDeclaracion[0].Codigo : null;
+                var flujoService = new RtDesignacionFlujoService();
+                var validacionCorreo = flujoService.ValidarDisponibilidadCorreo(correo, identificacionFinal, companiaPrincipalCodigo);
 
-                // Generar código de usuario único (primera letra nombre + segunda letra segundo nombre + apellido)
-                var codigoUsuarioFinal = GenerarCodigoUsuarioUnico(nombres, apellidos);
-                if (string.IsNullOrWhiteSpace(codigoUsuarioFinal))
+                if (!validacionCorreo.Valido)
                 {
-                    return Json(new { success = false, message = "No se pudo generar un código de usuario único. Intente nuevamente." });
+                    return Json(new { success = false, message = validacionCorreo.Mensaje });
                 }
 
                 // 3. DOCUMENTO DE DESIGNACIÓN RT (REQUERIDO)
@@ -237,71 +242,96 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = errorDesignacion ?? "No se pudo guardar el formulario de designación." });
                 }
 
-                // 4. CREAR USUARIO (con contraseña temporal)
+                // 4. CREAR O REUTILIZAR IDENTIDAD DEL USUARIO (AC-01)
                 string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
                 string passwordHash = PasswordHelper.HashPassword(passwordTemporal);
 
-                // 4.1 SINCRONIZAR A AS400 (si está habilitado)
-                if (SyncUsuariosAs400Enabled())
+                int usuarioId;
+                string codigoUsuarioFinal;
+
+                if (validacionCorreo.EsReutilizable && validacionCorreo.UsuarioIdExistente.HasValue)
                 {
-                    var usuarioAs400 = UsuarioAs400Record.CrearBasico(
-                        codigoUsuarioFinal,
-                        nombres?.Trim(),
-                        apellidos?.Trim(),
-                        tipoIdentificacion,
-                        identificacionFinal,
-                        correo?.Trim(),
+                    // Reutilización controlada de identidad sin generar duplicados (Caso 4, Caso 5 y Caso 6)
+                    usuarioId = validacionCorreo.UsuarioIdExistente.Value;
+                    codigoUsuarioFinal = validacionCorreo.CodigoUsuarioExistente;
+
+                    UsuarioDAO.ReutilizarUsuarioPostulacionDevuelta(
+                        usuarioId,
+                        nombres,
+                        apellidos,
+                        rutaDocumento,
                         passwordHash,
-                        "AOCR");
-
-                    if (string.Equals(tipoIdentificacion, "RUC", StringComparison.OrdinalIgnoreCase))
+                        companiaPrincipalCodigo);
+                }
+                else
+                {
+                    // Generar código de usuario único (Caso 1: Correo nuevo)
+                    codigoUsuarioFinal = GenerarCodigoUsuarioUnico(nombres, apellidos);
+                    if (string.IsNullOrWhiteSpace(codigoUsuarioFinal))
                     {
-                        usuarioAs400.TipoTributario = "RUC";
-                        usuarioAs400.NumeroRuc = ruc?.Trim();
+                        return Json(new { success = false, message = "No se pudo generar un código de usuario único. Intente nuevamente." });
                     }
 
-                    string as400Error;
-                    var as400Dao = new UsuarioAS400DAO(new DataSecureConfig());
-                    if (!as400Dao.UpsertUsuarioCompleto(usuarioAs400, out as400Error))
+                    // 4.1 SINCRONIZAR A AS400 (si está habilitado)
+                    if (SyncUsuariosAs400Enabled())
                     {
-                        return Json(new { success = false, message = "Error al registrar usuario en AS400: " + as400Error });
+                        var usuarioAs400 = UsuarioAs400Record.CrearBasico(
+                            codigoUsuarioFinal,
+                            nombres?.Trim(),
+                            apellidos?.Trim(),
+                            tipoIdentificacion,
+                            identificacionFinal,
+                            correo?.Trim(),
+                            passwordHash,
+                            "AOCR");
+
+                        if (string.Equals(tipoIdentificacion, "RUC", StringComparison.OrdinalIgnoreCase))
+                        {
+                            usuarioAs400.TipoTributario = "RUC";
+                            usuarioAs400.NumeroRuc = ruc?.Trim();
+                        }
+
+                        string as400Error;
+                        var as400Dao = new UsuarioAS400DAO(new DataSecureConfig());
+                        if (!as400Dao.UpsertUsuarioCompleto(usuarioAs400, out as400Error))
+                        {
+                            return Json(new { success = false, message = "Error al registrar usuario en AS400: " + as400Error });
+                        }
                     }
-                }
 
-                Usuario nuevoUsuario = new Usuario
-                {
-                    CodigoUsuario = codigoUsuarioFinal,
-                    // Persistir nombres y apellidos por separado en la tabla usuario.
-                    NombreUsuario = (nombres ?? string.Empty).Trim().ToUpperInvariant(),
-                    ApellidoUsuario = (apellidos ?? string.Empty).Trim().ToUpperInvariant(),
-                    Email = correo,
-                    NombreCompleto = nombreCompletoUsuario,
-                    Contrasena = passwordHash, // Hash de contraseña temporal
-                    Activo = false,
-                    Rol = "Solicitante", // Rol por defecto para usuarios externos
-                    EmpresaCodigo = companiasDeclaracion[0].Codigo,
-                    RutaDocumentoLegal = rutaDocumento
-                };
+                    Usuario nuevoUsuario = new Usuario
+                    {
+                        CodigoUsuario = codigoUsuarioFinal,
+                        NombreUsuario = (nombres ?? string.Empty).Trim().ToUpperInvariant(),
+                        ApellidoUsuario = (apellidos ?? string.Empty).Trim().ToUpperInvariant(),
+                        Email = correo,
+                        NombreCompleto = nombreCompletoUsuario,
+                        Contrasena = passwordHash,
+                        Activo = false, // Inactivo hasta aceptación formal
+                        Rol = "Solicitante",
+                        EmpresaCodigo = companiasDeclaracion[0].Codigo,
+                        RutaDocumentoLegal = rutaDocumento,
+                        EstadoDesignacionRT = "pendiente"
+                    };
 
-                // 5. GUARDAR USUARIO EN BASE DE DATOS
-                int usuarioId = UsuarioDAO.Crear(nuevoUsuario);
+                    usuarioId = UsuarioDAO.Crear(nuevoUsuario);
 
-                if (usuarioId <= 0)
-                {
-                    return Json(new { success = false, message = "No se pudo crear el usuario" });
-                }
+                    if (usuarioId <= 0)
+                    {
+                        return Json(new { success = false, message = "No se pudo crear el usuario" });
+                    }
 
-                // Asignar rol Solicitante automáticamente al registrarse
-                try
-                {
-                    UsuarioDAO.AsignarRol(codigoUsuarioFinal, 19, "REGISTRO");
-                }
-                catch (Exception exRol)
-                {
-                    LogBL.RegistrarError(
-                        "[Usuario/Crear] No se pudo asignar rol Solicitante.",
-                        exRol.ToString() + " | usuarioId=" + usuarioId + ", codigo=" + (codigoUsuarioFinal ?? string.Empty),
-                        "UsuarioController");
+                    try
+                    {
+                        UsuarioDAO.AsignarRol(codigoUsuarioFinal, 19, "REGISTRO");
+                    }
+                    catch (Exception exRol)
+                    {
+                        LogBL.RegistrarError(
+                            "[Usuario/Crear] No se pudo asignar rol Solicitante.",
+                            exRol.ToString() + " | usuarioId=" + usuarioId + ", codigo=" + (codigoUsuarioFinal ?? string.Empty),
+                            "UsuarioController");
+                    }
                 }
 
                 // Guardar asignaciones multi-compañía del RT y sincronizar empresa principal legacy.
@@ -470,7 +500,9 @@ namespace CapaPresentacion.Controllers
                         "UsuarioController");
                 }
 
-                var mensajeFinal = "Solicitud de registro enviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada.";
+                var mensajeFinal = (validacionCorreo != null && validacionCorreo.EsReutilizable)
+                    ? "Postulación actualizada y reenviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada."
+                    : "Solicitud de registro enviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada.";
                 if (!correoEnviado)
                 {
                     mensajeFinal += " No se pudo enviar el correo de confirmación. Verifique configuración SMTP.";

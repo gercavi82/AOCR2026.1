@@ -954,6 +954,23 @@ namespace CapaPresentacion.Controllers
                         vm.NumeroComprobante = pago.NumeroFactura;
                     }
 
+                    // AC-02: Estaciones independientes (aocr_tbsolicitud_estacion / fallback histórico)
+                    var estacionesBD = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(oid.Value, vm.Solicitud);
+                    if (estacionesBD != null && estacionesBD.Any())
+                    {
+                        vm.Estaciones = estacionesBD.Select(e => new SolicitudEstacionInspeccionItemVM
+                        {
+                            Id = e.Id,
+                            EstacionCodigo = e.EstacionCodigo,
+                            EstacionNombre = e.EstacionNombre,
+                            FechaInicio = e.FechaInicio != default(DateTime) ? e.FechaInicio.ToString("yyyy-MM-dd") : string.Empty,
+                            FechaFin = e.FechaFin != default(DateTime) ? e.FechaFin.ToString("yyyy-MM-dd") : string.Empty,
+                            InspectorNombre = e.InspectorNombre,
+                            Estado = e.Estado,
+                            Observacion = e.Observacion
+                        }).ToList();
+                    }
+
                     vm.Solicitud.CorreoRepresentanteTecnico = !string.IsNullOrWhiteSpace(vm.Solicitud.CorreoRepresentanteTecnico)
                         ? vm.Solicitud.CorreoRepresentanteTecnico
                         : (vm.Usuario?.Email ?? string.Empty);
@@ -1809,6 +1826,40 @@ namespace CapaPresentacion.Controllers
                             data: null);
                     }
                     idFinal = actual.CodigoSolicitud;
+                }
+
+                // AC-02: Persistir estaciones y fechas independientes asociadas a la solicitud
+                if (string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase) && payload.Estaciones != null)
+                {
+                    var entidadesEstaciones = payload.Estaciones
+                        .Where(e => !string.IsNullOrWhiteSpace(e.EstacionCodigo))
+                        .Select(e =>
+                        {
+                            DateTime dtIni, dtFin;
+                            bool hasIni = DateTime.TryParse(e.FechaInicio, out dtIni);
+                            bool hasFin = DateTime.TryParse(e.FechaFin, out dtFin);
+                            return new SolicitudEstacionInspeccion
+                            {
+                                Id = e.Id,
+                                SolicitudId = idFinal,
+                                EstacionCodigo = (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(),
+                                EstacionNombre = (e.EstacionNombre ?? string.Empty).Trim(),
+                                FechaInicio = hasIni ? dtIni.Date : default(DateTime),
+                                FechaFin = hasFin ? dtFin.Date : (hasIni ? dtIni.Date : default(DateTime)),
+                                InspectorNombre = e.InspectorNombre,
+                                Estado = string.IsNullOrWhiteSpace(e.Estado) ? "SOLICITADA" : e.Estado,
+                                Observacion = e.Observacion
+                            };
+                        }).ToList();
+
+                    if (entidadesEstaciones.Any())
+                    {
+                        var resEst = _solicitudEstacionService.GuardarEstaciones(idFinal, entidadesEstaciones, usuarioId);
+                        if (!resEst.Exitoso)
+                        {
+                            return JsonEnvelope(false, "VALIDATION_ERROR", resEst.Mensaje, data: null);
+                        }
+                    }
                 }
 
                 var persistida = _solicitudDAO.ObtenerPorId(idFinal);
@@ -8295,6 +8346,9 @@ namespace CapaPresentacion.Controllers
 
             [JsonProperty("solicitud")]
             public SolicitudAOCR Solicitud { get; set; }
+
+            [JsonProperty("estaciones")]
+            public List<SolicitudEstacionInspeccionItemVM> Estaciones { get; set; }
         }
 
         private JsonResult JsonGuardado(

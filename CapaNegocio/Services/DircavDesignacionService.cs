@@ -156,10 +156,14 @@ namespace CapaNegocio.Services
                     DatosNuevos = AocrEstadosProceso.DocumentacionAceptadaDircav
                 });
             }
-            catch
+            catch { }
+
+            // Notificación al Coordinador y partes interesadas
+            try
             {
-                // Tolerante en entornos sin tabla de auditoría
+                _correoService.NotificarEvento(solicitud, "DOCUMENTACION_ACEPTADA_DIRCAV", "Documentación técnica aceptada formalmente por DIRCAV.");
             }
+            catch { }
 
             return new DircavDesignacionResult
             {
@@ -429,13 +433,16 @@ namespace CapaNegocio.Services
             }
 
             // 3. Actualizar la solicitud principal
+            solicitud.CodigoTecnico = inspectorId;
             solicitud.TecnicoResponsableId = inspectorId;
             solicitud.TecnicoResponsableCedula = cedulaInspectorFinal;
             solicitud.TecnicoResponsableNombre = inspectorPrincipal.NombreCompleto;
+            solicitud.TecnicoResponsableTipo = inspectorPrincipal.Tipo ?? "AIR";
             if (inspectorApoyo != null)
             {
                 solicitud.InspectorApoyoCedula = cedulaApoyoFinal;
                 solicitud.InspectorApoyoNombre = inspectorApoyo.NombreCompleto;
+                solicitud.InspectorApoyoTipo = inspectorApoyo.Tipo ?? "AIR";
             }
             solicitud.Estado = AocrEstadosProceso.DesignacionPendienteFirmaDircav;
             solicitud.UpdatedAt = DateTime.Now;
@@ -453,6 +460,13 @@ namespace CapaNegocio.Services
                     DatosPrevios = estadoNorm,
                     DatosNuevos = $"Designado {inspectorPrincipal.NombreCompleto} (v{nuevaDesignacion.Version})"
                 });
+            }
+            catch { }
+
+            // Notificación institucional de designación de inspector registrada
+            try
+            {
+                _correoService.NotificarEvento(solicitud, "DESIGNACION_INSPECTOR_REGISTRADA", $"Inspector {inspectorPrincipal.NombreCompleto} designado para la solicitud {solicitud.NumeroSolicitud}.");
             }
             catch { }
 

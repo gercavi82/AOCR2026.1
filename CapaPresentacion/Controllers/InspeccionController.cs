@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -72,6 +72,7 @@ namespace CapaPresentacion.Controllers
         private const string ROL_DIRECTOR = "Director";
         private const string ROL_DIRECTOR_GENERAL = "DirectorGeneral";
         private const string ROL_DIRDAC = "DIRDAC";
+        private const string ROL_DIRCAV = "DIRCAV";
         private const string ROL_DIRECTOR_CERTIFICACIONES_DCAV = "DirectorCertificacionesDcav";
         private const string ROL_LEGAL = "Legal";
         private const string ROL_COORD_LEGAL = "CoordinacionLegal";
@@ -3786,23 +3787,23 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para firmar el informe técnico.");
             }
 
-            if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
-            {
-                TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
-            }
-
-            return FirmarInformePorRol(codigoInspeccion, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR", autoEnviarADirdac: true);
+            return FirmarInformePorRol(codigoInspeccion, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR", autoEnviarADirdac: false);
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROLES_FIRMA_DIRDAC)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROLES_FIRMA_DIRDAC)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarADirdac(int id)
         {
             if (id <= 0)
             {
                 return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            // AC-04: Bloqueo estricto del bypass Inspector -> DIRDAC
+            if (User.IsInRole(ROL_INSPECTOR) && !EsAdmin() && !User.IsInRole(ROL_DIRDAC) && !User.IsInRole(ROL_DIRECCION))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: El Inspector no puede remitir directamente a DIRDAC. El flujo base exige remisión a Coordinación.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -3843,7 +3844,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarACoordinador(int id)
         {
@@ -3852,19 +3853,10 @@ namespace CapaPresentacion.Controllers
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) { return HttpNotFound("Inspección no encontrada."); }
 
-            TempData["Warning"] = "El flujo vigente del Informe Técnico ya no usa una etapa manual de envío a Coordinación. Después de la firma del inspector, el documento pasa a DIRDAC / Dirección - Jefatura para revisión institucional.";
-            return RedirectToAction("Detalle", new { id });
-        }
-
-        [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
-        [ValidateAntiForgeryToken]
-        public ActionResult CoordinadorAprobar(int id)
-        {
-            if (id <= 0) { return new HttpStatusCodeResult(400, "ID inválido."); }
-
-            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
-            if (inspeccion == null) { return HttpNotFound("Inspección no encontrada."); }
+            if (!PuedeAccederInspeccion(inspeccion) && !User.IsInRole(ROL_COORD) && !EsAdmin())
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para remitir este informe técnico a Coordinación.");
+            }
 
             var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
             if (informe == null)
@@ -3873,17 +3865,123 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+            if (!informe.Finalizado)
             {
-                TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Coordinación.";
+                TempData["Error"] = "El informe técnico aún no ha sido finalizado en PDF.";
                 return RedirectToAction("Detalle", new { id });
             }
 
+            if (!informe.FirmadoInspector)
+            {
+                TempData["Error"] = "El informe técnico debe estar firmado por el inspector antes de enviarlo a Coordinación.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioActual = ObtenerUsuarioActual();
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
-            var resultado = EnviarInformeADirdacInterno(inspeccion, solicitud, informe, ObtenerCodigoUsuario());
-            TempData[resultado.Exitoso ? "Success" : "Warning"] = resultado.Exitoso
-                ? "Coordinación remitió el informe a DIRDAC / Dirección - Jefatura para revisión institucional final."
-                : resultado.Mensaje;
+
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                _informeDAO.ActualizarEstadoInforme(informe.CodigoInforme, "ENVIADO_A_COORDINADOR", usuarioId);
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    inspeccion.CodigoSolicitud,
+                    id,
+                    AocrEstadosProceso.PendienteRevisionFinalCoordinador,
+                    "ENVIO_COORDINACION_FINAL",
+                    ROL_COORD,
+                    usuarioId,
+                    "Informe Técnico firmado remitido formalmente por el Inspector a Coordinación para revisión final y emisión de C&L.");
+
+                if (solicitud != null)
+                {
+                    _solicitudDAO.CambiarEstado(solicitud.CodigoSolicitud, AocrEstadosProceso.PendienteRevisionFinalCoordinador, usuarioId, "Remitido a revisiÃ³n final de CoordinaciÃ³n.");
+                }
+                scope.Complete();
+            }
+
+            RegistrarAuditoriaInformeDigital(
+                id,
+                informe.EstadoInforme,
+                "ENVIADO_A_COORDINADOR",
+                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                informe.HashDocumento,
+                "Informe técnico transferido formalmente a la bandeja de Coordinación para revisión final. IP=" + ObtenerIpCliente(),
+                usuarioId,
+                usuarioActual,
+                "INFORME_TECNICO_REMITIDO_COORDINACION");
+
+            _logger.LogInfo("[GestionInspeccion] Informe técnico remitido a Coordinación. InspeccionId=" + id
+                + ", InformeId=" + informe.CodigoInforme
+                + ", Usuario=" + usuarioActual);
+
+            TempData["Success"] = "El Informe Técnico ha sido remitido formalmente a Coordinación para revisión final.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult CoordinadorAprobar(int id)
+        {
+            if (id <= 0) { return new HttpStatusCodeResult(400, "ID invÃ¡lido."); }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null) { return HttpNotFound("InspecciÃ³n no encontrada."); }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            if (informe == null)
+            {
+                TempData["Error"] = "No se encontrÃ³ el informe tÃ©cnico.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!informe.FirmadoInspector)
+            {
+                TempData["Error"] = "El informe tÃ©cnico debe estar firmado por el inspector antes de ser remitido por CoordinaciÃ³n.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioActual = ObtenerUsuarioActual();
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+
+            // AC-04: Coordinador aprueba la revisiÃ³n tÃ©cnica final y remite formalmente a DIRCAV para Condiciones y Limitaciones (NO directamente a DIRDAC)
+            using (var scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                _informeDAO.ActualizarEstadoInforme(informe.CodigoInforme, "APROBADO_COORDINADOR", usuarioId);
+                new AocrProcesoEstadoDAO().CambiarEstado(
+                    inspeccion.CodigoSolicitud,
+                    id,
+                    AocrEstadosProceso.ClPendienteDircav,
+                    "REVISION_COORDINADOR_DIRCAV",
+                    ROL_DIRCAV,
+                    usuarioId,
+                    "RevisiÃ³n tÃ©cnica final aprobada por CoordinaciÃ³n. Remitido formalmente a DIRCAV para revisiÃ³n y firma de Condiciones y Limitaciones.");
+
+                if (solicitud != null)
+                {
+                    _solicitudDAO.CambiarEstado(solicitud.CodigoSolicitud, AocrEstadosProceso.ClPendienteDircav, usuarioId, "Remitido a DIRCAV para C&L.");
+                }
+                scope.Complete();
+            }
+
+            RegistrarAuditoriaInformeDigital(
+                id,
+                informe.EstadoInforme,
+                "APROBADO_COORDINADOR_REMITIDO_DIRCAV",
+                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                informe.HashDocumento,
+                "CoordinaciÃ³n aprobÃ³ la revisiÃ³n tÃ©cnica y remitiÃ³ el expediente a la bandeja de DIRCAV para Condiciones y Limitaciones. IP=" + ObtenerIpCliente(),
+                usuarioId,
+                usuarioActual,
+                "COORDINACION_REMITIO_DIRCAV");
+
+            _logger.LogInfo("[GestionInspeccion] CoordinaciÃ³n aprobÃ³ informe y remitiÃ³ C&L a DIRCAV. InspeccionId=" + id
+                + ", InformeId=" + informe.CodigoInforme
+                + ", Usuario=" + usuarioActual);
+
+            TempData["Success"] = "CoordinaciÃ³n aprobÃ³ la revisiÃ³n tÃ©cnica y remitiÃ³ el trÃ¡mite formalmente a DIRCAV para la revisiÃ³n y firma de Condiciones y Limitaciones.";
             return RedirectToAction("Detalle", new { id });
         }
 
@@ -4715,7 +4813,8 @@ namespace CapaPresentacion.Controllers
             string equiposNecesarios,
             string contactoSitio,
             string telefonoContacto,
-            string observaciones)
+            string observaciones,
+            List<SolicitudEstacionInspeccionItemVM> estaciones = null)
         {
             if (codigoInspeccion <= 0)
                 return new HttpStatusCodeResult(400, "ID de inspección inválido.");
@@ -4753,6 +4852,63 @@ namespace CapaPresentacion.Controllers
 
             // ✅ Actualizar con updatedBy
             bool ok = _inspeccionBL.Actualizar(inspeccion, usuarioId);
+
+            // AC-02: Actualizar fechas y estado individual para cada estación de la solicitud
+            if (estaciones != null && estaciones.Any() && inspeccion.CodigoSolicitud > 0)
+            {
+                try
+                {
+                    var estacionService = new CapaNegocio.Services.SolicitudEstacionService();
+                    var existentes = estacionService.ObtenerEstacionesPorSolicitud(inspeccion.CodigoSolicitud, null, new[] { inspeccion });
+                    var mapaExistentes = existentes.ToDictionary(e => (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase);
+
+                    var listaActualizada = new List<SolicitudEstacionInspeccion>();
+                    foreach (var item in estaciones)
+                    {
+                        if (string.IsNullOrWhiteSpace(item.EstacionCodigo)) continue;
+                        var codigoNorm = item.EstacionCodigo.Trim().ToUpperInvariant();
+                        DateTime dtIni, dtFin;
+                        bool hasIni = DateTime.TryParse(item.FechaInicio, out dtIni);
+                        bool hasFin = DateTime.TryParse(item.FechaFin, out dtFin);
+
+                        SolicitudEstacionInspeccion estObj;
+                        if (mapaExistentes.TryGetValue(codigoNorm, out estObj))
+                        {
+                            if (hasIni) estObj.FechaInicio = dtIni.Date;
+                            if (hasFin) estObj.FechaFin = dtFin.Date;
+                            else if (hasIni) estObj.FechaFin = dtIni.Date;
+                            if (!string.IsNullOrWhiteSpace(item.Observacion)) estObj.Observacion = item.Observacion;
+                            listaActualizada.Add(estObj);
+                        }
+                        else
+                        {
+                            listaActualizada.Add(new SolicitudEstacionInspeccion
+                            {
+                                SolicitudId = inspeccion.CodigoSolicitud,
+                                EstacionCodigo = codigoNorm,
+                                EstacionNombre = !string.IsNullOrWhiteSpace(item.EstacionNombre) ? item.EstacionNombre.Trim() : codigoNorm,
+                                FechaInicio = hasIni ? dtIni.Date : fechaInspeccion.Date,
+                                FechaFin = hasFin ? dtFin.Date : (hasIni ? dtIni.Date : fechaInspeccion.Date),
+                                Estado = "SOLICITADA",
+                                Observacion = item.Observacion
+                            });
+                        }
+                    }
+
+                    if (listaActualizada.Any())
+                    {
+                        var resEst = estacionService.GuardarEstaciones(inspeccion.CodigoSolicitud, listaActualizada, usuarioId);
+                        if (!resEst.Exitoso)
+                        {
+                            _logger.LogWarning($"[Planificacion] Error guardando fechas de estaciones AC-02: {resEst.Mensaje}");
+                        }
+                    }
+                }
+                catch (Exception exEst)
+                {
+                    _logger.LogWarning($"[Planificacion] Excepción al actualizar estaciones AC-02: {exEst.Message}");
+                }
+            }
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Planificación guardada correctamente."

@@ -897,6 +897,38 @@ namespace CapaDatos.DAOs
                 }
                 setClauses.Add("observaciones=@observaciones");
                 setClauses.Add("codigo_tecnico=@codigo_tecnico");
+                if (columnas.Contains("estado_documental"))
+                {
+                    setClauses.Add("estado_documental=@estado_documental");
+                }
+                if (columnas.Contains("tecnico_responsable_id"))
+                {
+                    setClauses.Add("tecnico_responsable_id=@tecnico_responsable_id");
+                }
+                if (columnas.Contains("tecnico_responsable_cedula"))
+                {
+                    setClauses.Add("tecnico_responsable_cedula=@tecnico_responsable_cedula");
+                }
+                if (columnas.Contains("tecnico_responsable_nombre"))
+                {
+                    setClauses.Add("tecnico_responsable_nombre=@tecnico_responsable_nombre");
+                }
+                if (columnas.Contains("tecnico_responsable_tipo"))
+                {
+                    setClauses.Add("tecnico_responsable_tipo=@tecnico_responsable_tipo");
+                }
+                if (columnas.Contains("inspector_apoyo_cedula"))
+                {
+                    setClauses.Add("inspector_apoyo_cedula=@inspector_apoyo_cedula");
+                }
+                if (columnas.Contains("inspector_apoyo_nombre"))
+                {
+                    setClauses.Add("inspector_apoyo_nombre=@inspector_apoyo_nombre");
+                }
+                if (columnas.Contains("inspector_apoyo_tipo"))
+                {
+                    setClauses.Add("inspector_apoyo_tipo=@inspector_apoyo_tipo");
+                }
                 setClauses.Add("updated_at=NOW()");
                 setClauses.Add("updated_by=@updated_by");
 
@@ -987,6 +1019,38 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     cmd.Parameters.AddWithValue("@observaciones", (object)(s.Observaciones ?? ""));
 
                     cmd.Parameters.AddWithValue("@codigo_tecnico", (object)s.CodigoTecnico ?? DBNull.Value);
+                    if (columnas.Contains("estado_documental"))
+                    {
+                        cmd.Parameters.AddWithValue("@estado_documental", (object)s.EstadoDocumental ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("tecnico_responsable_id"))
+                    {
+                        cmd.Parameters.AddWithValue("@tecnico_responsable_id", (object)s.TecnicoResponsableId ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("tecnico_responsable_cedula"))
+                    {
+                        cmd.Parameters.AddWithValue("@tecnico_responsable_cedula", (object)s.TecnicoResponsableCedula ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("tecnico_responsable_nombre"))
+                    {
+                        cmd.Parameters.AddWithValue("@tecnico_responsable_nombre", (object)s.TecnicoResponsableNombre ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("tecnico_responsable_tipo"))
+                    {
+                        cmd.Parameters.AddWithValue("@tecnico_responsable_tipo", (object)s.TecnicoResponsableTipo ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("inspector_apoyo_cedula"))
+                    {
+                        cmd.Parameters.AddWithValue("@inspector_apoyo_cedula", (object)s.InspectorApoyoCedula ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("inspector_apoyo_nombre"))
+                    {
+                        cmd.Parameters.AddWithValue("@inspector_apoyo_nombre", (object)s.InspectorApoyoNombre ?? DBNull.Value);
+                    }
+                    if (columnas.Contains("inspector_apoyo_tipo"))
+                    {
+                        cmd.Parameters.AddWithValue("@inspector_apoyo_tipo", (object)s.InspectorApoyoTipo ?? DBNull.Value);
+                    }
                     cmd.Parameters.AddWithValue("@updated_by", (object)(s.UpdatedBy ?? "sistema"));
 
                     var filas = cmd.ExecuteNonQuery();
@@ -1548,6 +1612,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 FechaSolicitud = GetNullableDateTime(rd, "fecha_solicitud"),
                 TipoSolicitud = GetNullableInt(rd, "tipo_solicitud"),
                 Estado = GetString(rd, "estado"),
+                EstadoDocumental = GetString(rd, "estado_documental"),
 
                 NombreOperador = FirstNonEmpty(
                     GetString(rd, "nombre_operador"),

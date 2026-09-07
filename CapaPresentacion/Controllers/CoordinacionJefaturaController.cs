@@ -698,7 +698,10 @@ namespace CapaPresentacion.Controllers
                     {
                         var estado = EstadoSolicitud.Normalizar(s.Estado);
                         return estado == EstadoSolicitud.AOCR_EnElaboracion
-                            || estado == EstadoSolicitud.AOCR_EnRevision;
+                            || estado == EstadoSolicitud.AOCR_EnRevision
+                            || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(s.Estado, AocrEstadosProceso.DevueltoCoordinadorFinalDircav, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(s.Estado, AocrEstadosProceso.InformeTecnicoFirmadoInspector, StringComparison.OrdinalIgnoreCase);
                     })
                     .OrderByDescending(s => s.FechaSolicitud ?? DateTime.MinValue)
                     .Take(30)

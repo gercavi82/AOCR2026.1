@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage
+@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -905,14 +905,22 @@
 
         if (!correo || !url) return;
 
-        $.post(url, { correo: correo, __RequestVerificationToken: token })
-            .done(function(response) {
-                if (!response.valido) {
-                    mostrarErrorCampo('#Correo', response.mensaje || 'Correo ya registrado');
-                } else {
-                    removerErrorCampo('#Correo');
-                }
-            });
+        const identificacion = ($('#TipoIdentificacion_RUC').is(':checked') ? $('#RUC').val() : $('#CedulaIdentificacion').val()) || '';
+        const companiaCodigo = $('#EmpresaCodigo').val() || '';
+
+        $.post(url, {
+            correo: correo,
+            identificacion: identificacion ? identificacion.trim() : '',
+            companiaCodigo: companiaCodigo ? companiaCodigo.trim() : '',
+            __RequestVerificationToken: token
+        })
+        .done(function(response) {
+            if (!response.valido) {
+                mostrarErrorCampo('#Correo', response.mensaje || 'Correo ya registrado');
+            } else {
+                removerErrorCampo('#Correo');
+            }
+        });
     }
 
     function validarIdentificacionUnica() {

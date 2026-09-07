@@ -525,6 +525,33 @@ namespace CapaNegocio.Services
                         }
                     };
 
+                case "DOCUMENTACION_ACEPTADA_DIRCAV":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Documentación técnica aceptada por DIRCAV #" + solicitud.CodigoSolicitud,
+                        Titulo = "Documentación técnica aceptada por DIRCAV",
+                        Mensaje = "La Dirección de Certificación Aeronáutica (DIRCAV) ha aceptado formalmente la documentación técnica de la solicitud AOCR #" + solicitud.CodigoSolicitud + ". Se procede con la designación del Inspector responsable.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico
+                        }
+                    };
+
+                case "DESIGNACION_INSPECTOR_REGISTRADA":
+                case "INSPECTOR_DESIGNADO_DIRCAV":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Designación de Inspector registrada #" + solicitud.CodigoSolicitud,
+                        Titulo = "Designación de Inspector registrada por DIRCAV",
+                        Mensaje = "La Dirección de Certificación Aeronáutica (DIRCAV) ha registrado la designación del Inspector responsable para la solicitud AOCR #" + solicitud.CodigoSolicitud + ".",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
+                        }
+                    };
+
                 case "ACEPTACION_DOCUMENTAL":
                 case "REVISION_DOCUMENTAL_APROBADA":
                 case "INSPECCION_HABILITADA":

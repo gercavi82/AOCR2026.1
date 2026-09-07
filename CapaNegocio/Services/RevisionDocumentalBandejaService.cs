@@ -179,6 +179,11 @@ namespace CapaNegocio.Services
                 return true;
             }
 
+            if (solicitud.TecnicoResponsableId.HasValue && inspectorIds.Contains(solicitud.TecnicoResponsableId.Value))
+            {
+                return true;
+            }
+
             if (CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identificadores)
                 || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identificadores))
             {
@@ -222,7 +227,10 @@ namespace CapaNegocio.Services
                 || string.Equals(canonico, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(canonico, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(canonico, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(canonico, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase))
+                || string.Equals(canonico, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, AocrEstadosProceso.DesignacionFirmadaDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(canonico, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -234,7 +242,10 @@ namespace CapaNegocio.Services
                 || string.Equals(claveRaw, "DOCUMENTACIONSUBSANADA", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(claveRaw, "PENDIENTEREVISIONINSPECTOR", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(claveRaw, "DEVUELTOINSPECTOR", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(claveRaw, "DEVUELTOAINSPECTOR", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(claveRaw, "DEVUELTOAINSPECTOR", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DESIGNACIONFIRMADADIRCAV", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DESIGNACIONPENDIENTEFIRMADIRCAV", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(claveRaw, "DOCUMENTACIONACEPTADADIRCAV", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)

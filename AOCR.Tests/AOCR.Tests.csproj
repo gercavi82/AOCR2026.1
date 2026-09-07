@@ -63,9 +63,13 @@
     <Compile Include="Unit\SegregacionRolesDircavDirdacTests.cs" />
     <Compile Include="Unit\SeparacionSieteRolesRealesTests.cs" />
     <Compile Include="Unit\Ac01LiberarCorreoRtDevueltoTests.cs" />
+    <Compile Include="Unit\Ac01MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac02FechasInspeccionEstacionesTests.cs" />
+    <Compile Include="Unit\Ac02MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac04CoordinadorRevisionDocumentalTests.cs" />
+    <Compile Include="Unit\Ac04MatrizPruebasFlujoInspectorCoordinadorDireccionTests.cs" />
     <Compile Include="Unit\Ac05DircavAceptacionYDesignacionTests.cs" />
+    <Compile Include="Unit\Ac05MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac06DesignacionPdfDircavTests.cs" />
     <Compile Include="Unit\Ac07ListaVerificacionPorEstacionTests.cs" />
     <Compile Include="Unit\Ac08ValidacionCompletitudLvTests.cs" />

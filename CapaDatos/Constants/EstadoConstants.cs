@@ -476,7 +476,20 @@ namespace CapaDatos.Constants
             AocrEstadosProceso.DocumentacionAceptadaDircav,
             AocrEstadosProceso.PendienteDesignacionDircav,
             AocrEstadosProceso.DesignacionPendienteFirmaDircav,
-            AocrEstadosProceso.DesignacionFirmadaDircav
+            AocrEstadosProceso.DesignacionFirmadaDircav,
+
+            // AC-04: Transiciones post-inspección Inspector -> Coordinador -> DIRCAV -> DIRDAC
+            AocrEstadosProceso.PendienteInformeInspector,
+            AocrEstadosProceso.InformeTecnicoFirmadoInspector,
+            AocrEstadosProceso.PendienteRevisionFinalCoordinador,
+            AocrEstadosProceso.InformeTecnicoDevueltoInspector,
+            AocrEstadosProceso.ClPendienteDircav,
+            AocrEstadosProceso.ClPendienteFirmaDircav,
+            AocrEstadosProceso.DevueltoCoordinadorFinalDircav,
+            AocrEstadosProceso.ClFirmadaDircav,
+            AocrEstadosProceso.AocrPendienteDirdac,
+            AocrEstadosProceso.DevueltoDircavPorDirdac,
+            AocrEstadosProceso.AocrFirmadaDirdac
         };
 
         private static readonly Dictionary<string, string[]> Transiciones = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
@@ -496,6 +509,17 @@ namespace CapaDatos.Constants
             { AocrEstadosProceso.PendienteDesignacionDircav, new[] { AocrEstadosProceso.DesignacionPendienteFirmaDircav } },
             { AocrEstadosProceso.DesignacionPendienteFirmaDircav, new[] { AocrEstadosProceso.DesignacionFirmadaDircav, AocrEstadosProceso.PendienteDesignacionDircav } },
             { AocrEstadosProceso.DesignacionFirmadaDircav, new[] { EnInspeccion, RequiereInspeccion } },
+            { AocrEstadosProceso.PendienteInformeInspector, new[] { AocrEstadosProceso.InformeTecnicoFirmadoInspector } },
+            { AocrEstadosProceso.InformeTecnicoFirmadoInspector, new[] { AocrEstadosProceso.PendienteRevisionFinalCoordinador, EnRevisionCoordinadorFinal, AOCR_EnRevision } },
+            { AocrEstadosProceso.PendienteRevisionFinalCoordinador, new[] { AocrEstadosProceso.InformeTecnicoDevueltoInspector, AocrEstadosProceso.ClPendienteDircav, AocrEstadosProceso.ClPendienteFirmaDircav, EnviadoDcav } },
+            { AocrEstadosProceso.InformeTecnicoDevueltoInspector, new[] { AocrEstadosProceso.PendienteRevisionFinalCoordinador, EnRevisionCoordinadorFinal, AOCR_EnRevision } },
+            { AocrEstadosProceso.ClPendienteDircav, new[] { AocrEstadosProceso.ClPendienteFirmaDircav, AocrEstadosProceso.DevueltoCoordinadorFinalDircav, AocrEstadosProceso.ClFirmadaDircav, FirmadoDcav } },
+            { AocrEstadosProceso.ClPendienteFirmaDircav, new[] { AocrEstadosProceso.DevueltoCoordinadorFinalDircav, AocrEstadosProceso.ClFirmadaDircav, FirmadoDcav } },
+            { AocrEstadosProceso.DevueltoCoordinadorFinalDircav, new[] { AocrEstadosProceso.PendienteRevisionFinalCoordinador, AocrEstadosProceso.ClPendienteDircav } },
+            { AocrEstadosProceso.ClFirmadaDircav, new[] { AocrEstadosProceso.AocrPendienteDirdac, AocrEstadosProceso.PendienteFirmaAocrDirdac, AOCR_Validado } },
+            { AocrEstadosProceso.AocrPendienteDirdac, new[] { AocrEstadosProceso.DevueltoDircavPorDirdac, AocrEstadosProceso.AocrFirmadaDirdac, AOCR_Legalizado } },
+            { AocrEstadosProceso.DevueltoDircavPorDirdac, new[] { AocrEstadosProceso.AocrPendienteDirdac, AocrEstadosProceso.ClPendienteDircav } },
+            { AocrEstadosProceso.AocrFirmadaDirdac, new[] { AocrEstadosProceso.ListoParaEntrega, AocrEstadosProceso.Entregado, AOCR_EmitidoRecibido, Finalizado } },
             { RequiereInspeccion, new[] { PendienteAsignacionRT, EnInspeccion } },
             { GeneradoCondicionesLimitaciones, new[] { EnRevisionCoordinadorFinal } },
             { EnRevisionCoordinadorFinal, new[] { EnviadoDcav } },

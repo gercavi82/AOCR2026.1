@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Inspeccion>
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Inspeccion>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -42,50 +42,69 @@
 </div>
 
 @{
-    var estacionesPlan = ViewBag.EstacionesPlanificacion as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>;
-}
-@if (estacionesPlan != null && estacionesPlan.Any())
-{
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3 class="panel-title"><i class="glyphicon glyphicon-map-marker"></i> Estaciones y Fechas Independientes de Inspección (AC-02)</h3>
-        </div>
-        <div class="panel-body table-responsive">
-            <table class="table table-bordered table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Estación / Aeropuerto</th>
-                        <th class="text-center" style="width: 25%;">Fecha Inicio</th>
-                        <th class="text-center" style="width: 25%;">Fecha Fin</th>
-                        <th class="text-center" style="width: 20%;">Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var est in estacionesPlan)
-                    {
-                        <tr>
-                            <td>
-                                <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
-                            </td>
-                            <td class="text-center">@(est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("dd/MM/yyyy") : "-")</td>
-                            <td class="text-center">@(est.FechaFin != default(DateTime) ? est.FechaFin.ToString("dd/MM/yyyy") : "-")</td>
-                            <td class="text-center">
-                                <span class="label label-info">@(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)</span>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
+    var estacionesPlan = (ViewBag.EstacionesPlanificacion as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>)?.ToList();
 }
 
-@using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal" }))
+@using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal", id = "formPlanificacion" }))
 {
     @Html.AntiForgeryToken()
 
     @* IMPORTANTE: tu Action Planificacion recibe (int codigoInspeccion, ...) *@
     <input type="hidden" name="codigoInspeccion" value="@Model.CodigoInspeccion" />
+
+    if (estacionesPlan != null && estacionesPlan.Any())
+    {
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="glyphicon glyphicon-map-marker"></i> Estaciones y Fechas Independientes de Inspección (AC-02)</h3>
+            </div>
+            <div class="panel-body table-responsive">
+                <p class="text-muted small">
+                    Cada estación cuenta con su propio rango de fechas de inspección independiente. La modificación de una fecha no afecta a las demás estaciones.
+                </p>
+                <table class="table table-bordered table-striped table-hover" id="tablaEstacionesPlanificacion">
+                    <thead>
+                        <tr class="active">
+                            <th>Estación / Aeropuerto</th>
+                            <th class="text-center" style="width: 25%;">Fecha Inicio *</th>
+                            <th class="text-center" style="width: 25%;">Fecha Fin *</th>
+                            <th class="text-center" style="width: 15%;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < estacionesPlan.Count; i++)
+                        {
+                            var est = estacionesPlan[i];
+                            var fIniStr = est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("yyyy-MM-dd") : (Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "");
+                            var fFinStr = est.FechaFin != default(DateTime) ? est.FechaFin.ToString("yyyy-MM-dd") : fIniStr;
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="estaciones[@i].Id" value="@est.Id" />
+                                    <input type="hidden" name="estaciones[@i].EstacionCodigo" value="@est.EstacionCodigo" />
+                                    <input type="hidden" name="estaciones[@i].EstacionNombre" value="@est.EstacionNombre" />
+                                    <input type="hidden" name="estaciones[@i].Estado" value="@est.Estado" />
+                                    <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
+                                </td>
+                                <td class="text-center">
+                                    <input type="date" name="estaciones[@i].FechaInicio"
+                                           class="form-control input-sm text-center estacion-fecha-inicio"
+                                           value="@fIniStr" required />
+                                </td>
+                                <td class="text-center">
+                                    <input type="date" name="estaciones[@i].FechaFin"
+                                           class="form-control input-sm text-center estacion-fecha-fin"
+                                           value="@fFinStr" required />
+                                </td>
+                                <td class="text-center">
+                                    <span class="label label-info">@(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 
     <div class="panel panel-primary">
         <div class="panel-heading">
@@ -220,6 +239,31 @@
 
 @section Scripts {
     @Scripts.Render("~/bundles/jqueryval")
+    <script>
+        $(function () {
+            // AC-02: Validar que en cada estación Fecha Fin >= Fecha Inicio
+            $('#formPlanificacion').on('submit', function (e) {
+                var valido = true;
+                var mensaje = '';
+                $('#tablaEstacionesPlanificacion tbody tr').each(function () {
+                    var $tr = $(this);
+                    var cod = $tr.find('strong').text();
+                    var ini = $tr.find('.estacion-fecha-inicio').val();
+                    var fin = $tr.find('.estacion-fecha-fin').val();
+                    if (ini && fin && fin < ini) {
+                        valido = false;
+                        mensaje = 'En la estación ' + cod + ', la fecha final no puede ser anterior a la fecha inicial.';
+                        return false;
+                    }
+                });
+                if (!valido) {
+                    e.preventDefault();
+                    alert(mensaje);
+                    return false;
+                }
+            });
+        });
+    </script>
 }
 
 

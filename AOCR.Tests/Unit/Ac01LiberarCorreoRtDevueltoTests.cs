@@ -125,7 +125,7 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(daoText, "estado_designacion_rt = 'devuelto'");
             StringAssert.Contains(daoText, "correo_original");
             StringAssert.Contains(daoText, "correo_liberado = TRUE");
-            StringAssert.Contains(daoText, "devuelto.");
+            StringAssert.Contains(daoText, "resultado.CorreoLiberado = true;");
         }
 
         [TestMethod]

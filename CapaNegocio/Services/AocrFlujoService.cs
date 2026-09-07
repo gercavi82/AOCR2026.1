@@ -53,6 +53,10 @@ namespace CapaNegocio.Services
         // Acciones exclusivas COORDINADOR
         public const string CoordinadorRemitirDircav = "COORDINADOR_REMITIR_DIRCAV";
         public const string CoordinadorDevolverInspector = "COORDINADOR_DEVOLVER_INSPECTOR";
+        public const string CoordinadorRemitirClDircav = "COORDINADOR_REMITIR_CL_DIRCAV";
+        public const string CoordinadorDevolverClInspector = "COORDINADOR_DEVOLVER_CL_INSPECTOR";
+        public const string CoordinadorRevisarInformeTecnico = "COORDINADOR_REVISAR_INFORME_TECNICO";
+        public const string InspectorRemitirInformeCoordinador = "INSPECTOR_REMITIR_INFORME_COORDINADOR";
     }
 
     public sealed class AocrFlujoService : IAocrFlujoService
@@ -106,9 +110,141 @@ namespace CapaNegocio.Services
                 return true;
             }
 
-            // AC-04: Reenvío del Inspector tras corrección
+            // AC-04: Reenvío del Inspector tras corrección inicial
             if (string.Equals(actual, AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(destino, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // AC-04: Inspector elabora y firma informe técnico
+            if ((string.Equals(actual, AocrEstadosProceso.PendienteInformeInspector, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.InspeccionRealizada, StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(destino, AocrEstadosProceso.InformeTecnicoFirmadoInspector, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // AC-04: Transiciones post-inspección hacia Coordinación (Inspector remite informe firmado a Coordinador)
+            if ((string.Equals(actual, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.InspeccionRealizada, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, AocrEstadosProceso.InformeTecnicoFirmadoInspector, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Coordinación devuelve informe o C&L al Inspector para subsanación
+            if (string.Equals(actual, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(destino, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Inspector reenvía informe corregido a Coordinación
+            if (string.Equals(actual, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(destino, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.InformeTecnicoFirmadoInspector, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Coordinación remite Condiciones y Limitaciones a DIRCAV (NO a DIRDAC)
+            if ((string.Equals(actual, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: DIRCAV revisa informe y aprueba para firma de C&L
+            if (string.Equals(actual, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(destino, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // AC-04: DIRCAV devuelve C&L a Coordinador con observaciones
+            if ((string.Equals(actual, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.DevueltoCoordinadorFinalDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Coordinador reenvía C&L subsanada a DIRCAV
+            if (string.Equals(actual, AocrEstadosProceso.DevueltoCoordinadorFinalDircav, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(destino, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.PendienteRevisionFinalCoordinador, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: DIRCAV firma formalmente Condiciones y Limitaciones
+            if ((string.Equals(actual, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, AocrEstadosProceso.ClPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Con C&L firmada por DIRCAV, el trámite pasa a DIRDAC para la firma y legalización del AOCR
+            if ((string.Equals(actual, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: DIRDAC devuelve expediente a DIRCAV con observaciones
+            if ((string.Equals(actual, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.DevueltoDircavPorDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: DIRCAV reenvía expediente subsanado a DIRDAC
+            if (string.Equals(actual, AocrEstadosProceso.DevueltoDircavPorDirdac, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(destino, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: DIRDAC firma formalmente la AOCR final
+            if ((string.Equals(actual, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.AocrFirmadaDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // AC-04: Cierre institucional y entrega final
+            if ((string.Equals(actual, AocrEstadosProceso.AocrFirmadaDirdac, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actual, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)) &&
+                (string.Equals(destino, AocrEstadosProceso.ListoParaEntrega, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.Entregado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }
@@ -323,6 +459,10 @@ namespace CapaNegocio.Services
                     case AocrFlujoAcciones.DirdacConfirmarLegalizacion:
                     case AocrFlujoAcciones.CoordinadorRemitirDircav:
                     case AocrFlujoAcciones.CoordinadorDevolverInspector:
+                    case AocrFlujoAcciones.CoordinadorRemitirClDircav:
+                    case AocrFlujoAcciones.CoordinadorDevolverClInspector:
+                    case AocrFlujoAcciones.CoordinadorRevisarInformeTecnico:
+                    case AocrFlujoAcciones.InspectorRemitirInformeCoordinador:
                         return false;
                     default:
                         return true;
@@ -347,9 +487,12 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.GenerarAocr:
                 case AocrFlujoAcciones.CoordinadorRemitirDircav:
                 case AocrFlujoAcciones.CoordinadorDevolverInspector:
+                case AocrFlujoAcciones.CoordinadorRemitirClDircav:
+                case AocrFlujoAcciones.CoordinadorDevolverClInspector:
+                case AocrFlujoAcciones.CoordinadorRevisarInformeTecnico:
                     return string.Equals(rol, "Coordinacion", StringComparison.OrdinalIgnoreCase);
 
-                // COORDINADOR NUNCA REMITE DIRECTAMENTE A DIRDAC
+                // NI COORDINADOR NI INSPECTOR REMITEN DIRECTAMENTE A DIRDAC (DIRCAV ES LA INSTANCIA DE REMISION)
                 case AocrFlujoAcciones.EnviarDirdac:
                     return false;
 
@@ -357,6 +500,7 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.GenerarSolicitudInspeccion:
                 case AocrFlujoAcciones.FirmarListaVerificacion:
                 case AocrFlujoAcciones.FirmarInformeTecnico:
+                case AocrFlujoAcciones.InspectorRemitirInformeCoordinador:
                     return string.Equals(rol, "InspectorTecnico", StringComparison.OrdinalIgnoreCase);
 
                 // DIRCAV

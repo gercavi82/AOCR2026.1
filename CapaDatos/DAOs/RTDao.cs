@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using Dapper;
 using Npgsql;
@@ -77,23 +77,37 @@ namespace CapaDatos.DAOs
             return null;
         }
 
-        public bool ExisteRuc(string ruc, int? companiaId)
+        public bool ExisteRuc(string ruc, int? companiaId, int? usuarioRtId = null)
         {
-            const string sql = @"SELECT id FROM django_aocr_registro_rt WHERE LOWER(identificacion) = LOWER(@ruc) LIMIT 1;";
+            if (string.IsNullOrWhiteSpace(ruc)) return false;
+            const string sql = @"
+                SELECT id FROM django_aocr_registro_rt 
+                WHERE LOWER(TRIM(identificacion)) = LOWER(TRIM(@ruc)) 
+                  AND estado NOT IN ('DEVUELTO_CON_OBSERVACIONES', 'RECHAZADA_INSPECTOR')
+                  AND (@companiaId IS NULL OR id <> @companiaId)
+                  AND (@usuarioRtId IS NULL OR usuario_rt_id <> @usuarioRtId)
+                LIMIT 1;";
             using (var cn = CrearConexion())
             {
-                var id = cn.ExecuteScalar<int?>(sql, new { ruc });
-                return id.HasValue && (!companiaId.HasValue || id.Value != companiaId.Value);
+                var id = cn.ExecuteScalar<int?>(sql, new { ruc = ruc.Trim(), companiaId, usuarioRtId });
+                return id.HasValue;
             }
         }
 
-        public bool ExisteEmail(string email, int? companiaId)
+        public bool ExisteEmail(string email, int? companiaId, int? usuarioRtId = null)
         {
-            const string sql = @"SELECT id FROM django_aocr_registro_rt WHERE LOWER(email) = LOWER(@email) LIMIT 1;";
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            const string sql = @"
+                SELECT id FROM django_aocr_registro_rt 
+                WHERE LOWER(TRIM(email)) = LOWER(TRIM(@email)) 
+                  AND estado NOT IN ('DEVUELTO_CON_OBSERVACIONES', 'RECHAZADA_INSPECTOR')
+                  AND (@companiaId IS NULL OR id <> @companiaId)
+                  AND (@usuarioRtId IS NULL OR usuario_rt_id <> @usuarioRtId)
+                LIMIT 1;";
             using (var cn = CrearConexion())
             {
-                var id = cn.ExecuteScalar<int?>(sql, new { email });
-                return id.HasValue && (!companiaId.HasValue || id.Value != companiaId.Value);
+                var id = cn.ExecuteScalar<int?>(sql, new { email = email.Trim(), companiaId, usuarioRtId });
+                return id.HasValue;
             }
         }
 

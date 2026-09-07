@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Web;
 using CapaDatos.DAOs;
@@ -113,10 +113,11 @@ namespace CapaNegocio.Services
             var solicitud = _rtDao.GetSolicitudByUsuario(usuarioId);
             var compania = solicitud != null ? _rtDao.GetCompaniaById(solicitud.CompaniaId) : null;
 
-            if (_rtDao.ExisteRuc(vm.Ruc, compania?.Id))
+            var solicitudIdExcluir = solicitud != null ? (int?)solicitud.Id : null;
+            if (_rtDao.ExisteRuc(vm.Ruc, solicitudIdExcluir, usuarioId))
                 throw new InvalidOperationException("El RUC ya está registrado.");
 
-            if (_rtDao.ExisteEmail(vm.Email, compania?.Id))
+            if (_rtDao.ExisteEmail(vm.Email, solicitudIdExcluir, usuarioId))
                 throw new InvalidOperationException("El email ya está registrado.");
 
             if (solicitud == null)

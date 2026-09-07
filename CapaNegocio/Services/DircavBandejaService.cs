@@ -57,6 +57,8 @@ namespace CapaNegocio.Services
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
             return solicitudes.Where(s =>
                 string.Equals(s.Estado, AocrEstadosProceso.PendienteDesignacionDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s.Estado, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s.Estado, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
                 || (string.Equals(s.Estado, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase)
                     && !string.IsNullOrWhiteSpace(s.TecnicoResponsableCedula))
             ).ToList();
@@ -77,12 +79,13 @@ namespace CapaNegocio.Services
             ).ToList();
         }
 
-        // 4. Informes técnicos pendientes de revisión por DIRCAV
+        // 4. Informes técnicos pendientes de revisión por DIRCAV (AC-04: Remitido por Coordinador)
         public List<SolicitudAOCR> ObtenerInformesPendientesRevision()
         {
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
             return solicitudes.Where(s =>
-                string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionFinalDircav, StringComparison.OrdinalIgnoreCase)
+                string.Equals(s.Estado, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionFinalDircav, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionInformeDcav, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(s.Estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
             ).ToList();

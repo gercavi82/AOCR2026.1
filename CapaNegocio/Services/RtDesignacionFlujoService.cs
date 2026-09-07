@@ -28,6 +28,19 @@ namespace CapaNegocio.Services
         }
 
         /// <summary>
+        /// AC-01: Valida si un correo puede ser utilizado para un trámite de RT,
+        /// considerando el estado funcional de la designación, compañía e identificación del solicitante.
+        /// </summary>
+        public ResultadoValidacionCorreoRT ValidarDisponibilidadCorreo(
+            string correo,
+            string identificacion = null,
+            string companiaCodigo = null,
+            int? excluirUsuarioId = null)
+        {
+            return UsuarioDAO.PuedeUsarseCorreoRepresentante(correo, identificacion, companiaCodigo, excluirUsuarioId);
+        }
+
+        /// <summary>
         /// Ejecuta la devolución de la designación provisional de RT.
         /// </summary>
         /// <param name="usuarioId">ID del postulante provisional en la tabla usuario.</param>
