@@ -62,6 +62,54 @@ body.aocr-body .content-wrapper {
     color: var(--aocr-text);
 }
 
+/* ============================================================
+   ESTÁNDAR GLOBAL DE BOTONES — BOOTSTRAP 5
+   Garantiza que cualquier elemento con clase .btn (sea <button> o <a>)
+   mantenga el color de texto y estilo de sus variables Bootstrap 5.
+   Evita que reglas globales de <a> sobrescriban botones.
+   ============================================================ */
+body.aocr-body a.btn,
+body.aocr-body button.btn,
+body.aocr-body .btn {
+    text-decoration: none !important;
+}
+
+body.aocr-body a.btn:not([class*="btn-outline-"]):not(.btn-light):not(.btn-warning),
+body.aocr-body button.btn:not([class*="btn-outline-"]):not(.btn-light):not(.btn-warning) {
+    color: var(--bs-btn-color, #ffffff);
+}
+
+body.aocr-body a.btn:not([class*="btn-outline-"]):not(.btn-light):not(.btn-warning):is(:hover, :focus, :focus-visible, :active, .active),
+body.aocr-body button.btn:not([class*="btn-outline-"]):not(.btn-light):not(.btn-warning):is(:hover, :focus, :focus-visible, :active, .active) {
+    color: var(--bs-btn-hover-color, #ffffff);
+}
+
+body.aocr-body a.btn:is(.btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-dark, .btn-info),
+body.aocr-body button.btn:is(.btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-dark, .btn-info) {
+    color: var(--bs-btn-color, #ffffff);
+}
+
+body.aocr-body a.btn:is(.btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-dark, .btn-info):is(:hover, :focus, :focus-visible, :active, .active),
+body.aocr-body button.btn:is(.btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-dark, .btn-info):is(:hover, :focus, :focus-visible, :active, .active) {
+    color: var(--bs-btn-hover-color, #ffffff);
+}
+
+body.aocr-body a.btn:is(.btn-warning, .btn-light),
+body.aocr-body button.btn:is(.btn-warning, .btn-light) {
+    color: var(--bs-btn-color, #000000);
+}
+
+body.aocr-body a.btn:is(.btn-warning, .btn-light):is(:hover, :focus, :focus-visible, :active, .active),
+body.aocr-body button.btn:is(.btn-warning, .btn-light):is(:hover, :focus, :focus-visible, :active, .active) {
+    color: var(--bs-btn-hover-color, #000000);
+}
+
+body.aocr-body .btn :is(i, span:not(.badge), strong, b, small),
+body.aocr-body a.btn :is(i, span:not(.badge), strong, b, small) {
+    color: inherit;
+    -webkit-text-fill-color: currentColor;
+}
+
 body.aocr-body .content-wrapper h1,
 body.aocr-body .content-wrapper h2,
 body.aocr-body .content-wrapper h3,
@@ -253,44 +301,11 @@ body.aocr-body .aocr-metric-icon {
     border-radius: 8px;
 }
 
-body.aocr-body .form-control,
-body.aocr-body .form-select,
-body.aocr-body select,
-body.aocr-body textarea {
-    border-radius: 6px !important;
-    border-color: var(--aocr-border-strong);
-    color: var(--aocr-text);
-}
-
-body.aocr-body .btn {
-    border-radius: 6px;
-    font-weight: 700;
-}
-
-body.aocr-body .badge,
+/* Standard controls, buttons, badges and alerts use Bootstrap. */
 body.aocr-body .aocr-status-badge,
 body.aocr-body .aocr-state-pill {
     border-radius: 999px;
     font-weight: 800;
-    letter-spacing: 0;
-}
-
-body.aocr-body .alert {
-    border-radius: 8px;
-}
-
-body.aocr-body .alert-warning,
-body.aocr-body .alert-warning *,
-body.aocr-body .bg-warning:not(.text-white),
-body.aocr-body .bg-warning:not(.text-white) * {
-    color: #3f2e00 !important;
-}
-
-body.aocr-body .alert-info,
-body.aocr-body .alert-info *,
-body.aocr-body .bg-info:not(.text-white),
-body.aocr-body .bg-info:not(.text-white) * {
-    color: #103c4a !important;
 }
 
 body.aocr-body .aocr-table-wrap,

@@ -195,8 +195,18 @@
         var pushMenu = document.querySelector('[data-widget="pushmenu"]');
         if (pushMenu) {
             pushMenu.setAttribute('aria-expanded', 'false');
-            pushMenu.addEventListener('click', function () {
-                if (!isMobileViewport()) return;
+            pushMenu.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (!isMobileViewport()) {
+                    document.body.classList.toggle('sidebar-collapse');
+                    pushMenu.setAttribute('aria-expanded', String(!document.body.classList.contains('sidebar-collapse')));
+                    return;
+                }
+                if (document.body.classList.contains('sidebar-open')) {
+                    closeMobileSidebar();
+                    return;
+                }
+                document.body.classList.add('sidebar-open');
                 sidebarTrigger = pushMenu;
                 window.setTimeout(function () {
                     if (!document.body.classList.contains('sidebar-open')) return;

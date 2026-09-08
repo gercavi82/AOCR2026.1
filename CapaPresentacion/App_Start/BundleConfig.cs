@@ -14,21 +14,18 @@ namespace CapaPresentacion
             // ======================
             bundles.Add(new StyleBundle("~/bundles/css")
                 .Include("~/Content/bootstrap.min.css")
-                .Include("~/Content/adminlte.min.css")
+                .Include("~/Content/aocr-shell.css")
                 .Include("~/Content/site.css")
                 .Include("~/Content/aocr-institucional.css")
                 .Include("~/Content/aocr-modals.css")
-                .Include("~/Content/css/aocr-contrast-fix.css")
+                .Include("~/Content/aocr-sidebar.css")
+                .Include("~/Content/aocr-contrast.css")
             );
 
             bundles.Add(new StyleBundle("~/bundles/plugins-css").Include(
-                // DataTables Bootstrap 5 (local)
-                "~/Content/DataTables/css/dataTables.bootstrap5.min.css",
-                "~/Content/DataTables/css/responsive.bootstrap5.min.css",
-
-                "~/Content/sweetalert2/sweetalert2.min.css",
-                "~/Content/select2/css/select2.min.css",
-                "~/Content/toastr/toastr.min.css"
+                "~/Content/plugins/sweetalert2/sweetalert2.min.css",
+                "~/Content/plugins/select2/css/select2.min.css",
+                "~/Content/plugins/toastr/toastr.min.css"
             ));
 
             bundles.Add(new StyleBundle("~/Content/auth")
@@ -52,24 +49,17 @@ namespace CapaPresentacion
                 "~/Scripts/jquery.validate.unobtrusive.min.js"
             ));
 
-            bundles.Add(new ScriptBundle("~/bundles/datatables").Include(
-                "~/Scripts/DataTables/jquery.dataTables.min.js",
-                "~/Scripts/DataTables/dataTables.bootstrap5.min.js",
-                "~/Scripts/DataTables/dataTables.responsive.min.js",
-                "~/Scripts/DataTables/responsive.bootstrap5.min.js"
-            ));
-
             bundles.Add(new ScriptBundle("~/bundles/plugins").Include(
-                "~/Scripts/sweetalert2/sweetalert2.min.js",
-                "~/Scripts/select2/select2.full.min.js",
-                "~/Scripts/toastr/toastr.min.js",
-                "~/Scripts/adminlte.min.js"
+                "~/Content/plugins/sweetalert2/sweetalert2.min.js",
+                "~/Content/plugins/select2/js/select2.full.min.js",
+                "~/Content/plugins/toastr/toastr.min.js"
             ));
 
             bundles.Add(new ScriptBundle("~/bundles/app").Include(
-                "~/Scripts/app/global.js",
-                "~/Scripts/app/notifications.js",
-                "~/Scripts/app/forms.js"
+                "~/Scripts/app.js",
+                "~/Scripts/site.js",
+                "~/Scripts/aocr-sidebar.js",
+                "~/Scripts/aocr-utils.js"
             ));
 
             bundles.Add(new ScriptBundle("~/bundles/auth").Include(

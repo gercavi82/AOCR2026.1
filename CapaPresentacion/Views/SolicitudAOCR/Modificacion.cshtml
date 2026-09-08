@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage
+@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -29,7 +29,7 @@
     <!-- Paso 2: Seleccionar AOCR a modificar -->
     <div class="mt-4">
         <label><strong>2. Selecciona la AOCR a Modificar</strong></label>
-        <button class="btn btn-outline-primary d-block mt-2" data-toggle="modal" data-target="#modalAOCR">Seleccionar AOCR</button>
+        <button class="btn btn-outline-primary d-block mt-2" data-toggle="modal" data-target="#modalAOCR" data-bs-toggle="modal" data-bs-target="#modalAOCR">Seleccionar AOCR</button>
 
         <!-- Resultado de selección -->
         <div id="aocrSeleccionada" class="mt-2 text-success font-weight-bold" style="display:none;">
@@ -60,9 +60,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Selecciona la AOCR</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 <table class="table table-bordered table-hover" id="tablaAOCR">
@@ -88,7 +86,7 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">Modificar Explotador-Solicitante</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 <!-- Formulario -->
@@ -114,7 +112,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="confirmarGuardar('Explotador')">Guardar Cambios</button>
             </div>
         </div>
@@ -126,7 +124,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">Modificar Listado de Aeronaves</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 <!-- Campos ejemplo -->
@@ -144,7 +142,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="confirmarGuardar('Aeronaves')">Guardar Cambios</button>
             </div>
         </div>
@@ -156,7 +154,7 @@
         <div class="modal-content">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title">Modificar Operaciones EAE</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                <button type="button" class="btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 <!-- Campos ejemplo -->
@@ -174,7 +172,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="confirmarGuardar('Operaciones')">Guardar Cambios</button>
             </div>
         </div>

@@ -1,4 +1,4 @@
-﻿/* Botones de acción de orden alineados y con separación */
+/* Botones de acción de orden alineados y con separación */
 .botones-orden {
     display: flex;
     gap: 10px;
@@ -9,7 +9,7 @@
 .botones-orden .btn {
     min-width: 130px;
 }
-body {
+body:not(.aocr-body) {
     padding-top: 50px;
     padding-bottom: 20px;
 }

@@ -16,12 +16,10 @@ body.aocr-body .aocr-topbar {
 
 body.aocr-body .aocr-topbar .nav-link {
     color: #1e293b !important;
-    -webkit-text-fill-color: #1e293b !important;
 }
 
 body.aocr-body .aocr-topbar .nav-link:hover {
     color: #0f4c81 !important;
-    -webkit-text-fill-color: #0f4c81 !important;
 }
 
 body.aocr-body .aocr-topbar-brand {
@@ -46,14 +44,12 @@ body.aocr-body .aocr-topbar-brand__icon {
     border-radius: 8px !important;
     background: linear-gradient(135deg, #0f4c81 0%, #0c7c86 100%) !important;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
     font-size: 0.95rem !important;
 }
 
 body.aocr-body .aocr-topbar-brand__title {
     display: block !important;
     color: #0f172a !important;
-    -webkit-text-fill-color: #0f172a !important;
     font-size: 0.95rem !important;
     font-weight: 800 !important;
     line-height: 1.2 !important;
@@ -65,14 +61,12 @@ body.aocr-body .aocr-topbar-brand__title {
 body.aocr-body .aocr-topbar-brand__subtitle {
     display: block !important;
     color: #64748b !important;
-    -webkit-text-fill-color: #64748b !important;
     font-size: 0.75rem !important;
     font-weight: 600 !important;
 }
 
 body.aocr-body .user-menu #user-display-name {
     color: #1e293b !important;
-    -webkit-text-fill-color: #1e293b !important;
     font-weight: 700 !important;
 }
 
@@ -174,7 +168,6 @@ body.aocr-body .aocr-header-kicker {
     align-items: center !important;
     gap: 0.45rem !important;
     color: rgba(255, 255, 255, 0.95) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.95) !important;
     font-size: 0.74rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.14em !important;
@@ -184,7 +177,6 @@ body.aocr-body .aocr-header-kicker {
 body.aocr-body .aocr-header-title {
     margin: 0 !important;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
     font-size: 1.75rem !important;
     line-height: 1.15 !important;
     font-weight: 800 !important;
@@ -194,7 +186,6 @@ body.aocr-body .aocr-header-subtitle {
     margin: 0 !important;
     max-width: 72ch !important;
     color: rgba(255, 255, 255, 0.9) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
     font-size: 0.9rem !important;
     line-height: 1.55 !important;
 }
@@ -215,7 +206,6 @@ body.aocr-body .aocr-header-badge {
     background: rgba(255, 255, 255, 0.16) !important;
     border: 1px solid rgba(255, 255, 255, 0.22) !important;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
     font-size: 0.78rem !important;
     font-weight: 700 !important;
 }
@@ -232,7 +222,6 @@ body.aocr-body .aocr-header-badge--ghost {
 
 body.aocr-body .aocr-header-badge i {
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -257,7 +246,6 @@ body.aocr-body .aocr-header-sidecard-label,
 body.aocr-body span.aocr-header-sidecard-label {
     display: block !important;
     color: rgba(255, 255, 255, 0.88) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
     font-size: 0.72rem !important;
     font-weight: 800 !important;
     letter-spacing: 0.14em !important;
@@ -270,7 +258,6 @@ body.aocr-body strong.aocr-header-sidecard-value {
     display: block !important;
     margin-top: 0.25rem !important;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
     font-size: 1.85rem !important;
     line-height: 1 !important;
     font-weight: 800 !important;
@@ -281,7 +268,6 @@ body.aocr-body span.aocr-header-sidecard-text {
     display: block !important;
     margin-top: 0.35rem !important;
     color: rgba(255, 255, 255, 0.88) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
     font-size: 0.82rem !important;
     line-height: 1.4 !important;
     overflow-wrap: anywhere !important;
@@ -302,12 +288,12 @@ body.aocr-body span.aocr-header-sidecard-text {
    4. CABECERA INSTITUCIONAL COMPACTA GLOBAL
    -------------------------------------------------------------------------- */
 body.aocr-body .aocr-content-shell {
-    padding: 0 6px 8px !important;
+    padding: 12px 12px 16px !important;
 }
 
 body.aocr-body.layout-navbar-fixed .wrapper .content-wrapper,
 body.aocr-body.layout-navbar-fixed .wrapper .aocr-main-wrapper {
-    margin-top: 12px !important;
+    margin-top: calc(3.5rem + 2px) !important;
 }
 
 body.aocr-body .aocr-page {

@@ -25,8 +25,8 @@ codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado 
 22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
-26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 4/9/2026 14:24:32 | 
-27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 4/9/2026 14:24:32 | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:08:58 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:08:58 | 
 28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 
@@ -45,7 +45,7 @@ id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 15 | desc: Financiero | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
 id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 16 | desc: JefaturaTecnica | ur_activo: True
-id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 17 | desc: Direccion | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 17 | desc: Direccion | ur_activo: False
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 18 | desc: Tecnico | ur_activo: True
 id: 45 | user: GACAJAS | nombre: GERMAN ALBERTO CAJAS VITERI | email: mancho2002@hotmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
 id: 88 | user: IMOLINA | nombre: IVAN MOLINA VILLAFUERTE | email: ivanmolinav@hotmail.es | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
@@ -55,6 +55,8 @@ id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 22 | desc: CoordinadorFinanciero | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 23 | desc: DirectorFinanciero | ur_activo: True
 id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 25 | desc: CoordinadorInspecciones | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 26 | desc: DIRDAC | ur_activo: True
+id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 27 | desc: DIRCAV | ur_activo: True
 
 --- 3. COLUMNAS DE SEGURIDAD_PERMISO ---
 col: id_permiso (bigint)
@@ -80,11 +82,13 @@ col: actualizado_por (character varying)
 codigorol: 1 (Administrador) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
 codigorol: 1 (Administrador) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
 codigorol: 1 (Administrador) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
+codigorol: 1 (Administrador) | permiso: ENTREGA_FINAL_AUDITAR (Auditar entrega final) | activo: True
 codigorol: 1 (Administrador) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
 codigorol: 1 (Administrador) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
 codigorol: 1 (Administrador) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
 codigorol: 1 (Administrador) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
 codigorol: 1 (Administrador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 7 (CoordinacionLegal) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
 codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
 codigorol: 7 (CoordinacionLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
 codigorol: 14 (Operador) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
@@ -97,12 +101,14 @@ codigorol: 17 (Direccion) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) |
 codigorol: 17 (Direccion) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
 codigorol: 17 (Direccion) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
 codigorol: 19 (Solicitante) | permiso: ORD_ANULAR (Anular orden de recaudacion) | activo: True
+codigorol: 21 (CoordinadorLegal) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
 codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
 codigorol: 21 (CoordinadorLegal) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
 codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
 codigorol: 22 (CoordinadorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
 codigorol: 23 (DirectorFinanciero) | permiso: FIN_APROBAR_PAGO (Aprobar pago y registrar factura) | activo: True
 codigorol: 23 (DirectorFinanciero) | permiso: FIN_VER_PAGOS (Verificar pagos) | activo: True
+codigorol: 25 (CoordinadorInspecciones) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
 codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_GENERAR_CERTIFICADO (Generar certificados) | activo: True
 codigorol: 25 (CoordinadorInspecciones) | permiso: LEGAL_REVISAR_SOLICITUD (Revisar solicitudes en coordinacion) | activo: True
 codigorol: 26 (DIRDAC) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
@@ -114,6 +120,8 @@ codigorol: 26 (DIRDAC) | permiso: DIRDAC_FIRMAR_AOCR (Legalizar y firmar digital
 codigorol: 26 (DIRDAC) | permiso: DIRDAC_REVISAR_AOCR (Revisar AOCR y expediente aprobado por DIRCAV) | activo: True
 codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_BANDEJA (Ver bandeja institucional de AOCR DIRDAC) | activo: True
 codigorol: 26 (DIRDAC) | permiso: DIRDAC_VER_HISTORIAL (Consultar historial y trámites concluidos DIRDAC) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
+codigorol: 26 (DIRDAC) | permiso: ENTREGA_FINAL_SOLICITAR (Solicitar entrega final) | activo: True
 codigorol: 27 (DIRCAV) | permiso: ADM_GESTION_USUARIOS (Gestionar usuarios) | activo: True
 codigorol: 27 (DIRCAV) | permiso: ADM_RESET_PASSWORD (Resetear contrasena de usuarios) | activo: True
 codigorol: 27 (DIRCAV) | permiso: ADM_ROLES_PERMISOS (Gestionar roles y permisos) | activo: True
@@ -128,6 +136,8 @@ codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_DOCUMENTACION (Revisar expedien
 codigorol: 27 (DIRCAV) | permiso: DIRCAV_REVISAR_INFORME (Revisar Informe Técnico remitido por Coordinación) | activo: True
 codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_BANDEJA (Ver bandeja de trámites DIRCAV) | activo: True
 codigorol: 27 (DIRCAV) | permiso: DIRCAV_VER_HISTORIAL (Consultar historial y auditoría de trámites DIRCAV) | activo: True
+codigorol: 27 (DIRCAV) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
+codigorol: 28 (COORDINADOR) | permiso: ENTREGA_FINAL_CONSULTAR (Consultar entrega institucional) | activo: True
 
 --- 6. TABLAS AOCR Y DE SISTEMA ---
 TABLA: acciones_personal
@@ -141,6 +151,10 @@ TABLA: aocr_correlativo_anual
 TABLA: aocr_correlativo_orden
 TABLA: aocr_declaracion_historial
 TABLA: aocr_declaracion_tmp
+TABLA: aocr_entrega_destinatario
+TABLA: aocr_entrega_documento
+TABLA: aocr_entrega_final
+TABLA: aocr_entrega_intento
 TABLA: aocr_evento_workflow
 TABLA: aocr_expediente_archivo
 TABLA: aocr_expediente_compania
@@ -204,6 +218,7 @@ TABLA: aocr_tbparametro
 TABLA: aocr_tbrevision_documental
 TABLA: aocr_tbsesiones
 TABLA: aocr_tbsolicitud
+TABLA: aocr_tbsolicitud_estacion
 TABLA: aocr_tbsubsanacion
 TABLA: aocr_tbviatico
 TABLA: aocr_usuario_compania_rt
@@ -438,6 +453,23 @@ TABLA: vw_subsanaciones_pendientes
   nombre_comercial | character varying | null=YES | def=
 
 >>> TABLA: aocr_tbsolicitud_estacion
+  id | integer | null=NO | def=nextval('aocr_tbsolicitud_estacion_id_seq'::regclass)
+  solicitud_id | integer | null=NO | def=
+  estacion_codigo | character varying | null=NO | def=
+  estacion_nombre | character varying | null=NO | def=
+  fecha_inicio | date | null=NO | def=
+  fecha_fin | date | null=NO | def=
+  inspector_id | integer | null=YES | def=
+  inspector_nombre | character varying | null=YES | def=
+  inspeccion_id | integer | null=YES | def=
+  estado | character varying | null=NO | def='SOLICITADA'::character varying
+  version | integer | null=NO | def=1
+  activo | boolean | null=NO | def=true
+  observacion | text | null=YES | def=
+  creado_en | timestamp without time zone | null=NO | def=now()
+  creado_por | integer | null=YES | def=
+  actualizado_en | timestamp without time zone | null=YES | def=
+  actualizado_por | integer | null=YES | def=
 
 >>> TABLA: aocr_tbinspeccion
   codigo_inspeccion | integer | null=NO | def=nextval('aocr_tbinspeccion_codigo_inspeccion_seq'::regclass)
@@ -523,6 +555,7 @@ TABLA: vw_subsanaciones_pendientes
   notificado_rt | boolean | null=NO | def=false
   fecha_notificacion_rt | timestamp without time zone | null=YES | def=
   codigo_informe_anterior | integer | null=YES | def=
+  base_legal | text | null=YES | def=
 
 >>> TABLA: aocr_tbfirma_documento
   codigo_firma | integer | null=NO | def=nextval('aocr_tbfirma_documento_codigo_firma_seq'::regclass)
@@ -619,6 +652,8 @@ TABLA: vw_subsanaciones_pendientes
   updated_at | timestamp without time zone | null=YES | def=
   tipo_notificacion | character varying | null=YES | def=
   correlation_id | character varying | null=YES | def=
+  message_id | character varying | null=YES | def=
+  sent_at | timestamp without time zone | null=YES | def=
 
 >>> TABLA: auditoria
 
@@ -679,6 +714,11 @@ TABLA: vw_subsanaciones_pendientes
   codigorol_as400 | character varying | null=YES | def=
   must_change_password | boolean | null=YES | def=false
   password_changed_at | timestamp without time zone | null=YES | def=
+  correo_original | character varying | null=YES | def=
+  correo_liberado | boolean | null=NO | def=false
+  fecha_devolucion_designacion | timestamp without time zone | null=YES | def=
+  coordinador_devolucion_id | integer | null=YES | def=
+  observacion_devolucion | text | null=YES | def=
 
 >>> TABLA: rol
   codigorol | integer | null=NO | def=nextval('rol_codigorol_seq'::regclass)
@@ -730,13 +770,14 @@ TABLA: vw_subsanaciones_pendientes
   [aocr_tbinspeccion] UNIQUE: aocr_tbinspeccion_numero_inspeccion_key (numero_inspeccion)
   [aocr_tbsolicitud] PRIMARY KEY: aocr_tbsolicitud_pkey (codigo_solicitud)
   [aocr_tbsolicitud] UNIQUE: aocr_tbsolicitud_numero_solicitud_key (numero_solicitud)
+  [aocr_tbsolicitud_estacion] PRIMARY KEY: aocr_tbsolicitud_estacion_pkey (id)
   [usuario] FOREIGN KEY: fk_usuario_rol (codigorol)
   [usuario] FOREIGN KEY: usuario_codigorol_fkey (codigorol)
   [usuario] PRIMARY KEY: usuario_pkey (idusuario)
   [usuario] UNIQUE: usuario_codigousuario_key (codigousuario)
 
 --- 9. ESTADOS DISTINTOS EN AOCR_TBSOLICITUD ---
-  Estado: 'En Revision' -> 4 registros
+  Estado: 'En Revision' -> 7 registros
   Estado: 'En Inspeccion' -> 3 registros
   Estado: 'AOCR En Elaboracion' -> 1 registros
   Estado: 'Pendiente' -> 1 registros

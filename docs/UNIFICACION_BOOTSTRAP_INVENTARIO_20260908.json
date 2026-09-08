@@ -1,0 +1,722 @@
+{
+  "branch": "feat/flujo-institucional_v2",
+  "head": "082e9267dc8eb80f0d6e2dbb67798a9ad585e7ca",
+  "worktree_initial": "clean",
+  "resources": {
+    "Views\\Account\\CambiarContrasena.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    ],
+    "Views\\Account\\Login.cshtml": [
+      "@Url.Content(",
+      "@Url.Content(",
+      "@Url.Content(",
+      "https://cdnjs.cloudflare.com",
+      "https://cdnjs.cloudflare.com",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    ],
+    "Views\\Account\\SeleccionarCompania.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    ],
+    "Views\\AdminUsuarios\\CrearUsuarioInternoRT.cshtml": [
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\Create.cshtml": [
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\Edit.cshtml": [
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\Index.cshtml": [
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\PermisosRol.cshtml": [
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\Roles.cshtml": [
+      "@Url.Content("
+    ],
+    "Views\\AdminUsuarios\\TransferirEliminar.cshtml": [
+      "@Url.Content("
+    ],
+    "Views\\CoordinacionJefatura\\DashboardInspeccion.cshtml": [
+      "@Url.Content(",
+      "@Url.Content(",
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\CoordinacionJefatura\\FirmaAocr.cshtml": [
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\Error\\Error.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    ],
+    "Views\\Financiero\\Index.cshtml": [
+      "https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css",
+      "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"
+    ],
+    "Views\\Financiero\\TodasOrdenes.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
+      "https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js",
+      "https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"
+    ],
+    "Views\\FirmaAocr\\Index.cshtml": [
+      "@Url.Content(",
+      "@(Url.Content("
+    ],
+    "Views\\Informe\\Ver.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+    ],
+    "Views\\InformeTecnico\\PendientesDireccion.cshtml": [
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\Inspeccion\\Detalle.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\Notificacion\\CorreosPrueba.cshtml": [
+      "@Url.Content(",
+      "@Url.Content("
+    ],
+    "Views\\OrdenRecaudacion\\Index.cshtml": [
+      "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
+      "https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css"
+    ],
+    "Views\\OrdenRecaudacionDashboard\\Index.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\ReportesFinancieros\\Index.cshtml": [
+      "https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css",
+      "https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css",
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js",
+      "https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"
+    ],
+    "Views\\Shared\\Error.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    ],
+    "Views\\Shared\\NoAutorizado.cshtml": [
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    ],
+    "Views\\Shared\\_LayoutAOCR.cshtml": [
+      "https://cdn.jsdelivr.net",
+      "https://cdn.jsdelivr.net",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+      "@Url.Content(",
+      "@Url.Content(",
+      "@Url.Content(",
+      "https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css",
+      "https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css",
+      "https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css",
+      "@siteCssHref",
+      "@aocrCssInstHref",
+      "@aocrCssDtHref",
+      "@aocrCssResponsiveHref",
+      "@aocrCssDocumentCardsHref",
+      "@aocrModalsCssHref",
+      "@aocrSidebarCssHref",
+      "@aocrContrastFixCssHref",
+      "@aocrHeadersCssHref",
+      "@aocrPdfViewerCssHref",
+      "@aocrContrastCssHref",
+      "@jqueryLocalUrl",
+      "https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js",
+      "https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js",
+      "https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js",
+      "https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js",
+      "@pdfViewerJsUrl",
+      "@dataTablesInitUrl",
+      "@jqueryValidateUrl",
+      "@jqueryValidateUnobtrusiveUrl",
+      "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js",
+      "@aocrUtilsUrl",
+      "@responsiveJsUrl"
+    ],
+    "Views\\Shared\\_ValidationScriptsPartial.cshtml": [
+      "https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"
+    ],
+    "Views\\SolicitudAOCR\\Create.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\SolicitudAOCR\\Detalle.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\SolicitudAOCR\\Index.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\SolicitudAOCR\\Modificacion.cshtml": [
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml": [
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css",
+      "@AssetVersionHelper.VersionedContent(Url, ",
+      "https://code.jquery.com/jquery-3.6.4.min.js",
+      "@AssetVersionHelper.VersionedContent(Url, "
+    ],
+    "Views\\Usuario\\RevisarDesignaciones.cshtml": [
+      "@Url.Content("
+    ]
+  },
+  "embedded_styles": [
+    "Views\\Account\\Login.cshtml",
+    "Views\\Account\\SeleccionarCompania.cshtml",
+    "Views\\AdminUsuarios\\ListarUsuariosInternosRT.cshtml",
+    "Views\\Certificado\\CertificadoAOCR.cshtml",
+    "Views\\Certificado\\Detalle.cshtml",
+    "Views\\CoordinacionJefatura\\AocrCondicionesLimitacionesPdf.cshtml",
+    "Views\\CoordinacionJefatura\\AocrReconocimientoPdf.cshtml",
+    "Views\\CoordinacionJefatura\\DashboardInspeccion.cshtml",
+    "Views\\CoordinacionJefatura\\EditarReconocimientoAocr.cshtml",
+    "Views\\CoordinacionJefatura\\RevisionVerificacion.cshtml",
+    "Views\\CoordinacionJefatura\\ValidarAocr.cshtml",
+    "Views\\Dashboard\\Inspector.cshtml",
+    "Views\\Dirdac\\Bandeja.cshtml",
+    "Views\\Direccion\\DashboardGerencial.cshtml",
+    "Views\\Documento\\Lista.cshtml",
+    "Views\\Error\\Error.cshtml",
+    "Views\\Financiero\\Index.cshtml",
+    "Views\\Financiero\\TodasOrdenes.cshtml",
+    "Views\\Historial\\_HistorialEstados.cshtml",
+    "Views\\Home\\Index.cshtml",
+    "Views\\Informe\\Index.cshtml",
+    "Views\\Inspeccion\\Detalle.cshtml",
+    "Views\\Inspeccion\\DocumentosFinales.cshtml",
+    "Views\\Inspeccion\\Editar.cshtml",
+    "Views\\Inspeccion\\Index.cshtml",
+    "Views\\Inspeccion\\InformeTecnicoFirmaPreview.cshtml",
+    "Views\\Inspeccion\\InformeTecnicoPdf.cshtml",
+    "Views\\Inspeccion\\ListaVerificacionOperacionalEaePdf.cshtml",
+    "Views\\Inspeccion\\ListaVerificacionOperacionalEaePdfOficial.cshtml",
+    "Views\\Inspeccion\\NoConformidadPdf.cshtml",
+    "Views\\Inspeccion\\_InformeFirmaStyles.cshtml",
+    "Views\\Inspeccion\\_ListaVerificacionOperacionalEaePanel.cshtml",
+    "Views\\ListaVerificacion\\PdfListaVerificacionEaeOficial.cshtml",
+    "Views\\Notificacion\\Index.cshtml",
+    "Views\\OrdenRecaudacion\\Detalles.cshtml",
+    "Views\\OrdenRecaudacion\\ExportPdf.cshtml",
+    "Views\\OrdenRecaudacion\\Index.cshtml",
+    "Views\\OrdenRecaudacion\\Nueva.cshtml",
+    "Views\\OrdenRecaudacion\\Obligatoria.cshtml",
+    "Views\\OrdenRecaudacion\\SolicitudInspeccionesPdf.cshtml",
+    "Views\\OrdenRecaudacion\\_PanelSolicitudInspeccionesExt.cshtml",
+    "Views\\OrdenRecaudacionDashboard\\Index.cshtml",
+    "Views\\ReportesFinancieros\\ExportPdf.cshtml",
+    "Views\\ReportesFinancieros\\Index.cshtml",
+    "Views\\RevisionDocumental\\Index.cshtml",
+    "Views\\RT\\DeclaracionPdf.cshtml",
+    "Views\\RT\\DocumentosFinales.cshtml",
+    "Views\\Shared\\Error.cshtml",
+    "Views\\Shared\\NoAutorizado.cshtml",
+    "Views\\Shared\\_DocumentoWorkflowActions.cshtml",
+    "Views\\Shared\\_LayoutAOCR.cshtml",
+    "Views\\Shared\\_ModalCrearUsuario.cshtml",
+    "Views\\Shared\\_NotificacionesBadge.cshtml",
+    "Views\\Shared\\_PdfBrandingFooter.cshtml",
+    "Views\\Shared\\_PdfBrandingHeader.cshtml",
+    "Views\\Shared\\_PdfLayoutDGAC.cshtml",
+    "Views\\Shared\\_PdfLayoutDGACAocr.cshtml",
+    "Views\\SolicitudAOCR\\AceptacionDocumentalPdf.cshtml",
+    "Views\\SolicitudAOCR\\CertificadoAOCR.cshtml",
+    "Views\\SolicitudAOCR\\Create.cshtml",
+    "Views\\SolicitudAOCR\\Detalle.cshtml",
+    "Views\\SolicitudAOCR\\GeneradasFirmadas.cshtml",
+    "Views\\SolicitudAOCR\\Index.cshtml",
+    "Views\\SolicitudAOCR\\Subsanar.cshtml",
+    "Views\\SolicitudAOCR\\_CreateModal.cshtml",
+    "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+    "Views\\Tecnico\\AsignarInspector.cshtml",
+    "Views\\Tecnico\\Index.cshtml"
+  ],
+  "legacy_attributes": [
+    {
+      "file": "Views\\Account\\_ModalRegistroUsuario.cshtml",
+      "line": 135,
+      "markup": "<button type=\"button\" class=\"btn btn-outline-secondary btn-sm d-flex align-items-center\" data-dismiss=\"modal\">"
+    },
+    {
+      "file": "Views\\AdminUsuarios\\_RolesModal.cshtml",
+      "line": 10,
+      "markup": "<button type=\"button\" class=\"close\" data-dismiss=\"modal\" aria-label=\"Cerrar\">"
+    },
+    {
+      "file": "Views\\CoordinacionJefatura\\DashboardInspeccion.cshtml",
+      "line": 1465,
+      "markup": "<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"modal\" data-dismiss=\"modal\" aria-label=\"Close\"></button>"
+    },
+    {
+      "file": "Views\\CoordinacionJefatura\\DashboardInspeccion.cshtml",
+      "line": 1472,
+      "markup": "<button type=\"button\" class=\"btn btn-primary\" data-bs-dismiss=\"modal\" data-dismiss=\"modal\">Cerrar</button>"
+    },
+    {
+      "file": "Views\\Financiero\\TodasOrdenes.cshtml",
+      "line": 516,
+      "markup": "data-toggle=\"modal\" data-target=\"#modalRechazo-@orden.Id\""
+    },
+    {
+      "file": "Views\\Financiero\\TodasOrdenes.cshtml",
+      "line": 527,
+      "markup": "<button type=\"button\" class=\"close btn-close\" data-dismiss=\"modal\" data-bs-dismiss=\"modal\" aria-label=\"Close\">"
+    },
+    {
+      "file": "Views\\Financiero\\TodasOrdenes.cshtml",
+      "line": 540,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\" data-bs-dismiss=\"modal\">Cancelar</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 32,
+      "markup": "<button class=\"btn btn-outline-primary d-block mt-2\" data-toggle=\"modal\" data-target=\"#modalAOCR\">Seleccionar AOCR</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 63,
+      "markup": "<button type=\"button\" class=\"close\" data-dismiss=\"modal\" aria-label=\"Cerrar\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 91,
+      "markup": "<button type=\"button\" class=\"close text-white\" data-dismiss=\"modal\"><span>&times;</span></button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 117,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Cancelar</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 129,
+      "markup": "<button type=\"button\" class=\"close text-white\" data-dismiss=\"modal\"><span>&times;</span></button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 147,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Cancelar</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 159,
+      "markup": "<button type=\"button\" class=\"close text-white\" data-dismiss=\"modal\"><span>&times;</span></button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\Modificacion.cshtml",
+      "line": 177,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary\" data-dismiss=\"modal\">Cancelar</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_CreateModal.cshtml",
+      "line": 73,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary rounded-pill px-4 mr-2\" data-dismiss=\"modal\">Cancelar</button>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 567,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 568,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionRVSM\" value=\"RVSM\" @(aprobacionesEspecialesSet.Contains(\"RVSM\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 569,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionRVSM\">RVSM</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 571,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 572,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionPBN\" value=\"PBN\" @(aprobacionesEspecialesSet.Contains(\"PBN\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 573,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionPBN\">PBN</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 575,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 576,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionMNPS\" value=\"MNPS\" @(aprobacionesEspecialesSet.Contains(\"MNPS\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 577,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionMNPS\">MNPS</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 579,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 580,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionCATIIIII\" value=\"CAT II-III\" @(aprobacionesEspecialesSet.Contains(\"CAT II-III\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 581,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionCATIIIII\">CAT II-III</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 585,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 586,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionETOPS\" value=\"ETOPS\" @(aprobacionesEspecialesSet.Contains(\"ETOPS\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 587,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionETOPS\">ETOPS</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 589,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 590,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionMERPEL\" value=\"MERPEL\" @(aprobacionesEspecialesSet.Contains(\"MERPEL\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 591,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionMERPEL\">MERPEL</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 593,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 594,
+      "markup": "<input class=\"custom-control-input aprobacion-especial\" type=\"checkbox\" id=\"aprobacionOTROS\" value=\"OTROS\" @(aprobacionesEspecialesSet.Contains(\"OTROS\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 595,
+      "markup": "<label class=\"custom-control-label\" for=\"aprobacionOTROS\">OTROS</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 646,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 647,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"opsRegulares\" @(marcaOpsRegulares ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 648,
+      "markup": "<label class=\"custom-control-label\" for=\"opsRegulares\">Operaciones Regulares</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 650,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 651,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"opsNoRegulares\" @(marcaOpsNoRegulares ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 652,
+      "markup": "<label class=\"custom-control-label\" for=\"opsNoRegulares\">Operaciones No Regulares</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 656,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 657,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"pasajeros\" @(marcaPasajeros ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 658,
+      "markup": "<label class=\"custom-control-label\" for=\"pasajeros\">Pasajeros/Carga/Correo</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 660,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 661,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"carga\" @(marcaCarga ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 662,
+      "markup": "<label class=\"custom-control-label\" for=\"carga\">Carga solamente</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 686,
+      "markup": "<div class=\"custom-control custom-checkbox\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 687,
+      "markup": "<input class=\"custom-control-input aeropuerto-ecuador\" type=\"checkbox\" id=\"quito\" value=\"Quito\" @(aeropuertosEcuadorSet.Contains(\"QUITO\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 688,
+      "markup": "<label class=\"custom-control-label\" for=\"quito\">Quito (UIO)</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 690,
+      "markup": "<div class=\"custom-control custom-checkbox\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 691,
+      "markup": "<input class=\"custom-control-input aeropuerto-ecuador\" type=\"checkbox\" id=\"guayaquil\" value=\"Guayaquil\" @(aeropuertosEcuadorSet.Contains(\"GUAYAQUIL\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 692,
+      "markup": "<label class=\"custom-control-label\" for=\"guayaquil\">Guayaquil (GYE)</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 694,
+      "markup": "<div class=\"custom-control custom-checkbox\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 695,
+      "markup": "<input class=\"custom-control-input aeropuerto-ecuador\" type=\"checkbox\" id=\"manta\" value=\"Manta\" @(aeropuertosEcuadorSet.Contains(\"MANTA\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 696,
+      "markup": "<label class=\"custom-control-label\" for=\"manta\">Manta (MEC)</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 698,
+      "markup": "<div class=\"custom-control custom-checkbox\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 699,
+      "markup": "<input class=\"custom-control-input aeropuerto-ecuador\" type=\"checkbox\" id=\"latacunga\" value=\"Latacunga\" @(aeropuertosEcuadorSet.Contains(\"LATACUNGA\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 700,
+      "markup": "<label class=\"custom-control-label\" for=\"latacunga\">Latacunga (LTX)</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 702,
+      "markup": "<div class=\"custom-control custom-checkbox\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 703,
+      "markup": "<input class=\"custom-control-input aeropuerto-ecuador\" type=\"checkbox\" id=\"aeropuertoOtros\" value=\"Otros\" @(aeropuertosEcuadorSet.Contains(\"OTROS\") ? \"checked\" : \"\")>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 704,
+      "markup": "<label class=\"custom-control-label\" for=\"aeropuertoOtros\">Otros</label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 855,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 856,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkFacturaPago\" onchange=\"toggleCaptura('archivoFacturaPago', 'capturaFacturaPago', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 857,
+      "markup": "<label class=\"custom-control-label text-danger\" for=\"chkFacturaPago\"><small>El archivo supera el tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 875,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 876,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkAOC\" onchange=\"toggleCaptura('archivoAOC', 'capturaAOC', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 877,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkAOC\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 892,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 893,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkOpSpecs\" onchange=\"toggleCaptura('archivoOpSpecs', 'capturaOpSpecs', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 894,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkOpSpecs\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 909,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 910,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkManualOperaciones\" onchange=\"toggleCaptura('archivoManualOperaciones', 'capturaManualOperaciones', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 911,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkManualOperaciones\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 926,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 927,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkPermisoOperacion\" onchange=\"toggleCaptura('archivoPermisoOperacion', 'capturaPermisoOperacion', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 928,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkPermisoOperacion\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 953,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 954,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkCertificadoRuido\" onchange=\"toggleCaptura('archivoCertificadoRuido', 'capturaCertificadoRuido', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 955,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkCertificadoRuido\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 980,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 981,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkCertificadoAeronavegabilidad\" onchange=\"toggleCaptura('archivoCertificadoAeronavegabilidad', 'capturaCertificadoAeronavegabilidad', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 982,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkCertificadoAeronavegabilidad\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 997,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 998,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkPoderRepresentante\" onchange=\"toggleCaptura('archivoPoderRepresentante', 'capturaPoderRepresentante', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 999,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkPoderRepresentante\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 1024,
+      "markup": "<div class=\"custom-control custom-checkbox mb-2\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 1025,
+      "markup": "<input class=\"custom-control-input\" type=\"checkbox\" id=\"chkOtro\" onchange=\"toggleCaptura('archivoOtro', 'capturaOtro', this)\">"
+    },
+    {
+      "file": "Views\\SolicitudAOCR\\_FormularioEmisionAOCR.cshtml",
+      "line": 1026,
+      "markup": "<label class=\"custom-control-label text-muted\" for=\"chkOtro\"><small>Supera tamano permitido</small></label>"
+    },
+    {
+      "file": "Views\\SyncAdmin\\Index.cshtml",
+      "line": 14,
+      "markup": "<button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>"
+    },
+    {
+      "file": "Views\\SyncAdmin\\Index.cshtml",
+      "line": 21,
+      "markup": "<button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>"
+    },
+    {
+      "file": "Views\\Views_Partial\\_ModalVisualizarUsuario.cshtml",
+      "line": 56,
+      "markup": "<button type=\"button\" class=\"btn btn-secondary btn-sm\" data-dismiss=\"modal\" aria-label=\"Cerrar\">"
+    }
+  ]
+}

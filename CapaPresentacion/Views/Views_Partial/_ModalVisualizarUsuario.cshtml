@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Usuario>
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Usuario>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -8,7 +8,7 @@
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white text-center">
                 <div class="col-sm-12">
-                    <img src="/Content/imganes/logo_header.png" style="width:180px; height:5em;" />
+                    <img src="@Url.Content("~/Content/imganes/logo_header.png")" style="width:180px; height:5em;" />
                     <h5 class="mt-2">Visualización de Usuario</h5>
                 </div>
             </div>
@@ -53,8 +53,8 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" aria-label="Cerrar">
-                    <img src="/Content/imganes/cancel.png" style="width: 20px;" /> Cerrar
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Cerrar">
+                    <img src="@Url.Content("~/Content/imganes/cancel.png")" style="width: 20px;" /> Cerrar
                 </button>
             </div>
         </div>

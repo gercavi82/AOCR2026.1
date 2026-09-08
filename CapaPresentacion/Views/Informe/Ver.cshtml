@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Informe>
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Informe>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using CapaModelo
@@ -261,7 +261,7 @@
             var contenido = document.getElementById('contenidoInforme').innerHTML;
             var ventana = window.open('', '', 'height=600,width=800');
             ventana.document.write('<html><head><title>Informe</title>');
-            ventana.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">');
+            ventana.document.write('<link rel="stylesheet" href="' + '@Url.Content("~/Content/bootstrap.min.css")' + '">');
             ventana.document.write('</head><body>');
             ventana.document.write(contenido);
             ventana.document.write('</body></html>');

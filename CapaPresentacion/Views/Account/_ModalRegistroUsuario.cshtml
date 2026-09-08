@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage
+@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -132,7 +132,7 @@
                 @if (!soloLectura)
                 {
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center" data-dismiss="modal">
+                        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center" data-dismiss="modal" data-bs-dismiss="modal">
                             <img src="@Url.Content("~/Content/imganes/cancel.png")" alt="Cancelar" class="mr-2" style="width: 20px; height: 20px;" />
                             Cancelar
                         </button>

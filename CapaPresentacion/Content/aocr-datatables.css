@@ -364,9 +364,66 @@ html body.aocr-body table.aocr-table tbody td {
         text-decoration: none;
     }
 
-        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a:not(.btn):not(.btn *):hover {
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a:not(.btn):not(.btn *):hover,
+        html body.aocr-body table.dataTable tbody td a:not(.btn):not(.btn *):hover,
+        html body.aocr-body table.table tbody td a:not(.btn):not(.btn *):hover {
             color: #0056b3 !important;
             text-decoration: underline;
+        }
+
+    /* Botones y enlaces con clase .btn dentro de tablas respetan siempre sus colores Bootstrap */
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn,
+    html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn,
+    html body.aocr-body table.dataTable tbody td .btn,
+    html body.aocr-body table.dataTable tbody td a.btn,
+    html body.aocr-body table.table tbody td .btn,
+    html body.aocr-body table.table tbody td a.btn {
+        color: var(--bs-btn-color, #ffffff) !important;
+        text-decoration: none !important;
+    }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn:hover,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn:hover,
+        html body.aocr-body table.dataTable tbody td .btn:hover,
+        html body.aocr-body table.dataTable tbody td a.btn:hover,
+        html body.aocr-body table.table tbody td .btn:hover,
+        html body.aocr-body table.table tbody td a.btn:hover {
+            color: var(--bs-btn-hover-color, var(--bs-btn-color, #ffffff)) !important;
+            text-decoration: none !important;
+        }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn:focus,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn:focus-visible,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn:focus,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn:focus-visible,
+        html body.aocr-body table.table tbody td .btn:focus,
+        html body.aocr-body table.table tbody td .btn:focus-visible,
+        html body.aocr-body table.table tbody td a.btn:focus,
+        html body.aocr-body table.table tbody td a.btn:focus-visible {
+            color: var(--bs-btn-hover-color, var(--bs-btn-color, #ffffff)) !important;
+            text-decoration: none !important;
+        }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn:active,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn.active,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn:active,
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn.active,
+        html body.aocr-body table.table tbody td .btn:active,
+        html body.aocr-body table.table tbody td .btn.active,
+        html body.aocr-body table.table tbody td a.btn:active,
+        html body.aocr-body table.table tbody td a.btn.active {
+            color: var(--bs-btn-active-color, var(--bs-btn-color, #ffffff)) !important;
+            text-decoration: none !important;
+        }
+
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td .btn :is(i, span, strong, b, small),
+        html body.aocr-body .dataTables_wrapper table.dataTable tbody td a.btn :is(i, span, strong, b, small),
+        html body.aocr-body table.dataTable tbody td .btn :is(i, span, strong, b, small),
+        html body.aocr-body table.dataTable tbody td a.btn :is(i, span, strong, b, small),
+        html body.aocr-body table.table tbody td .btn :is(i, span, strong, b, small),
+        html body.aocr-body table.table tbody td a.btn :is(i, span, strong, b, small) {
+            color: inherit !important;
+            -webkit-text-fill-color: currentColor !important;
         }
 
     /* Subtexto gris: ID interno, OACI, detalle secundario */

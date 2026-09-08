@@ -271,7 +271,6 @@
     line-height: 1.25;
     text-shadow: none;
     box-shadow: none;
-    -webkit-text-fill-color: #12344d;
 }
 
 .main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select {
@@ -288,7 +287,6 @@
     border-color: #8edfff !important;
     box-shadow: 0 0 0 0.14rem rgba(142, 223, 255, 0.22);
     color: #12344d !important;
-    -webkit-text-fill-color: #12344d;
 }
 
 .main-sidebar.aocr-sidebar .aocr-sidebar-select option,
@@ -297,7 +295,6 @@
     background-color: #ffffff;
     color: #12344d !important;
     font-weight: 600;
-    -webkit-text-fill-color: #12344d;
 }
 
 .main-sidebar.aocr-sidebar .aocr-sidebar-select option:checked,
@@ -305,7 +302,6 @@
 .main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select option:checked {
     background-color: #0d6efd;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff;
 }
 
 .main-sidebar.aocr-sidebar .select2-container--default .select2-selection--single,
@@ -313,14 +309,12 @@
     background-color: #ffffff !important;
     color: #12344d !important;
     border-color: rgba(190, 222, 238, 0.72) !important;
-    -webkit-text-fill-color: #12344d;
 }
 
 .main-sidebar.aocr-sidebar .select2-container--default .select2-selection--single .select2-selection__rendered,
 .main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li a,
 .main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li a span.text {
     color: #12344d !important;
-    -webkit-text-fill-color: #12344d;
 }
 
 .main-sidebar.aocr-sidebar .select2-dropdown,
@@ -335,7 +329,6 @@
 .main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li.selected a {
     background-color: #0d6efd !important;
     color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff;
 }
 
 .aocr-sidebar-company-form .btn-outline-info {

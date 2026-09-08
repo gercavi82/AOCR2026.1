@@ -54,7 +54,9 @@
         }
         var aocrSidebarCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-sidebar.css");
         var aocrContrastCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-contrast.css");
-        var aocrContrastFixCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/css/aocr-contrast-fix.css");
+        var aocrShellCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-shell.css");
+        var bootstrapCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/bootstrap.min.css");
+        var bootstrapJsHref = AssetVersionHelper.VersionedContent(Url, "~/Scripts/bootstrap.bundle.min.js");
         var aocrHeadersCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-headers.css");
         var aocrPdfViewerCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css");
         var jqueryLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery-3.6.4.min.js");
@@ -62,7 +64,6 @@
         var jqueryValidateUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.min.js");
         var jqueryValidateUnobtrusiveUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.unobtrusive.min.js");
         var aocrUtilsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-utils.js");
-        var adminLteLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/dist/js/adminlte.js");
         var siteJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/site.js");
         var appJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/app.js");
         var sidebarJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-sidebar.js");
@@ -89,7 +90,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="@bootstrapCssHref" rel="stylesheet">
 
     <!-- Favicon con múltiples formatos y fallbacks -->
     <link rel="shortcut icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" type="image/png" />
@@ -97,7 +98,7 @@
     <link rel="apple-touch-icon" href="@Url.Content("~/Content/imganes/logo1.png?v=" + faviconVersion)" />
 
     <!-- AdminLTE CSS (siempre desde CDN — el archivo local no existe) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="@aocrShellCssHref">
 
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
@@ -115,7 +116,6 @@
         <link href="@aocrModalsCssHref" rel="stylesheet" type="text/css" />
     }
     <link href="@aocrSidebarCssHref" rel="stylesheet" />
-    <link href="@aocrContrastFixCssHref" rel="stylesheet" />
     <link href="@aocrHeadersCssHref" rel="stylesheet" />
     <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
 
@@ -204,124 +204,7 @@
 
     @RenderSection("Styles", required: false)
     <link href="@aocrContrastCssHref" rel="stylesheet" />
-    <style>
-        /* Modales AOCR — inline obligatorio (evita error MIME/404 si el CSS externo no está publicado en IIS) */
-        :root {
-            --aocr-modal-z-backdrop: 10490;
-            --aocr-modal-z-modal: 10500;
-            --aocr-modal-sidebar-offset: var(--aocr-sidebar-width, 260px);
-            --aocr-modal-sidebar-mini-offset: 4.6rem;
-        }
 
-        body.aocr-body .main-sidebar.aocr-sidebar,
-        body.aocr-body .main-sidebar,
-        body.aocr-body .sidebar {
-            z-index: 1050 !important;
-        }
-
-        body.aocr-body .aocr-sidebar-backdrop {
-            z-index: 1040 !important;
-        }
-
-        body.aocr-body .main-header.navbar,
-        body.aocr-body .aocr-topbar {
-            z-index: 1010 !important;
-        }
-
-        body.aocr-body .modal-backdrop,
-        body.aocr-body .modal-backdrop.show {
-            z-index: var(--aocr-modal-z-backdrop) !important;
-        }
-
-        body.aocr-body .modal,
-        body.aocr-body .modal.show {
-            z-index: var(--aocr-modal-z-modal) !important;
-        }
-
-        @@media (min-width: 992px) {
-            body.aocr-body .modal {
-                padding-left: var(--aocr-modal-sidebar-offset);
-            }
-
-            body.aocr-body.sidebar-mini.sidebar-collapse .modal,
-            body.aocr-body.sidebar-collapse .modal {
-                padding-left: var(--aocr-modal-sidebar-mini-offset);
-            }
-        }
-
-        body.aocr-body .modal-dialog {
-            margin: 1.75rem auto !important;
-            max-width: 980px;
-            width: calc(100% - 2rem);
-        }
-
-        body.aocr-body .modal-dialog-centered {
-            min-height: calc(100% - 3.5rem);
-        }
-
-        body.aocr-body .modal-content {
-            border: 0;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
-        }
-
-        body.aocr-body .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 22px;
-        }
-
-        body.aocr-body .modal-header .modal-title {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 800;
-        }
-
-        body.aocr-body .modal-body {
-            padding: 22px;
-        }
-
-        body.aocr-body .modal-footer {
-            padding: 16px 22px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        body.aocr-body .modal textarea.form-control {
-            width: 100%;
-            min-height: 110px;
-            resize: vertical;
-        }
-
-        body.aocr-body .aocr-modal-anulacion .alert-warning {
-            margin-bottom: 0;
-        }
-
-        @@media (max-width: 991.98px) {
-            body.aocr-body .modal {
-                padding-left: 0 !important;
-            }
-        }
-
-        @@media (max-width: 768px) {
-            body.aocr-body .modal-dialog {
-                width: calc(100% - 1rem);
-                margin: 0.75rem auto !important;
-            }
-
-            body.aocr-body .modal-footer {
-                flex-direction: column-reverse;
-            }
-
-            body.aocr-body .modal-footer .btn {
-                width: 100%;
-            }
-        }
-    </style>
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed aocr-body">
@@ -781,9 +664,7 @@
     </script>
 
     <!-- 2. Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
-            crossorigin="anonymous"></script>
+    <script src="@bootstrapJsHref"></script>
     <script src="@aocrUtilsUrl"></script>
 
     <!-- 3. Loader optimizado que espera jQuery -->
@@ -795,8 +676,7 @@
             jquery: false,
             bootstrap: false,
             datatables: false,
-            sweetalert: false,
-            adminlte: false
+            sweetalert: false
         };
 
         // Verificar si jQuery ya está listo
@@ -867,31 +747,12 @@
 
             script.onload = function () {
                 loadedScripts.sweetalert = true;
-                loadAdminLTE();
+                loadLocalScripts();
             };
 
             script.onerror = function () {
                 console.warn('⚠️ SweetAlert no se pudo cargar');
                 loadedScripts.sweetalert = false;
-                loadAdminLTE();
-            };
-
-            document.body.appendChild(script);
-        }
-
-        function loadAdminLTE() {
-            var script = document.createElement('script');
-            script.src = '@adminLteLocalUrl';
-            script.async = false;
-
-            script.onload = function () {
-                loadedScripts.adminlte = true;
-                loadLocalScripts();
-            };
-
-            script.onerror = function () {
-                console.warn('⚠️ AdminLTE no se pudo cargar');
-                loadedScripts.adminlte = false;
                 loadLocalScripts();
             };
 
