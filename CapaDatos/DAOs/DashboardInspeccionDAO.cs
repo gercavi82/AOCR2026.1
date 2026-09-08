@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using CapaDatos.Constants;
 using CapaModelo;
 
@@ -345,6 +347,11 @@ namespace CapaDatos.DAOs
             return "No especificada";
         }
 
+        private static readonly ConcurrentDictionary<int, string> _nombreInspectorCache =
+            new ConcurrentDictionary<int, string>();
+        private static readonly ConcurrentDictionary<string, string> _cedulaInspectorCache =
+            new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         private static string ObtenerInspectorAsignado(Inspeccion inspeccion, SolicitudAOCR solicitud)
         {
             if (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre))
@@ -355,6 +362,79 @@ namespace CapaDatos.DAOs
             if (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre))
             {
                 return solicitud.TecnicoResponsableNombre.Trim();
+            }
+
+            if (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.Comentarios))
+            {
+                var match = Regex.Match(inspeccion.Comentarios, @"Inspector\s+principal\s*:\s*([^\|;\r\n]+)", RegexOptions.IgnoreCase);
+                if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+                {
+                    return match.Groups[1].Value.Trim();
+                }
+            }
+
+            var idInspector = (inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                ? inspeccion.CodigoInspector.Value
+                : (solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0 ? solicitud.CodigoTecnico.Value : 0);
+
+            if (idInspector > 0)
+            {
+                string cached;
+                if (_nombreInspectorCache.TryGetValue(idInspector, out cached) && !string.IsNullOrWhiteSpace(cached))
+                {
+                    return cached;
+                }
+
+                try
+                {
+                    var rt = new UsuarioInternoRTDAO().ObtenerInspectorActivoPorTecnicoIdOUsuarioId(idInspector);
+                    if (rt != null && !string.IsNullOrWhiteSpace(rt.NombreVisual))
+                    {
+                        var nombre = rt.NombreVisual.Trim();
+                        _nombreInspectorCache[idInspector] = nombre;
+                        return nombre;
+                    }
+
+                    var nombreUsuario = UsuarioDAO.ObtenerNombreCompletoPrincipal(idInspector);
+                    if (!string.IsNullOrWhiteSpace(nombreUsuario))
+                    {
+                        var nombre = nombreUsuario.Trim();
+                        _nombreInspectorCache[idInspector] = nombre;
+                        return nombre;
+                    }
+                }
+                catch
+                {
+                    // Fallback silencioso
+                }
+            }
+
+            var cedula = (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula))
+                ? inspeccion.InspectorPrincipalCedula
+                : (solicitud != null ? solicitud.TecnicoResponsableCedula : null);
+
+            if (!string.IsNullOrWhiteSpace(cedula))
+            {
+                string cached;
+                if (_cedulaInspectorCache.TryGetValue(cedula, out cached) && !string.IsNullOrWhiteSpace(cached))
+                {
+                    return cached;
+                }
+
+                try
+                {
+                    var rt = new UsuarioInternoRTDAO().ObtenerInspectorAsignableActivo(cedula.Trim());
+                    if (rt != null && !string.IsNullOrWhiteSpace(rt.NombreVisual))
+                    {
+                        var nombre = rt.NombreVisual.Trim();
+                        _cedulaInspectorCache[cedula] = nombre;
+                        return nombre;
+                    }
+                }
+                catch
+                {
+                    // Fallback silencioso
+                }
             }
 
             return "No asignado";

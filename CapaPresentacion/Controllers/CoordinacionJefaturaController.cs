@@ -275,7 +275,11 @@ namespace CapaPresentacion.Controllers
                     ? (solicitudPendienteAsignacion != null ? "EN_REVISION" : "PENDIENTE")
                     : documento.EstadoDocumento;
                 var estadoInspeccion = string.IsNullOrWhiteSpace(inspeccion != null ? inspeccion.EstadoVisual : null) ? "NO_ASIGNADO" : inspeccion.EstadoVisual;
-                var inspector = FirstNonEmpty(inspeccion != null ? inspeccion.InspectorAsignado : null, documento != null ? documento.InspectorAsignado : null, "No asignado");
+                var inspector = FirstNonEmpty(
+                    inspeccion != null ? inspeccion.InspectorAsignado : null,
+                    documento != null ? documento.InspectorAsignado : null,
+                    solicitudPendienteAsignacion != null ? ObtenerInspectorAsignadoSeguimiento(null, solicitudPendienteAsignacion) : null,
+                    "No asignado");
                 var firmaInspector = documento != null && documento.FirmadoInspector;
                 var firmaDirdac = documento != null && documento.FirmadoDirdac;
                 var tieneInspector = !string.Equals(inspector, "No asignado", StringComparison.OrdinalIgnoreCase);
@@ -807,7 +811,17 @@ namespace CapaPresentacion.Controllers
                 return solicitud.TecnicoResponsableNombre.Trim();
             }
 
-            // 3) Fallback RT: si hay código/cédula, consultar catálogo oficial.
+            // 3) Fallback comentarios si existen
+            if (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.Comentarios))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(inspeccion.Comentarios, @"Inspector\s+principal\s*:\s*([^\|;\r\n]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+                {
+                    return match.Groups[1].Value.Trim();
+                }
+            }
+
+            // 4) Fallback RT / Usuario: si hay código/cédula, consultar catálogo oficial.
             try
             {
                 UsuarioInternoRTRegistro registro = null;
@@ -834,6 +848,19 @@ namespace CapaPresentacion.Controllers
                 if (registro != null && !string.IsNullOrWhiteSpace(registro.NombreVisual))
                 {
                     return registro.NombreVisual.Trim();
+                }
+
+                var idUsuario = (inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                    ? inspeccion.CodigoInspector.Value
+                    : (solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0 ? solicitud.CodigoTecnico.Value : 0);
+
+                if (idUsuario > 0)
+                {
+                    var nombreUsuario = UsuarioDAO.ObtenerNombreCompletoPrincipal(idUsuario);
+                    if (!string.IsNullOrWhiteSpace(nombreUsuario))
+                    {
+                        return nombreUsuario.Trim();
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(cedula))

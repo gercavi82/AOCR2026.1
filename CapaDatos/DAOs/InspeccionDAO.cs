@@ -670,6 +670,26 @@ namespace CapaDatos.DAOs
                 TryGetValue(dr, "inspector_apoyo_tipo", out value) ? value.ToString() : null,
                 TryGetValue(dr, "solicitud_inspector_apoyo_tipo", out value) ? value.ToString() : null);
 
+            var comentarios = TryGetValue(dr, "comentarios", out value) ? value.ToString() : null;
+
+            if (string.IsNullOrWhiteSpace(inspectorPrincipalNombre) && !string.IsNullOrWhiteSpace(comentarios))
+            {
+                var match = Regex.Match(comentarios, @"Inspector\s+principal\s*:\s*([^\|;\r\n]+)", RegexOptions.IgnoreCase);
+                if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+                {
+                    inspectorPrincipalNombre = match.Groups[1].Value.Trim();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(inspectorApoyoNombre) && !string.IsNullOrWhiteSpace(comentarios))
+            {
+                var match = Regex.Match(comentarios, @"Inspector\s+apoyo\s*:\s*([^\|;\r\n]+)", RegexOptions.IgnoreCase);
+                if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+                {
+                    inspectorApoyoNombre = match.Groups[1].Value.Trim();
+                }
+            }
+
             return new Inspeccion
             {
                 CodigoInspeccion = TryGetValue(dr, "codigo_inspeccion", out value) ? SafeToInt(value) : 0,
@@ -725,6 +745,19 @@ namespace CapaDatos.DAOs
                 const string sql = @"
                     ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS estado_documental VARCHAR(50);
                     ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS resultado_evaluacion VARCHAR(50);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_principal_cedula VARCHAR(20);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_principal_nombre VARCHAR(200);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_principal_tipo VARCHAR(10);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_apoyo_cedula VARCHAR(20);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_apoyo_nombre VARCHAR(200);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS inspector_apoyo_tipo VARCHAR(10);
+
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS tecnico_responsable_cedula VARCHAR(20);
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS tecnico_responsable_nombre VARCHAR(200);
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS tecnico_responsable_tipo VARCHAR(10);
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS inspector_apoyo_cedula VARCHAR(20);
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS inspector_apoyo_nombre VARCHAR(200);
+                    ALTER TABLE IF EXISTS public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS inspector_apoyo_tipo VARCHAR(10);
 
                     DO $$
                     DECLARE

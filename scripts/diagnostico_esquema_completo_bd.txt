@@ -25,8 +25,8 @@ codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado 
 22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
-26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:08:58 | 
-27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:08:58 | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:40:42 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 8/9/2026 15:40:42 | 
 28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 
@@ -451,6 +451,12 @@ TABLA: vw_subsanaciones_pendientes
   codigo_oaci | character varying | null=YES | def=
   correo_representante_tecnico | character varying | null=YES | def=
   nombre_comercial | character varying | null=YES | def=
+  tecnico_responsable_cedula | character varying | null=YES | def=
+  tecnico_responsable_nombre | character varying | null=YES | def=
+  tecnico_responsable_tipo | character varying | null=YES | def=
+  inspector_apoyo_cedula | character varying | null=YES | def=
+  inspector_apoyo_nombre | character varying | null=YES | def=
+  inspector_apoyo_tipo | character varying | null=YES | def=
 
 >>> TABLA: aocr_tbsolicitud_estacion
   id | integer | null=NO | def=nextval('aocr_tbsolicitud_estacion_id_seq'::regclass)
@@ -499,6 +505,12 @@ TABLA: vw_subsanaciones_pendientes
   historial_estados | text | null=YES | def=
   estado_documental | character varying | null=YES | def=
   resultado_evaluacion | character varying | null=YES | def=
+  inspector_principal_cedula | character varying | null=YES | def=
+  inspector_principal_nombre | character varying | null=YES | def=
+  inspector_principal_tipo | character varying | null=YES | def=
+  inspector_apoyo_cedula | character varying | null=YES | def=
+  inspector_apoyo_nombre | character varying | null=YES | def=
+  inspector_apoyo_tipo | character varying | null=YES | def=
 
 >>> TABLA: aocr_tbinforme_inspeccion
   codigo_informe | integer | null=NO | def=nextval('aocr_tbinforme_inspeccion_codigo_informe_seq'::regclass)
@@ -777,7 +789,7 @@ TABLA: vw_subsanaciones_pendientes
   [usuario] UNIQUE: usuario_codigousuario_key (codigousuario)
 
 --- 9. ESTADOS DISTINTOS EN AOCR_TBSOLICITUD ---
-  Estado: 'En Revision' -> 7 registros
+  Estado: 'En Revision' -> 8 registros
   Estado: 'En Inspeccion' -> 3 registros
   Estado: 'AOCR En Elaboracion' -> 1 registros
   Estado: 'Pendiente' -> 1 registros
