@@ -1,0 +1,67 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
+@using System
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    Func<string, bool> isController = controller =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+    Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+        ? "aocr-link aocr-sidebar-item"
+        : "aocr-link aocr-sidebar-item " + variant;
+}
+
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title text-success">
+        <i class="fas fa-money-bill-wave mr-1"></i> Financiero
+    </div>
+    <ul class="aocr-nav">
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-file-invoice-dollar text-white-50 mr-1"></i> Orden de Recaudación
+                <span class="aocr-sidebar-item__badge">M2</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("Financiero", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "Financiero")">
+                        <i class="fas fa-check-circle text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Verificar pagos</span>
+                            <span class="aocr-sidebar-item__meta">Control de comprobantes, validación y cierre financiero del trámite.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("Financiero", "TodasOrdenes") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("TodasOrdenes", "Financiero")">
+                        <i class="fas fa-receipt text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Todas las órdenes</span>
+                            <span class="aocr-sidebar-item__meta">Seguimiento integral del universo de órdenes y pagos procesados.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-file-invoice text-white-50 mr-1"></i> Reportes Financieros
+                <span class="aocr-sidebar-item__badge">REP</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isController("ReportesFinancieros") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "ReportesFinancieros")">
+                        <i class="fas fa-file-invoice text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Reportes</span>
+                            <span class="aocr-sidebar-item__meta">Consulta analítica y exportable para seguimiento financiero institucional.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>

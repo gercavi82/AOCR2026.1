@@ -1,0 +1,211 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
+@using System
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+    int currentTipoSolicitud;
+    int.TryParse(Convert.ToString(Request["tipoSolicitud"] ?? string.Empty), out currentTipoSolicitud);
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    Func<string, bool> isController = controller =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+    Func<int, bool> isSolicitudType = tipo =>
+        isController("SolicitudAOCR")
+        && currentTipoSolicitud == tipo
+        && (string.Equals(currentAction, "Index", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(currentAction, "FormularioEmisionAOCR", StringComparison.OrdinalIgnoreCase));
+    Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+        ? "aocr-link aocr-sidebar-item"
+        : "aocr-link aocr-sidebar-item " + variant;
+}
+
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title text-primary">
+        <i class="fas fa-user-edit mr-1"></i> Solicitante / RT
+    </div>
+    <ul class="aocr-nav">
+        @if (Model.EsRepresentanteRtRol)
+        {
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-id-card text-white-50 mr-1"></i> Registro RT
+                    <span class="aocr-sidebar-item__badge">M1</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <a class="@linkClass(isCurrent("RT", "Registro") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Registro", "RT")">
+                            <i class="fas fa-user-check text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Registro y designación RT</span>
+                                <span class="aocr-sidebar-item__meta">Alta, actualización y carga del flujo de representante técnico.</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="@linkClass(isCurrent("RT", "DescargarConstancia") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("DescargarConstancia", "RT")">
+                            <i class="fas fa-file-arrow-down text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Constancia RT</span>
+                                <span class="aocr-sidebar-item__meta">Descarga de la constancia institucional emitida para RT.</span>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (Model.RequiereOrden)
+        {
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-file-invoice-dollar text-white-50 mr-1"></i> Orden de Recaudación
+                    <span class="aocr-sidebar-item__badge">M2</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <a class="@linkClass((isCurrent("OrdenRecaudacion", "Nueva") || isCurrent("OrdenRecaudacion", "Obligatoria") ? "aocr-sidebar-item--active " : string.Empty) + ((Model.TieneOrdenBorrador || Model.TieneOrdenPendienteProceso) ? "text-warning fw-bold" : "aocr-sidebar-item--primary"))" href="@(Model.TieneOrdenPendienteProceso ? Url.Action("Index", "OrdenRecaudacion") : (Model.TieneOrdenBorrador ? Url.Action("Obligatoria", "OrdenRecaudacion") : Url.Action("Nueva", "OrdenRecaudacion")))">
+                            <i class="fas fa-file-circle-check @((Model.TieneOrdenBorrador || Model.TieneOrdenPendienteProceso) ? "text-warning" : "text-primary") mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">@(Model.TieneOrdenPendienteProceso ? "Continuar orden pendiente" : (Model.TieneOrdenBorrador ? "Completar orden pendiente" : "Nueva orden de recaudación"))</span>
+                                <span class="aocr-sidebar-item__meta">Generación, continuidad o cierre del requerimiento económico habilitante.</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="@linkClass(isCurrent("OrdenRecaudacion", "Index") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "OrdenRecaudacion")">
+                            <i class="fas fa-history text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Mis órdenes</span>
+                                <span class="aocr-sidebar-item__meta">Consulta del estado, comprobantes y trazabilidad financiera.</span>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        @if (Model.TieneAccesoSolicitudRt)
+        {
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-file-signature text-white-50 mr-1"></i> Solicitud Formal AOCR
+                    <span class="aocr-sidebar-item__badge">M3</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <a class="@linkClass(isCurrent("SolicitudAOCR", "FormularioEmisionAOCR") && currentTipoSolicitud == 1 ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { tipoSolicitud = 1 })">
+                            <i class="fas fa-plus text-success mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Nueva emisión AOCR</span>
+                                <span class="aocr-sidebar-item__meta">Apertura del expediente formal de emisión inicial.</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="@linkClass(isCurrent("SolicitudAOCR", "FormularioEmisionAOCR") && currentTipoSolicitud == 2 ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { tipoSolicitud = 2 })">
+                            <i class="fas fa-rotate text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Renovación AOCR</span>
+                                <span class="aocr-sidebar-item__meta">Gestión documental para la renovación institucional del AOCR.</span>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-sliders text-white-50 mr-1"></i> Modificación de Condiciones y Limitaciones
+                    <span class="aocr-sidebar-item__badge">M4</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <a class="@linkClass(isCurrent("SolicitudAOCR", "FormularioEmisionAOCR") && currentTipoSolicitud == 3 ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { tipoSolicitud = 3 })">
+                            <i class="fas fa-pen-ruler text-warning mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Nueva modificación</span>
+                                <span class="aocr-sidebar-item__meta">Solicitud formal de cambios a condiciones y limitaciones operacionales.</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="@linkClass(isSolicitudType(3) ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "SolicitudAOCR", new { tipoSolicitud = 3 })">
+                            <i class="fas fa-folder-tree text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Bandeja de modificaciones</span>
+                                <span class="aocr-sidebar-item__meta">Consulta de cambios en revisión, inspección o firma institucional.</span>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        }
+        else if (Model.EsRepresentanteRtRol)
+        {
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-file-signature text-white-50 mr-1"></i> Solicitud Formal AOCR
+                    <span class="aocr-sidebar-item__badge">M3</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <span class="aocr-link aocr-sidebar-item disabled text-muted" data-bs-toggle="tooltip" title="@Model.MensajeBloqueoRtSidebar">
+                            <i class="fas fa-lock text-warning mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Nueva emisión / renovación AOCR</span>
+                                <span class="aocr-sidebar-item__meta">Se habilita cuando exista orden aprobada o flujo RT validado.</span>
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-sliders text-white-50 mr-1"></i> Modificación de Condiciones y Limitaciones
+                    <span class="aocr-sidebar-item__badge">M4</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
+                    <li>
+                        <span class="aocr-link aocr-sidebar-item disabled text-muted" data-bs-toggle="tooltip" title="@Model.MensajeBloqueoRtSidebar">
+                            <i class="fas fa-lock text-warning mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Nueva modificación</span>
+                                <span class="aocr-sidebar-item__meta">El acceso se activa al cumplirse la compuerta financiera y documental.</span>
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+            </li>
+        }
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-route text-white-50 mr-1"></i> Seguimiento del trámite
+                <span class="aocr-sidebar-item__badge">M5-M8</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "MisSolicitudes") || isCurrent("SolicitudAOCR", "Detalle") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("MisSolicitudes", "SolicitudAOCR")">
+                        <i class="fas fa-folder-open text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Mis solicitudes AOCR</span>
+                            <span class="aocr-sidebar-item__meta">Seguimiento de inspecciones, subsanaciones, AOCR y condiciones emitidas.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "GeneradasFirmadas") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR")">
+                        <i class="fas fa-file-circle-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">AOCR generadas y firmadas</span>
+                            <span class="aocr-sidebar-item__meta">Consulta unificada de AOCR, condiciones, firmas y PDFs finales.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>

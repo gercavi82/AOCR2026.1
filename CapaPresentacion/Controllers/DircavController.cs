@@ -492,7 +492,8 @@ namespace CapaPresentacion.Controllers
         // 10. DESCARGAR DESIGNACIÓN PARA EL INSPECTOR ASIGNADO (AC-06)
         // =======================================================
         [HttpGet]
-        [Authorize(Roles = "Inspector,INSPECTOR,DIRCAV,DCAV,Coordinador,COORDINADOR")]
+        [OverrideAuthorization]
+        [Authorize(Roles = "Inspector,INSPECTOR,DIRCAV,DCAV,Coordinador,COORDINADOR,Administrador,ADMINISTRADOR")]
         public ActionResult DescargarDesignacionInspector(int id)
         {
             var rol = ObtenerRolActual();

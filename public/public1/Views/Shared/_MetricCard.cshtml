@@ -1,0 +1,32 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Web
+@{
+    var label = ViewData["Label"] as string ?? string.Empty;
+    var value = ViewData["Value"] ?? 0;
+    var modifier = (ViewData["Modifier"] as string ?? ViewData["Class"] as string ?? string.Empty).Trim().ToLowerInvariant();
+    var icon = ViewData["Icon"] as string ?? string.Empty;
+    var caption = ViewData["Caption"] as string ?? string.Empty;
+    var cardId = ViewData["CardId"] as string ?? string.Empty;
+    var valueId = ViewData["ValueId"] as string ?? string.Empty;
+    var modifierClass = string.IsNullOrWhiteSpace(modifier) ? string.Empty : "metric-" + modifier;
+    var cardIdAttr = string.IsNullOrWhiteSpace(cardId) ? string.Empty : " id=\"" + HttpUtility.HtmlAttributeEncode(cardId) + "\"";
+    var valueIdAttr = string.IsNullOrWhiteSpace(valueId) ? string.Empty : " id=\"" + HttpUtility.HtmlAttributeEncode(valueId) + "\"";
+}
+<div class="card aocr-metric-card @modifierClass"@Html.Raw(cardIdAttr)>
+    <div class="card-body">
+        <div class="aocr-metric-card__layout">
+            <div>
+                <div class="aocr-metric-label">@Html.Raw(HttpUtility.HtmlEncode(label))</div>
+                <div class="aocr-metric-value"@Html.Raw(valueIdAttr)>@value</div>
+                @if (!string.IsNullOrWhiteSpace(caption))
+                {
+                    <p class="aocr-metric-caption">@Html.Raw(HttpUtility.HtmlEncode(caption))</p>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(icon))
+            {
+                <span class="aocr-metric-icon"><i class="@icon"></i></span>
+            }
+        </div>
+    </div>
+</div>

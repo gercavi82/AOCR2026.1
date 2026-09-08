@@ -1,0 +1,6 @@
+@model IList<CapaModelo.EstadoEntregaFinalViewModel>
+@{ ViewBag.Title="Estado de entregas finales"; Layout="~/Views/Shared/_LayoutAOCR.cshtml"; }
+<h2>Estado de entregas finales</h2>
+<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Solicitud</th><th>Compañía</th><th>Versiones</th><th>Estado</th><th>Destinatarios</th><th>Correo</th><th>CorrelationId</th></tr></thead><tbody>
+@foreach(var x in Model??new List<CapaModelo.EstadoEntregaFinalViewModel>()){<tr><td>@x.NumeroSolicitud</td><td>@x.Compania</td><td>AOCR @x.VersionAocr / CL @x.VersionCl</td><td>@x.Estado</td><td>@x.Destinatarios</td><td>@x.CorreosEnviados enviados / @x.CorreosFallidos fallidos</td><td><code>@x.CorrelationId</code></td></tr>}
+</tbody></table></div>

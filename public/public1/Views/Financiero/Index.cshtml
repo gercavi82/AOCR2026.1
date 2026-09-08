@@ -1,0 +1,1600 @@
+@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@using CapaDatos.Constants
+@using CapaModelo
+@using CapaNegocio.Services
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Dashboard Financiero";
+    var as400FacturacionHabilitada = FacturacionAS400Service.IsEnabled();
+    var registros = Model ?? new List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>();
+
+    Func<string, string> normalizarEstado = estado =>
+    {
+        var actual = EstadoOrden.NormalizarEstado(estado);
+        return actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada
+            ? EstadoOrden.Generada
+            : actual;
+    };
+
+    Func<string, string> textoEstado = estado =>
+    {
+        switch (normalizarEstado(estado))
+        {
+            case EstadoOrden.Generada:
+                return "GENERADA";
+            case EstadoOrden.Enviada:
+                return "ENVIADA";
+            case EstadoOrden.EnRevisionFinanciera:
+                return "EN REVISION FINANCIERA";
+            case EstadoOrden.Devuelta:
+                return "DEVUELTA";
+            case EstadoOrden.Facturada:
+                return "FACTURADA";
+            case EstadoOrden.Completada:
+                return "COMPLETADA";
+            case EstadoOrden.Pagada:
+                return "PAGADA";
+            case EstadoOrden.Anulada:
+                return "ANULADA";
+            case EstadoOrden.Borrador:
+                return "BORRADOR";
+            default:
+                return normalizarEstado(estado);
+        }
+    };
+
+    var totalOrdenes = registros.Count;
+    var montoTotal = registros.Sum(x => x != null && x.Orden != null ? x.Orden.Total : 0m);
+    var generadas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Generada;
+    });
+    var enRevision = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.EnRevisionFinanciera;
+    });
+    var devueltas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Devuelta;
+    });
+    var facturadas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Facturada;
+    });
+    var completadas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Completada;
+    });
+    var anuladas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Anulada;
+    });
+
+    var fr3Ok = registros.Count(x => !string.IsNullOrWhiteSpace(x != null ? x.Fr3Numero : null));
+    var fr3Error = registros.Count(x => string.Equals(x != null ? x.Fr3Estado : null, "FR3_ERROR", StringComparison.OrdinalIgnoreCase));
+    var fr3Pendiente = totalOrdenes - fr3Ok - fr3Error;
+    if (fr3Pendiente < 0)
+    {
+        fr3Pendiente = 0;
+    }
+
+    var porcentajeFr3Ok = totalOrdenes > 0 ? Math.Round((decimal)fr3Ok * 100m / totalOrdenes, 0) : 0m;
+    var porcentajeCompletadas = totalOrdenes > 0 ? Math.Round((decimal)completadas * 100m / totalOrdenes, 0) : 0m;
+
+    var companias = registros
+        .Where(x => x != null && x.Orden != null)
+        .GroupBy(x => !string.IsNullOrWhiteSpace(x.Orden.NombreContribuyente) ? x.Orden.NombreContribuyente : (x.Orden.Compania ?? "Sin compañía"))
+        .Select(g => new
+        {
+            Nombre = g.Key,
+            Cantidad = g.Count(),
+            Monto = g.Sum(item => item.Orden.Total)
+        })
+        .OrderByDescending(x => x.Monto)
+        .Take(5)
+        .ToList();
+
+    var recientes = registros
+        .Where(x => x != null && x.Orden != null)
+        .OrderByDescending(x => x.Orden.FechaCreacion)
+        .Take(5)
+        .ToList();
+}
+
+<style>
+    .fin-dashboard {
+        --fin-bg: linear-gradient(180deg, #f4f6f8 0%, #e8edf1 100%);
+        --fin-panel: #ffffff;
+        --fin-border: rgba(12, 37, 54, 0.08);
+        --fin-text: #173042;
+        --fin-muted: #748491;
+        --fin-accent: #53b7cf;
+        --fin-accent-2: #9fcb52;
+        --fin-accent-3: #f2c94c;
+        --fin-accent-4: #f38b63;
+        --fin-accent-5: #d98dc5;
+        --fin-shadow: 0 14px 34px rgba(24, 44, 62, 0.08);
+        background: transparent;
+        border: 1px solid var(--fin-border);
+        border-radius: 24px;
+        padding: 24px;
+        color: var(--fin-text);
+    }
+
+    .fin-dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        background: linear-gradient(135deg, var(--aocr-blue-700) 0%, var(--aocr-teal-600) 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(15, 77, 122, 0.2);
+        margin-bottom: 18px;
+    }
+
+    .fin-dashboard-title {
+        margin: 0;
+        color: #ffffff;
+        font-size: 1.9rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .fin-dashboard-subtitle {
+        margin: 6px 0 0;
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.98rem;
+    }
+
+    .fin-dashboard-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .fin-filters {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .fin-filter-form {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .fin-kpi-grid,
+    .fin-chart-grid {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .fin-kpi-grid {
+        grid-template-columns: 0.95fr 1.45fr 1.45fr 0.95fr;
+    }
+
+    .fin-chart-grid {
+        grid-template-columns: 0.95fr 1.45fr 1.45fr 0.95fr;
+    }
+
+    .fin-card {
+        background: var(--fin-panel);
+        border-radius: 18px;
+        border: 1px solid var(--fin-border);
+        box-shadow: var(--fin-shadow);
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .fin-card.tall {
+        min-height: 206px;
+    }
+
+    .fin-metric-label {
+        color: var(--fin-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .fin-metric-value {
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .fin-metric-sub {
+        margin-top: 10px;
+        color: var(--fin-muted);
+        font-size: 0.85rem;
+    }
+
+    .fin-stat-accent {
+        position: absolute;
+        inset: auto -20px -30px auto;
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        opacity: 0.12;
+        background: currentColor;
+    }
+
+    .fin-metric-positive { color: #79b93d; }
+    .fin-metric-info { color: #53b7cf; }
+    .fin-metric-warn { color: #f2c94c; }
+    .fin-metric-danger { color: #f38b63; }
+    .fin-metric-soft { color: #d98dc5; }
+
+    .fin-ring-wrap {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        min-height: 170px;
+    }
+
+    .fin-ring {
+        --size: 132px;
+        --thickness: 16px;
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        background: conic-gradient(var(--ring-color, #53b7cf) calc(var(--ring-percent, 0) * 1%), #eaf0f4 0);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+    }
+
+    .fin-ring::before {
+        content: "";
+        width: calc(var(--size) - var(--thickness) * 2);
+        height: calc(var(--size) - var(--thickness) * 2);
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: inset 0 0 0 1px rgba(12, 37, 54, 0.05);
+    }
+
+    .fin-ring-center {
+        position: absolute;
+        text-align: center;
+    }
+
+    .fin-ring-center strong {
+        display: block;
+        font-size: 1.7rem;
+        line-height: 1;
+    }
+
+    .fin-ring-center span {
+        display: block;
+        margin-top: 6px;
+        color: var(--fin-muted);
+        font-size: 0.78rem;
+    }
+
+    .fin-legend {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+
+    .fin-legend li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(12, 37, 54, 0.06);
+        font-size: 0.88rem;
+    }
+
+    .fin-legend li:last-child {
+        border-bottom: 0;
+    }
+
+    .fin-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .fin-bars {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 132px;
+        margin-top: 12px;
+    }
+
+    .fin-bar-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .fin-bar-stack {
+        height: 120px;
+        display: flex;
+        align-items: end;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .fin-bar {
+        width: 12px;
+        border-radius: 10px 10px 0 0;
+        min-height: 8px;
+    }
+
+    .fin-bar-generadas { background: #f2c94c; }
+    .fin-bar-revision { background: #53b7cf; }
+    .fin-bar-devueltas { background: #f38b63; }
+    .fin-bar-facturadas { background: #9fcb52; }
+
+    .fin-bar-label {
+        display: block;
+        margin-top: 8px;
+        color: var(--fin-muted);
+        font-size: 0.78rem;
+    }
+
+    .fin-line-chart {
+        position: relative;
+        height: 155px;
+        margin-top: 10px;
+    }
+
+    .fin-line-chart svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .fin-mini-note {
+        display: flex;
+        justify-content: space-between;
+        color: var(--fin-muted);
+        font-size: 0.78rem;
+        margin-top: 8px;
+    }
+
+    .fin-list {
+        list-style: none;
+        margin: 14px 0 0;
+        padding: 0;
+    }
+
+    .fin-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(12, 37, 54, 0.06);
+    }
+
+    .fin-list li:last-child {
+        border-bottom: 0;
+    }
+
+    .fin-list-title {
+        font-weight: 700;
+        font-size: 0.92rem;
+    }
+
+    .fin-list-sub {
+        color: var(--fin-muted);
+        font-size: 0.8rem;
+    }
+
+    .fin-table-card {
+        margin-top: 18px;
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid var(--fin-border);
+        box-shadow: var(--fin-shadow);
+        overflow: hidden;
+    }
+
+    .fin-table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(12, 37, 54, 0.07);
+        background: linear-gradient(180deg, #fff 0%, #f7fafc 100%);
+    }
+
+    .fin-table-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .fin-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background: #eff5f7;
+        color: #4a6778;
+    }
+
+    .fin-modal .modal-content {
+        background: #ffffff;
+        color: #173042;
+    }
+
+    .fin-modal .modal-header,
+    .fin-modal .modal-body,
+    .fin-modal .modal-footer {
+        background: #ffffff;
+    }
+
+    .fin-modal .modal-title,
+    .fin-modal .modal-body,
+    .fin-modal .modal-body strong,
+    .fin-modal .form-label {
+        color: #173042 !important;
+    }
+
+    .fin-modal .text-muted {
+        color: #64748b !important;
+    }
+
+    .fin-modal .alert-info {
+        background: #d9edf7;
+        border-color: #bce8f1;
+        color: #0c4a5a !important;
+    }
+
+    @@media (max-width: 1200px) {
+        .fin-kpi-grid,
+        .fin-chart-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .fin-dashboard {
+            padding: 4px 16px 16px;
+            border-radius: 18px;
+        }
+
+        .fin-dashboard-header,
+        .fin-ring-wrap,
+        .fin-filters,
+        .fin-table-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .fin-kpi-grid,
+        .fin-chart-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    /* Refinamiento ejecutivo: sistema visual unificado */
+    .fin-dashboard {
+        --fin-navy: #073b5c;
+        --fin-blue: #0b5f87;
+        --fin-cyan: #11a8bd;
+        --fin-green: #18a875;
+        --fin-yellow: #e5a623;
+        --fin-red: #dc5a63;
+        --fin-purple: #7c5ce7;
+        --fin-bg: #f3f7fa;
+        --fin-panel: #fff;
+        --fin-border: #dce6ed;
+        --fin-text: #102f45;
+        --fin-muted: #647b8c;
+        --fin-shadow: 0 7px 22px rgba(12,54,80,.065);
+        border: 0;
+        border-radius: 0;
+        padding: 5px 0 20px;
+        display: flex;
+        flex-direction: column;
+    }
+    .fin-dashboard > * { order: 10; }
+    .fin-dashboard > .fin-dashboard-header { order: 1; }
+    .fin-dashboard > .alert { order: 2; }
+    .fin-dashboard > .fin-filters { order: 3; }
+    .fin-dashboard > .fin-table-card { order: 4; margin-top: 0; margin-bottom: 16px; }
+    .fin-dashboard > .fin-kpi-grid { order: 5; }
+    .fin-dashboard > .fin-chart-grid { order: 6; }
+    .fin-dashboard > .fin-modal { order: 20; }
+    .fin-dashboard-header {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 115px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #0e3a5c 0%, #145a82 50%, #0f6a7f 100%);
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(14,46,71,.1);
+        padding: 24px 30px;
+        color: #fff;
+    }
+    .fin-dashboard-header::after { display: none; }
+    .fin-dashboard-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        align-self: flex-start;
+        margin-bottom: 12px;
+        padding: 4px 12px;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 20px;
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+    .fin-dashboard-title {
+        margin: 0 0 8px;
+        color: #fff !important;
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+    .fin-dashboard-subtitle {
+        max-width: 900px;
+        margin: 0;
+        color: rgba(255,255,255,.9);
+        font-size: .9rem;
+        line-height: 1.4;
+    }
+    .fin-dashboard-actions { position: relative; z-index: 1; }
+    .fin-dashboard-actions .btn { color:#fff; border-color:rgba(255,255,255,.48); border-radius:9px; padding:8px 12px; }
+    .fin-dashboard-actions .btn:hover { background:#fff; color:var(--fin-navy); }
+    .fin-dashboard-actions #healthResult { color:rgba(255,255,255,.82)!important; }
+    .fin-filters {
+        background:#fff;
+        border:1px solid var(--fin-border);
+        border-radius:13px;
+        padding:11px 14px;
+        box-shadow:0 3px 12px rgba(12,54,80,.035);
+    }
+    .fin-filter-form .form-select { border-color:#cbd9e2; border-radius:9px; min-height:36px; color:var(--fin-text); }
+    .fin-health-button {
+        margin-left: 8px;
+        border-color: #9fb5c3;
+        border-radius: 8px;
+        color: #476476;
+    }
+    #healthResult { margin-left: 6px; }
+    .fin-kpi-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:16px; }
+    .fin-kpi-card {
+        min-height:154px;
+        padding:20px;
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+        border-top:3px solid var(--kpi-color);
+    }
+    .fin-kpi-top { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+    .fin-kpi-icon {
+        width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+        flex:0 0 auto; color:var(--kpi-color); background:#edf6f8; font-size:1.05rem;
+    }
+    .fin-kpi-card .fin-metric-label { color:#516a7b; font-size:.76rem; }
+    .fin-kpi-card .fin-metric-value { color:var(--fin-text); font-size:clamp(1.65rem,2.2vw,2.25rem); letter-spacing:-.04em; margin-top:9px; }
+    .fin-kpi-card .fin-metric-sub { margin-top:8px; line-height:1.35; }
+    .fin-kpi-progress { height:4px; overflow:hidden; border-radius:99px; background:#edf3f6; margin-top:14px; }
+    .fin-kpi-progress span { display:block; width:var(--progress); max-width:100%; height:100%; border-radius:inherit; background:var(--kpi-color); }
+    .fin-chart-grid { grid-template-columns:1.05fr 1.05fr 1.55fr .85fr; gap:16px; margin-bottom:16px; }
+    .fin-card { border-radius:14px; border-color:var(--fin-border); box-shadow:var(--fin-shadow); padding:18px; }
+    .fin-card::before {
+        content:""; position:absolute; top:0; left:18px; width:34px; height:3px;
+        border-radius:0 0 6px 6px; background:var(--fin-cyan);
+    }
+    .fin-card .fin-metric-label { color:var(--fin-navy); }
+    .fin-section-heading { display:flex; align-items:center; gap:9px; }
+    .fin-section-heading i { color:var(--fin-cyan); }
+    .fin-list li { align-items:center; padding:10px 0; }
+    .fin-list-copy { display:flex; align-items:center; gap:10px; }
+    .fin-list-icon {
+        width:32px; height:32px; border-radius:9px; display:grid; place-items:center;
+        color:var(--state-color); background:#eff5f7; flex:0 0 auto;
+    }
+    .fin-list-value { min-width:30px; text-align:right; color:var(--fin-text); font-size:1rem; }
+    .fin-donut-layout { min-height:175px; display:flex; align-items:center; gap:18px; }
+    .fin-donut {
+        width:122px; height:122px; flex:0 0 auto; border-radius:50%; display:grid; place-items:center;
+        background:conic-gradient(var(--fin-yellow) 0 var(--p1),var(--fin-cyan) var(--p1) var(--p2),var(--fin-red) var(--p2) var(--p3),var(--fin-green) var(--p3) 100%);
+        position:relative;
+    }
+    .fin-donut::after { content:""; width:76px; height:76px; border-radius:50%; background:#fff; position:absolute; }
+    .fin-donut strong { z-index:1; font-size:1.35rem; color:var(--fin-navy); }
+    .fin-donut-legend { flex:1; }
+    .fin-donut-legend li { padding:5px 0; font-size:.8rem; }
+    .fin-line-chart { height:164px; padding:8px 2px 0; background:linear-gradient(180deg,rgba(17,168,189,.05),transparent 70%); border-radius:10px; }
+    .fin-line-area { fill:url(#finAreaGradient); }
+    .fin-flow-card { text-align:center; }
+    .fin-flow-card .fin-ring-wrap { min-height:170px; }
+    .fin-flow-card .fin-ring { --size:138px; --thickness:13px; }
+    .fin-info-grid { grid-template-columns:.9fr 2.1fr; }
+    .fin-empty-state { width:100%; min-height:112px; display:grid; place-items:center; text-align:center; color:var(--fin-muted); }
+    .fin-empty-state i { display:block; margin-bottom:9px; color:#9bb0be; font-size:1.55rem; }
+    .fin-table-card { border-radius:14px; border-color:var(--fin-border); box-shadow:var(--fin-shadow); }
+    .fin-table-header { padding:18px 20px; background:#fff; }
+    .fin-table-header h3 { color:var(--fin-navy); font-size:1.08rem; }
+    .fin-chip { background:#eaf5f7; color:#096d7f; }
+    #tablaGestionOrdenes thead th {
+        background:linear-gradient(180deg,#0a587d,#07496b); border-color:rgba(255,255,255,.12);
+        color:#fff; font-size:.74rem; letter-spacing:.035em; text-transform:uppercase; padding:12px 10px; vertical-align:middle;
+    }
+    #tablaGestionOrdenes tbody td { border-color:#e8eef2; color:#29475b; padding:11px 10px; vertical-align:middle; }
+    #tablaGestionOrdenes tbody tr:hover { background:#f2fafb; }
+    @@media (max-width:1200px) {
+        .fin-kpi-grid,.fin-chart-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .fin-info-grid { grid-template-columns:1fr 2fr; }
+    }
+    @@media (max-width:768px) {
+        .fin-dashboard { padding:4px 0 16px; }
+        .fin-kpi-grid,.fin-chart-grid,.fin-info-grid { grid-template-columns:1fr; }
+        .fin-dashboard-header::after { display:none; }
+        .fin-dashboard-header { padding:20px; }
+        .fin-dashboard-title { font-size:1.3rem; }
+        .fin-donut-layout { justify-content:center; flex-wrap:wrap; }
+    }
+</style>
+
+<div class="fin-dashboard">
+    <div class="fin-dashboard-header">
+        <span class="fin-dashboard-badge"><i class="fas fa-chart-line"></i> Gestión financiera</span>
+        <h2 class="fin-dashboard-title">Dashboard Financiero</h2>
+        <p class="fin-dashboard-subtitle">Valide órdenes, supervise la facturación FR3 y controle el desempeño operativo del área financiera.</p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
+    }
+    @if (ViewBag.SinResultadosConFiltro == true)
+    {
+        <div class="alert alert-aocr alert-warning mb-3">
+            <i class="fas fa-filter me-1"></i> No se encontraron órdenes con el estado seleccionado. Se muestran todas las órdenes disponibles (Total: @ViewBag.TotalSinFiltro).
+        </div>
+    }
+
+    <div class="fin-filters">
+        <div>
+            <span class="fin-chip"><i class="fas fa-wave-square"></i> AS400 @(as400FacturacionHabilitada ? "habilitado" : "deshabilitado")</span>
+            <span class="fin-chip"><i class="fas fa-layer-group"></i> @totalOrdenes órdenes visibles</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm fin-health-button" id="btnHealthPostgres">
+                <i class="fas fa-database me-1"></i> Probar PostgreSQL/DB2
+            </button>
+            <span id="healthResult" class="text-muted small"></span>
+        </div>
+        <form method="get" class="fin-filter-form">
+            <label class="mb-0 aocr-field-label">Estado:</label>
+            <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:180px;">
+                <option value="EN_REVISION_FINANCIERA" @(ViewBag.EstadoFiltro == "EN_REVISION_FINANCIERA" ? "selected" : "")>En revision financiera</option>
+                <option value="GENERADA" @(ViewBag.EstadoFiltro == "GENERADA" ? "selected" : "")>Generada</option>
+                <option value="DEVUELTA" @(ViewBag.EstadoFiltro == "DEVUELTA" ? "selected" : "")>Devuelta</option>
+                <option value="FACTURADA" @(ViewBag.EstadoFiltro == "FACTURADA" ? "selected" : "")>Facturada</option>
+                <option value="COMPLETADA" @(ViewBag.EstadoFiltro == "COMPLETADA" ? "selected" : "")>Completada</option>
+                <option value="ANULADA" @(ViewBag.EstadoFiltro == "ANULADA" ? "selected" : "")>Anulada</option>
+                <option value="TODAS" @(ViewBag.EstadoFiltro == "TODAS" ? "selected" : "")>Todas</option>
+            </select>
+        </form>
+    </div>
+
+    <div class="fin-kpi-grid">
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-cyan);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Órdenes Totales</div><div class="fin-metric-value">@totalOrdenes</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+            </div>
+            <div class="fin-metric-sub">Volumen operativo visible en el tablero.</div>
+            <div class="fin-kpi-progress" style="--progress:100%;"><span></span></div>
+        </div>
+
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-green);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Monto Consolidado</div><div class="fin-metric-value">$ @montoTotal.ToString("N2")</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-coins"></i></span>
+            </div>
+            <div class="fin-metric-sub">Valor total acumulado de las órdenes.</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeCompletadas%;"><span></span></div>
+        </div>
+
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-blue);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Cumplimiento FR3</div><div class="fin-metric-value">@porcentajeFr3Ok%</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-clipboard-check"></i></span>
+            </div>
+            <div class="fin-metric-sub">@fr3Ok emitidos · @fr3Pendiente pendientes · @fr3Error con error</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeFr3Ok%;"><span></span></div>
+        </div>
+
+        <div class="fin-card fin-kpi-card" style="--kpi-color:var(--fin-purple);">
+            <div class="fin-kpi-top">
+                <div><div class="fin-metric-label">Rendimiento</div><div class="fin-metric-value">@porcentajeCompletadas%</div></div>
+                <span class="fin-kpi-icon"><i class="fas fa-chart-line"></i></span>
+            </div>
+            <div class="fin-metric-sub">@completadas órdenes completadas del total visible.</div>
+            <div class="fin-kpi-progress" style="--progress:@porcentajeCompletadas%;"><span></span></div>
+        </div>
+    </div>
+
+    <div class="fin-chart-grid">
+        <div class="fin-card">
+            <div class="fin-section-heading"><i class="fas fa-list-check"></i><div class="fin-metric-label">Estados Clave</div></div>
+            <ul class="fin-list">
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-yellow);"><i class="fas fa-clock"></i></span><div><div class="fin-list-title">Generadas</div><div class="fin-list-sub">Pendientes de gestión</div></div></div><strong class="fin-list-value">@generadas</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-cyan);"><i class="fas fa-search-dollar"></i></span><div><div class="fin-list-title">En revisión</div><div class="fin-list-sub">Carga activa del equipo</div></div></div><strong class="fin-list-value">@enRevision</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:var(--fin-red);"><i class="fas fa-undo-alt"></i></span><div><div class="fin-list-title">Devueltas al RT</div><div class="fin-list-sub">Requieren corrección</div></div></div><strong class="fin-list-value">@devueltas</strong></li>
+                <li><div class="fin-list-copy"><span class="fin-list-icon" style="--state-color:#8496a3;"><i class="fas fa-ban"></i></span><div><div class="fin-list-title">Anuladas</div><div class="fin-list-sub">Casos cerrados</div></div></div><strong class="fin-list-value">@anuladas</strong></li>
+            </ul>
+        </div>
+
+        <div class="fin-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="fin-section-heading"><i class="fas fa-chart-pie"></i><div class="fin-metric-label">Distribución por Estado</div></div>
+                <strong class="small text-muted">@totalOrdenes total</strong>
+            </div>
+            @{
+                var pGeneradas = totalOrdenes > 0 ? (int)Math.Round((decimal)generadas * 100m / totalOrdenes) : 0;
+                var pRevision = pGeneradas + (totalOrdenes > 0 ? (int)Math.Round((decimal)enRevision * 100m / totalOrdenes) : 0);
+                var pDevueltas = pRevision + (totalOrdenes > 0 ? (int)Math.Round((decimal)devueltas * 100m / totalOrdenes) : 0);
+            }
+            <div class="fin-donut-layout">
+                <div class="fin-donut" style="--p1:@pGeneradas%; --p2:@pRevision%; --p3:@pDevueltas%; @(totalOrdenes == 0 ? "background:#e6eef2;" : "")"><strong>@totalOrdenes</strong></div>
+                <ul class="fin-legend fin-donut-legend">
+                    <li><span><span class="fin-dot" style="background:var(--fin-yellow);"></span>Generadas</span><strong>@generadas</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-cyan);"></span>En revisión</span><strong>@enRevision</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-red);"></span>Devueltas</span><strong>@devueltas</strong></li>
+                    <li><span><span class="fin-dot" style="background:var(--fin-green);"></span>Facturadas</span><strong>@facturadas</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-section-heading"><i class="fas fa-chart-line"></i><div class="fin-metric-label">Tendencia Operativa</div></div>
+            <div class="fin-line-chart">
+                <svg viewBox="0 0 300 150" preserveAspectRatio="none" aria-hidden="true">
+                    <defs><linearGradient id="finAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#11a8bd" stop-opacity=".22"></stop><stop offset="100%" stop-color="#11a8bd" stop-opacity="0"></stop></linearGradient></defs>
+                    <line x1="0" y1="128" x2="300" y2="128" stroke="#e1e9ee" stroke-width="1"></line>
+                    <path class="fin-line-area" d="M10 112 L55 108 L95 62 L135 100 L175 88 L215 42 L255 52 L290 16 L290 128 L10 128 Z"></path>
+                    <polyline fill="none" stroke="#0b8fa7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="10,112 55,108 95,62 135,100 175,88 215,42 255,52 290,16"></polyline>
+                    <circle cx="95" cy="62" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
+                    <circle cx="215" cy="42" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
+                    <circle cx="290" cy="16" r="4" fill="#fff" stroke="#0b8fa7" stroke-width="3"></circle>
+                </svg>
+            </div>
+            <div class="fin-mini-note"><span>Inicio</span><span>Pico actual de actividad</span></div>
+        </div>
+
+        <div class="fin-card fin-flow-card">
+            <div class="fin-section-heading"><i class="fas fa-heartbeat"></i><div class="fin-metric-label">Salud del Flujo</div></div>
+            <div class="fin-ring-wrap" style="position:relative; justify-content:center;">
+                <div class="fin-ring" style="--ring-percent:@porcentajeCompletadas; --ring-color:#d98dc5;"></div>
+                <div class="fin-ring-center">
+                    <strong>@porcentajeCompletadas%</strong>
+                    <span>Completadas</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fin-chart-grid fin-info-grid">
+        <div class="fin-card">
+            <div class="fin-section-heading"><i class="fas fa-building"></i><div class="fin-metric-label">Top Compañías</div></div>
+            <ul class="fin-list">
+                @if (companias.Any())
+                {
+                    foreach (var compania in companias)
+                    {
+                        <li>
+                            <div>
+                                <div class="fin-list-title">@Html.Encode(compania.Nombre)</div>
+                                <div class="fin-list-sub">@compania.Cantidad órdenes</div>
+                            </div>
+                            <strong>@compania.Monto.ToString("N2")</strong>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li>
+                        <div class="fin-empty-state"><div><i class="far fa-building"></i><div class="fin-list-title">Sin compañías para mostrar</div><div class="fin-list-sub">Los resultados aparecerán al registrar actividad.</div></div></div>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-section-heading"><i class="fas fa-history"></i><div class="fin-metric-label">Actividad Reciente</div></div>
+            <ul class="fin-list">
+                @if (recientes.Any())
+                {
+                    foreach (var reciente in recientes)
+                    {
+                        var ordenReciente = reciente.Orden;
+                        <li>
+                            <div>
+                                <div class="fin-list-title">@Html.Encode(ordenReciente.NumeroOrden)</div>
+                                <div class="fin-list-sub">@Html.Encode(!string.IsNullOrWhiteSpace(ordenReciente.NombreContribuyente) ? ordenReciente.NombreContribuyente : ordenReciente.Compania) · @ordenReciente.FechaCreacion.ToString("dd/MM/yyyy")</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fin-list-title">@ordenReciente.Total.ToString("N2")</div>
+                                <div class="fin-list-sub">@Html.Encode(textoEstado(ordenReciente.Estado))</div>
+                            </div>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li>
+                        <div class="fin-empty-state"><div><i class="far fa-clock"></i><div class="fin-list-title">Sin actividad reciente</div><div class="fin-list-sub">Aquí se mostrarán los últimos movimientos financieros.</div></div></div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    <div class="fin-table-card">
+        <div class="fin-table-header">
+            <div>
+                <h3>Gestión de órdenes</h3>
+                <div class="text-muted small">Revise, apruebe y dé seguimiento al ciclo operativo de cada orden.</div>
+            </div>
+            <span class="fin-chip"><i class="fas fa-table"></i> Vista operativa</span>
+        </div>
+        <div class="aocr-table-container">
+<table class="table table-dgac mb-0" id="tablaGestionOrdenes">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Orden</th>
+            <th>Compañía</th>
+            <th>Fecha</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>FR3</th>
+            <th>Comprobante</th>
+            <th class="text-center">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            int i = 1;
+            foreach (var item in Model)
+            {
+                var orden = item.Orden;
+                var pago = item.Pago;
+                var estadoNorm = orden != null ? normalizarEstado(orden.Estado) : string.Empty;
+                var puedeGestionarPorEstado = item.PuedeGestionarPago;
+        <tr>
+            <td>@Html.Encode(i)</td>
+            <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
+            <td>@Html.Encode(orden != null ? (orden.NombreContribuyente ?? orden.Compania) : "-")</td>
+            <td>@Html.Encode(orden != null ? orden.FechaCreacion.ToString("dd/MM/yyyy") : "")</td>
+            <td>@Html.Encode(orden != null ? orden.Total.ToString("N2") : "0.00")</td>
+            <td>
+                @if (orden != null)
+                {
+                    var badgeCss = "bg-secondary";
+                    switch (estadoNorm)
+                    {
+                        case EstadoOrden.Completada:
+                        case EstadoOrden.Pagada:
+                            badgeCss = "bg-success";
+                            break;
+                        case EstadoOrden.Facturada:
+                            badgeCss = "bg-info text-dark";
+                            break;
+                        case EstadoOrden.Anulada:
+                            badgeCss = "bg-danger";
+                            break;
+                        case EstadoOrden.Devuelta:
+                            badgeCss = "bg-danger";
+                            break;
+                        case EstadoOrden.EnRevisionFinanciera:
+                            badgeCss = "bg-primary";
+                            break;
+                        case EstadoOrden.Enviada:
+                            badgeCss = "bg-info text-dark";
+                            break;
+                        case EstadoOrden.Generada:
+                            badgeCss = "bg-warning text-dark";
+                            break;
+                    }
+                    <span class="badge @badgeCss">@Html.Encode(textoEstado(orden.Estado))</span>
+                }
+            </td>
+            <td>
+                @if (!string.IsNullOrWhiteSpace(item.Fr3Numero))
+                {
+                    <span class="badge bg-success">@Html.Encode(item.Fr3Numero)</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(item.Fr3Estado))
+                {
+                    var cssFr3 = item.Fr3Estado.Equals("FR3_ERROR", StringComparison.OrdinalIgnoreCase) ? "bg-danger" : "bg-secondary";
+                    <span class="badge @cssFr3">@Html.Encode(item.Fr3Estado)</span>
+                    if (!string.IsNullOrWhiteSpace(item.Fr3Error))
+                    {
+                        var fr3ErrorDisplay = System.Web.HttpUtility.HtmlDecode(item.Fr3Error);
+                        <div><small class="text-danger">@fr3ErrorDisplay</small></div>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">Pendiente</span>
+                }
+            </td>
+            <td>
+                @if (orden != null)
+                {
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id, vistaPrevia = true })"
+                       target="_blank"
+                       class="btn btn-outline-secondary btn-sm btn-pdf"
+                       title="Vista previa PDF de la orden">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })"
+                       target="_blank"
+                       class="btn btn-outline-success btn-sm btn-pdf"
+                       title="Descargar PDF de la orden">
+                        <i class="fas fa-download"></i>
+                    </a>
+                }
+                else
+                {
+                    <span class="text-muted">Sin orden</span>
+                }
+            </td>
+            <td class="acciones-cell">
+                @if (orden != null)
+                {
+                    <div class="acciones-orden">
+                        <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
+                           class="btn btn-outline-primary btn-sm btn-accion"
+                           title="Ver detalles">
+                            <i class="fas fa-eye"></i>
+                        </a>
+
+                        @if (puedeGestionarPorEstado)
+                        {
+                            <button type="button"
+                                    class="btn btn-success btn-sm btn-accion js-abrir-modal-factura"
+                                    title="Aprobar pago"
+                                    data-orden-id="@orden.Id"
+                                    data-pago-id="@(pago != null ? pago.CodigoPago.ToString() : string.Empty)"
+                                    data-numero-orden="@Html.Encode(orden.NumeroOrden)"
+                                    data-monto="@((orden.Total).ToString("N2"))">
+                                <i class="fas fa-check"></i>
+                            </button>
+
+                            <button class="btn btn-danger btn-sm btn-accion js-abrir-modal-rechazo" type="button"
+                                    title="Rechazar"
+                                    data-orden-id="@orden.Id"
+                                    data-numero-orden="@Html.Encode(orden.NumeroOrden)">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        }
+
+                        @if (item.PuedeReintentarFr3)
+                        {
+                            <button type="button"
+                                    class="btn btn-warning btn-sm btn-accion js-retry-fr3"
+                                    title="Reintentar FR3"
+                                    data-orden-id="@orden.Id">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        }
+                    </div>
+                }
+            </td>
+        </tr>
+                i++;
+            }
+        }
+    </tbody>
+</table>
+</div>
+    </div>
+</div>
+
+
+<div class="modal fade fin-modal" id="modalRechazarOrden" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Devolver Orden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formRechazarOrden" method="post" action="@Url.Action("RechazarOrden", "Financiero")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="rechazo_orden_id" name="id" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Orden:</small>
+                        <div><strong id="rechazo_numero_orden">-</strong></div>
+                    </div>
+                    <label class="form-label">Motivo de devolucion</label>
+                    <textarea name="motivo" class="form-control" rows="3" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-times me-1"></i>Devolver</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade fin-modal" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aprobar Orden de Recaudación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formAprobarPagoFactura" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="factura_orden_id" name="ordenId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Orden:</small>
+                        <div><strong id="factura_numero_orden">-</strong></div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Monto:</small>
+                        <div><strong id="factura_monto_orden">-</strong></div>
+                    </div>
+
+                    <div id="facturaModalAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="alert alert-info py-2" role="alert">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Se aprobará la orden de recaudación y se emitirá la factura correspondiente solo después de validar el comprobante de pago.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnAprobarConFactura" class="btn btn-success">
+                        <i class="fas fa-check-circle me-1"></i>Aprobar Orden
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" />
+    <style>
+        #tablaGestionOrdenes_wrapper .dt-buttons { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:.75rem; }
+        #tablaGestionOrdenes_wrapper .dt-buttons .btn {
+            margin:0; border-radius:8px; padding:7px 11px; background:#fff;
+            font-weight:700; font-size:.78rem; box-shadow:none;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter { margin-bottom:.75rem; }
+        #tablaGestionOrdenes_wrapper .dataTables_filter label { color:#647b8c; font-size:0; }
+        #tablaGestionOrdenes_wrapper .dataTables_filter label::before {
+            content:"\f002"; font-family:"Font Awesome 5 Free"; font-weight:900;
+            font-size:.8rem; color:#78909f; margin-right:-26px; position:relative; z-index:1;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter input {
+            min-width:240px; min-height:36px; margin-left:0; padding:7px 12px 7px 32px;
+            border:1px solid #cbd9e2; border-radius:9px; color:#29475b; background:#fff;
+        }
+        #tablaGestionOrdenes_wrapper .dataTables_filter input:focus {
+            border-color:#11a8bd; box-shadow:0 0 0 3px rgba(17,168,189,.12); outline:0;
+        }
+        .fin-table-card .dataTables_wrapper { padding:14px 18px 18px; }
+        .fin-table-card .dataTables_wrapper .table { margin-top:.5rem!important; }
+        .fin-table-card .dataTables_info { color:#718696; font-size:.8rem; padding-top:14px; }
+        .fin-table-card .dataTables_paginate { padding-top:10px; }
+        .fin-table-card .pagination { gap:4px; }
+        .fin-table-card .page-link {
+            border:0; border-radius:7px!important; color:#476476; min-width:32px; text-align:center;
+        }
+        .fin-table-card .page-item.active .page-link { background:#0b7894; color:#fff; }
+        #tablaGestionOrdenes .dataTables_empty {
+            padding:44px 15px!important; color:#708696; text-align:center!important;
+            background:linear-gradient(180deg,#fff,#f8fbfc);
+        }
+        @@media(max-width:767px) {
+            #tablaGestionOrdenes_wrapper .dataTables_filter,
+            #tablaGestionOrdenes_wrapper .dataTables_filter input { width:100%; min-width:0; }
+        }
+    </style>
+}
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script>
+(function () {
+    function applyBarHeights() {
+        var bars = document.querySelectorAll('.fin-bar[data-height]');
+        for (var i = 0; i < bars.length; i++) {
+            var rawHeight = parseInt(bars[i].getAttribute('data-height'), 10);
+            if (!isNaN(rawHeight) && rawHeight > 0) {
+                bars[i].style.height = rawHeight + 'px';
+            }
+        }
+    }
+
+    applyBarHeights();
+
+    // =============================================
+    // DataTables — Gestión de órdenes
+    // =============================================
+    function initGestionOrdenesDT() {
+        var $tabla = $('#tablaGestionOrdenes');
+        if (!$tabla.length || !$.fn.DataTable) return;
+        if ($.fn.DataTable.isDataTable($tabla)) return;
+
+        $tabla.DataTable({
+            language: {
+                url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")'
+            },
+            responsive: true,
+            autoWidth: false,
+            pageLength: 5,
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
+            order: [[0, 'asc']],
+            dom: "<'row'<'col-sm-12 col-md-6'B><'col-sm-12 col-md-6'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-sm btn-outline-success',
+                    exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] }
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-sm btn-outline-danger',
+                    orientation: 'landscape',
+                    pageSize: 'A4',
+                    exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] }
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="fas fa-print me-1"></i> Imprimir',
+                    className: 'btn btn-sm btn-outline-secondary',
+                    exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] }
+                },
+                {
+                    extend: 'copyHtml5',
+                    text: '<i class="fas fa-copy me-1"></i> Copiar',
+                    className: 'btn btn-sm btn-outline-info',
+                    exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] }
+                }
+            ],
+            columnDefs: [
+                { orderable: false, searchable: false, targets: [7, 8] },
+                { className: 'text-center', targets: [0, 7, 8] },
+                { className: 'text-end', targets: [4] }
+            ],
+            drawCallback: function () {
+                setTimeout(function () {
+                    if ($.fn.tooltip) {
+                        $('[data-bs-toggle="tooltip"]').tooltip();
+                    }
+                }, 50);
+            }
+        });
+    }
+
+    // Listen for layout's lazy DataTables load
+    if (window.AOCR && window.AOCR.dataTablesLoaded) {
+        initGestionOrdenesDT();
+    } else {
+        document.addEventListener('AOCR.DataTablesReady', initGestionOrdenesDT);
+        // Fallback: if DataTables is already available
+        $(function () {
+            if ($.fn.DataTable) initGestionOrdenesDT();
+        });
+    }
+
+    // =============================================
+    // Modal Rechazar Orden (compartido)
+    // =============================================
+    var rechazoModalEl = document.getElementById('modalRechazarOrden');
+    if (rechazoModalEl && window.bootstrap) {
+        var rechazoModal = new bootstrap.Modal(rechazoModalEl);
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-abrir-modal-rechazo');
+            if (!btn) return;
+            e.preventDefault();
+            document.getElementById('rechazo_orden_id').value = btn.getAttribute('data-orden-id') || '';
+            document.getElementById('rechazo_numero_orden').textContent = btn.getAttribute('data-numero-orden') || '-';
+            rechazoModalEl.querySelector('textarea[name="motivo"]').value = '';
+            rechazoModal.show();
+        });
+    }
+
+    // =============================================
+    // Modal Aprobar + Enviar AS400
+    // =============================================
+    var modalElement = document.getElementById('modalAprobarPagoFactura');
+    if (!modalElement || !window.bootstrap) {
+        return;
+    }
+
+    var modal = new bootstrap.Modal(modalElement);
+    var form = document.getElementById('formAprobarPagoFactura');
+    var alertBox = document.getElementById('facturaModalAlert');
+    var submitButton = document.getElementById('btnAprobarConFactura');
+    var numeroOrdenLabel = document.getElementById('factura_numero_orden');
+    var montoOrdenLabel = document.getElementById('factura_monto_orden');
+    var inputOrdenId = document.getElementById('factura_orden_id');
+    var tokenInput = form ? form.querySelector('input[name="__RequestVerificationToken"]') : null;
+    var isSubmitting = false;
+
+    if (!form || !alertBox || !submitButton) {
+        return;
+    }
+
+    if (form.dataset.facturaSubmitBound === '1') {
+        return;
+    }
+    form.dataset.facturaSubmitBound = '1';
+
+    function showAlert(type, message) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    function clearAlert() {
+        alertBox.className = 'alert d-none';
+        alertBox.textContent = '';
+    }
+
+    function setSubmitting(val) {
+        submitButton.disabled = val;
+        submitButton.innerHTML = val
+            ? '<i class="fas fa-spinner fa-spin me-1"></i>Procesando...'
+            : '<i class="fas fa-check-circle me-1"></i>Aprobar Orden';
+    }
+
+    function setInFlight(value) {
+        isSubmitting = value === true;
+        setSubmitting(isSubmitting);
+    }
+
+    function getCsrfToken() {
+        if (tokenInput && tokenInput.value) {
+            return tokenInput.value;
+        }
+
+        var layoutTokenInput = document.querySelector('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]');
+        if (layoutTokenInput && layoutTokenInput.value) {
+            return layoutTokenInput.value;
+        }
+
+        var anyTokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return anyTokenInput && anyTokenInput.value ? anyTokenInput.value : '';
+    }
+
+    function getCookieValue(name) {
+        if (!name || !document.cookie) {
+            return '';
+        }
+
+        var encodedName = encodeURIComponent(name) + '=';
+        var rawCookies = document.cookie.split(';');
+        for (var i = 0; i < rawCookies.length; i++) {
+            var cookie = rawCookies[i].trim();
+            if (cookie.indexOf(encodedName) === 0) {
+                return decodeURIComponent(cookie.substring(encodedName.length));
+            }
+        }
+        return '';
+    }
+
+    function getCsrfCookieToken() {
+        var preferredNames = ['__AOCR_RequestVerificationToken', '__RequestVerificationToken'];
+        for (var i = 0; i < preferredNames.length; i++) {
+            var preferredValue = getCookieValue(preferredNames[i]);
+            if (preferredValue) {
+                return preferredValue;
+            }
+        }
+
+        if (!document.cookie) {
+            return '';
+        }
+
+        var rawCookies = document.cookie.split(';');
+        for (var j = 0; j < rawCookies.length; j++) {
+            var part = rawCookies[j].trim();
+            var separator = part.indexOf('=');
+            if (separator <= 0) {
+                continue;
+            }
+
+            var key = decodeURIComponent(part.substring(0, separator));
+            if (/RequestVerificationToken/i.test(key)) {
+                return decodeURIComponent(part.substring(separator + 1));
+            }
+        }
+        return '';
+    }
+
+    function buildAjaxHeaders(csrfToken) {
+        var headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Accept': 'application/json, text/plain, */*'
+        };
+
+        if (!csrfToken) {
+            return headers;
+        }
+
+        var cookieToken = getCsrfCookieToken();
+        var headerToken = cookieToken ? (cookieToken + ':' + csrfToken) : csrfToken;
+        headers['RequestVerificationToken'] = headerToken;
+        headers['__RequestVerificationToken'] = csrfToken;
+        return headers;
+    }
+
+    function buildFormBody(values) {
+        var params = new URLSearchParams();
+        Object.keys(values || {}).forEach(function (key) {
+            params.append(key, values[key] == null ? '' : String(values[key]));
+        });
+        return params.toString();
+    }
+
+    function openModalFromButton(button) {
+        var ordenId = button.getAttribute('data-orden-id') || '';
+        var numeroOrden = button.getAttribute('data-numero-orden') || '-';
+        var monto = button.getAttribute('data-monto') || '';
+
+        form.reset();
+        inputOrdenId.value = ordenId;
+        numeroOrdenLabel.textContent = numeroOrden;
+        montoOrdenLabel.textContent = monto ? ('$' + monto) : '-';
+
+        clearAlert();
+        setInFlight(false);
+        modal.show();
+    }
+
+    if (!document.body.dataset.facturaModalClickBound) {
+        document.body.dataset.facturaModalClickBound = '1';
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.js-abrir-modal-factura');
+            if (!button) {
+                return;
+            }
+
+            if (isSubmitting) {
+                return;
+            }
+
+            event.preventDefault();
+            openModalFromButton(button);
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        if (isSubmitting) {
+            return;
+        }
+
+        clearAlert();
+        setInFlight(true);
+        var shouldUnlock = true;
+        var ordenId = (inputOrdenId.value || '').trim();
+        if (!/^\d+$/.test(ordenId)) {
+            shouldUnlock = true;
+            setInFlight(false);
+            showAlert('danger', 'No se pudo identificar la orden. Cierre y vuelva a abrir el modal.');
+            return;
+        }
+
+        var csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            shouldUnlock = true;
+            setInFlight(false);
+            showAlert('danger', 'La sesion expiro. Recargue la pagina e intente nuevamente.');
+            return;
+        }
+
+        var actionUrl = '@Url.Action("AprobarYEnviarAS400", "Financiero")';
+        var body = buildFormBody({
+            ordenId: ordenId,
+            id: ordenId,
+            __RequestVerificationToken: csrfToken
+        });
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: buildAjaxHeaders(csrfToken)
+        })
+        .then(function (response) {
+            return response.text().then(function (text) {
+                var payload = null;
+                try {
+                    payload = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    payload = null;
+                }
+                return { response: response, payload: payload, rawText: text };
+            });
+        })
+        .then(function (result) {
+            var payload = result.payload || {};
+            if (!result.response.ok || payload.ok !== true) {
+                var errorMessage = payload.message || '';
+                if (!errorMessage && result.rawText) {
+                    errorMessage = result.rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                }
+                if (!errorMessage) {
+                    errorMessage = 'Error al enviar a AS400 (HTTP ' + result.response.status + ').';
+                }
+                var httpError = new Error(errorMessage);
+                httpError.httpStatus = result.response.status;
+                throw httpError;
+            }
+
+            var finalMessage = payload.warning
+                ? (payload.message + ' ' + payload.warning)
+                : payload.message;
+            showAlert('success', finalMessage || 'Orden aprobada y enviada a facturación correctamente.');
+            shouldUnlock = false;
+
+            setTimeout(function () {
+                modal.hide();
+                window.location.reload();
+            }, 700);
+        })
+        .catch(function (error) {
+            var message = error && error.message ? error.message : 'No se pudo completar la operación.';
+            if (error && error.httpStatus === 400 && /bad request|antifals|forgery|token/i.test(message)) {
+                showAlert('danger', 'La sesion o el token de seguridad expiraron. Se recargara la pagina para reintentar.');
+                setTimeout(function () { window.location.reload(); }, 900);
+                return;
+            }
+            showAlert('danger', message);
+        })
+        .finally(function () {
+            if (shouldUnlock) {
+                setInFlight(false);
+            }
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        var retryButton = event.target.closest('.js-retry-fr3');
+        if (!retryButton) {
+            return;
+        }
+
+        event.preventDefault();
+        var ordenId = retryButton.getAttribute('data-orden-id');
+        if (!ordenId || !/^\d+$/.test(String(ordenId).trim())) {
+            return;
+        }
+
+        if (!confirm('¿Reintentar generación FR3 para esta orden?')) {
+            return;
+        }
+
+        retryButton.disabled = true;
+        var csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            retryButton.disabled = false;
+            alert('La sesion expiro. Recargue la pagina e intente nuevamente.');
+            return;
+        }
+
+        var body = buildFormBody({
+            ordenId: String(ordenId).trim(),
+            id: String(ordenId).trim(),
+            __RequestVerificationToken: csrfToken
+        });
+
+        fetch('@Url.Action("ReintentarFr3", "Financiero")', {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: buildAjaxHeaders(csrfToken)
+        })
+        .then(function (r) {
+            return r.text().then(function (t) {
+                try { return JSON.parse(t); } catch (e) { return { ok: false, message: t || 'Error no controlado.' }; }
+            });
+        })
+        .then(function (payload) {
+            if (!payload || payload.ok !== true) {
+                throw new Error(payload && payload.message ? payload.message : 'No se pudo reintentar FR3.');
+            }
+            alert(payload.message || 'FR3 reintentado correctamente.');
+            window.location.reload();
+        })
+        .catch(function (e) {
+            alert(e && e.message ? e.message : 'Error al reintentar FR3.');
+        })
+        .finally(function () {
+            retryButton.disabled = false;
+        });
+    });
+
+    var btnHealth = document.getElementById('btnHealthPostgres');
+    var healthResult = document.getElementById('healthResult');
+    if (btnHealth && healthResult) {
+        btnHealth.addEventListener('click', function () {
+            btnHealth.disabled = true;
+            healthResult.className = 'ms-2 text-muted';
+            healthResult.textContent = 'Validando...';
+
+            fetch('@Url.Action("HealthFinanciero", "Financiero")', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (payload) {
+                    if (payload && payload.ok) {
+                        healthResult.className = 'ms-2 text-success';
+                        healthResult.textContent = 'PostgreSQL y DB2: OK';
+                    } else {
+                        var db2Msg = payload && payload.db2 ? (payload.db2.message || 'DB2 no disponible') : 'Error de health check';
+                        healthResult.className = 'ms-2 text-danger';
+                        healthResult.textContent = 'Error: ' + db2Msg;
+                    }
+                })
+                .catch(function () {
+                    healthResult.className = 'ms-2 text-danger';
+                    healthResult.textContent = 'No se pudo ejecutar health check.';
+                })
+                .finally(function () {
+                    btnHealth.disabled = false;
+                });
+        });
+    }
+})();
+</script>
+}

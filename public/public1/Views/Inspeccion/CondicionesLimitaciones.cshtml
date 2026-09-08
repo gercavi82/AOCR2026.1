@@ -1,0 +1,347 @@
+@model CapaModelo.DTOs.CondicionesLimitacionesViewModel
+@{
+    ViewBag.Title = "Generación de Condiciones y Limitaciones - Expediente #" + Model.SolicitudId;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var esEditable = Model.PuedeEditarInspector;
+}
+
+<div class="container-fluid px-3 py-4">
+    <!-- Breadcrumb & Cabecera -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb aocr-breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Inspeccion")"><i class="fas fa-clipboard-check me-1"></i>Inspecciones</a></li>
+            <li class="breadcrumb-item"><a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.SolicitudId })">Solicitud #@Model.NumeroSolicitud</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Condiciones y Limitaciones</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h2 class="h3 mb-1 text-primary fw-bold">
+                <i class="fas fa-file-contract me-2"></i>Condiciones y Limitaciones (CL) - AC-10
+            </h2>
+            <p class="text-muted mb-0">
+                Expediente: <strong>@Model.NumeroSolicitud</strong> | AOCR: <strong>@(string.IsNullOrWhiteSpace(Model.NumeroAocr) ? "Por Generar" : Model.NumeroAocr)</strong> | Versión Documental: <span class="badge bg-secondary">v@(Model.Version)</span>
+            </p>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <span class="badge @Model.EstadoBadgeCss fs-6 p-2 shadow-sm">
+                <i class="fas fa-info-circle me-1"></i>@Model.EstadoEtiqueta
+            </span>
+        </div>
+    </div>
+
+    <!-- Alertas y Mensajes de Contexto -->
+    @if (TempData["NotificacionMensaje"] != null)
+    {
+        var tipo = TempData["NotificacionTipo"] as string ?? "info";
+        <div class="alert alert-@tipo alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["NotificacionMensaje"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.ObservacionCoordinador) && Model.Estado == CapaModelo.AocrEstadoCl.ClDevueltaInspector)
+    {
+        <div class="alert alert-warning border-warning shadow-sm" role="alert">
+            <div class="d-flex">
+                <div class="me-3 fs-3"><i class="fas fa-exclamation-triangle text-warning"></i></div>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Documento Devuelto por Coordinación</h5>
+                    <p class="mb-1"><strong>Observación del Coordinador (@(Model.CoordinadorNombre ?? "Coordinador")):</strong></p>
+                    <p class="mb-1 fst-italic">"@Model.ObservacionCoordinador"</p>
+                    @if (Model.FechaRevisionCoordinador.HasValue)
+                    {
+                        <small class="text-muted">Fecha de devolución: @Model.FechaRevisionCoordinador.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3">
+        <!-- Columna Izquierda: Información Canónica del Expediente (Precondiciones AC-02, AC-07, AC-09) -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light fw-bold">
+                    <i class="fas fa-building me-2 text-primary"></i>Datos del Operador
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        <dt class="col-5 text-muted">Compañía:</dt>
+                        <dd class="col-7 fw-bold">@Model.Compania</dd>
+
+                        <dt class="col-5 text-muted">Operador:</dt>
+                        <dd class="col-7">@(Model.OperadorExtranjero ?? Model.Compania)</dd>
+
+                        <dt class="col-5 text-muted">País:</dt>
+                        <dd class="col-7">@(Model.PaisOperador ?? "Ecuador")</dd>
+
+                        <dt class="col-5 text-muted">AOC Origen:</dt>
+                        <dd class="col-7">@(Model.NumeroAoc ?? "N/A")</dd>
+
+                        <dt class="col-5 text-muted">Resp. Técnico:</dt>
+                        <dd class="col-7">@(Model.RepresentanteTecnico ?? "N/A")</dd>
+
+                        <dt class="col-5 text-muted">Tipo Operación:</dt>
+                        <dd class="col-7">@(Model.TipoOperacion ?? "Comercial Regular")</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Estaciones Autorizadas con Fechas Independientes (AC-02) -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="fas fa-map-marker-alt me-2 text-success"></i>Estaciones Autorizadas (AC-02)</span>
+                    <span class="badge bg-primary">@(Model.Estaciones?.Count ?? 0)</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Estaciones != null && Model.Estaciones.Any())
+                    {
+                        <div class="list-group list-group-flush small">
+                            @foreach (var est in Model.Estaciones)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-primary">@est.EstacionCodigo - @est.EstacionNombre</strong>
+                                        <span class="badge bg-success">@est.Estado</span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        <i class="far fa-calendar-alt me-1"></i>Desde: <strong>@est.FechaInicio.ToString("dd/MM/yyyy")</strong> Hasta: <strong>@est.FechaFin.ToString("dd/MM/yyyy")</strong>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(est.Observacion))
+                                    {
+                                        <div class="fst-italic small text-secondary mt-1">@est.Observacion</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted small">
+                            <i class="fas fa-exclamation-circle text-warning me-1"></i>No hay estaciones configuradas.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Equipos y Flota Inspeccionada -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light fw-bold">
+                    <i class="fas fa-plane me-2 text-info"></i>Flota y Equipos Autorizados
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Aeronaves != null && Model.Aeronaves.Any())
+                    {
+                        <ul class="list-group list-group-flush small">
+                            @foreach (var aero in Model.Aeronaves)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>@aero.Marca @aero.Modelo</strong>
+                                        <div class="text-muted small">Serie: @aero.Serie</div>
+                                    </div>
+                                    <span class="badge bg-secondary font-monospace">@aero.Matricula</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted small">
+                            <i class="fas fa-info-circle me-1"></i>Sin aeronaves asociadas registradas.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Formulario Técnico de Condiciones y Limitaciones -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-dark">
+                            <i class="fas fa-edit me-2 text-primary"></i>Especificaciones Técnicas y Operacionales
+                        </h5>
+                        <div>
+                            @if (Model.PuedeVerVistaPrevia)
+                            {
+                                <a href="@Url.Action("VistaPreviaCl", "Inspeccion", new { id = Model.SolicitudId })" target="_blank" class="btn btn-outline-secondary btn-sm me-2">
+                                    <i class="fas fa-eye me-1"></i>Vista Previa PDF
+                                </a>
+                            }
+                            @if (Model.TienePdfFirmado)
+                            {
+                                <a href="@Url.Action("DescargarCondicionesLimitaciones", "Documento", new { id = Model.SolicitudId })" class="btn btn-success btn-sm">
+                                    <i class="fas fa-download me-1"></i>Descargar PDF Firmado
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    @using (Html.BeginForm("GenerarBorradorCl", "Inspeccion", FormMethod.Post, new { id = "formBorradorCl" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.HiddenFor(m => m.SolicitudId)
+                        @Html.HiddenFor(m => m.InspeccionId)
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="RutasAutorizadas" class="form-label fw-bold">Rutas Autorizadas <span class="text-danger">*</span></label>
+                                @if (esEditable)
+                                {
+                                    @Html.TextAreaFor(m => m.RutasAutorizadas, new { @class = "form-control", rows = 3, placeholder = "Detalle las rutas internacionales/nacionales autorizadas...", required = "required" })
+                                }
+                                else
+                                {
+                                    <div class="form-control bg-light" style="min-height: 80px; white-space: pre-wrap;">@Model.RutasAutorizadas</div>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <label for="AlcanceAutorizado" class="form-label fw-bold">Alcance de las Operaciones <span class="text-danger">*</span></label>
+                                @if (esEditable)
+                                {
+                                    @Html.TextAreaFor(m => m.AlcanceAutorizado, new { @class = "form-control", rows = 3, placeholder = "Detalle el alcance de las operaciones autorizadas...", required = "required" })
+                                }
+                                else
+                                {
+                                    <div class="form-control bg-light" style="min-height: 80px; white-space: pre-wrap;">@Model.AlcanceAutorizado</div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="CondicionesAprobadas" class="form-label fw-bold">
+                                <i class="fas fa-check-square me-1 text-success"></i>Condiciones Aprobadas de Operación <span class="text-danger">*</span>
+                            </label>
+                            @if (esEditable)
+                            {
+                                @Html.TextAreaFor(m => m.CondicionesAprobadas, new { @class = "form-control", rows = 6, placeholder = "Especifique las condiciones operacionales aprobadas conforme a la RDAC 129...", required = "required" })
+                                <div class="form-text">Incluya la vinculación técnica de las estaciones y aeronaves verificadas.</div>
+                            }
+                            else
+                            {
+                                <div class="form-control bg-light" style="min-height: 120px; white-space: pre-wrap;">@Model.CondicionesAprobadas</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Limitaciones" class="form-label fw-bold">
+                                <i class="fas fa-ban me-1 text-danger"></i>Limitaciones Operacionales <span class="text-danger">*</span>
+                            </label>
+                            @if (esEditable)
+                            {
+                                @Html.TextAreaFor(m => m.Limitaciones, new { @class = "form-control", rows = 5, placeholder = "Especifique las restricciones y limitaciones regulatorias aplicables...", required = "required" })
+                                <div class="form-text">Defina claramente las restricciones por estación, tipo de operación o equipo.</div>
+                            }
+                            else
+                            {
+                                <div class="form-control bg-light" style="min-height: 100px; white-space: pre-wrap;">@Model.Limitaciones</div>
+                            }
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="Observaciones" class="form-label fw-bold">Observaciones Generales de Inspección</label>
+                            @if (esEditable)
+                            {
+                                @Html.TextAreaFor(m => m.Observaciones, new { @class = "form-control", rows = 3, placeholder = "Observaciones complementarias del equipo inspector..." })
+                            }
+                            else
+                            {
+                                <div class="form-control bg-light" style="min-height: 70px; white-space: pre-wrap;">@Model.Observaciones</div>
+                            }
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top">
+                            <div>
+                                <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.SolicitudId })" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Volver al Expediente
+                                </a>
+                            </div>
+
+                            <div class="mt-2 mt-sm-0">
+                                @if (esEditable)
+                                {
+                                    <button type="submit" class="btn btn-primary me-2 btn-prevenir-doble" id="btnGuardarBorrador">
+                                        <i class="fas fa-save me-1"></i>Guardar Borrador
+                                    </button>
+                                }
+
+                                @if (Model.PuedeRemitirCoordinador)
+                                {
+                                    <button type="button" class="btn btn-success btn-prevenir-doble" data-bs-toggle="modal" data-bs-target="#modalRemitirCoordinador">
+                                        <i class="fas fa-paper-plane me-1"></i>Remitir a Coordinación
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Remitir a Coordinador -->
+@if (Model.PuedeRemitirCoordinador)
+{
+    <div class="modal fade" id="modalRemitirCoordinador" tabindex="-1" aria-labelledby="modalRemitirLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                @using (Html.BeginForm("RemitirClCoordinador", "Inspeccion", FormMethod.Post, new { id = "formRemitirCoordinador" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("solicitudId", Model.SolicitudId)
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="modalRemitirLabel">
+                            <i class="fas fa-paper-plane me-2"></i>Remitir Borrador a Coordinación
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">¿Confirma que desea remitir el borrador de <strong>Condiciones y Limitaciones</strong> a Coordinación para su revisión formal?</p>
+                        <div class="alert alert-info small mb-3">
+                            <i class="fas fa-info-circle me-1"></i>Una vez remitido, el documento pasará al estado <strong>PENDIENTE_COORDINADOR</strong> y el Coordinador podrá revisarlo, devolverlo con observaciones o enviarlo a DIRCAV para su firma.
+                        </div>
+                        <div class="mb-3">
+                            <label for="observacionRemision" class="form-label fw-bold">Nota de remisión (opcional):</label>
+                            <textarea class="form-control" id="observacionRemision" name="observacion" rows="3" placeholder="Comentarios para el Coordinador..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success fw-bold btn-prevenir-doble" id="btnConfirmarRemitir">
+                            <i class="fas fa-check me-1"></i>Confirmar Remisión
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            // Prevención de doble submit en guardado
+            $('#formBorradorCl').on('submit', function () {
+                var btn = $('#btnGuardarBorrador');
+                if (btn.length) {
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Guardando...');
+                }
+            });
+
+            // Prevención de doble submit en remisión
+            $('#formRemitirCoordinador').on('submit', function () {
+                var btn = $('#btnConfirmarRemitir');
+                if (btn.length) {
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Remitiendo...');
+                }
+            });
+        });
+    </script>
+}

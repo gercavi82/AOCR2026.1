@@ -1,0 +1,650 @@
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Inspeccion>>
+@using CapaModelo
+@using System.Web.Mvc.Html
+@using System.Web.Mvc
+@using System
+@using System.Linq
+@using System.Collections.Generic
+
+@{
+    ViewBag.Title = "Gestionar Inspecciones";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var inspecciones = Model ?? new List<CapaModelo.Inspeccion>();
+    var inspectoresNombres = (ViewBag.InspectoresNombres as Dictionary<int, string>) ?? new Dictionary<int, string>();
+    var solicitudesPorInspeccion = (ViewBag.SolicitudesPorInspeccion as Dictionary<int, CapaModelo.SolicitudAOCR>) ?? new Dictionary<int, CapaModelo.SolicitudAOCR>();
+    var estadosRevisionDocumentalPorInspeccion = (ViewBag.EstadosRevisionDocumentalPorInspeccion as Dictionary<int, CapaModelo.EstadoRevisionDocumental>) ?? new Dictionary<int, CapaModelo.EstadoRevisionDocumental>();
+    var esBandejaInspector = ViewBag.EsBandejaInspector != null && (bool)ViewBag.EsBandejaInspector;
+    var cantidadInspeccionesNoHabilitadas = ViewBag.CantidadInspeccionesNoHabilitadas != null
+        ? Convert.ToInt32(ViewBag.CantidadInspeccionesNoHabilitadas)
+        : 0;
+
+    Func<string, string> normEstado = estado =>
+    {
+        if (string.IsNullOrWhiteSpace(estado)) return string.Empty;
+        return estado.Trim().ToUpperInvariant().Replace(" ", "_");
+    };
+
+    Func<CapaModelo.Inspeccion, int> prioridad = item =>
+    {
+        var e = normEstado(item != null ? item.Estado : null);
+        if (e == "RESULTADO_NO_SATISFACTORIO") return 0;
+        if (e == "OBSERVADA" || e == "OBSERVACION_DOCUMENTAL" || e == "RECHAZADA") return 1;
+        if (e == "ACEPTADA" || e == "RESULTADO_SATISFACTORIO" || e == "APROBADA") return 2;
+        return 3;
+    };
+
+    var inspeccionesOrdenadas = inspecciones
+        .OrderBy(i => prioridad(i))
+        .ThenByDescending(i => i != null && i.UpdatedAt.HasValue ? i.UpdatedAt.Value : DateTime.MinValue)
+        .ThenByDescending(i => i != null ? i.CodigoInspeccion : 0)
+        .ToList();
+
+    var total = inspeccionesOrdenadas.Count;
+    var totalAceptadas = inspeccionesOrdenadas.Count(i =>
+    {
+        var e = normEstado(i.Estado);
+        return e == "ACEPTADA" || e == "RESULTADO_SATISFACTORIO" || e == "APROBADA";
+    });
+    var totalObservadas = inspeccionesOrdenadas.Count(i =>
+    {
+        var e = normEstado(i.Estado);
+        return e == "OBSERVADA" || e == "OBSERVACION_DOCUMENTAL" || e == "RECHAZADA";
+    });
+    var totalNoSatisfactorio = inspeccionesOrdenadas.Count(i => normEstado(i.Estado) == "RESULTADO_NO_SATISFACTORIO");
+    var totalPendientes = Math.Max(0, total - totalAceptadas - totalObservadas - totalNoSatisfactorio);
+    var vistaActualInspeccion = (ViewBag.VistaActualInspeccion as string ?? string.Empty).Trim();
+    var mostrarGuiaRevisionDocumental = string.Equals(vistaActualInspeccion, "revision-documental", StringComparison.OrdinalIgnoreCase);
+}
+
+@section Styles {
+    <style>
+        /* ─── Metric strip compacto (estilo RevisionVerificacion) ─── */
+        .rv-metrics {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 1rem;
+        }
+        @@media (max-width: 1200px) { .rv-metrics { grid-template-columns: repeat(3, 1fr); } }
+        @@media (max-width: 768px)  { .rv-metrics { grid-template-columns: repeat(2, 1fr); } }
+        @@media (max-width: 480px)  { .rv-metrics { grid-template-columns: 1fr; } }
+
+        .rv-metric {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fff;
+            border: 1px solid rgba(14,46,71,.08);
+            border-left: 4px solid #1B4F72;
+            border-radius: 10px;
+            padding: 12px 14px;
+            box-shadow: 0 1px 3px rgba(14,46,71,.04);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .rv-metric:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(14,46,71,.08); }
+        .rv-metric--accent  { border-left-color: #0f6a7f; }
+        .rv-metric--success { border-left-color: #1a7a46; }
+        .rv-metric--warning { border-left-color: #b78312; }
+        .rv-metric--danger  { border-left-color: #b02331; }
+        .rv-metric--primary { border-left-color: #1B4F72; }
+        .rv-metric__icon {
+            width: 42px; height: 42px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            background: #f3f7fb; color: #1B4F72;
+            font-size: 1.1rem;
+        }
+        .rv-metric--success .rv-metric__icon { background: #e8f6ef; color: #1a7a46; }
+        .rv-metric--warning .rv-metric__icon { background: #fdf4e0; color: #b78312; }
+        .rv-metric--danger  .rv-metric__icon { background: #feecee; color: #b02331; }
+        .rv-metric--primary .rv-metric__icon { background: #e8f1f8; color: #1B4F72; }
+        .rv-metric--accent  .rv-metric__icon { background: #e6f4f6; color: #0f6a7f; }
+        .rv-metric__body { min-width: 0; line-height: 1.1; }
+        .rv-metric__label   { font-size: .76rem; color: #6e8799; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+        .rv-metric__value   { font-size: 1.55rem; font-weight: 800; color: #14293d; margin-top: 2px; }
+        .rv-metric__caption { font-size: .74rem; color: #8898a8; }
+
+        /* ─── Tabs card (filtros por estado) ─── */
+        .rv-tabs-card { border-radius: 12px; overflow: hidden; }
+        .rv-nav {
+            background: #f8fafb;
+            border-bottom: 1px solid rgba(14,46,71,.08);
+            padding: 0 14px;
+            gap: 2px;
+        }
+        .rv-nav .nav-link {
+            border: none !important;
+            color: #6e8799;
+            font-weight: 600;
+            font-size: .9rem;
+            padding: 13px 16px;
+            border-radius: 0 !important;
+            border-bottom: 3px solid transparent !important;
+            transition: all .15s ease;
+            background: transparent !important;
+        }
+        .rv-nav .nav-link:hover { color: #1B4F72; background: rgba(27,79,114,.04) !important; }
+        .rv-nav .nav-link.active {
+            color: #1B4F72 !important;
+            border-bottom-color: #1B4F72 !important;
+        }
+        .rv-nav .nav-link.active[data-filter="ACEPTADA"]                 { color:#166739 !important; border-bottom-color:#198754 !important; }
+        .rv-nav .nav-link.active[data-filter="OBSERVADA"]                { color:#9a6509 !important; border-bottom-color:#f0ad4e !important; }
+        .rv-nav .nav-link.active[data-filter="RESULTADO_NO_SATISFACTORIO"]{color:#b02331 !important; border-bottom-color:#dc3545 !important; }
+        .rv-nav .nav-link .badge { font-size: .7rem; padding: .26em .52em; font-weight: 700; margin-left: 6px; }
+
+        .rv-pane-header {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+            padding: 16px 20px 10px;
+            border-bottom: 1px dashed rgba(14,46,71,.08);
+        }
+        .rv-pane-title { font-size: 1.05rem; font-weight: 700; color: #14293d; margin: 0; }
+        .rv-pane-title i { color: #1B4F72; margin-right: 6px; }
+        .rv-pane-sub { font-size: .8rem; color: #6e8799; margin: 2px 0 0; }
+
+        .rv-search { min-width: 240px; }
+        .rv-search .form-control { border-radius: 10px; font-size: .88rem; }
+
+        /* ─── Badges de estado en tabla ─── */
+        .insp-state {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            border-radius: 999px;
+            padding: .3rem .7rem;
+            font-size: .76rem;
+            font-weight: 700;
+            letter-spacing: .02em;
+            white-space: nowrap;
+        }
+        .insp-state .fa { font-size: .72rem; }
+        .insp-state-ok    { background: #eaf7ef; color: #166739; border: 1px solid #bee4cc; }
+        .insp-state-obs   { background: #fff7e9; color: #9a6509; border: 1px solid #f7d59f; }
+        .insp-state-no    { background: #feecee; color: #b02331; border: 1px solid #f4bcc2; }
+        .insp-state-other { background: #eef2f6; color: #42596a; border: 1px solid #d4dee6; }
+
+        .insp-row-no  { background: #fff7f8; }
+        .insp-row-obs { background: #fffdf7; }
+
+        .insp-obs { max-width: 320px; color: #294457; }
+        .insp-obs-empty { color: #8a9aa8; font-style: italic; }
+        .insp-doc-alert {
+            border-radius: 12px;
+            border: 1px solid #f6d8a4;
+            background: #fff8eb;
+            padding: .7rem .8rem;
+            max-width: 360px;
+        }
+        .insp-doc-alert__title {
+            display: block;
+            color: #9a6509;
+            font-weight: 800;
+            margin-bottom: .25rem;
+        }
+        .insp-doc-alert__body {
+            display: block;
+            color: #6c5a33;
+            font-size: .82rem;
+            line-height: 1.4;
+        }
+
+        .insp-priority-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            margin-left: .45rem;
+            font-size: .68rem;
+            font-weight: 700;
+            color: #b02331;
+            background: #feecee;
+            border: 1px solid #f4bcc2;
+            border-radius: 999px;
+            padding: .12rem .45rem;
+        }
+    </style>
+}
+
+
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">Gestionar Inspecciones</h2>
+        <p class="aocr-module-header-subtitle">Seguimiento y control de inspecciones técnicas AOCR</p>
+    </div>
+    <nav>
+        <ol class="aocr-breadcrumb breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a></li>
+            <li class="breadcrumb-item active">Inspecciones</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Métricas compactas -->
+<div class="rv-metrics" aria-label="Resumen rapido de inspecciones">
+    <div class="rv-metric rv-metric--accent">
+        <div class="rv-metric__icon"><i class="fas fa-clipboard-list"></i></div>
+        <div class="rv-metric__body">
+            <div class="rv-metric__label">Total revisados</div>
+            <div class="rv-metric__value">@total</div>
+            <div class="rv-metric__caption">Inspecciones en bandeja</div>
+        </div>
+    </div>
+    <div class="rv-metric rv-metric--success">
+        <div class="rv-metric__icon"><i class="fas fa-check-circle"></i></div>
+        <div class="rv-metric__body">
+            <div class="rv-metric__label">Aceptadas</div>
+            <div class="rv-metric__value">@totalAceptadas</div>
+            <div class="rv-metric__caption">Aprobadas / satisfactorias</div>
+        </div>
+    </div>
+    <div class="rv-metric rv-metric--warning">
+        <div class="rv-metric__icon"><i class="fas fa-exclamation-circle"></i></div>
+        <div class="rv-metric__body">
+            <div class="rv-metric__label">Observadas</div>
+            <div class="rv-metric__value">@totalObservadas</div>
+            <div class="rv-metric__caption">Requieren subsanación</div>
+        </div>
+    </div>
+    <div class="rv-metric rv-metric--danger">
+        <div class="rv-metric__icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="rv-metric__body">
+            <div class="rv-metric__label">No satisfactorio</div>
+            <div class="rv-metric__value">@totalNoSatisfactorio</div>
+            <div class="rv-metric__caption">Prioridad alta</div>
+        </div>
+    </div>
+    <div class="rv-metric rv-metric--primary">
+        <div class="rv-metric__icon"><i class="fas fa-clock"></i></div>
+        <div class="rv-metric__body">
+            <div class="rv-metric__label">Pendientes</div>
+            <div class="rv-metric__value">@totalPendientes</div>
+            <div class="rv-metric__caption">En otras etapas</div>
+        </div>
+    </div>
+</div>
+
+<!-- Pestañas de filtro por estado -->
+<div class="card aocr-content-card rv-tabs-card">
+    <div class="card-body p-0">
+        @if (inspeccionesOrdenadas.Any())
+        {
+            <ul class="nav nav-tabs rv-nav" id="inspTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" type="button" data-filter="ALL">
+                        <i class="fas fa-layer-group me-1"></i> Todas
+                        <span class="badge bg-secondary-subtle text-secondary">@total</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" type="button" data-filter="ACEPTADA">
+                        <i class="fas fa-check-circle me-1"></i> Aceptadas
+                        <span class="badge bg-success-subtle text-success">@totalAceptadas</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" type="button" data-filter="OBSERVADA">
+                        <i class="fas fa-exclamation-circle me-1"></i> Observadas
+                        <span class="badge bg-warning-subtle text-warning">@totalObservadas</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" type="button" data-filter="RESULTADO_NO_SATISFACTORIO">
+                        <i class="fas fa-exclamation-triangle me-1"></i> No satisfactorio
+                        <span class="badge bg-danger-subtle text-danger">@totalNoSatisfactorio</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" type="button" data-filter="PENDIENTE">
+                        <i class="fas fa-clock me-1"></i> Pendientes
+                        <span class="badge bg-primary-subtle text-primary">@totalPendientes</span>
+                    </button>
+                </li>
+            </ul>
+
+            <div class="rv-pane-header">
+                <div>
+                    <h3 class="rv-pane-title" id="inspPaneTitle"><i class="fas fa-layer-group"></i> Todas las inspecciones</h3>
+
+            @if (mostrarGuiaRevisionDocumental)
+            {
+                <div class="alert alert-info mb-3" role="alert">
+                    <strong>Gestión documental del inspector:</strong> abra el detalle de una inspección asignada, use <strong>Ver documentación cargada</strong> para consulta o <strong>Abrir revisión documental</strong> para decidir sobre los archivos. Al aceptar todos los documentos requeridos, el sistema habilita automáticamente la LV/EAE.
+                </div>
+            }
+                    <p class="rv-pane-sub" id="inspPaneSub">Listado completo ordenado por prioridad operativa.</p>
+                </div>
+                <div class="rv-search">
+                    <input id="inspQuickSearch" type="text" class="form-control form-control-sm" placeholder="Buscar por codigo, solicitud, inspector o observacion" />
+                </div>
+            </div>
+
+            <div class="aocr-table-wrap">
+                <table id="tblInspeccionesInspector" class="table table-dgac mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:16%">Inspección</th>
+                        <th style="width:18%">Solicitud / compañía</th>
+                        <th style="width:10%">Fecha</th>
+                        <th style="width:14%">Inspector</th>
+                        <th style="width:16%">Estado</th>
+                        <th style="width:14%">Observacion / alerta</th>
+                        <th style="width:12%" class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inspeccion in inspeccionesOrdenadas)
+                    {
+                        var estadoNorm = normEstado(inspeccion.Estado);
+                        var esAceptada = estadoNorm == "ACEPTADA" || estadoNorm == "RESULTADO_SATISFACTORIO" || estadoNorm == "APROBADA";
+                        var esObservada = estadoNorm == "OBSERVADA" || estadoNorm == "OBSERVACION_DOCUMENTAL" || estadoNorm == "RECHAZADA";
+                        var esNoSatisfactorio = estadoNorm == "RESULTADO_NO_SATISFACTORIO";
+                        var rowClass = esNoSatisfactorio ? "insp-row-no" : (esObservada ? "insp-row-obs" : string.Empty);
+                        var observacion = !string.IsNullOrWhiteSpace(inspeccion.Comentarios)
+                            ? inspeccion.Comentarios
+                            : inspeccion.ObservacionesGenerales;
+
+                        var estadoCss = esNoSatisfactorio ? "insp-state insp-state-no" :
+                                       (esObservada ? "insp-state insp-state-obs" :
+                                       (esAceptada ? "insp-state insp-state-ok" : "insp-state insp-state-other"));
+
+                        var estadoIcon = esNoSatisfactorio ? "fa-exclamation-triangle" :
+                                        (esObservada ? "fa-exclamation-circle" :
+                                        (esAceptada ? "fa-check-circle" : "fa-clock"));
+
+                        CapaModelo.SolicitudAOCR _solFila;
+                        solicitudesPorInspeccion.TryGetValue(inspeccion.CodigoInspeccion, out _solFila);
+
+                        var numeroSolicitud = _solFila != null && !string.IsNullOrWhiteSpace(_solFila.NumeroSolicitud)
+                            ? _solFila.NumeroSolicitud
+                            : inspeccion.CodigoSolicitud.ToString();
+                        var numeroSolicitudRaw = !string.IsNullOrWhiteSpace(numeroSolicitud)
+                            ? numeroSolicitud.Trim().ToUpperInvariant()
+                            : string.Empty;
+                        var coincidenciaSolicitudInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                            ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"AOCR\d+")
+                            : System.Text.RegularExpressions.Match.Empty;
+                        var referenciaSolicitudInspeccion = coincidenciaSolicitudInspeccion.Success
+                            ? coincidenciaSolicitudInspeccion.Value
+                            : (inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+                        var coincidenciaAnioInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                            ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"20\d{2}")
+                            : System.Text.RegularExpressions.Match.Empty;
+                        var anioInspeccion = coincidenciaAnioInspeccion.Success
+                            ? coincidenciaAnioInspeccion.Value
+                            : (inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.Year.ToString() : System.DateTime.Now.Year.ToString());
+                        var usaNumeroInspeccionInstitucional = !string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion)
+                            && System.Text.RegularExpressions.Regex.IsMatch(
+                                inspeccion.NumeroInspeccion.Trim(),
+                                @"^DGAC-INS-20\d{2}-AOCR\d+(?:-[A-Z0-9]+)?$",
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        var numeroInspeccion = usaNumeroInspeccionInstitucional
+                            ? inspeccion.NumeroInspeccion
+                            : string.Format("DGAC-INS-{0}-{1}", anioInspeccion, referenciaSolicitudInspeccion);
+                        var operadorNombre = _solFila == null
+                            ? "No disponible"
+                            : (!string.IsNullOrWhiteSpace(_solFila.RazonSocial) ? _solFila.RazonSocial
+                               : (!string.IsNullOrWhiteSpace(_solFila.NombreOperador) ? _solFila.NombreOperador : "No disponible"));
+                        CapaModelo.EstadoRevisionDocumental _estadoRevisionDocumental;
+                        estadosRevisionDocumentalPorInspeccion.TryGetValue(inspeccion.CodigoInspeccion, out _estadoRevisionDocumental);
+                        var faseDocumentalPendiente = _estadoRevisionDocumental != null && !_estadoRevisionDocumental.DocumentacionAprobada;
+                        var mensajeFaseDocumental = faseDocumentalPendiente
+                            ? (!string.IsNullOrWhiteSpace(_estadoRevisionDocumental.MensajeBloqueoDocumental)
+                                ? _estadoRevisionDocumental.MensajeBloqueoDocumental
+                                : "Fase documental pendiente. Revise y apruebe los documentos habilitantes antes de iniciar la inspección.")
+                            : string.Empty;
+                        var urlVerDocumentacion = Url.Action("Lista", "Documento", new
+                        {
+                            solicitudId = inspeccion.CodigoSolicitud,
+                            modo = "ver",
+                            origen = "inspeccion",
+                            inspeccionId = inspeccion.CodigoInspeccion
+                        });
+                        var urlRevisionDocumental = Url.Action("Lista", "Documento", new
+                        {
+                            solicitudId = inspeccion.CodigoSolicitud,
+                            modo = "revision",
+                            origen = "revision-documental",
+                            inspeccionId = inspeccion.CodigoInspeccion
+                        });
+                        var urlGestionarInspeccion = Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion });
+
+                        <tr class="@rowClass"
+                            data-estado="@(esNoSatisfactorio ? "RESULTADO_NO_SATISFACTORIO" : (esObservada ? "OBSERVADA" : (esAceptada ? "ACEPTADA" : "PENDIENTE")))">
+                            <td>
+                                <a href="@urlGestionarInspeccion" class="fw-semibold text-primary text-decoration-none">
+                                    @numeroInspeccion
+                                </a>
+                                <div class="small text-muted">ID interno @inspeccion.CodigoInspeccion</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@numeroSolicitud</div>
+                                <div class="small text-muted">@operadorNombre</div>
+                            </td>
+                            <td>@(inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy") : "-")</td>
+                            <td>
+                                @{
+                                    string _nombreInsp;
+                                    if (!inspectoresNombres.TryGetValue(inspeccion.CodigoInspeccion, out _nombreInsp) || string.IsNullOrWhiteSpace(_nombreInsp))
+                                    {
+                                        _nombreInsp = !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
+                                            ? inspeccion.InspectorPrincipalNombre
+                                            : (inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "No asignado");
+                                    }
+                                }
+                                @if (string.Equals(_nombreInsp, "No asignado", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span class="text-muted fst-italic">No asignado</span>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold">@_nombreInsp</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(inspeccion.Estado))
+                                {
+                                    <span class="@estadoCss">
+                                        <i class="fa @estadoIcon"></i>
+                                        @inspeccion.Estado
+                                    </span>
+                                    if (faseDocumentalPendiente)
+                                    {
+                                        <div class="small text-warning fw-semibold mt-1">Fase documental pendiente</div>
+                                    }
+                                    if (esNoSatisfactorio)
+                                    {
+                                        <div class="mt-1"><span class="insp-priority-flag"><i class="fa fa-bolt"></i>Prioridad alta</span></div>
+                                    }
+                                    if (!string.IsNullOrWhiteSpace(inspeccion.Resultado))
+                                    {
+                                        <div class="small text-muted mt-1">Resultado: <span class="fw-semibold">@inspeccion.Resultado</span></div>
+                                    }
+                                }
+                                else { <span class="text-muted">-</span> }
+                            </td>
+                            <td>
+                                @if (faseDocumentalPendiente)
+                                {
+                                    <div class="insp-doc-alert">
+                                        <span class="insp-doc-alert__title">Fase documental pendiente</span>
+                                        <span class="insp-doc-alert__body">@mensajeFaseDocumental</span>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(observacion))
+                                {
+                                    <details class="insp-obs">
+                                        <summary>Ver observación</summary>
+                                        <div class="mt-1">@observacion</div>
+                                    </details>
+                                }
+                                else if (esObservada || esNoSatisfactorio)
+                                {
+                                    <span class="insp-obs-empty">Sin observación registrada</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Acciones rapidas de inspeccion">
+                                    @if (esBandejaInspector && faseDocumentalPendiente)
+                                    {
+                                        <a href="@urlRevisionDocumental"
+                                           class="btn btn-success" title="Revisar documentación (modo decisión)">
+                                            <i class="fa fa-clipboard-check"></i>
+                                        </a>
+                                    }
+                                    <a href="@urlVerDocumentacion"
+                                       class="btn btn-outline-secondary" title="Ver documentación cargada (solo lectura)">
+                                        <i class="fa fa-folder-open"></i>
+                                    </a>
+                                    @if (esBandejaInspector && !faseDocumentalPendiente)
+                                    {
+                                        <a href="@urlRevisionDocumental"
+                                           class="btn btn-outline-success" title="Revisar documentación (modo decisión)">
+                                            <i class="fa fa-clipboard-check"></i>
+                                        </a>
+                                    }
+                                    <a href="@urlGestionarInspeccion"
+                                       class="btn btn-outline-primary" title="Gestionar inspección">
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+                                    @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
+                                    {
+                                        <a href="@Url.Action("Editar", "Inspeccion", new { id = inspeccion.CodigoInspeccion })"
+                                           class="btn btn-outline-warning" title="Editar">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        }
+        else
+        {
+            <div class="aocr-no-results">
+                <i class="fas @(esBandejaInspector ? "fa-clipboard-check" : "fa-clipboard-list")"></i>
+                @if (esBandejaInspector)
+                {
+                    <h4 class="mb-2">No hay inspecciones asignadas</h4>
+                    <p class="mb-0">Cuando el coordinador le asigne una solicitud, aparecerá en esta bandeja.</p>
+                }
+                else
+                {
+                    <p class="mb-0">No hay inspecciones registradas.</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            function escapeRegex(text) {
+                return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            var paneMeta = {
+                'ALL':                        { icon: 'fa-layer-group',          title: 'Todas las inspecciones',      sub: 'Listado completo ordenado por prioridad operativa.' },
+                'ACEPTADA':                   { icon: 'fa-check-circle',         title: 'Inspecciones aceptadas',      sub: 'Tramites aprobados o con resultado satisfactorio.' },
+                'OBSERVADA':                  { icon: 'fa-exclamation-circle',   title: 'Inspecciones observadas',     sub: 'Requieren subsanación o aclaración documental.' },
+                'RESULTADO_NO_SATISFACTORIO': { icon: 'fa-exclamation-triangle', title: 'Resultado no satisfactorio',  sub: 'Casos prioritarios que requieren acción inmediata.' },
+                'PENDIENTE':                  { icon: 'fa-clock',                title: 'Pendientes',                  sub: 'Inspecciones en etapas previas o en curso.' }
+            };
+
+            function updatePaneHeader(filter) {
+                var meta = paneMeta[filter] || paneMeta['ALL'];
+                $('#inspPaneTitle').html('<i class="fas ' + meta.icon + '"></i> ' + meta.title);
+                $('#inspPaneSub').text(meta.sub);
+            }
+
+            function setupWithDataTable() {
+                if (!window.jQuery || !$.fn || !$.fn.DataTable) { return false; }
+
+                var table = $('#tblInspeccionesInspector').DataTable({
+                    order: [],
+                    paging: true,
+                    pageLength: 5,
+                    lengthChange: false,
+                    searching: true,
+                    info: true,
+                    dom: 'rtip',
+                    language: {
+                        search: 'Buscar:',
+                        info: 'Mostrando _START_ a _END_ de _TOTAL_',
+                        infoEmpty: 'Sin registros',
+                        zeroRecords: 'No se encontraron inspecciones',
+                        paginate: { previous: 'Anterior', next: 'Siguiente' }
+                    }
+                });
+
+                $('#inspQuickSearch').on('input', function () { table.search(this.value).draw(); });
+
+                $('#inspTabs .nav-link').on('click', function () {
+                    var $btn = $(this);
+                    $('#inspTabs .nav-link').removeClass('active');
+                    $btn.addClass('active');
+
+                    var filter = ($btn.data('filter') || 'ALL').toString();
+                    updatePaneHeader(filter);
+
+                    if (filter === 'ALL') {
+                        table.column(4).search('').draw();
+                    } else if (filter === 'PENDIENTE') {
+                        table.column(4).search('^(?!.*ACEPTADA)(?!.*OBSERVADA)(?!.*RESULTADO_NO_SATISFACTORIO).*$', true, false).draw();
+                    } else {
+                        table.column(4).search(escapeRegex(filter), true, false).draw();
+                    }
+                });
+
+                return true;
+            }
+
+            function setupFallbackFiltering() {
+                var $rows = $('#tblInspeccionesInspector tbody tr');
+                var $search = $('#inspQuickSearch');
+                var currentFilter = 'ALL';
+
+                function applyFilter() {
+                    var query = ($search.val() || '').toLowerCase();
+                    $rows.each(function () {
+                        var $row = $(this);
+                        var estado = ($row.data('estado') || '').toString();
+                        var text = $row.text().toLowerCase();
+                        var byState = currentFilter === 'ALL'
+                            ? true
+                            : (currentFilter === 'PENDIENTE'
+                                ? (estado !== 'ACEPTADA' && estado !== 'OBSERVADA' && estado !== 'RESULTADO_NO_SATISFACTORIO')
+                                : estado === currentFilter);
+                        var byQuery = !query || text.indexOf(query) >= 0;
+                        $row.toggle(byState && byQuery);
+                    });
+                }
+
+                $('#inspTabs .nav-link').on('click', function () {
+                    var $btn = $(this);
+                    $('#inspTabs .nav-link').removeClass('active');
+                    $btn.addClass('active');
+                    currentFilter = ($btn.data('filter') || 'ALL').toString();
+                    updatePaneHeader(currentFilter);
+                    applyFilter();
+                });
+
+                $search.on('input', applyFilter);
+            }
+
+            $(function () {
+                var datatableReady = setupWithDataTable();
+                if (!datatableReady) { setupFallbackFiltering(); }
+            });
+        })();
+    </script>
+}
+

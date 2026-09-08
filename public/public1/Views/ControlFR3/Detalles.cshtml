@@ -1,0 +1,265 @@
+@inherits System.Web.Mvc.WebViewPage<CapaDatos.Entidades.ControlFR3>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Detalle FR3 #" + Model.Secuencial;
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var detalles = ViewBag.Detalles as List<CapaDatos.Entidades.ControlFR3Detalle>;
+    var badgeClass = Model.Estado == "E" ? "bg-warning" :
+                     Model.Estado == "P" ? "bg-info" :
+                     Model.Estado == "G" ? "bg-success" :
+                     Model.Estado == "A" ? "bg-danger" : "bg-secondary";
+    var estadoTexto = Model.Estado == "E" ? "Emitido" :
+                      Model.Estado == "P" ? "Procesado" :
+                      Model.Estado == "G" ? "Pagado" :
+                      Model.Estado == "A" ? "Anulado" : Model.Estado;
+}
+
+<div class="container-fluid px-4 mt-3">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="fw-bold text-primary mb-0">
+                <i class="fas fa-file-invoice-dollar me-2"></i>Control FR3 #@Model.Secuencial
+            </h3>
+            <small class="text-muted">Aeropuerto: @Model.Aeropuerto | Año: @Model.Anio</small>
+        </div>
+        <div>
+            <span class="badge @badgeClass fs-6 me-2">@estadoTexto</span>
+            @if (User.IsInRole("Administrador") || User.IsInRole("Operador"))
+            {
+                <a href="@Url.Action("Editar", new { id = Model.Id })" class="btn btn-outline-warning btn-sm">
+                    <i class="fas fa-edit me-1"></i> Editar
+                </a>
+            }
+            <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensajes -->
+    @if (TempData["OK"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-1"></i> @TempData["OK"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Datos del vuelo -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white py-2">
+                    <i class="fas fa-plane me-1"></i> Datos del Vuelo
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr><th class="text-muted" style="width:40%">Matrícula</th><td><code class="fs-6">@Model.Matricula</code></td></tr>
+                        <tr><th class="text-muted">Modelo</th><td>@Model.Modelo</td></tr>
+                        <tr><th class="text-muted">Peso Matrícula</th><td>@Model.PesoMatricula.ToString("N2") kg</td></tr>
+                        <tr><th class="text-muted">Callsign</th><td>@Model.Callsign</td></tr>
+                        <tr><th class="text-muted">Tipo Operación</th><td>@Model.TipoOperacion</td></tr>
+                        <tr><th class="text-muted">Nacional/Internacional</th><td>@(Model.NacInter == "N" ? "Nacional" : "Internacional")</td></tr>
+                        <tr><th class="text-muted">Ruta</th><td>@Model.RutaTotalPlanVlo</td></tr>
+                        <tr>
+                            <th class="text-muted">Origen → Destino</th>
+                            <td>
+                                @Model.Origen → @Model.Destino
+                                @if (!string.IsNullOrWhiteSpace(Model.Retorno))
+                                {
+                                    <span class="text-muted"> → @Model.Retorno</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr><th class="text-muted">Aterrizajes en País</th><td>@Model.NumAterrizaPais</td></tr>
+                        <tr><th class="text-muted">Fecha Control Vuelo</th><td>@Model.FechaControlVuelo</td></tr>
+                        <tr><th class="text-muted">Autorización</th><td>@Model.Autorizacion</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos del cliente -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white py-2">
+                    <i class="fas fa-building me-1"></i> Datos del Cliente
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr><th class="text-muted" style="width:40%">Compañía</th><td>@Model.NombreCia</td></tr>
+                        <tr><th class="text-muted">Código OACI</th><td>@Model.CodigoOACICia</td></tr>
+                        <tr><th class="text-muted">Cliente</th><td>@Model.NombreCliente</td></tr>
+                        <tr><th class="text-muted">RUC</th><td><code>@Model.Ruc</code></td></tr>
+                        <tr><th class="text-muted">Dirección</th><td>@Model.Direccion</td></tr>
+                        <tr><th class="text-muted">Teléfono</th><td>@Model.Telefono</td></tr>
+                        <tr><th class="text-muted">Email</th><td><a href="mailto:@Model.Email">@Model.Email</a></td></tr>
+                        <tr><th class="text-muted">Aeropuerto</th><td>@Model.NombreAeropuerto (@Model.Aeropuerto)</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Datos económicos -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning py-2">
+                    <i class="fas fa-dollar-sign me-1"></i> Datos Económicos
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr><th class="text-muted" style="width:40%">Valor Charter</th><td class="text-end">$@Model.ValorCharter.ToString("N2")</td></tr>
+                        <tr><th class="text-muted">SubTotal</th><td class="text-end">$@Model.SubTotal.ToString("N2")</td></tr>
+                        <tr><th class="text-muted">Total</th><td class="text-end">$@Model.Total.ToString("N2")</td></tr>
+                        <tr class="table-success"><th class="fw-bold">Gran Total</th><td class="text-end fw-bold fs-5">$@Model.GranTotal.ToString("N2")</td></tr>
+                        <tr><th class="text-muted">En Letras</th><td class="small">@Model.GranTotalLetras</td></tr>
+                        <tr><th class="text-muted">Forma de Pago</th><td>@Model.FormaPago</td></tr>
+                        @if (!string.IsNullOrWhiteSpace(Model.CodigoBanco))
+                        {
+                            <tr><th class="text-muted">Banco</th><td>@Model.CodigoBanco</td></tr>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Deposito))
+                        {
+                            <tr><th class="text-muted">Depósito/Ref.</th><td>@Model.Deposito</td></tr>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.NumeroFactura))
+                        {
+                            <tr><th class="text-muted">Nro. Factura</th><td><code>@Model.NumeroFactura</code></td></tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Datos de registro -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-secondary text-white py-2">
+                    <i class="fas fa-info-circle me-1"></i> Datos de Registro
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr><th class="text-muted" style="width:40%">ID</th><td>@Model.Id</td></tr>
+                        <tr><th class="text-muted">Secuencial</th><td>@Model.Secuencial</td></tr>
+                        <tr><th class="text-muted">Procesado</th><td>@Model.Procesado</td></tr>
+                        <tr><th class="text-muted">Usuario Creación</th><td>@Model.UsuarioCr</td></tr>
+                        <tr><th class="text-muted">Fecha Creación</th><td>@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
+                        <tr><th class="text-muted">Email DGAC</th><td>@Model.EmailUsuarioDGAC</td></tr>
+                        @if (!string.IsNullOrWhiteSpace(Model.Observacion))
+                        {
+                            <tr><th class="text-muted">Observación</th><td>@Model.Observacion</td></tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalles de cobro -->
+    @if (detalles != null && detalles.Count > 0)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-dark text-white py-2">
+                <i class="fas fa-list-ol me-1"></i> Líneas de Cobro
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sec.</th>
+                            <th>Código</th>
+                            <th>Código Contable</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Cantidad</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var det in detalles)
+                        {
+                            <tr>
+                                <td>@det.SecuencialDetalle</td>
+                                <td><code>@det.Codigo</code></td>
+                                <td>@det.CodigoContable</td>
+                                <td>@det.Descripcion</td>
+                                <td class="text-end">@det.Cantidad.ToString("N0")</td>
+                                <td class="text-end">$@det.Valor.ToString("N2")</td>
+                                <td class="text-end fw-bold">$@det.Total.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <!-- Acciones -->
+    @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body py-2">
+                <div class="d-flex gap-2">
+                    @if (Model.Estado == "E")
+                    {
+                        <button class="btn btn-info btn-sm" onclick="cambiarEstado(@Model.Id, 'P')">
+                            <i class="fas fa-cogs me-1"></i> Marcar Procesado
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="cambiarEstado(@Model.Id, 'G')">
+                            <i class="fas fa-check me-1"></i> Marcar Pagado
+                        </button>
+                    }
+                    @if (Model.Estado == "P")
+                    {
+                        <button class="btn btn-success btn-sm" onclick="cambiarEstado(@Model.Id, 'G')">
+                            <i class="fas fa-check me-1"></i> Marcar Pagado
+                        </button>
+                    }
+                    @if (Model.Estado != "A")
+                    {
+                        <button class="btn btn-outline-danger btn-sm" onclick="cambiarEstado(@Model.Id, 'A')">
+                            <i class="fas fa-ban me-1"></i> Anular
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section scripts {
+    <script>
+        function cambiarEstado(id, nuevoEstado) {
+            var msg = {
+                'P': '¿Marcar como Procesado?',
+                'G': '¿Marcar como Pagado?',
+                'A': '¿Está seguro de anular este control FR3?'
+            };
+            if (!confirm(msg[nuevoEstado] || '¿Cambiar estado?')) return;
+
+            $.ajax({
+                url: '@Url.Action("CambiarEstado")',
+                type: 'POST',
+                data: {
+                    id: id,
+                    nuevoEstado: nuevoEstado,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (r) {
+                    if (r.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + r.message);
+                    }
+                },
+                error: function () { alert('Error de comunicación.'); }
+            });
+        }
+    </script>
+    @Html.AntiForgeryToken()
+}

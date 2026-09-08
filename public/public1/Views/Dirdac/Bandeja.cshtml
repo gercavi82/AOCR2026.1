@@ -1,0 +1,31 @@
+@model CapaModelo.BandejaAocrDirdacViewModel
+@using System.Linq
+@{
+    ViewBag.Title = "AOCR pendientes de legalización";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+<div class="container-fluid py-3" id="bandeja-dirdac">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div><h1 class="h4 mb-1">AOCR pendientes de legalización</h1><p class="text-muted mb-0">Bandeja exclusiva DIRDAC</p></div>
+        <span class="badge bg-danger" aria-label="Total de expedientes">@Model.TotalPendientes</span>
+    </div>
+    <div class="alert alert-info" role="status">El contador y esta tabla se obtienen de la misma consulta.</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Solicitud</th><th>Compañía</th><th class="d-none d-md-table-cell">Documento</th><th>Versión</th><th class="d-none d-lg-table-cell">Remisión</th><th class="d-none d-xl-table-cell">Remitente</th><th>Estado</th><th class="d-none d-lg-table-cell">Pendiente</th><th>Acciones</th></tr></thead>
+            <tbody>
+            @if (Model.Expedientes == null || !Model.Expedientes.Any()) { <tr><td colspan="9" class="text-center py-4">No existen AOCR pendientes.</td></tr> }
+            else { foreach (var item in Model.Expedientes) { <tr>
+                <td><strong>@item.NumeroSolicitud</strong></td><td>@item.Compania</td><td class="d-none d-md-table-cell">@item.Documento</td><td>v@item.VersionDocumento</td>
+                <td class="d-none d-lg-table-cell">@item.FechaRemision.ToString("dd/MM/yyyy HH:mm")</td><td class="d-none d-xl-table-cell">@item.UsuarioRemitente</td>
+                <td><span class="badge bg-warning text-dark">@item.Estado</span></td><td class="d-none d-lg-table-cell">@item.MinutosPendiente min</td>
+                <td><a class="btn btn-danger btn-sm" href="@Url.Action("Detalle", "Dirdac", new { id=item.SolicitudId })">Revisar</a></td>
+            </tr> } }
+            </tbody>
+        </table>
+    </div>
+</div>
+<style>
+    #bandeja-dirdac .btn:focus { outline: 3px solid #0d6efd; outline-offset: 2px; }
+    @@media(max-width:430px){#bandeja-dirdac{padding-left:.5rem;padding-right:.5rem}#bandeja-dirdac td,#bandeja-dirdac th{padding:.5rem .35rem;font-size:.82rem}#bandeja-dirdac .btn{min-height:44px}}
+</style>

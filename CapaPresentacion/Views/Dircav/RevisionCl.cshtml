@@ -1,7 +1,7 @@
 @model CapaModelo.DTOs.CondicionesLimitacionesViewModel
 @{
     ViewBag.Title = "Revisión y Firma de Condiciones y Limitaciones (DIRCAV) - Expediente #" + Model.SolicitudId;
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var esFirmado = Model.TienePdfFirmado || Model.ClFirmadaDircav;
 }
 

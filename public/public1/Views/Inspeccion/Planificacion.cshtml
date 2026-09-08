@@ -1,0 +1,269 @@
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Inspeccion>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Web.Optimization
+
+@{
+    ViewBag.Title = "Planificación de Inspección";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var numeroInspeccionVisible = ViewBag.NumeroInspeccionVisible as string ?? (Model != null ? (!string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion.Trim() : Model.CodigoInspeccion.ToString()) : "-");
+    var numeroSolicitudVisible = ViewBag.NumeroSolicitudVisible as string ?? (Model != null ? Model.CodigoSolicitud.ToString() : "-");
+}
+
+@if (Model == null)
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> No se recibió la inspección (Model llegó null).<br />
+        Verifica que el controlador esté enviando: <code>return View(..., inspeccion);</code>
+    </div>
+    return;
+}
+
+<h2><i class="glyphicon glyphicon-calendar"></i> Planificación de Inspección en Campo</h2>
+<hr />
+
+<div class="panel panel-info">
+    <div class="panel-heading">
+        <h3 class="panel-title">Información de la Inspección</h3>
+    </div>
+    <div class="panel-body">
+        <dl class="dl-horizontal">
+            <dt>Inspección N°:</dt>
+            <dd>@numeroInspeccionVisible</dd>
+
+            <dt>Solicitud N°:</dt>
+            <dd>@numeroSolicitudVisible</dd>
+
+            <dt>Inspector Asignado:</dt>
+            <dd>@(Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado")</dd>
+        </dl>
+    </div>
+</div>
+
+@{
+    var estacionesPlan = (ViewBag.EstacionesPlanificacion as IEnumerable<CapaModelo.SolicitudEstacionInspeccion>)?.ToList();
+}
+
+@using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal", id = "formPlanificacion" }))
+{
+    @Html.AntiForgeryToken()
+
+    @* IMPORTANTE: tu Action Planificacion recibe (int codigoInspeccion, ...) *@
+    <input type="hidden" name="codigoInspeccion" value="@Model.CodigoInspeccion" />
+
+    if (estacionesPlan != null && estacionesPlan.Any())
+    {
+        <div class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title"><i class="glyphicon glyphicon-map-marker"></i> Estaciones y Fechas Independientes de Inspección (AC-02)</h3>
+            </div>
+            <div class="panel-body table-responsive">
+                <p class="text-muted small">
+                    Cada estación cuenta con su propio rango de fechas de inspección independiente. La modificación de una fecha no afecta a las demás estaciones.
+                </p>
+                <table class="table table-bordered table-striped table-hover" id="tablaEstacionesPlanificacion">
+                    <thead>
+                        <tr class="active">
+                            <th>Estación / Aeropuerto</th>
+                            <th class="text-center" style="width: 25%;">Fecha Inicio *</th>
+                            <th class="text-center" style="width: 25%;">Fecha Fin *</th>
+                            <th class="text-center" style="width: 15%;">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < estacionesPlan.Count; i++)
+                        {
+                            var est = estacionesPlan[i];
+                            var fIniStr = est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("yyyy-MM-dd") : (Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "");
+                            var fFinStr = est.FechaFin != default(DateTime) ? est.FechaFin.ToString("yyyy-MM-dd") : fIniStr;
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="estaciones[@i].Id" value="@est.Id" />
+                                    <input type="hidden" name="estaciones[@i].EstacionCodigo" value="@est.EstacionCodigo" />
+                                    <input type="hidden" name="estaciones[@i].EstacionNombre" value="@est.EstacionNombre" />
+                                    <input type="hidden" name="estaciones[@i].Estado" value="@est.Estado" />
+                                    <strong>@est.EstacionCodigo</strong> - @est.EstacionNombre
+                                </td>
+                                <td class="text-center">
+                                    <input type="date" name="estaciones[@i].FechaInicio"
+                                           class="form-control input-sm text-center estacion-fecha-inicio"
+                                           value="@fIniStr" required />
+                                </td>
+                                <td class="text-center">
+                                    <input type="date" name="estaciones[@i].FechaFin"
+                                           class="form-control input-sm text-center estacion-fecha-fin"
+                                           value="@fFinStr" required />
+                                </td>
+                                <td class="text-center">
+                                    <span class="label label-info">@(string.IsNullOrWhiteSpace(est.Estado) ? "SOLICITADA" : est.Estado)</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title">Detalles de la Planificación</h3>
+        </div>
+
+        <div class="panel-body">
+            <div class="form-group">
+                <label class="col-md-3 control-label">Fecha de Inspección *</label>
+                <div class="col-md-9">
+                    <input type="date" name="fechaInspeccion"
+                           class="form-control"
+                           min="@DateTime.Now.ToString("yyyy-MM-dd")"
+                           value="@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "")"
+                           required />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Hora de Inicio *</label>
+                <div class="col-md-9">
+                    <input type="time" name="horaInicio"
+                           class="form-control"
+                           value="@(Model.HoraProgramada.HasValue ? Model.HoraProgramada.Value.ToString(@"hh\:mm") : "")"
+                           required />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Duración Estimada (horas) *</label>
+                <div class="col-md-9">
+                    <input type="number" name="duracionEstimada"
+                           class="form-control"
+                           min="1" max="24"
+                           value="@(Model.DuracionEstimada.HasValue ? Model.DuracionEstimada.Value.ToString() : "4")"
+                           required />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Ubicación *</label>
+                <div class="col-md-9">
+                    <input type="text" name="ubicacion"
+                           class="form-control"
+                           placeholder="Dirección completa del lugar de inspección"
+                           value="@(Model.Lugar ?? "")"
+                           required />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Coordenadas GPS</label>
+                <div class="col-md-9">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" name="latitud" class="form-control" placeholder="Latitud"
+                                   value="@(Model.Latitud ?? "")" />
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="longitud" class="form-control" placeholder="Longitud"
+                                   value="@(Model.Longitud ?? "")" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Tipo de Inspección *</label>
+                <div class="col-md-9">
+                    <select name="tipoInspeccion" class="form-control" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Inicial" @(Model.Tipo == "Inicial" ? "selected" : "")>Inicial</option>
+                        <option value="Renovacion" @(Model.Tipo == "Renovacion" ? "selected" : "")>Renovación</option>
+                        <option value="Seguimiento" @(Model.Tipo == "Seguimiento" ? "selected" : "")>Seguimiento</option>
+                        <option value="Extraordinaria" @(Model.Tipo == "Extraordinaria" ? "selected" : "")>Extraordinaria</option>
+                    </select>
+                </div>
+            </div>
+
+            @* En tu Controller tú haces: inspeccion.HallazgosPrincipales = alcance *@
+            <div class="form-group">
+                <label class="col-md-3 control-label">Alcance de la Inspección *</label>
+                <div class="col-md-9">
+                    <textarea name="alcance" class="form-control" rows="4"
+                              placeholder="Describa el alcance y objetivos de la inspección..." required>@(Model.HallazgosPrincipales ?? "")</textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Equipos/Herramientas Necesarias</label>
+                <div class="col-md-9">
+                    <textarea name="equiposNecesarios" class="form-control" rows="3"
+                              placeholder="Liste los equipos y herramientas necesarias..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Contacto en Sitio</label>
+                <div class="col-md-9">
+                    <input type="text" name="contactoSitio" class="form-control" placeholder="Nombre del contacto" />
+                    <input type="tel" name="telefonoContacto" class="form-control" placeholder="Teléfono del contacto" style="margin-top: 10px;" inputmode="numeric" pattern="[0-9]*" maxlength="15" autocomplete="off" oninput="this.value=this.value.replace(/\D/g,'').slice(0,15);" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="col-md-3 control-label">Observaciones</label>
+                <div class="col-md-9">
+                    <textarea name="observaciones" class="form-control" rows="3"
+                              placeholder="Observaciones adicionales...">@(Model.ObservacionesGenerales ?? "")</textarea>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong><i class="glyphicon glyphicon-info-sign"></i> Nota:</strong>
+                Asegúrese de coordinar con el operador aéreo la disponibilidad de la aeronave y del personal necesario para la inspección.
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-3 col-md-9">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="glyphicon glyphicon-ok"></i> Guardar Planificación
+            </button>
+
+            <a href="@Url.Action("Detalle", "Inspeccion", new { id = Model.CodigoInspeccion })" class="btn btn-default btn-lg">
+                <i class="glyphicon glyphicon-arrow-left"></i> Cancelar
+            </a>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script>
+        $(function () {
+            // AC-02: Validar que en cada estación Fecha Fin >= Fecha Inicio
+            $('#formPlanificacion').on('submit', function (e) {
+                var valido = true;
+                var mensaje = '';
+                $('#tablaEstacionesPlanificacion tbody tr').each(function () {
+                    var $tr = $(this);
+                    var cod = $tr.find('strong').text();
+                    var ini = $tr.find('.estacion-fecha-inicio').val();
+                    var fin = $tr.find('.estacion-fecha-fin').val();
+                    if (ini && fin && fin < ini) {
+                        valido = false;
+                        mensaje = 'En la estación ' + cod + ', la fecha final no puede ser anterior a la fecha inicial.';
+                        return false;
+                    }
+                });
+                if (!valido) {
+                    e.preventDefault();
+                    alert(mensaje);
+                    return false;
+                }
+            });
+        });
+    </script>
+}
+
+

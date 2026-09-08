@@ -1,0 +1,470 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@if (Model != null)
+{
+    var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-4 d-none" : "row mb-4";
+    var placeholderAeropuertos = "Ej: Quito, Guayaquil, Manta";
+    var puedeEditarAeropuertos = Model.EsNuevaOrden || (Model.PuedeEditarSolicitudInspeccionExt && Model.PuedeGenerarSolicitud);
+
+    <div class="@panelClass" id="panelSolicitudInspeccion">
+        <div class="col-md-12">
+            <div class="card solicitud-inspeccion-card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h5 class="mb-0"><i class="fas fa-file-signature me-2 text-primary"></i>Solicitud de Inspecciones requerida</h5>
+                    <span class="badge bg-@Model.ClaseEstadoCss" id="estadoSolicitudInspeccion">@Model.EstadoDocumentoSolicitudInspeccion</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        @Model.MensajeEstado
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="alert alert-warning d-none" id="mensajeSolicitudInspeccion"></div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(Model.MensajeSoloLectura))
+                    {
+                        <div class="alert @(Model.MostrarSoloLecturaSinFirmado ? "alert-warning" : "alert-secondary") mb-3">
+                            @Model.MensajeSoloLectura
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label" for="AeropuertosSolicitados">Aeropuertos solicitados</label>
+                        @if (puedeEditarAeropuertos)
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   name="AeropuertosSolicitados"
+                                   class="form-control"
+                                   maxlength="500"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos" />
+                            <small class="text-muted">Se completa automáticamente con los lugares de inspección seleccionados.</small>
+                        }
+                        else
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   class="form-control bg-light"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos"
+                                   readonly="readonly" />
+                            <small class="text-muted">Los aeropuertos quedaron registrados al generar el PDF y ya no pueden modificarse.</small>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="FechasInspeccion">Fechas estimadas de inspección</label>
+                        @if (puedeEditarAeropuertos)
+                        {
+                            <input type="text"
+                                   id="FechasInspeccion"
+                                   name="FechasInspeccion"
+                                   class="form-control"
+                                   maxlength="500"
+                                   value="@Model.FechasInspeccion"
+                                   placeholder="Ej: 20/07/2026 al 24/07/2026" />
+                            <small class="text-muted">Indique el periodo estimado de inspección.</small>
+                        }
+                        else
+                        {
+                            <input type="text"
+                                   id="FechasInspeccion"
+                                   class="form-control bg-light"
+                                   value="@Model.FechasInspeccion"
+                                   placeholder="Ej: 20/07/2026 al 24/07/2026"
+                                   readonly="readonly" />
+                        }
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionNueva">
+                                <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnDescargarSolicitudInspeccionNueva" disabled title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-download me-1"></i> Descargar Solicitud
+                            </button>
+                            <label class="btn btn-outline-secondary mb-0 disabled" id="btnSubirSolicitudInspeccionNueva" title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-upload me-1"></i> Subir Solicitud firmada
+                                <input type="file" class="d-none" disabled accept=".pdf" />
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Al confirmar la generación, la orden se guardará como borrador, se cerrará la selección de acciones y el PDF quedará asociado al concepto INSPECCION_EXT.
+                        </small>
+                    }
+                    else if (Model.PuedeEditarSolicitudInspeccionExt || Model.PuedeDescargarSolicitud || Model.PuedeSubirSolicitudFirmada)
+                    {
+                        <div class="solicitud-inspeccion-actions mb-3">
+                            @if (Model.PuedeGenerarSolicitud)
+                            {
+                                using (Html.BeginForm("GenerarSolicitudInspeccion", "OrdenRecaudacion", FormMethod.Post, new { id = "formGenerarSolicitudInspeccion", @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", Model.OrdenId)
+                                    @Html.Hidden("aeropuertosSolicitados", Model.AeropuertosSolicitados, new { id = "aeropuertosSolicitadosProxy" })
+                                    @Html.Hidden("fechasInspeccion", Model.FechasInspeccion, new { id = "fechasInspeccionProxy" })
+                                    <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionOrden">
+                                        <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                                    </button>
+                                }
+                            }
+                            @if (Model.PuedeDescargarSolicitud)
+                            {
+                                <a href="@Model.UrlDescargarSolicitudGenerada" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                    <i class="fas fa-download me-1"></i> Descargar Solicitud
+                                </a>
+                            }
+                            @if (Model.PuedeVerSolicitudFirmada)
+                            {
+                                <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                    <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                                </a>
+                            }
+                        </div>
+
+                        if (Model.PuedeSubirSolicitudFirmada)
+                        {
+                            using (Html.BeginForm("SubirSolicitudInspeccionFirmada", "OrdenRecaudacion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "solicitud-inspeccion-upload" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.OrdenId)
+                                <label class="form-label" for="archivoSolicitudFirmada">Subir Solicitud firmada</label>
+                                <div class="input-group solicitud-inspeccion-file">
+                                    <input type="file"
+                                           id="archivoSolicitudFirmada"
+                                           name="archivoSolicitudFirmada"
+                                           class="form-control"
+                                           accept=".pdf"
+                                           required="required" />
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-upload me-1"></i> Subir
+                                    </button>
+                                </div>
+                                <small class="text-muted">Solo PDF. Tamaño máximo según configuración del sistema.</small>
+                            }
+                        }
+
+                        if (Model.PuedeRechazarGeneracionSolicitud)
+                        {
+                            using (Html.BeginForm("RechazarGeneracionSolicitudInspeccion", "OrdenRecaudacion", FormMethod.Post, new { id = "formRechazarGeneracionSolicitud", @class = "mt-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.OrdenId)
+                                @Html.Hidden("motivo", "Rechazo por usuario para agregar acciones", new { id = "motivoRechazoGeneracionSolicitud" })
+                                <button type="button" class="btn btn-outline-warning" id="btnRechazarGeneracionSolicitud">
+                                    <i class="fas fa-undo me-1"></i> Rechazar generación y seguir agregando acciones
+                                </button>
+                            }
+                        }
+                    }
+                    else if (Model.PuedeVerSolicitudFirmada)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    if (!Model.EsNuevaOrden && (Model.PuedeGenerarSolicitud || Model.PuedeRechazarGeneracionSolicitud))
+    {
+        <script>
+        (function (window, document) {
+            'use strict';
+
+            function inicializarPanelSolicitudInspecciones() {
+                if (!window.jQuery) {
+                    console.error('[AOCR][JS] jQuery no está cargado. No se puede inicializar el panel de solicitud de inspecciones.');
+                    return;
+                }
+
+                var $ = window.jQuery;
+
+                function solicitarConfirmacionGeneracion(onConfirm) {
+                    if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {
+                        window.AOCR.confirmarGeneracionSolicitudInspeccion(onConfirm);
+                        return;
+                    }
+
+                    var mensajePlano = 'Está por generar el PDF definitivo de la Solicitud de Inspecciones.\n\n' +
+                        'Si continúa, la solicitud quedará cerrada y ya no podrá agregar nuevas acciones, conceptos o inspecciones adicionales a esta orden.\n\n' +
+                        '¿Desea generar el PDF definitivo con la información actual?';
+
+                    if (window.confirm(mensajePlano)) {
+                        onConfirm();
+                    }
+                }
+
+                function solicitarConfirmacionRechazo(onConfirm) {
+                    if (window.AOCR && typeof window.AOCR.confirmarRechazoGeneracionSolicitudInspeccion === 'function') {
+                        window.AOCR.confirmarRechazoGeneracionSolicitudInspeccion(onConfirm);
+                        return;
+                    }
+
+                    if (window.confirm('¿Desea rechazar la generación actual y seguir agregando acciones a la orden?')) {
+                        onConfirm();
+                    }
+                }
+
+                $('#btnGenerarSolicitudInspeccionOrden').off('click.aocrGenerar').on('click.aocrGenerar', function () {
+                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
+                    var fechas = ($('#FechasInspeccion').val() || '').trim();
+                    $('#AeropuertosSolicitados').val(aeropuertos);
+                    $('#FechasInspeccion').val(fechas);
+                    
+                    if (!aeropuertos) {
+                        if (window.AOCR && typeof window.AOCR.notify === 'function') {
+                            window.AOCR.notify('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.', 'error');
+                        } else {
+                            alert('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.');
+                        }
+                        return;
+                    }
+                    if (!fechas) {
+                        if (window.AOCR && typeof window.AOCR.notify === 'function') {
+                            window.AOCR.notify('Debe ingresar las fechas estimadas de inspección.', 'error');
+                        } else {
+                            alert('Debe ingresar las fechas estimadas de inspección.');
+                        }
+                        return;
+                    }
+
+                    solicitarConfirmacionGeneracion(function () {
+                        $('#aeropuertosSolicitadosProxy').val(aeropuertos);
+                        $('#fechasInspeccionProxy').val(fechas);
+                        var $btn = $('#btnGenerarSolicitudInspeccionOrden');
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
+                        $('#formGenerarSolicitudInspeccion').trigger('submit');
+                    });
+                });
+
+                $('#btnRechazarGeneracionSolicitud').off('click.aocrRechazar').on('click.aocrRechazar', function () {
+                    solicitarConfirmacionRechazo(function () {
+                        var $btn = $('#btnRechazarGeneracionSolicitud');
+                        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Procesando...');
+                        $('#formRechazarGeneracionSolicitud').trigger('submit');
+                    });
+                });
+            }
+
+            if (window.jQuery) {
+                inicializarPanelSolicitudInspecciones();
+            } else if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', inicializarPanelSolicitudInspecciones);
+            } else {
+                setTimeout(inicializarPanelSolicitudInspecciones, 100);
+            }
+
+        })(window, document);
+        </script>
+    }
+
+    <style>
+        /* ── Estilos AOCR para el Calendario de Fechas de Inspección ── */
+        .daterangepicker {
+            border: 1px solid #c8d6e5;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-family: inherit;
+        }
+        .daterangepicker td.available {
+            color: #2c3e50 !important;
+            font-weight: 500;
+        }
+        .daterangepicker td.off,
+        .daterangepicker td.off.in-range,
+        .daterangepicker td.off.start-date,
+        .daterangepicker td.off.end-date {
+            color: #b0bec5 !important;
+        }
+        .daterangepicker td.active,
+        .daterangepicker td.active:hover {
+            background-color: #0d6efd !important;
+            color: #fff !important;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .daterangepicker td.in-range {
+            background-color: #e3f0ff !important;
+            color: #0d6efd !important;
+        }
+        .daterangepicker td.available:hover {
+            background-color: #d0e6ff !important;
+            color: #0a58ca !important;
+            border-radius: 4px;
+        }
+        .daterangepicker th.month {
+            color: #1a3a5c;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .daterangepicker th.next,
+        .daterangepicker th.prev {
+            color: #0d6efd;
+            font-size: 16px;
+        }
+        .daterangepicker th.next:hover,
+        .daterangepicker th.prev:hover {
+            color: #0a58ca;
+            background-color: #e3f0ff;
+            border-radius: 4px;
+        }
+        .daterangepicker thead tr:first-child th {
+            color: #5a7a9a;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .daterangepicker .drp-buttons {
+            border-top: 1px solid #e8eef3;
+            padding: 8px 12px;
+        }
+        .daterangepicker .drp-buttons .btn {
+            font-size: 13px;
+            padding: 5px 16px;
+            border-radius: 4px;
+        }
+        .daterangepicker .drp-buttons .cancelBtn {
+            color: #6c757d;
+            border-color: #ced4da;
+        }
+        .daterangepicker .drp-buttons .cancelBtn:hover {
+            background-color: #f8f9fa;
+        }
+        .daterangepicker .drp-buttons .applyBtn {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .daterangepicker .calendar-table {
+            padding: 4px;
+        }
+    </style>
+
+    <script>
+    (function () {
+        'use strict';
+
+        function cargarRecurso(tipo, src) {
+            if (tipo === 'css') {
+                if (document.querySelector('link[href="' + src + '"]')) return;
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = src;
+                document.head.appendChild(link);
+            } else {
+                if (document.querySelector('script[src="' + src + '"]')) return;
+                var script = document.createElement('script');
+                script.src = src;
+                script.async = false;
+                document.head.appendChild(script);
+            }
+        }
+
+        function inicializarCalendarioFechas() {
+            if (typeof window.jQuery === 'undefined') return;
+            var $ = window.jQuery;
+            var $input = $('#FechasInspeccion');
+            if ($input.length === 0 || $input.prop('readonly') || $input.data('daterangepicker')) return;
+
+            // Cargar dependencias si no existen
+            if (typeof window.moment === 'undefined') {
+                cargarRecurso('js', 'https://cdn.jsdelivr.net/momentjs/latest/moment.min.js');
+            }
+            if (typeof $.fn.daterangepicker === 'undefined') {
+                cargarRecurso('css', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css');
+                cargarRecurso('js', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js');
+            }
+
+            // Esperar que ambas dependencias estén disponibles
+            var intentos = 0;
+            var esperarDependencias = setInterval(function () {
+                intentos++;
+                if (intentos > 50) { clearInterval(esperarDependencias); return; } // 5 seg timeout
+
+                if (typeof window.moment !== 'undefined' && typeof $.fn.daterangepicker === 'function') {
+                    clearInterval(esperarDependencias);
+
+                    // Re-check por si se inicializó mientras esperábamos
+                    var $el = $('#FechasInspeccion');
+                    if ($el.length === 0 || $el.prop('readonly') || $el.data('daterangepicker')) return;
+
+                    $el.daterangepicker({
+                        locale: {
+                            format: 'DD/MM/YYYY',
+                            separator: ' - ',
+                            applyLabel: 'Aplicar',
+                            cancelLabel: 'Limpiar',
+                            fromLabel: 'Desde',
+                            toLabel: 'Hasta',
+                            customRangeLabel: 'Personalizado',
+                            daysOfWeek: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+                            monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+                            firstDay: 1
+                        },
+                        autoUpdateInput: false,
+                        opens: 'center'
+                    });
+
+                    $el.on('apply.daterangepicker', function (ev, picker) {
+                        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' al ' + picker.endDate.format('DD/MM/YYYY'));
+                    });
+
+                    $el.on('cancel.daterangepicker', function () {
+                        $(this).val('');
+                    });
+
+                    console.log('[AOCR] Calendario de fechas de inspección inicializado correctamente.');
+                }
+            }, 100);
+        }
+
+        // Estrategia 1: Al cargar el DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { setTimeout(inicializarCalendarioFechas, 300); });
+        } else {
+            setTimeout(inicializarCalendarioFechas, 300);
+        }
+
+        // Estrategia 2: Observar cuando el panel se haga visible (para vista Nueva donde empieza oculto con d-none)
+        if (typeof MutationObserver !== 'undefined') {
+            var observerIniciado = false;
+            var observer = new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    if (m.type === 'attributes' && m.attributeName === 'class') {
+                        var panel = document.getElementById('panelSolicitudInspeccion');
+                        if (panel && !panel.classList.contains('d-none') && !observerIniciado) {
+                            observerIniciado = true;
+                            setTimeout(inicializarCalendarioFechas, 200);
+                        }
+                    }
+                });
+            });
+            var panelEl = document.getElementById('panelSolicitudInspeccion');
+            if (panelEl) {
+                observer.observe(panelEl, { attributes: true, attributeFilter: ['class'] });
+            } else {
+                // Panel aún no existe, esperar
+                document.addEventListener('DOMContentLoaded', function () {
+                    var p = document.getElementById('panelSolicitudInspeccion');
+                    if (p) observer.observe(p, { attributes: true, attributeFilter: ['class'] });
+                });
+            }
+        }
+
+        // Estrategia 3: Exponer función global para que Nueva.cshtml pueda llamarla manualmente
+        window.AOCR = window.AOCR || {};
+        window.AOCR.inicializarCalendarioFechasInspeccion = inicializarCalendarioFechas;
+
+    })();
+    </script>
+}

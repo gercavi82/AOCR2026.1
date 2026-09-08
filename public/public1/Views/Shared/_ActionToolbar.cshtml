@@ -1,0 +1,45 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Web
+@{
+    var nuevoUrl = ViewData["NuevoUrl"] as string ?? string.Empty;
+    var nuevoTexto = ViewData["NuevoTexto"] as string ?? "Nuevo";
+    var volverUrl = ViewData["VolverUrl"] as string ?? string.Empty;
+    var volverTexto = ViewData["VolverTexto"] as string ?? "Volver";
+    var exportarUrl = ViewData["ExportarUrl"] as string ?? string.Empty;
+    var exportarTexto = ViewData["ExportarTexto"] as string ?? "Exportar";
+    var mostrarSearch = ViewData["MostrarSearch"] as bool? ?? false;
+    var searchPlaceholder = ViewData["SearchPlaceholder"] as string ?? "Buscar...";
+    var searchId = ViewData["SearchId"] as string ?? "aocrSearch";
+    var searchName = ViewData["SearchName"] as string ?? string.Empty;
+    var searchValue = ViewData["SearchValue"] as string ?? string.Empty;
+    var customActionsHtml = ViewData["CustomActionsHtml"] as IHtmlString;
+}
+<div class="aocr-action-toolbar aocr-toolbar">
+    <div class="aocr-toolbar-left">
+        @if (!string.IsNullOrWhiteSpace(nuevoUrl))
+        {
+            <a href="@nuevoUrl" class="btn btn-aocr-primary"><i class="fas fa-plus"></i><span>@nuevoTexto</span></a>
+        }
+        @if (!string.IsNullOrWhiteSpace(volverUrl))
+        {
+            <a href="@volverUrl" class="btn btn-aocr-secondary"><i class="fas fa-arrow-left"></i><span>@volverTexto</span></a>
+        }
+        @if (!string.IsNullOrWhiteSpace(exportarUrl))
+        {
+            <a href="@exportarUrl" class="btn btn-aocr-secondary" target="_blank" rel="noopener"><i class="fas fa-file-export"></i><span>@exportarTexto</span></a>
+        }
+    </div>
+    <div class="aocr-toolbar-right">
+        @if (customActionsHtml != null)
+        {
+            @customActionsHtml
+        }
+        @if (mostrarSearch)
+        {
+            <div class="aocr-toolbar-search input-group" style="max-width: 320px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="@searchId" name="@searchName" value="@searchValue" class="form-control" placeholder="@searchPlaceholder" autocomplete="off" />
+            </div>
+        }
+    </div>
+</div>

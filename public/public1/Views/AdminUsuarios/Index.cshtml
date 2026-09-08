@@ -1,0 +1,821 @@
+@model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
+@using CapaPresentacion.Helpers
+@using System.Collections.Generic
+@using System.Linq
+
+@{
+    ViewBag.Title = "Gestión de Usuarios y Roles";
+    var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty);
+    var esAdminSesion = RoleGroupingHelper.IsAdministrador(rolSesion);
+    var esJefaturaSesion = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolSesion);
+    var totalUsuarios = Model.TotalUsuarios > 0 ? Model.TotalUsuarios : 1;
+    var porcentajeActivos = Model.TotalUsuarios > 0 ? (int)System.Math.Round((Model.UsuariosActivos * 100m) / Model.TotalUsuarios) : 0;
+    var porcentajeCoberturaRoles = Model.TotalUsuarios > 0 ? (int)System.Math.Round((Model.UsuariosConRoles * 100m) / Model.TotalUsuarios) : 0;
+    var porcentajeActividad = Model.TotalUsuarios > 0 ? (int)System.Math.Round((Model.UsuariosConAccesoReciente * 100m) / Model.TotalUsuarios) : 0;
+    var tabActual = Model.TabActivo ?? "resumen";
+}
+
+@functions {
+    private static string ObtenerClaseChip(string familia)
+    {
+        switch (familia)
+        {
+            case "Administrador": return "auc-chip--admin";
+            case "Solicitante / RT": return "auc-chip--solicitante";
+            case "Financiero": return "auc-chip--financiero";
+            case "Coordinador": return "auc-chip--coordinador";
+            case "Inspector": return "auc-chip--inspector";
+            case "Direccion / Jefatura": return "auc-chip--direccion";
+            default: return "auc-chip--sinrol";
+        }
+    }
+
+    private static string ObtenerFamiliaDesdeRol(string rol)
+    {
+        var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rol);
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Administrador, StringComparison.OrdinalIgnoreCase)) return "Administrador";
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase)) return "Solicitante / RT";
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Financiero, StringComparison.OrdinalIgnoreCase)) return "Financiero";
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Coordinacion, StringComparison.OrdinalIgnoreCase)) return "Coordinador";
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.InspectorTecnico, StringComparison.OrdinalIgnoreCase)) return "Inspector";
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase)) return "Direccion / Jefatura";
+        return "Sin rol";
+    }
+
+    private static string ObtenerIconoPerfil(string familia)
+    {
+        switch (familia)
+        {
+            case "Administrador": return "fas fa-user-cog";
+            case "Solicitante / RT": return "fas fa-id-card";
+            case "Financiero": return "fas fa-dollar-sign";
+            case "Coordinador": return "fas fa-sitemap";
+            case "Inspector": return "fas fa-user-check";
+            case "Direccion / Jefatura": return "fas fa-landmark";
+            default: return "fas fa-tag";
+        }
+    }
+
+    private static string ObtenerIniciales(string nombre, string apellido)
+    {
+        var ini = "";
+        if (!string.IsNullOrWhiteSpace(nombre)) ini += nombre.Trim()[0];
+        if (!string.IsNullOrWhiteSpace(apellido)) ini += apellido.Trim()[0];
+        return ini.ToUpperInvariant();
+    }
+}
+
+<link rel="stylesheet" href="@Url.Content("~/Content/css/admin-users-compact.css")?v=@DateTime.Now.Ticks" />
+
+<div class="admin-users-shell">
+
+    @* ══════ HEADER ══════ *@
+    <section class="admin-page-header">
+        <div>
+            <h1><i class="fas fa-users-cog" style="margin-right:8px;color:#1d65d8;"></i>Gestión institucional de usuarios y roles</h1>
+            <p>Administre cuentas, perfiles, accesos y trazabilidad institucional.</p>
+        </div>
+    </section>
+
+    @* ══════ FLASH MESSAGES ══════ *@
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:10px;font-size:13px;padding:10px 14px;">
+            <i class="fas fa-check-circle mr-1"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius:10px;font-size:13px;padding:10px 14px;">
+            <i class="fas fa-exclamation-circle mr-1"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+    @if (TempData["PasswordTemporal"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert" style="border-radius:10px;font-size:13px;padding:10px 14px;">
+            <strong><i class="fas fa-key mr-1"></i> Contraseña temporal generada:</strong>
+            <code style="font-size:13px;">@TempData["PasswordTemporal"]</code>
+            <small class="d-block mt-1">Comparta esta clave por un canal seguro. Se solicitará cambio en el siguiente inicio de sesión.</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    @* ══════ TABS (URL-based navigation) ══════ *@
+    <nav class="admin-tabs" role="tablist">
+        <a class="admin-tab @(tabActual == "resumen" ? "active" : "")"
+           href="@Url.Action("Index", "AdminUsuarios", new { tab = "resumen" })">
+            <i class="fas fa-th-large"></i> Resumen
+        </a>
+        <a class="admin-tab @(tabActual == "usuarios" ? "active" : "")"
+           href="@Url.Action("Index", "AdminUsuarios", new { tab = "usuarios" })">
+            <i class="fas fa-users"></i> Usuarios
+        </a>
+        <a class="admin-tab @(tabActual == "roles" ? "active" : "")"
+           href="@Url.Action("PermisosRol", "AdminUsuarios")">
+            <i class="fas fa-key"></i> Roles y permisos
+        </a>
+        <span class="admin-tab admin-tab--disabled" title="Próximamente">
+            <i class="fas fa-clipboard-list"></i> Auditoría
+        </span>
+    </nav>
+
+    @* ═══════════════════════════════════════════════════
+        TAB: RESUMEN
+    ═══════════════════════════════════════════════════ *@
+    @if (tabActual == "resumen")
+    {
+        <div class="admin-kpi-grid">
+            <div class="admin-kpi-card">
+                <div class="admin-kpi-icon admin-kpi-icon--blue"><i class="fas fa-users"></i></div>
+                <div class="admin-kpi-info">
+                    <h3>Total usuarios</h3>
+                    <div class="admin-kpi-value">@Model.TotalUsuarios</div>
+                    <div class="admin-kpi-sub admin-kpi-sub--teal">@Model.UsuariosActivos activos</div>
+                </div>
+            </div>
+            <div class="admin-kpi-card">
+                <div class="admin-kpi-icon admin-kpi-icon--teal"><i class="fas fa-user-shield"></i></div>
+                <div class="admin-kpi-info">
+                    <h3>Roles funcionales</h3>
+                    <div class="admin-kpi-value">@Model.RolesActivos</div>
+                    <div class="admin-kpi-sub admin-kpi-sub--blue">Disponibles para asignar</div>
+                </div>
+            </div>
+            <div class="admin-kpi-card">
+                <div class="admin-kpi-icon admin-kpi-icon--green"><i class="fas fa-user-check"></i></div>
+                <div class="admin-kpi-info">
+                    <h3>Activos 7 días</h3>
+                    <div class="admin-kpi-value">@Model.UsuariosConAccesoReciente</div>
+                    <div class="admin-kpi-sub admin-kpi-sub--green">@porcentajeActividad% del total</div>
+                </div>
+            </div>
+            <div class="admin-kpi-card">
+                <div class="admin-kpi-icon admin-kpi-icon--amber"><i class="fas fa-user-clock"></i></div>
+                <div class="admin-kpi-info">
+                    <h3>Sin rol asignado</h3>
+                    <div class="admin-kpi-value">@Model.UsuariosSinRoles</div>
+                    <div class="admin-kpi-sub admin-kpi-sub--amber">Requieren configuración</div>
+                </div>
+            </div>
+            <div class="admin-kpi-card">
+                <div class="admin-kpi-icon admin-kpi-icon--red"><i class="fas fa-file-signature"></i></div>
+                <div class="admin-kpi-info">
+                    <h3>Solicitudes RT</h3>
+                    <div class="admin-kpi-value">@Model.PendientesDesignacionRt</div>
+                    <div class="admin-kpi-sub admin-kpi-sub--red">Pendientes de revisión</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-dashboard-grid">
+            <section class="admin-panel">
+                <div class="admin-panel-header">
+                    <h2><i class="fas fa-heartbeat" style="margin-right:6px;color:#0f766e;"></i>Salud operativa</h2>
+                    <span class="admin-panel-badge">@porcentajeActivos% activos</span>
+                </div>
+                <div class="admin-panel-body">
+                    <div class="admin-health-rings">
+                        <div class="admin-health-ring">
+                            <div class="admin-health-ring__circle" style="background: conic-gradient(#0f766e 0deg, #0f766e @((int)(porcentajeActivos * 3.6))deg, rgba(15,118,110,0.14) @((int)(porcentajeActivos * 3.6))deg, rgba(15,118,110,0.14) 360deg);">
+                                <strong>@porcentajeActivos%</strong>
+                            </div>
+                            <div class="admin-health-ring__label">Activos</div>
+                        </div>
+                        <div class="admin-health-ring">
+                            <div class="admin-health-ring__circle" style="background: conic-gradient(#1d4ed8 0deg, #1d4ed8 @((int)(porcentajeCoberturaRoles * 3.6))deg, rgba(29,78,216,0.14) @((int)(porcentajeCoberturaRoles * 3.6))deg, rgba(29,78,216,0.14) 360deg);">
+                                <strong>@porcentajeCoberturaRoles%</strong>
+                            </div>
+                            <div class="admin-health-ring__label">Con roles</div>
+                        </div>
+                        <div class="admin-health-ring">
+                            <div class="admin-health-ring__circle" style="background: conic-gradient(#d97706 0deg, #d97706 @((int)(porcentajeActividad * 3.6))deg, rgba(217,119,6,0.14) @((int)(porcentajeActividad * 3.6))deg, rgba(217,119,6,0.14) 360deg);">
+                                <strong>@porcentajeActividad%</strong>
+                            </div>
+                            <div class="admin-health-ring__label">Actividad</div>
+                        </div>
+                    </div>
+                    <div class="admin-progress-list">
+                        <div>
+                            <div class="admin-progress-item__meta">
+                                <span>Usuarios activos</span>
+                                <span>@Model.UsuariosActivos / @Model.TotalUsuarios</span>
+                            </div>
+                            <div class="admin-progress-item__track">
+                                <div class="admin-progress-item__fill" style="width:@porcentajeActivos%;background:#0f766e;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="admin-progress-item__meta">
+                                <span>Con roles asignados</span>
+                                <span>@Model.UsuariosConRoles / @Model.TotalUsuarios</span>
+                            </div>
+                            <div class="admin-progress-item__track">
+                                <div class="admin-progress-item__fill" style="width:@porcentajeCoberturaRoles%;background:#1d4ed8;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="admin-progress-item__meta">
+                                <span>Actividad 7 días</span>
+                                <span>@Model.UsuariosConAccesoReciente / @Model.TotalUsuarios</span>
+                            </div>
+                            <div class="admin-progress-item__track">
+                                <div class="admin-progress-item__fill" style="width:@porcentajeActividad%;background:#d97706;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel-header">
+                    <h2><i class="fas fa-bolt" style="margin-right:6px;color:#d97706;"></i>Acciones rápidas</h2>
+                </div>
+                <div class="admin-panel-body">
+                    <div class="admin-action-list">
+                        <a class="admin-action-item" href="@Url.Action("Create", "AdminUsuarios")">
+                            <i class="fas fa-user-plus ac-icon--teal"></i>
+                            <div class="admin-action-item__text">
+                                <div class="admin-action-item__title">Crear usuario</div>
+                                <div class="admin-action-item__desc">Alta de usuario interno o de gestión</div>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <a class="admin-action-item" href="@Url.Action("PermisosRol", "AdminUsuarios")">
+                            <i class="fas fa-key ac-icon--blue"></i>
+                            <div class="admin-action-item__text">
+                                <div class="admin-action-item__title">Roles y permisos</div>
+                                <div class="admin-action-item__desc">Administrar permisos por rol</div>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        @if (esAdminSesion)
+                        {
+                            <a class="admin-action-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
+                                <i class="fas fa-id-badge ac-icon--amber"></i>
+                                <div class="admin-action-item__text">
+                                    <div class="admin-action-item__title">Crear interno RT</div>
+                                    <div class="admin-action-item__desc">Provisión rápida personal interno</div>
+                                </div>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        }
+                        @if (esAdminSesion || esJefaturaSesion)
+                        {
+                            <a class="admin-action-item" href="@Url.Action("RevisarDesignaciones", "Usuario")">
+                                <i class="fas fa-user-check ac-icon--teal"></i>
+                                <div class="admin-action-item__text">
+                                    <div class="admin-action-item__title">Aprobar usuarios RT</div>
+                                    <div class="admin-action-item__desc">@Model.PendientesDesignacionRt pendientes</div>
+                                </div>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        }
+                        <a class="admin-action-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
+                            <i class="fas fa-cog ac-icon--gray"></i>
+                            <div class="admin-action-item__text">
+                                <div class="admin-action-item__title">Configuración del sistema</div>
+                                <div class="admin-action-item__desc">Parámetros globales</div>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel-header">
+                    <h2><i class="fas fa-clock" style="margin-right:6px;color:#1d65d8;"></i>Accesos recientes</h2>
+                    <span class="admin-panel-badge">@Model.UsuariosConAccesoReciente activos</span>
+                </div>
+                <div class="admin-panel-body">
+                    @if (Model.UsuariosRecientes != null && Model.UsuariosRecientes.Any())
+                    {
+                        <div class="admin-recent-list">
+                            @foreach (var item in Model.UsuariosRecientes.Take(5))
+                            {
+                                <div class="admin-recent-item">
+                                    <div class="admin-recent-avatar">@ObtenerIniciales(item.NombreUsuario, item.ApellidoUsuario)</div>
+                                    <div class="admin-recent-info">
+                                        <div class="admin-recent-info__name">@item.CodigoUsuario</div>
+                                        <div class="admin-recent-info__role">@(string.IsNullOrWhiteSpace(item.RolesTexto) ? "Sin roles" : item.RolesTexto)</div>
+                                    </div>
+                                    <div class="admin-recent-time">
+                                        <div class="admin-recent-time__date">@(item.UltimoLogin.HasValue ? item.UltimoLogin.Value.ToString("dd/MM") : "-")</div>
+                                        <div class="admin-recent-time__hour">@(item.UltimoLogin.HasValue ? item.UltimoLogin.Value.ToString("HH:mm") : "")</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="admin-empty-state">
+                            <i class="fas fa-user-clock"></i>
+                            No hay accesos recientes registrados.
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+
+    @* ═══════════════════════════════════════════════════
+        TAB: USUARIOS
+    ═══════════════════════════════════════════════════ *@
+    @if (tabActual == "usuarios")
+    {
+        <div class="admin-users-table-card">
+            <div class="admin-users-table-card-header">
+                <h2><i class="fas fa-users" style="margin-right:8px;color:#1d65d8;"></i>Gestión de usuarios</h2>
+                <div class="admin-table-actions">
+                    @if (esAdminSesion)
+                    {
+                        <a class="btn btn-outline-secondary btn-sm admin-filter-btn" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
+                            <i class="fas fa-users"></i> Internos RT
+                        </a>
+                    }
+                    <a class="btn btn-success btn-sm admin-filter-btn" href="@Url.Action("Create", "AdminUsuarios")">
+                        <i class="fas fa-plus"></i> Nuevo usuario
+                    </a>
+                </div>
+            </div>
+
+            @* ── KPI row ── *@
+            <div class="admin-kpi-grid" style="margin-bottom:14px;">
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon admin-kpi-icon--blue"><i class="fas fa-users"></i></div>
+                    <div class="admin-kpi-info">
+                        <h3>Total</h3>
+                        <div class="admin-kpi-value" style="font-size:22px;">@Model.TotalUsuarios</div>
+                    </div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon admin-kpi-icon--green"><i class="fas fa-user-check"></i></div>
+                    <div class="admin-kpi-info">
+                        <h3>Activos</h3>
+                        <div class="admin-kpi-value" style="font-size:22px;">@Model.UsuariosActivos</div>
+                    </div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon admin-kpi-icon--teal"><i class="fas fa-user-shield"></i></div>
+                    <div class="admin-kpi-info">
+                        <h3>Con roles</h3>
+                        <div class="admin-kpi-value" style="font-size:22px;">@Model.UsuariosConRoles</div>
+                    </div>
+                </div>
+                <div class="admin-kpi-card">
+                    <div class="admin-kpi-icon admin-kpi-icon--red"><i class="fas fa-file-signature"></i></div>
+                    <div class="admin-kpi-info">
+                        <h3>Pendientes RT</h3>
+                        <div class="admin-kpi-value" style="font-size:22px;">@Model.PendientesDesignacionRt</div>
+                    </div>
+                </div>
+            </div>
+
+            @* ── Filters ── *@
+            @using (Html.BeginForm("Index", "AdminUsuarios", FormMethod.Get, new { @class = "admin-users-filters" }))
+            {
+                <input type="hidden" name="tab" value="usuarios" />
+                <div>
+                    <label>Buscar</label>
+                    <input type="text" name="filtro" class="form-control" value="@Model.Filtro" placeholder="Nombre, correo o usuario" />
+                </div>
+                <div>
+                    <label>Estado</label>
+                    <select class="form-select" name="activo">
+                        <option value="" @(Model.Activo.HasValue ? null : "selected")>Todos</option>
+                        <option value="true" @(Model.Activo == true ? "selected" : null)>Activos</option>
+                        <option value="false" @(Model.Activo == false ? "selected" : null)>Inactivos</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Tipo</label>
+                    <select class="form-select" name="tipo">
+                        <option value="" @(string.IsNullOrWhiteSpace(Model.TipoFiltro) ? "selected" : null)>Todos</option>
+                        <option value="Interno" @(Model.TipoFiltro == "Interno" ? "selected" : null)>Interno</option>
+                        <option value="Externo" @(Model.TipoFiltro == "Externo" ? "selected" : null)>Externo</option>
+                        <option value="Sin rol" @(Model.TipoFiltro == "Sin rol" ? "selected" : null)>Sin rol</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Rol</label>
+                    @Html.DropDownList("perfil", Model.RolesFiltro, "Todos", new { @class = "form-select" })
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary admin-filter-btn w-100">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <a href="@Url.Action("Index", "AdminUsuarios", new { tab = "usuarios" })" class="btn btn-outline-secondary admin-filter-btn w-100">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </div>
+            }
+
+            @* ── Table ── *@
+            <div style="overflow-x:auto;">
+                <table class="admin-users-table" id="tablaUsuarios">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre</th>
+                            <th>Correo</th>
+                            <th>Tipo</th>
+                            <th>Rol principal</th>
+                            <th>Estado</th>
+                            <th>Último acceso</th>
+                            <th style="text-align:right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Usuarios != null && Model.Usuarios.Any())
+                        {
+                            foreach (var item in Model.Usuarios)
+                            {
+                                var chipTipo = item.TipoUsuario == "Interno" ? "auc-chip--interno" : (item.TipoUsuario == "Externo" ? "auc-chip--externo" : "auc-chip--sinrol");
+                                var familiaPrincipal = ObtenerFamiliaDesdeRol(item.RolesTexto ?? item.RolFallback ?? "");
+                                var esRolRt = string.Equals(familiaPrincipal, "Solicitante / RT", StringComparison.OrdinalIgnoreCase);
+                                <tr>
+                                    <td>
+                                        <div class="auc-user-cell">
+                                            <div class="auc-user-avatar">@ObtenerIniciales(item.NombreUsuario, item.ApellidoUsuario)</div>
+                                            <div>
+                                                <div class="auc-user-name">@item.CodigoUsuario</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())</td>
+                                    <td style="font-size:12px;color:#475569;">@item.Correo</td>
+                                    <td>
+                                        <span class="auc-chip @chipTipo">
+                                            @if (item.TipoUsuario == "Interno") { <i class="fas fa-building"></i> }
+                                            else if (item.TipoUsuario == "Externo") { <i class="fas fa-globe"></i> }
+                                            @item.TipoUsuario
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="auc-chip @ObtenerClaseChip(familiaPrincipal)"><i class="@ObtenerIconoPerfil(familiaPrincipal)"></i>@familiaPrincipal</span>
+                                    </td>
+                                    <td>
+                                        <span class="auc-status @(item.Activo ? "auc-status--active" : "auc-status--inactive")">
+                                            @(item.Activo ? "Activo" : "Inactivo")
+                                        </span>
+                                    </td>
+                                    <td style="white-space:nowrap;font-size:12px;">
+                                        @(item.UltimoLogin.HasValue ? item.UltimoLogin.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                                    </td>
+                                    <td>
+                                        <div class="auc-actions">
+                                            <a class="auc-action-btn" href="@Url.Action("Edit", "AdminUsuarios", new { id = item.IdUsuario })" title="Editar">
+                                                <i class="fas fa-pen"></i>
+                                            </a>
+                                            <a class="auc-action-btn auc-action-btn--info" href="@Url.Action("Roles", "AdminUsuarios", new { id = item.IdUsuario })" title="Asignar roles">
+                                                <i class="fas fa-user-shield"></i>
+                                            </a>
+                                            <a class="auc-action-btn auc-action-btn--danger" href="@Url.Action("TransferirEliminar", "AdminUsuarios", new { id = item.IdUsuario })" title="Transferir / desactivar">
+                                                <i class="fas fa-user-times"></i>
+                                            </a>
+
+                                            @if (esRolRt)
+                                            {
+                                                using (Html.BeginForm("AceptarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@item.IdUsuario" />
+                                                    <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+                                                    <button type="submit"
+                                                            class="auc-action-btn auc-action-btn--info"
+                                                            title="Aceptar designación RT"
+                                                            onclick="return confirm('Se activará el RT y se enviará correo con usuario y clave temporal. ¿Desea continuar?');">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
+                                                }
+
+                                                <button type="button"
+                                                        class="auc-action-btn auc-action-btn--warn"
+                                                        title="Rechazar designación RT"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#modalRechazarRtDesdeUsuarios"
+                                                        data-usuario-id="@item.IdUsuario"
+                                                        data-usuario-codigo="@item.CodigoUsuario"
+                                                        data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())">
+                                                    <i class="fas fa-user-minus"></i>
+                                                </button>
+                                            }
+
+                                            @using (Html.BeginForm("ReenviarCredenciales", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline", data_confirm = "Se generará una nueva contraseña temporal y se reenviará por correo. ¿Desea continuar?" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@item.IdUsuario" />
+                                                <button type="submit" class="auc-action-btn auc-action-btn--info" title="Reenviar credenciales">
+                                                    <i class="fas fa-envelope"></i>
+                                                </button>
+                                            }
+
+                                            @using (Html.BeginForm("ResetPassword", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline", data_confirm = "Se generará una contraseña temporal. ¿Desea continuar?" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@item.IdUsuario" />
+                                                <button type="submit" class="auc-action-btn auc-action-btn--warn" title="Generar clave temporal">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                            }
+
+                                            @using (Html.BeginForm("CambiarEstado", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline", data_confirm = item.Activo ? "Se desactivará el usuario. ¿Desea continuar?" : "Se activará el usuario. ¿Desea continuar?" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@item.IdUsuario" />
+                                                <input type="hidden" name="activo" value="@(item.Activo ? "false" : "true")" />
+                                                <button type="submit" class="auc-action-btn @(item.Activo ? "auc-action-btn--danger" : "")" title="@(item.Activo ? "Desactivar" : "Activar")">
+                                                    <i class="fas @(item.Activo ? "fa-user-slash" : "fa-user-check")"></i>
+                                                </button>
+                                            }
+
+                                            <button type="button"
+                                                    class="auc-action-btn auc-action-btn--danger"
+                                                    title="Eliminar permanentemente"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#modalEliminarPermanente"
+                                                    data-usuario-id="@item.IdUsuario"
+                                                    data-usuario-codigo="@item.CodigoUsuario"
+                                                    data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())"
+                                                    data-usuario-tipo="@item.TipoUsuario">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8">
+                                    <div class="admin-empty-state">
+                                        <i class="fas fa-search"></i>
+                                        No hay usuarios para los filtros seleccionados.
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* ── Pagination ── *@
+            <div class="admin-pagination">
+                <div class="admin-pagination-info">
+                    Mostrando <strong>@(Model.Usuarios != null ? Model.Usuarios.Count : 0)</strong> de <strong>@Model.TotalUsuarios</strong> usuarios
+                </div>
+                <div class="admin-pagination-nav" id="paginacionUsuarios"></div>
+            </div>
+        </div>
+    }
+
+    @* ═══════════════════════════════════════════════════
+        TAB: AUDITORÍA (placeholder)
+    ═══════════════════════════════════════════════════ *@
+    @if (tabActual == "auditoria")
+    {
+        <div class="admin-placeholder">
+            <i class="fas fa-clipboard-list"></i>
+            <h3>Auditoría</h3>
+            <p>Próximamente podrá revisar el registro de acciones y cambios realizados por los usuarios del sistema.</p>
+        </div>
+    }
+</div>
+
+@* ══════ MODAL: Rechazar RT desde Gestión Usuarios ══════ *@
+<div class="modal fade" id="modalRechazarRtDesdeUsuarios" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+            <div class="modal-header" style="background:#fff7ed;border-bottom:1px solid #fed7aa;padding:12px 16px;">
+                <h5 class="modal-title" style="font-size:15px;font-weight:800;color:#9a3412;">
+                    <i class="fas fa-user-minus mr-2"></i> Rechazar designación RT
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div class="mb-2" style="font-size:13px;"><strong>Usuario:</strong> <span id="modalRtRechazoCodigo"></span></div>
+                <div class="mb-3" style="font-size:13px;"><strong>Nombre:</strong> <span id="modalRtRechazoNombre"></span></div>
+
+                @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post, new { id = "formRechazarRtDesdeUsuarios" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="modalRtRechazoId" value="" />
+                    <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+
+                    <label for="modalRtRechazoMotivo" style="font-size:13px;font-weight:700;color:#334155;display:block;margin-bottom:6px;">
+                        Motivo de rechazo <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="observacion"
+                              id="modalRtRechazoMotivo"
+                              class="form-control"
+                              rows="4"
+                              maxlength="2000"
+                              required
+                              placeholder="Ingrese el motivo del rechazo..."
+                              style="border-radius:8px;font-size:13px;"></textarea>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Mínimo 3 caracteres.</div>
+
+                    <div class="modal-footer" style="padding:10px 0 0;border-top:1px solid #e2e8f0;margin-top:14px;">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning btn-sm" id="btnConfirmarRechazoRtDesdeUsuarios">
+                            <i class="fas fa-paper-plane mr-1"></i> Rechazar RT
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ══════ MODAL: Eliminar permanentemente ══════ *@
+<div class="modal fade" id="modalEliminarPermanente" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-danger" style="border-radius:14px;overflow:hidden;">
+            <div class="modal-header bg-danger text-white" style="padding:12px 16px;">
+                <h5 class="modal-title" style="font-size:15px;font-weight:800;">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> Eliminar usuario permanentemente
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div class="alert alert-danger mb-3" style="border-radius:10px;font-size:13px;">
+                    <strong>ATENCIÓN:</strong> Esta acción eliminará permanentemente al usuario y todos sus datos asociados.
+                    Si tiene solicitudes u otro historial, el sistema lo desactivará en su lugar.
+                </div>
+                <div class="mb-2" style="font-size:13px;">
+                    <strong>Usuario:</strong> <span id="modalEliminarCodigo"></span>
+                </div>
+                <div class="mb-2" style="font-size:13px;">
+                    <strong>Nombre:</strong> <span id="modalEliminarNombre"></span>
+                </div>
+                <div class="mb-3" style="font-size:13px;">
+                    <strong>Tipo:</strong> <span id="modalEliminarTipo" class="auc-chip auc-chip--externo"></span>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="chkConfirmarEliminar" />
+                    <label class="form-check-label text-danger font-weight-bold" for="chkConfirmarEliminar" style="font-size:13px;">
+                        Confirmo que deseo eliminar este usuario de forma permanente
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:10px 16px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                @using (Html.BeginForm("EliminarPermanente", "AdminUsuarios", FormMethod.Post, new { id = "formEliminarPermanente" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="modalEliminarId" value="" />
+                    <button type="submit" class="btn btn-danger btn-sm" id="btnConfirmarEliminar" disabled>
+                        <i class="fas fa-trash-alt mr-1"></i> Eliminar permanentemente
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="@Url.Content("~/Scripts/admin-usuarios.js")?v=@DateTime.Now.Ticks"></script>
+    <script>
+    (function () {
+        /* ── Client-side pagination (8 rows per page) ── */
+        var PAGE_SIZE = 8;
+        var tbody = document.querySelector('#tablaUsuarios tbody');
+        var paginationContainer = document.getElementById('paginacionUsuarios');
+        if (tbody && paginationContainer) {
+            var allRows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            var totalRows = allRows.filter(function (r) { return !r.querySelector('td[colspan]'); }).length;
+            var totalPages = Math.ceil(totalRows / PAGE_SIZE);
+            var currentPage = 1;
+
+            function renderPage(page) {
+                currentPage = page;
+                var start = (page - 1) * PAGE_SIZE;
+                var end = start + PAGE_SIZE;
+                var visibleCount = 0;
+
+                allRows.forEach(function (row) {
+                    var isEmpty = row.querySelector('td[colspan]');
+                    if (isEmpty) {
+                        row.style.display = totalRows === 0 ? '' : 'none';
+                        return;
+                    }
+                    if (visibleCount >= start && visibleCount < end) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                    visibleCount++;
+                });
+
+                renderPagination();
+            }
+
+            function renderPagination() {
+                paginationContainer.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                var prevBtn = document.createElement('button');
+                prevBtn.type = 'button';
+                prevBtn.className = 'admin-pagination-btn';
+                prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                prevBtn.disabled = currentPage === 1;
+                prevBtn.addEventListener('click', function () { if (currentPage > 1) renderPage(currentPage - 1); });
+                paginationContainer.appendChild(prevBtn);
+
+                for (var i = 1; i <= totalPages; i++) {
+                    var pgBtn = document.createElement('button');
+                    pgBtn.type = 'button';
+                    pgBtn.className = 'admin-pagination-btn' + (i === currentPage ? ' active' : '');
+                    pgBtn.textContent = i;
+                    pgBtn.setAttribute('data-page', i);
+                    (function (page) {
+                        pgBtn.addEventListener('click', function () { renderPage(page); });
+                    })(i);
+                    paginationContainer.appendChild(pgBtn);
+                }
+
+                var nextBtn = document.createElement('button');
+                nextBtn.type = 'button';
+                nextBtn.className = 'admin-pagination-btn';
+                nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                nextBtn.disabled = currentPage === totalPages;
+                nextBtn.addEventListener('click', function () { if (currentPage < totalPages) renderPage(currentPage + 1); });
+                paginationContainer.appendChild(nextBtn);
+            }
+
+            renderPage(1);
+        }
+
+        /* ── Delete modal ── */
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest("[data-bs-target='#modalEliminarPermanente']");
+            if (!btn) return;
+            var elId = document.getElementById('modalEliminarId');
+            var elCodigo = document.getElementById('modalEliminarCodigo');
+            var elNombre = document.getElementById('modalEliminarNombre');
+            var elTipo = document.getElementById('modalEliminarTipo');
+            var elChk = document.getElementById('chkConfirmarEliminar');
+            var elBtn = document.getElementById('btnConfirmarEliminar');
+            if (elId) elId.value = btn.getAttribute('data-usuario-id') || '';
+            if (elCodigo) elCodigo.textContent = btn.getAttribute('data-usuario-codigo') || '';
+            if (elNombre) elNombre.textContent = btn.getAttribute('data-usuario-nombre') || '';
+            if (elTipo) elTipo.textContent = btn.getAttribute('data-usuario-tipo') || '';
+            if (elChk) elChk.checked = false;
+            if (elBtn) elBtn.disabled = true;
+        });
+
+        var chk = document.getElementById('chkConfirmarEliminar');
+        var btnConf = document.getElementById('btnConfirmarEliminar');
+        if (chk && btnConf) {
+            chk.addEventListener('change', function () { btnConf.disabled = !chk.checked; });
+        }
+
+        var modal = document.getElementById('modalEliminarPermanente');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function () {
+                if (chk) chk.checked = false;
+                if (btnConf) btnConf.disabled = true;
+                var elId = document.getElementById('modalEliminarId');
+                if (elId) elId.value = '';
+            });
+        }
+
+        /* ── RT reject modal ── */
+        var modalRechazoRt = document.getElementById('modalRechazarRtDesdeUsuarios');
+        if (modalRechazoRt) {
+            modalRechazoRt.addEventListener('show.bs.modal', function (e) {
+                var src = e.relatedTarget;
+                var idEl = document.getElementById('modalRtRechazoId');
+                var codigoEl = document.getElementById('modalRtRechazoCodigo');
+                var nombreEl = document.getElementById('modalRtRechazoNombre');
+                var motivoEl = document.getElementById('modalRtRechazoMotivo');
+
+                if (idEl) idEl.value = src.getAttribute('data-usuario-id') || '';
+                if (codigoEl) codigoEl.textContent = src.getAttribute('data-usuario-codigo') || '';
+                if (nombreEl) nombreEl.textContent = src.getAttribute('data-usuario-nombre') || '';
+                if (motivoEl) motivoEl.value = '';
+            });
+
+            var formRechazo = document.getElementById('formRechazarRtDesdeUsuarios');
+            if (formRechazo) {
+                formRechazo.addEventListener('submit', function (e) {
+                    var motivo = (document.getElementById('modalRtRechazoMotivo').value || '').trim();
+                    if (motivo.length < 3) {
+                        e.preventDefault();
+                        alert('Debe ingresar un motivo de al menos 3 caracteres.');
+                        return false;
+                    }
+                });
+            }
+        }
+    })();
+    </script>
+}

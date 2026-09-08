@@ -1,0 +1,462 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Certificado>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    var solicitudId = 0;
+    if (ViewBag.SolicitudId != null)
+    {
+        int.TryParse(ViewBag.SolicitudId.ToString(), out solicitudId);
+    }
+    bool puedeFirmar = User.IsInRole("CoordinacionLegal")
+                       || User.IsInRole("Administrador")
+                       || User.IsInRole("DirectorGeneral")
+                       || User.IsInRole("Direccion")
+                       || User.IsInRole("JefaturaTecnica");
+    bool yaFirmado = Model != null && !string.IsNullOrWhiteSpace(Model.RutaDocumento);
+    var cacheToken = Model != null && Model.UpdatedAt.HasValue
+        ? Model.UpdatedAt.Value.Ticks.ToString()
+        : DateTime.UtcNow.Ticks.ToString();
+    var urlPreview = Url.Action("GenerarCertificadoPdf", new { solicitudId = solicitudId, vistaPrevia = true, v = cacheToken });
+    var urlPdfFirmadoDescarga = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado }) : null;
+    var urlPdfFirmadoPreview = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado, vistaPrevia = true, v = cacheToken }) : null;
+    var urlPdfActivo = yaFirmado ? urlPdfFirmadoPreview : urlPreview;
+}
+
+<style>
+    .cert-wrap { max-width: 1400px; margin: 0 auto; padding: 8px 4px 32px; }
+
+    /* ---------- HERO ---------- */
+    .cert-hero {
+        position: relative;
+        border-radius: 14px;
+        padding: 20px 26px;
+        color: #fff;
+        background: linear-gradient(135deg, #0b3d78 0%, #1566b8 55%, #1e88e5 100%);
+        box-shadow: 0 8px 24px rgba(11,61,120,.18);
+        overflow: hidden;
+        margin-bottom: 18px;
+    }
+    .cert-hero::after {
+        content: ""; position: absolute; right: -40px; top: -40px;
+        width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255,255,255,.06);
+    }
+    .cert-hero h1 { font-size: 1.35rem; font-weight: 700; margin: 0 0 4px; letter-spacing: .3px; }
+    .cert-hero .sub { opacity: .85; font-size: .9rem; margin: 0; }
+    .cert-hero .hero-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; position: relative; z-index: 1; }
+    .cert-status-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,.16);
+        backdrop-filter: blur(6px);
+        padding: 8px 16px; border-radius: 999px;
+        font-weight: 600; font-size: .88rem;
+        border: 1px solid rgba(255,255,255,.22);
+    }
+    .cert-status-pill.ok { background: #15a670; border-color: rgba(255,255,255,.35); box-shadow: 0 4px 12px rgba(21,166,112,.35); }
+    .cert-status-pill.warn { background: #e8a22d; border-color: rgba(255,255,255,.35); color: #3a2a00; }
+    .cert-status-pill i { font-size: 1rem; }
+
+    /* ---------- STEPS ---------- */
+    .cert-steps {
+        display: flex; gap: 6px; margin-top: 14px;
+        position: relative; z-index: 1;
+    }
+    .cert-step {
+        flex: 1; padding: 10px 14px;
+        background: rgba(255,255,255,.10); border-radius: 10px;
+        font-size: .82rem; color: rgba(255,255,255,.85);
+        border-left: 3px solid rgba(255,255,255,.25);
+    }
+    .cert-step.done { background: rgba(21,166,112,.28); border-left-color: #2ce59b; color: #fff; }
+    .cert-step.active { background: rgba(255,255,255,.22); border-left-color: #ffd166; color: #fff; }
+    .cert-step .st-num { font-weight: 700; margin-right: 6px; }
+
+    /* ---------- GRID PRINCIPAL ---------- */
+    .cert-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(340px, .85fr);
+        gap: 18px;
+    }
+    @@media (max-width: 1100px) { .cert-grid { grid-template-columns: 1fr; } }
+
+    .cert-card {
+        background: #fff;
+        border: 1px solid #e4eaf2;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.04);
+        overflow: hidden;
+    }
+    .cert-card-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #edf1f6;
+        background: #f7fafd;
+    }
+    .cert-card-header h3 { margin: 0; font-size: .95rem; font-weight: 700; color: #0b3d78; display: flex; align-items: center; gap: 8px; }
+    .cert-card-body { padding: 14px 16px; }
+
+    /* ---------- PREVIEW ---------- */
+    .cert-preview-frame {
+        width: 100%;
+        height: 820px;
+        border: 0;
+        display: block;
+        background: #f3f5f9;
+    }
+    .cert-preview-toolbar {
+        display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    }
+    .cert-preview-toolbar .btn-xs {
+        padding: 4px 10px; font-size: .78rem; border-radius: 6px;
+    }
+
+    /* ---------- METADATA ---------- */
+    .cert-meta-list { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; }
+    .cert-meta-item {
+        display: flex; justify-content: space-between; align-items: baseline;
+        padding: 9px 2px;
+        border-bottom: 1px dashed #e6ebf1;
+        font-size: .87rem;
+    }
+    .cert-meta-item:last-child { border-bottom: 0; }
+    .cert-meta-item .k { color: #6b7a90; font-weight: 500; }
+    .cert-meta-item .v { color: #1b2a3f; font-weight: 600; text-align: right; max-width: 60%; word-break: break-word; }
+    .cert-meta-item .v.empty { color: #b0bac9; font-weight: 400; font-style: italic; }
+
+    /* ---------- FIRMA PANEL ---------- */
+    .firma-panel {
+        background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+        border: 1.5px solid #0b3d78;
+        border-radius: 14px;
+        padding: 18px 18px 16px;
+        box-shadow: 0 6px 18px rgba(11,61,120,.10);
+        position: sticky; top: 16px;
+    }
+    .firma-panel h3 {
+        margin: 0 0 4px; font-size: 1rem; color: #0b3d78; font-weight: 700;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .firma-panel .hint { font-size: .82rem; color: #54657c; margin: 0 0 14px; line-height: 1.4; }
+    .firma-field { position: relative; margin-bottom: 14px; }
+    .firma-field label {
+        display: block; font-size: .8rem; font-weight: 600;
+        color: #0b3d78; margin-bottom: 5px; letter-spacing: .2px;
+    }
+    .firma-input {
+        width: 100%; padding: 11px 42px 11px 14px;
+        border: 1.5px solid #c6d4e3; border-radius: 9px;
+        font-size: .95rem; font-family: inherit;
+        background: #fff; transition: border-color .15s, box-shadow .15s;
+    }
+    .firma-input:focus {
+        outline: 0; border-color: #1566b8;
+        box-shadow: 0 0 0 3px rgba(21,102,184,.15);
+    }
+    .firma-toggle {
+        position: absolute; right: 10px; top: 32px;
+        background: transparent; border: 0; color: #6b7a90;
+        cursor: pointer; padding: 6px; font-size: .95rem;
+    }
+    .firma-toggle:hover { color: #0b3d78; }
+
+    .btn-firmar {
+        width: 100%;
+        background: linear-gradient(135deg, #15a670 0%, #118558 100%);
+        color: #fff; border: 0; border-radius: 10px;
+        padding: 13px 16px; font-size: 1rem; font-weight: 700;
+        letter-spacing: .3px; cursor: pointer;
+        box-shadow: 0 6px 16px rgba(21,166,112,.28);
+        transition: transform .12s, box-shadow .12s;
+        display: flex; justify-content: center; align-items: center; gap: 10px;
+    }
+    .btn-firmar:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(21,166,112,.38); }
+    .btn-firmar:active { transform: translateY(0); }
+    .btn-firmar[disabled] { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-firmar i { font-size: 1.05rem; }
+
+    .firma-badge-info {
+        display: flex; gap: 10px; align-items: flex-start;
+        background: #eef6ff; border: 1px solid #c7def6;
+        border-radius: 8px; padding: 10px 12px;
+        font-size: .78rem; color: #2d4e75; margin-top: 12px; line-height: 1.35;
+    }
+    .firma-badge-info i { color: #1566b8; font-size: 1rem; margin-top: 1px; }
+
+    .firma-done {
+        text-align: center; padding: 20px 4px 4px;
+    }
+    .firma-done .icon {
+        width: 62px; height: 62px; line-height: 62px;
+        border-radius: 50%; background: #15a670; color: #fff;
+        font-size: 1.8rem; margin: 0 auto 10px;
+        box-shadow: 0 6px 18px rgba(21,166,112,.35);
+    }
+    .firma-done h4 { margin: 0 0 4px; color: #0b3d78; font-weight: 700; font-size: 1.05rem; }
+    .firma-done p { margin: 0 0 14px; color: #54657c; font-size: .85rem; }
+
+    /* ---------- ALERTAS ---------- */
+    .cert-alert {
+        display: flex; gap: 10px; align-items: flex-start;
+        padding: 12px 14px; border-radius: 10px;
+        margin-bottom: 14px; font-size: .88rem;
+    }
+    .cert-alert i { font-size: 1.1rem; margin-top: 1px; }
+    .cert-alert.success { background: #e8f8f0; color: #0c6b45; border: 1px solid #bde5d0; }
+    .cert-alert.error { background: #fdecea; color: #8a1c13; border: 1px solid #f5c2bd; }
+    .cert-alert.warn { background: #fff5e0; color: #7a5a06; border: 1px solid #f5dd9a; }
+
+    /* ---------- BOTONES ACCIONES ---------- */
+    .btn-soft {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 8px; font-size: .85rem;
+        font-weight: 600; text-decoration: none;
+        transition: transform .1s, box-shadow .1s;
+        border: 1px solid transparent;
+    }
+    .btn-soft:hover { transform: translateY(-1px); text-decoration: none; box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+    .btn-soft.primary { background: #0b3d78; color: #fff !important; }
+    .btn-soft.primary:hover { background: #0a3466; }
+    .btn-soft.ghost { background: #fff; color: #0b3d78 !important; border-color: #c6d4e3; }
+    .btn-soft.ghost:hover { background: #f4f8fc; }
+    .btn-soft.success { background: #15a670; color: #fff !important; }
+    .btn-soft.success:hover { background: #118558; }
+</style>
+
+<div class="cert-wrap">
+
+    @* ============================================================
+       HERO: estado + steps
+       ============================================================ *@
+    <div class="cert-hero">
+        <div class="hero-row">
+            <div>
+                <h1><i class="fas fa-certificate"></i> Certificado AOCR</h1>
+                <p class="sub">
+                    @if (Model != null && !string.IsNullOrWhiteSpace(Model.NumeroCertificado))
+                    {
+                        <text>N° <strong>@Model.NumeroCertificado</strong> · Solicitud #@solicitudId</text>
+                    }
+                    else
+                    {
+                        <text>Solicitud #@solicitudId · sin registro</text>
+                    }
+                </p>
+            </div>
+            <div>
+                @if (yaFirmado)
+                {
+                    <span class="cert-status-pill ok"><i class="fas fa-shield-alt"></i> Firmado digitalmente</span>
+                }
+                else if (Model != null)
+                {
+                    <span class="cert-status-pill warn"><i class="fas fa-hourglass-half"></i> Pendiente de firma</span>
+                }
+                else
+                {
+                    <span class="cert-status-pill"><i class="fas fa-circle-notch"></i> Sin registro</span>
+                }
+            </div>
+        </div>
+
+        <div class="cert-steps">
+            <div class="cert-step @(Model != null ? "done" : "active")">
+                <span class="st-num">1</span> Registro del certificado
+            </div>
+            <div class="cert-step @(Model != null ? (yaFirmado ? "done" : "active") : "")">
+                <span class="st-num">2</span> Firma digital del Coordinador
+            </div>
+            <div class="cert-step @(yaFirmado ? "done" : "")">
+                <span class="st-num">3</span> Descarga / Emisión final
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="cert-alert error"><i class="fas fa-exclamation-circle"></i><div>@TempData["Error"]</div></div>
+    }
+    @if (TempData["OK"] != null)
+    {
+        <div class="cert-alert success"><i class="fas fa-check-circle"></i><div>@TempData["OK"]</div></div>
+    }
+
+    @if (Model == null)
+    {
+        <div class="cert-alert warn">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                No existe registro de certificado en BD. La vista previa y la firma siguen disponibles;
+                el registro se crea automáticamente al firmar por primera vez.
+            </div>
+        </div>
+    }
+
+    <div class="cert-grid">
+
+        @* ============================================================
+           COLUMNA IZQUIERDA: PREVIEW PDF EMBEBIDO
+           ============================================================ *@
+        <div class="cert-card">
+            <div class="cert-card-header">
+                <h3>
+                    <i class="fas fa-file-pdf" style="color:#c0392b;"></i>
+                    @(yaFirmado ? "PDF firmado" : "Vista previa del certificado")
+                </h3>
+                <div class="cert-preview-toolbar">
+                    <a class="btn-soft ghost btn-xs" href="@urlPdfActivo" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Abrir en nueva pestaña
+                    </a>
+                    @if (yaFirmado)
+                    {
+                        <a class="btn-soft success btn-xs" href="@urlPdfFirmadoDescarga">
+                            <i class="fas fa-download"></i> Descargar
+                        </a>
+                    }
+                </div>
+            </div>
+            <iframe class="cert-preview-frame"
+                    src="@urlPdfActivo#toolbar=1&navpanes=0&zoom=page-width"
+                    title="Certificado AOCR"></iframe>
+        </div>
+
+        @* ============================================================
+           COLUMNA DERECHA: METADATOS + FIRMA INLINE
+           ============================================================ *@
+        <div>
+            @if (Model != null)
+            {
+                <div class="cert-card" style="margin-bottom:18px;">
+                    <div class="cert-card-header">
+                        <h3><i class="fas fa-info-circle"></i> Datos del certificado</h3>
+                    </div>
+                    <div class="cert-card-body">
+                        <div class="cert-meta-list">
+                            <div class="cert-meta-item"><span class="k">Número</span><span class="v">@Model.NumeroCertificado</span></div>
+                            <div class="cert-meta-item"><span class="k">Emitido</span><span class="v">@(Model.FechaEmision.HasValue ? Model.FechaEmision.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                            <div class="cert-meta-item"><span class="k">Vence</span><span class="v">@(Model.FechaVencimiento.HasValue ? Model.FechaVencimiento.Value.ToString("dd/MM/yyyy") : "—")</span></div>
+                            <div class="cert-meta-item"><span class="k">Vigencia</span><span class="v">@Model.VigenciaAnios año(s)</span></div>
+                            <div class="cert-meta-item">
+                                <span class="k">Estado</span>
+                                <span class="v">
+                                    @if (Model.EstaVigente || string.Equals(Model.Estado, "Vigente", StringComparison.OrdinalIgnoreCase))
+                                    { <span style="color:#0c6b45;">● Vigente</span> }
+                                    else { <text>@Model.Estado</text> }
+                                </span>
+                            </div>
+                            <div class="cert-meta-item"><span class="k">Emitido por</span><span class="v @(string.IsNullOrWhiteSpace(Model.EmitidoPor) ? "empty" : "")">@(string.IsNullOrWhiteSpace(Model.EmitidoPor) ? "—" : Model.EmitidoPor)</span></div>
+                            <div class="cert-meta-item"><span class="k">Aprobado por</span><span class="v @(string.IsNullOrWhiteSpace(Model.AprobadoPor) ? "empty" : "")">@(string.IsNullOrWhiteSpace(Model.AprobadoPor) ? "Pendiente" : Model.AprobadoPor)</span></div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Observaciones))
+                            {
+                                <div class="cert-meta-item"><span class="k">Observaciones</span><span class="v">@Model.Observaciones</span></div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (puedeFirmar)
+            {
+                <div class="firma-panel">
+                    @if (yaFirmado)
+                    {
+                        <div class="firma-done">
+                            <div class="icon"><i class="fas fa-check"></i></div>
+                            <h4>Certificado firmado</h4>
+                            <p>La firma digital del Coordinador ya fue aplicada correctamente.</p>
+                            <a class="btn-soft ghost" style="width:100%; justify-content:center; padding:10px;" href="@urlPdfFirmadoPreview" target="_blank">
+                                <i class="fas fa-eye"></i> Vista previa PDF
+                            </a>
+                            <a class="btn-soft success" style="width:100%; justify-content:center; padding:11px; margin-top:8px;" href="@urlPdfFirmadoDescarga">
+                                <i class="fas fa-download"></i> Descargar PDF firmado
+                            </a>
+                            <button type="button" onclick="document.getElementById('formFirmaReFirmar').style.display='block'; this.style.display='none';"
+                                    class="btn-soft ghost" style="width:100%; justify-content:center; margin-top:8px; padding:10px;">
+                                <i class="fas fa-redo"></i> Firmar nuevamente
+                            </button>
+                            <form id="formFirmaReFirmar" style="display:none; margin-top:14px;"
+                                  action="@Url.Action("FirmarCertificadoAOCR", "Certificado")" method="post" autocomplete="off">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="solicitudId" value="@solicitudId" />
+                                <div class="firma-field">
+                                    <label for="passwordCertificadoRe">Contraseña del certificado</label>
+                                    <input type="password" class="firma-input" id="passwordCertificadoRe"
+                                           name="password" required="required" autocomplete="new-password"
+                                           placeholder="•••••••••••" />
+                                    <button type="button" class="firma-toggle" onclick="togglePwd('passwordCertificadoRe', this)">
+                                        <i class="far fa-eye"></i>
+                                    </button>
+                                </div>
+                                <button type="submit" class="btn-firmar">
+                                    <i class="fas fa-signature"></i> Re-firmar certificado
+                                </button>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <h3><i class="fas fa-signature"></i> Firmar certificado</h3>
+                        <p class="hint">
+                            Ingrese la contraseña del certificado institucional para aplicar la firma digital.
+                            No es necesario cargar ningún archivo.
+                        </p>
+                        <form action="@Url.Action("FirmarCertificadoAOCR", "Certificado")" method="post" autocomplete="off" id="formFirmaCert">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="solicitudId" value="@solicitudId" />
+                            <div class="firma-field">
+                                <label for="passwordCertificado">Contraseña del certificado</label>
+                                <input type="password" class="firma-input" id="passwordCertificado"
+                                       name="password" required="required" autocomplete="new-password"
+                                       placeholder="•••••••••••" autofocus />
+                                <button type="button" class="firma-toggle" onclick="togglePwd('passwordCertificado', this)" title="Mostrar / ocultar">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                            </div>
+                            <button type="submit" class="btn-firmar" id="btnFirmar">
+                                <i class="fas fa-shield-alt"></i> Firmar ahora
+                            </button>
+                        </form>
+                        <div class="firma-badge-info">
+                            <i class="fas fa-lock"></i>
+                            <div>
+                                <strong>Certificado institucional preconfigurado.</strong>
+                                La firma se aplica con el certificado <code>.p12</code> del servidor. Solo necesita su contraseña.
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="cert-alert warn">
+                    <i class="fas fa-user-lock"></i>
+                    <div>Su rol no tiene permisos para firmar este certificado.</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePwd(id, btn) {
+        var i = document.getElementById(id);
+        if (!i) return;
+        var icon = btn.querySelector('i');
+        if (i.type === 'password') { i.type = 'text'; icon.className = 'far fa-eye-slash'; }
+        else { i.type = 'password'; icon.className = 'far fa-eye'; }
+    }
+    // Evitar doble submit
+    (function () {
+        var f = document.getElementById('formFirmaCert');
+        if (!f) return;
+        f.addEventListener('submit', function () {
+            var btn = document.getElementById('btnFirmar');
+            if (btn) {
+                btn.setAttribute('disabled', 'disabled');
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Firmando...';
+            }
+        });
+    })();
+</script>
+

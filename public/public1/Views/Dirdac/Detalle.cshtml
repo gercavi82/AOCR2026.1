@@ -1,0 +1,24 @@
+@model CapaModelo.DetalleAocrDirdacViewModel
+@{
+    ViewBag.Title = "Revisión AOCR DIRDAC";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var e = Model.Expediente;
+}
+<div class="container-fluid py-3">
+    <a class="btn btn-outline-secondary mb-3" href="@Url.Action("BandejaAocr", "Dirdac")">Volver</a>
+    <h1 class="h4">AOCR @e.NumeroSolicitud</h1>
+    <dl class="row"><dt class="col-sm-3">Compañía</dt><dd class="col-sm-9">@e.Compania</dd><dt class="col-sm-3">AOCR</dt><dd class="col-sm-9">v@e.VersionDocumento — @e.Estado</dd><dt class="col-sm-3">Condiciones y Limitaciones</dt><dd class="col-sm-9">v@Model.VersionCondicionesLimitaciones — @Model.EstadoCondicionesLimitaciones</dd></dl>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a class="btn btn-outline-primary" href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId=e.SolicitudId, tipoDocumento="RECONOCIMIENTO" })" target="_blank" rel="noopener">Revisar AOCR</a>
+        <a class="btn btn-outline-secondary" href="@Url.Action("DescargarPdf", "FirmaAocr", new { solicitudId=e.SolicitudId, tipoDocumento="RECONOCIMIENTO" })">Descargar AOCR</a>
+        <a class="btn btn-danger" href="@Url.Action("Index", "FirmaAocr", new { solicitudId=e.SolicitudId })">Firmar/legalizar AOCR</a>
+    </div>
+    @if (e.PuedeDevolver) {
+    using (Html.BeginForm("DevolverAocrDircav", "Dirdac", FormMethod.Post, new { @class="card card-body", data_confirm="¿Devolver el AOCR a DIRCAV?" })) {
+        @Html.AntiForgeryToken()
+        @Html.Hidden("SolicitudId", e.SolicitudId) @Html.Hidden("VersionEsperada", e.VersionExpediente)
+        <label for="Observacion">Observación obligatoria</label><textarea id="Observacion" name="Observacion" minlength="10" maxlength="2000" required class="form-control mb-2"></textarea>
+        <button class="btn btn-warning" type="submit">Devolver a DIRCAV</button>
+    }}
+</div>
+<script>document.addEventListener('submit',function(e){var m=e.target.getAttribute('data-confirm');if(m&&!window.confirm(m)){e.preventDefault();return;}var b=e.target.querySelector('button[type=submit]');if(b){b.disabled=true;b.setAttribute('aria-busy','true');}});</script>

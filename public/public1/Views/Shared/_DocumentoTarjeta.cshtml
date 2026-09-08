@@ -1,0 +1,75 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.DocumentoTarjetaViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@if (Model != null)
+{
+    var tituloPrincipal = !string.IsNullOrWhiteSpace(Model.TipoDocumentoVisible)
+        ? Model.TipoDocumentoVisible
+        : "Documento institucional";
+
+    <div class="aocr-document-card">
+        <div class="aocr-document-header">
+            <div class="aocr-document-icon" aria-hidden="true">
+                <i class="@Model.IconoCss"></i>
+            </div>
+            <div class="aocr-document-title-wrap">
+                <span class="aocr-document-title" title="@tituloPrincipal">@tituloPrincipal</span>
+                <span class="aocr-document-subtitle" title="@Model.NombreArchivoCompleto">
+                    Archivo: @Model.NombreArchivoCompleto
+                </span>
+                @if (!string.IsNullOrWhiteSpace(Model.TamanoVisible))
+                {
+                    <span class="aocr-document-size">Tamaño: @Model.TamanoVisible</span>
+                }
+            </div>
+        </div>
+
+        <div class="aocr-document-meta">
+            @if (!string.IsNullOrWhiteSpace(Model.TipoDocumentoVisible))
+            {
+                <div class="aocr-document-meta-item">
+                    <span class="aocr-document-label">Tipo de documento</span>
+                    <span class="aocr-document-value">@Model.TipoDocumentoVisible</span>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.ConceptoVisible))
+            {
+                <div class="aocr-document-meta-item">
+                    <span class="aocr-document-label">Concepto</span>
+                    <span class="aocr-document-value">@Model.ConceptoVisible</span>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.AeropuertosVisible))
+            {
+                <div class="aocr-document-meta-item">
+                    <span class="aocr-document-label">Aeropuerto(s)</span>
+                    <span class="aocr-document-value">@Model.AeropuertosVisible</span>
+                </div>
+            }
+            <div class="aocr-document-meta-item">
+                <span class="aocr-document-label">Fecha de carga</span>
+                <span class="aocr-document-value">@Model.FechaCargaVisible</span>
+            </div>
+            <div class="aocr-document-meta-item">
+                <span class="aocr-document-label">Estado</span>
+                <span class="aocr-document-value">
+                    <span class="@Model.EstadoBadgeCss">@Model.EstadoVisible</span>
+                </span>
+            </div>
+        </div>
+
+        @if (Model.MostrarDescarga && !string.IsNullOrWhiteSpace(Model.UrlDescarga))
+        {
+            <div class="aocr-document-footer">
+                <a href="@Model.UrlDescarga"
+                   class="btn btn-outline-primary"
+                   target="_blank"
+                   rel="noopener"
+                   title="Descargar @Model.NombreArchivoCompleto">
+                    <i class="fas fa-download me-1"></i> Descargar
+                </a>
+            </div>
+        }
+    </div>
+}

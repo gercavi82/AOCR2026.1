@@ -1,0 +1,6 @@
+/* AOCR shell integration: Bootstrap manages modal dimensions and appearance. */
+body.aocr-body .aocr-sidebar { z-index: 1020; }
+body.aocr-body .aocr-topbar { z-index: 1010; }
+/* SweetAlert is an external overlay; keep it above Bootstrap modals. */
+body.aocr-body .swal2-container { z-index: 1090; }
+body.aocr-body .aocr-modal-anulacion textarea { min-height: 110px; }

@@ -1,0 +1,130 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel>
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
+}
+
+<div class="pdf-title">
+    DIRECCION DE CERTIFICACION AERONAUTICA<br />
+    Y VIGILANCIA CONTINUA<br />
+</div>
+<div class="pdf-subtitle">
+    ORDEN DE RECAUDACION
+    <span style="float:right; font-size:14px;">No. @Model.NumeroOrden</span>
+</div>
+
+<table class="pdf-table">
+    <tr>
+        <td class="pdf-section-title">Lugar y Fecha de Emisión:</td>
+        <td>@Model.LugarEmision, @Model.FechaEmision.ToString("dd/MM/yyyy")</td>
+    </tr>
+    <tr>
+        <td class="pdf-section-title">Nombres Completos o Nombre de Cía.:</td>
+        <td>@Model.NombreCompania</td>
+    </tr>
+    <tr>
+        <td class="pdf-section-title">Número de cédula o RUC:</td>
+        <td>@Model.Ruc</td>
+    </tr>
+    <tr>
+        <td class="pdf-section-title">Dirección de correo electrónico:</td>
+        <td>@Model.Email</td>
+    </tr>
+    <tr>
+        <td class="pdf-section-title">Número telefónico de contacto:</td>
+        <td>@Model.Telefono</td>
+    </tr>
+    @if (!string.IsNullOrWhiteSpace(Model.LugarInspeccion))
+    {
+        <tr>
+            <td class="pdf-section-title">Lugar de inspección:</td>
+            <td>
+                @Model.LugarInspeccion
+                @if (!string.IsNullOrWhiteSpace(Model.ProvinciaInspeccion))
+                {
+                    <text> - @Model.ProvinciaInspeccion</text>
+                }
+            </td>
+        </tr>
+    }
+</table>
+
+<table class="pdf-table">
+    <tr>
+        <th colspan="@(Model.MostrarNumeroDias ? 6 : 5)" class="pdf-section-title">DETALLE DEL SERVICIO OTORGADO (DERECHOS POR:)</th>
+    </tr>
+    <tr>
+        <th>Concepto</th>
+        <th>CANTIDAD</th>
+        @if (Model.MostrarNumeroDias)
+        {
+            <th>NÚMERO DE DÍAS</th>
+        }
+        <th>Subtotal</th>
+        <th>Admin</th>
+        <th>Total</th>
+    </tr>
+    @if (Model.Detalles != null && Model.Detalles.Count > 0)
+    {
+        foreach (var item in Model.Detalles)
+        {
+            <tr>
+                <td>@item.Concepto</td>
+                <td style="text-align:center;">@item.Cantidad</td>
+                @if (Model.MostrarNumeroDias)
+                {
+                    <td style="text-align:center;">@(item.EsViatico ? item.NumeroDiasInspeccion.ToString() : "-")</td>
+                }
+                <td style="text-align:right;">USD$ @item.Subtotal.ToString("N2")</td>
+                <td style="text-align:right;">USD$ @item.Admin.ToString("N2")</td>
+                <td style="text-align:right;">USD$ @item.TotalLinea.ToString("N2")</td>
+            </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td>@Model.ConceptoPrincipal</td>
+            <td style="text-align:center;">1</td>
+            @if (Model.MostrarNumeroDias)
+            {
+                <td style="text-align:center;">-</td>
+            }
+            <td style="text-align:right;">USD$ @Model.ValorBase.ToString("N2")</td>
+            <td style="text-align:right;">USD$ @Model.TotalAdmin.ToString("N2")</td>
+            <td style="text-align:right;">USD$ @Model.Total.ToString("N2")</td>
+        </tr>
+    }
+    <tr class="totales">
+        <td style="text-align:right;">TOTALES:</td>
+        <td></td>
+        @if (Model.MostrarNumeroDias)
+        {
+            <td></td>
+        }
+        <td style="text-align:right;">USD$ @Model.TotalSubtotal.ToString("N2")</td>
+        <td style="text-align:right;">USD$ @Model.TotalAdmin.ToString("N2")</td>
+        <td style="text-align:right;">USD$ @Model.TotalGeneral.ToString("N2")</td>
+    </tr>
+</table>
+
+@if (Model.MostrarNumeroDias)
+{
+    foreach (var viatico in Model.Detalles.Where(d => d.EsViatico))
+    {
+        <div style="margin-top:8px; font-size:11px;">
+            Número de días de inspección: @viatico.NumeroDiasInspeccion &nbsp;|
+            Días pagados de viático: @viatico.DiasPagadosViatico &nbsp;|
+            Valor diario: USD$ @viatico.ValorUnitario.ToString("N2") &nbsp;|
+            Subtotal viáticos: USD$ @viatico.Subtotal.ToString("N2")
+        </div>
+    }
+}
+
+<div class="ref">@Model.Referencia</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.LeyendaBancos))
+{
+    <div style="margin-top:20px; font-size:12px; line-height:1.6;">
+        @Html.Raw(Model.LeyendaBancos)
+    </div>
+}
