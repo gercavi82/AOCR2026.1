@@ -1342,7 +1342,7 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("ADM_ROLES_PERMISOS", SoloAdministrador = true)]
         public ActionResult PermisosRol(int? codigoRol)
         {
-            var rolesActivos = AdminUsuariosBL.ObtenerRolesFuncionalesAocr();
+            var rolesActivos = AdminUsuariosBL.ObtenerRolesActivos();
             var rolSeleccionado = codigoRol.GetValueOrDefault(0);
 
             var vm = new AdminRolPermisosViewModel
@@ -1381,7 +1381,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new { success = false, message = "Debe seleccionar un rol válido." }, JsonRequestBehavior.AllowGet);
             }
 
-            var roles = AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>();
+            var roles = AdminUsuariosBL.ObtenerRolesActivos() ?? new List<SeguridadRolDTO>();
             var rol = roles.FirstOrDefault(r => r.CodigoRol == codigoRol);
             if (rol == null)
             {
@@ -1449,7 +1449,7 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("PermisosRol");
             }
 
-            if (!(AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>())
+            if (!(AdminUsuariosBL.ObtenerRolesActivos() ?? new List<SeguridadRolDTO>())
                 .Any(r => r.CodigoRol == model.CodigoRolSeleccionado))
             {
                 TempData["Error"] = "El rol no pertenece al catálogo administrable.";
@@ -1480,7 +1480,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new { success = false, message = "Debe seleccionar un rol válido." });
             }
 
-            if (!(AdminUsuariosBL.ObtenerRolesFuncionalesAocr() ?? new List<SeguridadRolDTO>())
+            if (!(AdminUsuariosBL.ObtenerRolesActivos() ?? new List<SeguridadRolDTO>())
                 .Any(r => r.CodigoRol == codigoRol))
             {
                 Response.StatusCode = 400;

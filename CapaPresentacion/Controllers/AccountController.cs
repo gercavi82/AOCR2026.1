@@ -781,6 +781,8 @@ namespace CapaPresentacion.Controllers
             {
                 var match = roles.First(r => r.Equals(rolUnificado, StringComparison.OrdinalIgnoreCase));
                 Session["Rol"] = match;
+                Session["RolActivo"] = match;
+                Session["RolActual"] = match;
                 PersistirRolSeleccionado(match, null);
                 ActualizarTicketAutenticacionRolSeleccionado(match);
             }

@@ -711,8 +711,22 @@ SELECT
     codigo AS ""Codigo"",
     nombre AS ""Nombre"",
     modulo AS ""Modulo"",
-    tipo_accion AS ""TipoAccion"",
-    COALESCE(NULLIF(descripcion, ''), nombre) AS ""Descripcion"",
+    COALESCE(NULLIF(UPPER(TRIM(to_jsonb(seguridad_permiso)->>'tipo_accion')), ''),
+        CASE
+            WHEN codigo LIKE '%FIRMAR%' THEN 'FIRMAR'
+            WHEN codigo LIKE '%APROBAR%' OR codigo LIKE '%ACEPTAR%' THEN 'APROBAR'
+            WHEN codigo LIKE '%DEVOLVER%' OR codigo LIKE '%RECHAZAR%' THEN 'DEVOLVER'
+            WHEN codigo LIKE '%GENERAR%' THEN 'GENERAR'
+            WHEN codigo LIKE '%SOLICITAR%' OR codigo LIKE '%CREAR%' THEN 'CREAR'
+            WHEN codigo LIKE '%EDITAR%' OR codigo LIKE '%GESTION%' OR codigo IN ('ADM_ROLES_PERMISOS','ADM_RESET_PASSWORD') THEN 'EDITAR'
+            WHEN codigo LIKE '%ASIGNAR%' OR codigo LIKE '%DESIGNAR%' THEN 'ASIGNAR'
+            WHEN codigo LIKE '%DESCARGAR%' THEN 'DESCARGAR'
+            WHEN codigo LIKE '%EXPORTAR%' THEN 'EXPORTAR'
+            WHEN codigo LIKE '%ELIMINAR%' OR codigo LIKE '%ANULAR%' THEN 'ELIMINAR'
+            WHEN codigo LIKE '%REVISAR%' THEN 'REVISAR'
+            ELSE 'VER'
+        END) AS ""TipoAccion"",
+    COALESCE(NULLIF(to_jsonb(seguridad_permiso)->>'descripcion', ''), nombre) AS ""Descripcion"",
     activo AS ""Activo""
 FROM seguridad_permiso
 WHERE (@soloActivos = FALSE OR activo = TRUE)

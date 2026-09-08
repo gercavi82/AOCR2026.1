@@ -507,3 +507,96 @@ body.aocr-body .aocr-page-breadcrumb .breadcrumb-item + .breadcrumb-item::before
     -webkit-text-fill-color: #64748b !important;
     opacity: 1 !important;
 }
+
+/* Botones globales: cada variante mantiene texto y fondo como un par.
+   Incluye enlaces de tablas y botones en modales fuera de .aocr-page. */
+body.aocr-body :is(.btn-primary, .btn-outline-primary) {
+    --aocr-button-bg: #0b5ed7;
+    --aocr-button-hover: #094db1;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-secondary, .btn-outline-secondary) {
+    --aocr-button-bg: #59636d;
+    --aocr-button-hover: #454e57;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-success, .btn-outline-success) {
+    --aocr-button-bg: #18743b;
+    --aocr-button-hover: #115a2d;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-danger, .btn-outline-danger) {
+    --aocr-button-bg: #c92a39;
+    --aocr-button-hover: #a51e2b;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-info, .btn-outline-info) {
+    --aocr-button-bg: #087990;
+    --aocr-button-hover: #065e70;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-dark, .btn-outline-dark) {
+    --aocr-button-bg: #343a40;
+    --aocr-button-hover: #23272b;
+    --aocr-button-fg: #ffffff;
+}
+body.aocr-body :is(.btn-warning, .btn-outline-warning) {
+    --aocr-button-bg: #ffc107;
+    --aocr-button-hover: #e0a800;
+    --aocr-button-fg: #212529;
+}
+body.aocr-body :is(.btn-light, .btn-default, .btn-outline-light) {
+    --aocr-button-bg: #f8f9fa;
+    --aocr-button-hover: #e2e6ea;
+    --aocr-button-fg: #212529;
+}
+body.aocr-body .btn:is(.btn-primary, .btn-secondary, .btn-success,
+.btn-danger, .btn-info, .btn-dark, .btn-warning, .btn-light, .btn-default) {
+    color: var(--aocr-button-fg) !important;
+    background: var(--aocr-button-bg) !important;
+    border-color: var(--aocr-button-bg) !important;
+}
+body.aocr-body .btn:is(.btn-outline-primary, .btn-outline-secondary,
+.btn-outline-success, .btn-outline-danger, .btn-outline-info,
+.btn-outline-dark, .btn-outline-warning, .btn-outline-light) {
+    color: var(--aocr-button-bg) !important;
+    background: transparent !important;
+    border-color: currentColor !important;
+}
+/* Amarillo sobre blanco no es legible: usar tinta oscura en el contorno. */
+body.aocr-body .btn.btn-outline-warning {
+    color: #795500 !important;
+}
+body.aocr-body .btn.btn-outline-light {
+    color: #212529 !important;
+    background: #ffffff !important;
+    border-color: #6c757d !important;
+}
+body.aocr-body .btn:is(.btn-primary, .btn-secondary, .btn-success,
+.btn-danger, .btn-info, .btn-dark, .btn-warning, .btn-light, .btn-default,
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-danger, .btn-outline-info, .btn-outline-dark,
+.btn-outline-warning, .btn-outline-light):is(:hover, :focus-visible, :active, .active):not(:disabled):not(.disabled),
+body.aocr-body .btn-check:checked + .btn {
+    color: var(--aocr-button-fg, #ffffff) !important;
+    background: var(--aocr-button-hover, #094db1) !important;
+    border-color: var(--aocr-button-hover, #094db1) !important;
+}
+body.aocr-body .btn,
+body.aocr-body .btn :is(i, span:not(.badge), strong, b, em, small),
+body.aocr-body .btn :is(i, span:not(.badge))::before {
+    -webkit-text-fill-color: currentColor !important;
+    text-shadow: none !important;
+}
+body.aocr-body .btn :is(i, span:not(.badge), strong, b, em, small) {
+    color: inherit !important;
+}
+body.aocr-body .btn:focus-visible {
+    outline: 3px solid #0f172a !important;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px #ffffff !important;
+}
+body.aocr-body .btn:is(:disabled, .disabled),
+body.aocr-body fieldset:disabled .btn {
+    opacity: 0.75;
+}

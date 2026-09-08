@@ -104,25 +104,40 @@ WHERE NOT EXISTS(SELECT 1 FROM public.seguridad_permiso p WHERE p.codigo=v.codig
 UPDATE public.seguridad_permiso SET activo=TRUE,modulo='ENTREGA_FINAL',actualizado_en=NOW(),actualizado_por='AC12'
 WHERE codigo IN ('ENTREGA_FINAL_SOLICITAR','ENTREGA_FINAL_CONSULTAR','ENTREGA_FINAL_AUDITAR');
 
-INSERT INTO public.seguridad_rol_permiso(codigorol,id_permiso,activo,creado_en,creado_por)
-SELECT r.codigorol,p.id_permiso,TRUE,NOW(),'AC12' FROM public.rol r CROSS JOIN public.seguridad_permiso p
-WHERE regexp_replace(UPPER(TRIM(COALESCE(r.descripcion,''))),'[^A-Z0-9]+','_','g') IN ('DIRDAC','DIRECTOR_DIRDAC','DIRECTORDIRDAC')
-  AND p.codigo='ENTREGA_FINAL_SOLICITAR'
-  AND NOT EXISTS(SELECT 1 FROM public.seguridad_rol_permiso rp WHERE rp.codigorol=r.codigorol AND rp.id_permiso=p.id_permiso);
+-- Matriz explicita: nunca reactivar permisos de otros roles por su codigo solamente.
+CREATE TEMP TABLE ac12_permisos_esperados ON COMMIT DROP AS
+SELECT r.codigorol, p.id_permiso
+FROM public.rol r
+CROSS JOIN public.seguridad_permiso p
+CROSS JOIN LATERAL (
+    SELECT regexp_replace(translate(UPPER(TRIM(COALESCE(r.descripcion,''))),
+        'ÁÉÍÓÚÜÑ','AEIOUUN'),'[^A-Z0-9]','','g') AS token
+) n
+WHERE r.activo AND (
+    (p.codigo = 'ENTREGA_FINAL_SOLICITAR' AND n.token IN
+        ('DIRDAC','DIRECTORDIRDAC','DIRECTORGENERAL','DIRECTORDGAC',
+         'DIRECCIONJEFATURATECNICA'))
+    OR (p.codigo = 'ENTREGA_FINAL_CONSULTAR' AND n.token IN
+        ('DIRDAC','DIRECTORDIRDAC','DIRECTORGENERAL','DIRECTORDGAC',
+         'DIRECCIONJEFATURATECNICA','DIRCAV','DCAV',
+         'DIRECTORCERTIFICACIONESDCAV','COORDINADOR','COORDINACION',
+         'COORDINADORINSPECCIONES','COORDINACIONLEGAL','COORDINADORLEGAL'))
+    OR (p.codigo = 'ENTREGA_FINAL_AUDITAR' AND n.token IN
+        ('ADMINISTRADOR','ADMIN','ADMINISTRADORSISTEMA'))
+);
 
 INSERT INTO public.seguridad_rol_permiso(codigorol,id_permiso,activo,creado_en,creado_por)
-SELECT r.codigorol,p.id_permiso,TRUE,NOW(),'AC12' FROM public.rol r CROSS JOIN public.seguridad_permiso p
-WHERE regexp_replace(UPPER(TRIM(COALESCE(r.descripcion,''))),'[^A-Z0-9]+','_','g') IN ('DIRDAC','DIRCAV','DCAV','COORDINADOR','COORDINACION')
-  AND p.codigo='ENTREGA_FINAL_CONSULTAR'
-  AND NOT EXISTS(SELECT 1 FROM public.seguridad_rol_permiso rp WHERE rp.codigorol=r.codigorol AND rp.id_permiso=p.id_permiso);
+SELECT codigorol,id_permiso,TRUE,NOW(),'AC12'
+FROM ac12_permisos_esperados
+ON CONFLICT (codigorol,id_permiso) DO UPDATE
+SET activo=TRUE,actualizado_en=NOW(),actualizado_por='AC12';
 
-INSERT INTO public.seguridad_rol_permiso(codigorol,id_permiso,activo,creado_en,creado_por)
-SELECT r.codigorol,p.id_permiso,TRUE,NOW(),'AC12' FROM public.rol r CROSS JOIN public.seguridad_permiso p
-WHERE regexp_replace(UPPER(TRIM(COALESCE(r.descripcion,''))),'[^A-Z0-9]+','_','g') IN ('ADMINISTRADOR','ADMIN')
-  AND p.codigo='ENTREGA_FINAL_AUDITAR'
-  AND NOT EXISTS(SELECT 1 FROM public.seguridad_rol_permiso rp WHERE rp.codigorol=r.codigorol AND rp.id_permiso=p.id_permiso);
-
-UPDATE public.seguridad_rol_permiso rp SET activo=TRUE,actualizado_en=NOW(),actualizado_por='AC12'
-WHERE rp.id_permiso IN (SELECT id_permiso FROM public.seguridad_permiso WHERE codigo IN ('ENTREGA_FINAL_SOLICITAR','ENTREGA_FINAL_CONSULTAR','ENTREGA_FINAL_AUDITAR'));
+UPDATE public.seguridad_rol_permiso rp
+SET activo=FALSE,actualizado_en=NOW(),actualizado_por='AC12'
+WHERE rp.activo
+  AND rp.id_permiso IN (SELECT id_permiso FROM public.seguridad_permiso
+      WHERE codigo IN ('ENTREGA_FINAL_SOLICITAR','ENTREGA_FINAL_CONSULTAR','ENTREGA_FINAL_AUDITAR'))
+  AND NOT EXISTS (SELECT 1 FROM ac12_permisos_esperados e
+      WHERE e.codigorol=rp.codigorol AND e.id_permiso=rp.id_permiso);
 
 COMMIT;

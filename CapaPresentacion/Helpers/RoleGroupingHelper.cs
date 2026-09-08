@@ -121,6 +121,13 @@ namespace CapaPresentacion.Helpers
 
             foreach (var role in mappedRoles)
             {
+                // Direccion no identifica una autoridad vigente. Si existe un rol
+                // canonico asignado, evitar restaurar este perfil sin navegacion.
+                if (orderedRoles.Count > 0 && Simplify(role) == "DIRECCION")
+                {
+                    continue;
+                }
+
                 if (!orderedRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
                 {
                     orderedRoles.Add(role);
