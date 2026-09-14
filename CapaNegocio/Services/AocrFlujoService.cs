@@ -238,13 +238,24 @@ namespace CapaNegocio.Services
                 return true;
             }
 
-            // AC-04: Cierre institucional y entrega final
+            // AC-04 y AC-12: Cierre institucional y entrega final canónica
             if ((string.Equals(actual, AocrEstadosProceso.AocrFirmadaDirdac, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(actual, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)) &&
-                (string.Equals(destino, AocrEstadosProceso.ListoParaEntrega, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(destino, AocrEstadosProceso.Entregado, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(destino, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(destino, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)))
+                (string.Equals(destino, AocrEstadosProceso.FirmasCompletas, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.ListoParaEntrega, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (string.Equals(actual, AocrEstadosProceso.FirmasCompletas, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(destino, AocrEstadosProceso.ListoParaEntrega, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(actual, AocrEstadosProceso.ListoParaEntrega, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(destino, AocrEstadosProceso.Entregado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }
@@ -321,7 +332,21 @@ namespace CapaNegocio.Services
                 return true;
             }
 
+            // REGLA: Bloqueado bypass heredado de Firmado DCAV directo a Finalizado (requiere firma de DIRDAC y entrega AC-12)
             if (actual == EstadoSolicitud.FirmadoDcav && destino == EstadoSolicitud.Finalizado)
+            {
+                return false;
+            }
+
+            // Migración histórica de lectura hacia estados canónicos
+            if (string.Equals(actual, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(destino, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(actual, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(destino, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -434,39 +459,11 @@ namespace CapaNegocio.Services
             var rol = NormalizarRolFlujo(rolNormalizado);
             var accion = accionFlujo.Trim();
 
-            // REGLA 7: El Administrador no puede aprobar, devolver, designar o firmar en representacion de roles operativos.
+            // REGLA 5 y 7: El Administrador administra configuraciones y catalogos.
+            // No puede aceptar, devolver, aprobar, designar, remitir, firmar ni entregar documentos operativos.
             if (string.Equals(rol, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
-                switch (accion)
-                {
-                    case AocrFlujoAcciones.AprobarPago:
-                    case AocrFlujoAcciones.AceptarDocumentacion:
-                    case AocrFlujoAcciones.DevolverRtObservaciones:
-                    case AocrFlujoAcciones.AsignarInspector:
-                    case AocrFlujoAcciones.FirmarListaVerificacion:
-                    case AocrFlujoAcciones.FirmarInformeTecnico:
-                    case AocrFlujoAcciones.FirmarAocrFinal:
-                    case AocrFlujoAcciones.DircavAceptarDocumentacion:
-                    case AocrFlujoAcciones.DircavDevolverCoordinador:
-                    case AocrFlujoAcciones.DircavConfirmarDesignacion:
-                    case AocrFlujoAcciones.DircavFirmarDesignacion:
-                    case AocrFlujoAcciones.DircavRevisarInforme:
-                    case AocrFlujoAcciones.DircavFirmarCl:
-                    case AocrFlujoAcciones.DircavRemitirDirdac:
-                    case AocrFlujoAcciones.DirdacRevisarAocr:
-                    case AocrFlujoAcciones.DirdacDevolverDircav:
-                    case AocrFlujoAcciones.DirdacFirmarAocr:
-                    case AocrFlujoAcciones.DirdacConfirmarLegalizacion:
-                    case AocrFlujoAcciones.CoordinadorRemitirDircav:
-                    case AocrFlujoAcciones.CoordinadorDevolverInspector:
-                    case AocrFlujoAcciones.CoordinadorRemitirClDircav:
-                    case AocrFlujoAcciones.CoordinadorDevolverClInspector:
-                    case AocrFlujoAcciones.CoordinadorRevisarInformeTecnico:
-                    case AocrFlujoAcciones.InspectorRemitirInformeCoordinador:
-                        return false;
-                    default:
-                        return true;
-                }
+                return false;
             }
 
             switch (accion)
@@ -475,7 +472,8 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.CargarComprobantePago:
                 case AocrFlujoAcciones.CargarDocumentacionRt:
                 case AocrFlujoAcciones.EnviarCoordinacion:
-                    return string.Equals(rol, "Solicitante", StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(rol, "Solicitante", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(rol, "RT", StringComparison.OrdinalIgnoreCase);
 
                 case AocrFlujoAcciones.AprobarPago:
                     return string.Equals(rol, "Financiero", StringComparison.OrdinalIgnoreCase);
@@ -484,15 +482,19 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.AceptarDocumentacion:
                 case AocrFlujoAcciones.DevolverRtObservaciones:
                 case AocrFlujoAcciones.AsignarInspector:
-                case AocrFlujoAcciones.GenerarAocr:
                 case AocrFlujoAcciones.CoordinadorRemitirDircav:
                 case AocrFlujoAcciones.CoordinadorDevolverInspector:
                 case AocrFlujoAcciones.CoordinadorRemitirClDircav:
                 case AocrFlujoAcciones.CoordinadorDevolverClInspector:
                 case AocrFlujoAcciones.CoordinadorRevisarInformeTecnico:
-                    return string.Equals(rol, "Coordinacion", StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(rol, "Coordinacion", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(rol, "COORDINADOR", StringComparison.OrdinalIgnoreCase);
 
-                // NI COORDINADOR NI INSPECTOR REMITEN DIRECTAMENTE A DIRDAC (DIRCAV ES LA INSTANCIA DE REMISION)
+                // REGLA 6: Eliminar del Coordinador el permiso GenerarAocr.
+                case AocrFlujoAcciones.GenerarAocr:
+                    return false;
+
+                // REGLA 8: NI COORDINADOR NI INSPECTOR REMITEN DIRECTAMENTE A DIRDAC
                 case AocrFlujoAcciones.EnviarDirdac:
                     return false;
 
@@ -501,9 +503,10 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.FirmarListaVerificacion:
                 case AocrFlujoAcciones.FirmarInformeTecnico:
                 case AocrFlujoAcciones.InspectorRemitirInformeCoordinador:
-                    return string.Equals(rol, "InspectorTecnico", StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(rol, "InspectorTecnico", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(rol, "INSPECTOR", StringComparison.OrdinalIgnoreCase);
 
-                // DIRCAV
+                // DIRCAV canónico (con soporte lectura histórica DCAV)
                 case AocrFlujoAcciones.DircavAceptarDocumentacion:
                 case AocrFlujoAcciones.DircavDevolverCoordinador:
                 case AocrFlujoAcciones.DircavConfirmarDesignacion:
@@ -511,25 +514,26 @@ namespace CapaNegocio.Services
                 case AocrFlujoAcciones.DircavRevisarInforme:
                 case AocrFlujoAcciones.DircavFirmarCl:
                 case AocrFlujoAcciones.DircavRemitirDirdac:
-                    return string.Equals(rol, "Dcav", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(rol, "Dircav", StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(rol, "DIRCAV", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(rol, "Dcav", StringComparison.OrdinalIgnoreCase);
 
-                // DIRDAC
+                // DIRDAC canónico (con soporte lectura histórica)
                 case AocrFlujoAcciones.DirdacRevisarAocr:
                 case AocrFlujoAcciones.DirdacDevolverDircav:
                 case AocrFlujoAcciones.DirdacFirmarAocr:
                 case AocrFlujoAcciones.DirdacConfirmarLegalizacion:
                 case AocrFlujoAcciones.FirmarAocrFinal:
-                    return string.Equals(rol, "Dirdac", StringComparison.OrdinalIgnoreCase)
+                    return string.Equals(rol, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(rol, "Dirdac", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(rol, "DireccionJefaturaTecnica", StringComparison.OrdinalIgnoreCase);
 
+                // REGLA 7: Eliminar la liberación manual de documentos finales por DIRCAV o DIRDAC.
+                // La entrega debe ser automática mediante AC-12 después de verificar ambas firmas.
                 case AocrFlujoAcciones.LiberarDocumentosFinales:
-                    return string.Equals(rol, "Dirdac", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(rol, "DireccionJefaturaTecnica", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(rol, "Dcav", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(rol, "Dircav", StringComparison.OrdinalIgnoreCase);
+                    return false;
 
                 default:
+                    // Política de denegación por defecto: cualquier acción no registrada devuelve false.
                     return false;
             }
         }
@@ -556,9 +560,8 @@ namespace CapaNegocio.Services
             if (clean == "INSPECTOR" || clean == "TECNICO" || clean == "EVALUADORTECNICO" || clean == "INSPECTORTECNICO") return "InspectorTecnico";
             if (clean == "FINANCIERO" || clean == "COORDINADORFINANCIERO" || clean == "DIRECTORFINANCIERO") return "Financiero";
             if (clean == "COORDINACION" || clean == "COORDINADOR" || clean == "COORDINADORINSPECCIONES" || clean == "COORDINACIONLEGAL" || clean == "COORDINADORLEGAL") return "Coordinacion";
-            if (clean == "DCAV" || clean == "DIRECTORCERTIFICACIONESDCAV") return "Dcav";
-            if (clean == "DIRDAC") return "Dirdac";
-            if (clean == "DIRECCION" || clean == "JEFATURATECNICA" || clean == "DIRECTORGENERAL" || clean == "DIRECCIONJEFATURA" || clean == "DIRECCIONJEFATURATECNICA") return "DireccionJefaturaTecnica";
+            if (clean == "DIRCAV" || clean == "DCAV" || clean == "DIRECTORCERTIFICACIONESDCAV") return "DIRCAV";
+            if (clean == "DIRDAC" || clean == "DIRECTORDIRDAC" || clean == "DIRECCION" || clean == "JEFATURATECNICA" || clean == "DIRECTORGENERAL" || clean == "DIRECCIONJEFATURA" || clean == "DIRECCIONJEFATURATECNICA") return "DIRDAC";
 
             return rol.Trim();
         }

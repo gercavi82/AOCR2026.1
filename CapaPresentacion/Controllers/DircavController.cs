@@ -621,7 +621,9 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error al cargar la revisión de Condiciones y Limitaciones: " + ex.Message;
+                var correlationId = Guid.NewGuid().ToString("N");
+                System.Diagnostics.Trace.TraceError("[Dircav][RevisionCl] CorrelationId=" + correlationId + "; SolicitudId=" + id + "; Error=" + ex.Message);
+                TempData["Error"] = "Error interno al cargar la revisión de Condiciones y Limitaciones. Código de referencia: " + correlationId;
                 return RedirectToAction("Bandeja", new { tab = "condiciones" });
             }
         }
@@ -740,21 +742,35 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "Solo el rol DIRCAV puede remitir el expediente aprobado a DIRDAC.");
             }
 
-            var solicitud = _solicitudDao.ObtenerPorId(id);
-            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
-
-            // Validar que Condiciones y Limitaciones fue firmada previamente por DIRCAV
-            var clFirmada = string.Equals(solicitud.Estado, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(solicitud.Estado, AocrEstadosProceso.CondicionesFirmadasDcav, StringComparison.OrdinalIgnoreCase);
-
-            if (!clFirmada)
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            var usuarioId = ObtenerUsuarioIdActual();
+            if (usuarioId <= 0)
             {
-                return new HttpStatusCodeResult(409, "Conflicto: No se puede remitir el expediente a DIRDAC sin la firma previa obligatoria de Condiciones y Limitaciones por DIRCAV.");
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
             }
 
-            solicitud.Estado = AocrEstadosProceso.AocrPendienteDirdac;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
+            var request = new RemitirAocrDirdacRequest
+            {
+                SolicitudId = id,
+                Observacion = observacion,
+                Actor = new AocrWorkflowActor
+                {
+                    UsuarioId = usuarioId,
+                    UsuarioNombre = ObtenerUsuarioLoginActual(),
+                    RolActivo = rol,
+                    Ip = Request != null ? Request.UserHostAddress : null,
+                    TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { rol })
+                },
+                BaseUrl = Request != null && Request.Url != null ? Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/') : string.Empty
+            };
+
+            var resultado = _finalWorkflowService.RemitirAocrDirdac(request);
+            if (!resultado.Exito)
+            {
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Bandeja", new { tab = "remision" });
+            }
 
             TempData["Success"] = "Expediente y AOCR remitidos formalmente al Director General (DIRDAC) para su firma y legalización.";
             return RedirectToAction("Bandeja", new { tab = "remision" });

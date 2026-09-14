@@ -106,9 +106,42 @@ namespace CapaDatos.Constants
             return Coincide(rol, RtSqlTokens);
         }
 
+        public static readonly string[] RolesCanonicos =
+        {
+            Dircav, Dirdac, Coordinador, RT, Financiero, Inspector, Administrador
+        };
+
+        public static readonly string[] FinancieroSqlTokens =
+        {
+            "FINANCIERO", "COORDINADOR_FINANCIERO", "COORDINADORFINANCIERO", "DIRECTOR_FINANCIERO", "DIRECTORFINANCIERO"
+        };
+
         public static bool EsDirdac(string rol)
         {
             return Coincide(rol, DirdacSqlTokens);
+        }
+
+        public static bool EsFinanciero(string rol)
+        {
+            return Coincide(rol, FinancieroSqlTokens);
+        }
+
+        public static string NormalizarRolCanonico(string rol)
+        {
+            if (string.IsNullOrWhiteSpace(rol))
+            {
+                return string.Empty;
+            }
+
+            if (EsDircav(rol)) return Dircav;
+            if (EsDirdac(rol)) return Dirdac;
+            if (EsCoordinador(rol)) return Coordinador;
+            if (EsInspector(rol)) return Inspector;
+            if (EsFinanciero(rol)) return Financiero;
+            if (EsRt(rol)) return RT;
+            if (EsAdministrador(rol)) return Administrador;
+
+            return string.Empty;
         }
 
         private static bool Coincide(string rol, string[] permitidos)

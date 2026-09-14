@@ -23,3 +23,9 @@ TestResults/
 docs/export/node_modules/
 
 .fake
+
+# Externalized secrets and credentials
+connectionStrings.config
+*.secrets.config
+**/connectionStrings.config
+**/appSettings.secrets.config

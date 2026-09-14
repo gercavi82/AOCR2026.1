@@ -37,6 +37,9 @@ namespace CapaNegocio.Services
             "INSPECCION_REQUERIDA", "SOLICITUD_INSPECCION_GENERADA", "PENDIENTE_CARGA_FIRMADA",
             "SOLICITUD_INSPECCION_FIRMADA", "EN_INSPECCION", "LV_EN_PROCESO", "LV_FINALIZADA",
             "LV_FIRMADA", "INFORME_TECNICO_EN_ELABORACION", "INFORME_TECNICO_FIRMADO",
+            "INFORME_TECNICO_FIRMADO_INSPECTOR", "PENDIENTE_REVISION_FINAL_COORDINADOR",
+            "CL_PENDIENTE_DIRCAV", "CL_FIRMADA_DIRCAV", "AOCR_PENDIENTE_DIRDAC", "AOCR_FIRMADA_DIRDAC",
+            "FIRMAS_COMPLETAS", "LISTO_PARA_ENTREGA", "ENTREGADO",
             "INFORME_TECNICO_SATISFACTORIO", "INFORME_TECNICO_NO_SATISFACTORIO", "NC_GENERADA",
             "PENDIENTE_SUBSANACION", "NUEVA_INSPECCION_REQUERIDA", "AOCR_EN_ELABORACION",
             "AOCR_EN_REVISION_COORDINADOR", "AOCR_DEVUELTO_OBSERVACIONES", "AOCR_ENVIADO_DIRDAC",
@@ -54,6 +57,49 @@ namespace CapaNegocio.Services
             if (string.IsNullOrWhiteSpace(estado))
             {
                 return "BORRADOR";
+            }
+
+            var trimmed = estado.Trim();
+            var upper = trimmed
+                .ToUpperInvariant()
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U")
+                .Replace(" ", "_")
+                .Replace("-", "_")
+                .Replace("/", "_");
+
+            switch (upper)
+            {
+                case "ENVIADO_DCAV":
+                case "CL_PENDIENTE_DIRCAV":
+                case "CL_PENDIENTE_FIRMA_DIRCAV":
+                    return "CL_PENDIENTE_DIRCAV";
+                case "FIRMADO_DCAV":
+                case "CONDICIONES_FIRMADAS_DCAV":
+                case "CL_FIRMADA_DIRCAV":
+                    return "CL_FIRMADA_DIRCAV";
+                case "AOCR_PENDIENTE_DIRDAC":
+                case "AOCR_ENVIADO_DIRDAC":
+                case "PENDIENTE_FIRMA_AOCR_DIRDAC":
+                    return "AOCR_PENDIENTE_DIRDAC";
+                case "AOCR_FIRMADA_DIRDAC":
+                case "AOCR_FIRMADO":
+                    return "AOCR_FIRMADA_DIRDAC";
+                case "FIRMAS_COMPLETAS":
+                    return "FIRMAS_COMPLETAS";
+                case "LISTO_PARA_ENTREGA":
+                    return "LISTO_PARA_ENTREGA";
+                case "ENTREGADO":
+                case "FINALIZADO":
+                case "CERRADO":
+                    return "ENTREGADO";
+                case "INFORME_TECNICO_FIRMADO_INSPECTOR":
+                    return "INFORME_TECNICO_FIRMADO_INSPECTOR";
+                case "PENDIENTE_REVISION_FINAL_COORDINADOR":
+                    return "PENDIENTE_REVISION_FINAL_COORDINADOR";
             }
 
             var canonico = Normalizar(estado);
@@ -85,6 +131,7 @@ namespace CapaNegocio.Services
             }
 
             if (string.Equals(normalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, AocrEstadosProceso.Entregado, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase)
@@ -97,6 +144,7 @@ namespace CapaNegocio.Services
             var clave = NormalizarClaveInstitucional(estado);
             return clave == "CERRADO"
                 || clave == "FINALIZADO"
+                || clave == "ENTREGADO"
                 || clave == "AOCR_LEGALIZADO"
                 || clave == "AOCR_EMITIDO_RECIBIDO"
                 || clave == "ANULADO"
@@ -242,11 +290,24 @@ namespace CapaNegocio.Services
                 case "AOCR_EN_REVISION_COORDINADOR":
                     return "AOCR_EN_REVISION_COORDINADOR";
                 case "ENVIADO_DCAV":
-                case "AOCR_ENVIADO_DIRDAC":
-                    return "AOCR_ENVIADO_DIRDAC";
+                case "CL_PENDIENTE_DIRCAV":
+                    return "CL_PENDIENTE_DIRCAV";
                 case "FIRMADO_DCAV":
+                case "CONDICIONES_FIRMADAS_DCAV":
+                case "CL_FIRMADA_DIRCAV":
+                    return "CL_FIRMADA_DIRCAV";
+                case "AOCR_ENVIADO_DIRDAC":
+                case "AOCR_PENDIENTE_DIRDAC":
+                    return "AOCR_PENDIENTE_DIRDAC";
                 case "AOCR_FIRMADO":
-                    return "AOCR_FIRMADO";
+                case "AOCR_FIRMADA_DIRDAC":
+                    return "AOCR_FIRMADA_DIRDAC";
+                case "FIRMAS_COMPLETAS":
+                    return "FIRMAS_COMPLETAS";
+                case "LISTO_PARA_ENTREGA":
+                    return "LISTO_PARA_ENTREGA";
+                case "ENTREGADO":
+                    return "ENTREGADO";
                 case "AOCR_LEGALIZADO":
                 case "LEGALIZADO":
                     return "AOCR_LEGALIZADO";
@@ -257,7 +318,7 @@ namespace CapaNegocio.Services
                     return "DOCUMENTOS_FINALES_DISPONIBLES";
                 case "FINALIZADO":
                 case "CERRADO":
-                    return "CERRADO";
+                    return "ENTREGADO";
                 case "ANULADA":
                 case "ANULADO":
                     return "ANULADO";

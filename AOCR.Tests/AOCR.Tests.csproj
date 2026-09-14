@@ -68,6 +68,7 @@
     <Compile Include="Integration\Ac09PdfRenderTests.cs" />
     <Compile Include="Unit\SegregacionRolesDircavDirdacTests.cs" />
     <Compile Include="Unit\SeparacionSieteRolesRealesTests.cs" />
+    <Compile Include="Unit\AocrFlujoCanonicalizacionTests.cs" />
     <Compile Include="Unit\Ac01LiberarCorreoRtDevueltoTests.cs" />
     <Compile Include="Unit\Ac01MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac02FechasInspeccionEstacionesTests.cs" />

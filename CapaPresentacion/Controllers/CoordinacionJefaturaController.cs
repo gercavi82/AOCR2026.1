@@ -5048,8 +5048,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
-            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+            if (ctx == null || ctx.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+            var coordinadorId = ctx.UsuarioId;
+            var usuarioLogin = !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
             var svc = new RevisionDocumentalCoordinadorService();
             var res = svc.DevolverAlInspector(solicitudId, coordinadorId, comentario, usuarioLogin);
@@ -5106,22 +5110,26 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido remitida previamente.");
             }
 
-            var ctx = _usuarioContexto.ObtenerContextoActual();
-            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
-            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
-
-            var svc = new RevisionDocumentalCoordinadorService();
-            var res = svc.RemitirADircav(solicitudId, coordinadorId, observacion, usuarioLogin);
-            if (!res.Ok)
+            var ctxRemision = _usuarioContexto.ObtenerContextoActual();
+            if (ctxRemision == null || ctxRemision.UsuarioId <= 0)
             {
-                return new HttpStatusCodeResult(HttpStatusCode.Conflict, res.Mensaje);
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+            var coordinadorIdRemision = ctxRemision.UsuarioId;
+            var usuarioLoginRemision = !string.IsNullOrWhiteSpace(ctxRemision.LoginNormalizado) ? ctxRemision.LoginNormalizado : "coordinador";
+
+            var svcRemision = new RevisionDocumentalCoordinadorService();
+            var resRemision = svcRemision.RemitirADircav(solicitudId, coordinadorIdRemision, observacion, usuarioLoginRemision);
+            if (!resRemision.Ok)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Conflict, resRemision.Mensaje);
             }
 
             TempData["NotificacionTipo"] = "success";
-            TempData["NotificacionMensaje"] = res.Mensaje;
+            TempData["NotificacionMensaje"] = resRemision.Mensaje;
             if (Request != null && Request.IsAjaxRequest())
             {
-                return Json(new { ok = true, message = res.Mensaje });
+                return Json(new { ok = true, message = resRemision.Mensaje });
             }
             return RedirectToAction("RevisionVerificacion");
         }
@@ -5145,7 +5153,11 @@ namespace CapaPresentacion.Controllers
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
+            if (ctx == null || ctx.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+            var usuarioId = ctx.UsuarioId;
 
             try
             {
@@ -5163,7 +5175,9 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error al cargar la revisión de Condiciones y Limitaciones: " + ex.Message;
+                var correlationId = Guid.NewGuid().ToString("N");
+                System.Diagnostics.Trace.TraceError("[Coordinador][RevisionCl] CorrelationId=" + correlationId + "; SolicitudId=" + id + "; Error=" + ex.Message);
+                TempData["Error"] = "Error interno al cargar la revisión de Condiciones y Limitaciones. Código de referencia: " + correlationId;
                 return RedirectToAction("DashboardInspeccion");
             }
         }
@@ -5191,8 +5205,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
-            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+            if (ctx == null || ctx.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+            var usuarioId = ctx.UsuarioId;
+            var usuarioLogin = !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
             var resultado = _condicionesService.DevolverAInspector(request.SolicitudId, usuarioId, usuarioLogin, rolSesion, request.Observacion);
 
@@ -5230,8 +5248,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var usuarioId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
-            var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
+            if (ctx == null || ctx.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+            var usuarioId = ctx.UsuarioId;
+            var usuarioLogin = !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
             var resultado = _condicionesService.RemitirADircav(request.SolicitudId, usuarioId, usuarioLogin, rolSesion, request.Observacion);
 

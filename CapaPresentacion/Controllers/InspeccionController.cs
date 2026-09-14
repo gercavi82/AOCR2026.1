@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -7940,7 +7940,7 @@ namespace CapaPresentacion.Controllers
             if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase))
             {
                 estadoFinal = "FIRMADO_INSPECTOR";
-                autoEnviarADirdac = true;
+                autoEnviarADirdac = false;
             }
 
             ListaVerificacionOperacionalEae listaVerificacion;
@@ -8178,7 +8178,26 @@ namespace CapaPresentacion.Controllers
             }
             else
             {
-                TempData["Success"] = "Informe técnico firmado correctamente.";
+                if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && solicitudFinal != null)
+                {
+                    try
+                    {
+                        _solicitudDAO.CambiarEstado(
+                            solicitudFinal.CodigoSolicitud,
+                            AocrEstadosProceso.PendienteRevisionFinalCoordinador,
+                            usuarioId,
+                            "Informe técnico firmado por el Inspector. Remitido a revisión final de Coordinación.");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("[FirmarInformePorRol] No se pudo cambiar estado de solicitud a PENDIENTE_REVISION_FINAL_COORDINADOR: " + ex.Message);
+                    }
+                    TempData["Success"] = "Informe técnico firmado correctamente y remitido a Coordinación para revisión final.";
+                }
+                else
+                {
+                    TempData["Success"] = "Informe técnico firmado correctamente.";
+                }
             }
 
             return RedirectToAction("Detalle", new { id });
