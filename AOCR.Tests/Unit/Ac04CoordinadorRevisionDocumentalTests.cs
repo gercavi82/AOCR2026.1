@@ -15,6 +15,128 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class Ac04CoordinadorRevisionDocumentalTests
     {
+        [DataTestMethod]
+        [DataRow(0, 0, false)]
+        [DataRow(3, 1, false)]
+        [DataRow(3, 0, true)]
+        [DataRow(3, -1, false)]
+        public void FinalizacionDocumental_ExigeDocumentosConResultado(int documentos, int pendientes, bool esperado)
+        {
+            Assert.AreEqual(esperado, RevisionDocumentalCoordinadorService.PuedeFinalizarRevision(documentos, pendientes));
+        }
+
+        [DataTestMethod]
+        [DataRow("PENDIENTE_COORDINADOR", true)]
+        [DataRow("DEVUELTO_COORDINADOR", true)]
+        [DataRow("DEVUELTO_COORDINADOR_POR_DIRCAV", true)]
+        [DataRow("PENDIENTE_DIRCAV", false)]
+        [DataRow("AOCR_PENDIENTE_DIRDAC", false)]
+        [DataRow("DEVUELTO_INSPECTOR", false)]
+        [DataRow(null, false)]
+        public void BandejaYDecisionesCoordinador_CompartenEstadosDocumentales(string estado, bool esperado)
+        {
+            Assert.AreEqual(esperado, CoordinacionBandejaService.EsRevisionDocumentalPendiente(estado));
+        }
+
+        [DataTestMethod]
+        [DataRow(null)]
+        [DataRow("0")]
+        [DataRow("-1")]
+        [DataRow("invalido")]
+        public void DecisionesCoordinador_SinIdentidadDeSesion_Devuelven401(string usuarioId)
+        {
+            var controller = CrearControladorCoordinador(usuarioId, "COORDINADOR", true);
+            Assert.AreEqual(401, ((System.Web.Mvc.HttpStatusCodeResult)controller.RemitirADircav(999, "Revisado")).StatusCode);
+            Assert.AreEqual(401, ((System.Web.Mvc.HttpStatusCodeResult)controller.DevolverAlInspector(999, "Corregir")).StatusCode);
+        }
+
+        [TestMethod]
+        public void DecisionesCoordinador_IdentidadSinAutenticacion_Devuelven401()
+        {
+            var controller = CrearControladorCoordinador("7", "COORDINADOR", false);
+            Assert.AreEqual(401, ((System.Web.Mvc.HttpStatusCodeResult)controller.RemitirADircav(999, "Revisado")).StatusCode);
+            Assert.AreEqual(401, ((System.Web.Mvc.HttpStatusCodeResult)controller.DevolverAlInspector(999, "Corregir")).StatusCode);
+        }
+
+        [TestMethod]
+        public void DecisionesCoordinador_SesionCreadaPorLogin_LlegaAValidacionDeSolicitud()
+        {
+            var controller = CrearControladorCoordinador("7", "COORDINADOR", true);
+            Assert.AreEqual(400, ((System.Web.Mvc.HttpStatusCodeResult)controller.RemitirADircav(0, "Revisado")).StatusCode);
+            Assert.AreEqual(400, ((System.Web.Mvc.HttpStatusCodeResult)controller.DevolverAlInspector(0, "Corregir")).StatusCode);
+        }
+
+        [DataTestMethod]
+        [DataRow("ADMINISTRADOR")]
+        [DataRow("INSPECTOR")]
+        [DataRow("DIRCAV")]
+        [DataRow("DIRDAC")]
+        [DataRow("DCAV")]
+        [DataRow("Coordinacion")]
+        public void DecisionesCoordinador_RolActivoIncorrectoAunquePrincipalTengaCoordinador_Devuelven403(string rol)
+        {
+            var controller = CrearControladorCoordinador("7", rol, true);
+            Assert.AreEqual(403, ((System.Web.Mvc.HttpStatusCodeResult)controller.RemitirADircav(999, "Revisado")).StatusCode);
+            Assert.AreEqual(403, ((System.Web.Mvc.HttpStatusCodeResult)controller.DevolverAlInspector(999, "Corregir")).StatusCode);
+        }
+
+        [DataTestMethod]
+        [DataRow(0)]
+        [DataRow(-1)]
+        public void ServicioDocumental_RechazaIdentidadInvalidaAntesDeAccederABase(int usuarioId)
+        {
+            var service = new RevisionDocumentalCoordinadorService();
+            Assert.IsFalse(service.RemitirADircav(999, usuarioId, "Revisado", "usuario").Ok);
+            Assert.IsFalse(service.DevolverAlInspector(999, usuarioId, "Corregir", "usuario").Ok);
+            Assert.IsFalse(service.FinalizarRevisionDocumentalInspector(999, usuarioId, "Revisado").Ok);
+            Assert.IsFalse(service.Observar(999, usuarioId, "Corregir").Ok);
+            Assert.IsFalse(service.Aceptar(999, usuarioId, 8, "Revisado").Ok);
+        }
+
+        [TestMethod]
+        public void Remision_ObservacionInvalida_NoSeSustituyePorAprobacionPredeterminada()
+        {
+            var service = new RevisionDocumentalCoordinadorService();
+            foreach (var observacion in new[] { "<p>Revisado</p>", new string('a', 2001) })
+            {
+                var result = service.RemitirADircav(999, 7, observacion, "usuario");
+                Assert.IsFalse(result.Ok);
+                StringAssert.Contains(result.Mensaje, "2000");
+            }
+        }
+
+        [DataTestMethod]
+        [DataRow("DCAV")]
+        [DataRow("DIRDAC")]
+        [DataRow("ADMINISTRADOR")]
+        public void Dircav_DecisionesDocumentales_NoAceptanAliasNiOtrosRoles(string rol)
+        {
+            var service = new DircavDesignacionService();
+            Assert.AreEqual(403, service.AceptarDocumentacion(999, 7, "usuario", rol).HttpStatusCode);
+            Assert.AreEqual(403, service.DevolverAlCoordinador(999, 7, "usuario", "Corregir", rol).HttpStatusCode);
+        }
+
+        [TestMethod]
+        public void Dircav_DecisionesDocumentales_SinIdentidad_RechazanAntesDeConsultarExpediente()
+        {
+            var service = new DircavDesignacionService();
+            Assert.AreEqual(401, service.AceptarDocumentacion(999, 0, "usuario", "DIRCAV").HttpStatusCode);
+            Assert.AreEqual(401, service.DevolverAlCoordinador(999, 0, "usuario", "Corregir", "DIRCAV").HttpStatusCode);
+        }
+
+        private static CapaPresentacion.Controllers.CoordinacionJefaturaController CrearControladorCoordinador(string id, string rol, bool autenticado)
+        {
+            var session = new MockSession();
+            session["UserId"] = id;
+            session["Rol"] = rol;
+            var identity = new MockIdentity { IsAuthenticated = autenticado, Name = "prueba" };
+            var principal = new System.Security.Principal.GenericPrincipal(identity, new[] { "Coordinador" });
+            var context = new MockHttpContext(principal, session);
+            var controller = new CapaPresentacion.Controllers.CoordinacionJefaturaController();
+            controller.ControllerContext = new System.Web.Mvc.ControllerContext(context, new System.Web.Routing.RouteData(), controller);
+            return controller;
+        }
+
         private readonly IAocrFlujoService _flujoService = new AocrFlujoService();
         private readonly IAocrEstadoService _estadoService = new AocrEstadoService();
         private readonly DircavBandejaService _dircavBandejaService = new DircavBandejaService();

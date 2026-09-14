@@ -288,6 +288,7 @@
     <Compile Include="DAOs\SolicitudDAO.cs" />
     <Compile Include="DAOs\RevisionDocumentalDAO.cs" />
     <Compile Include="DAOs\RevisionDocumentalCoordinadorDAO.cs" />
+    <Compile Include="DAOs\RevisionDocumentalCoordinadorDAO.Decision.cs" />
     <Compile Include="DAOs\SubsanacionDAO.cs" />
     <Compile Include="DAOs\ViaticoDAO.cs" />
     <Compile Include="DAOs\UsuarioRolDAO.cs" />

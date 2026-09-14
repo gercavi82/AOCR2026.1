@@ -7,14 +7,21 @@ using NpgsqlTypes;
 
 namespace CapaDatos.DAOs
 {
-    public sealed class RevisionDocumentalCoordinadorDAO
+    public sealed partial class RevisionDocumentalCoordinadorDAO
     {
         private static readonly object SchemaLock = new object();
         private static bool _schemaReady;
+        private readonly string _connectionString;
+
+        public RevisionDocumentalCoordinadorDAO() { }
+        public RevisionDocumentalCoordinadorDAO(string connectionString)
+        {
+            _connectionString = connectionString;
+        }
 
         private string ConnectionString
         {
-            get { return ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString; }
+            get { return _connectionString ?? ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString; }
         }
 
         public RevisionDocumentalCoordinadorRegistro ObtenerPorSolicitud(int solicitudId)

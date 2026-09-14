@@ -78,6 +78,10 @@ namespace CapaNegocio.Services
         /// </summary>
         public DircavDesignacionResult AceptarDocumentacion(int solicitudId, int dircavUsuarioId, string dircavNombre, string rol)
         {
+            if (dircavUsuarioId <= 0)
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 401, Mensaje = "La sesión no contiene una identidad válida." };
+            if (!string.Equals((rol ?? string.Empty).Trim(), AocrRolesInstitucionales.Dircav, StringComparison.OrdinalIgnoreCase))
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 403, Mensaje = "La operación requiere el rol activo DIRCAV." };
             if (!EsDircavAutorizado(rol))
             {
                 return new DircavDesignacionResult
@@ -179,6 +183,10 @@ namespace CapaNegocio.Services
         /// </summary>
         public DircavDesignacionResult DevolverAlCoordinador(int solicitudId, int dircavUsuarioId, string dircavNombre, string motivo, string rol)
         {
+            if (dircavUsuarioId <= 0)
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 401, Mensaje = "La sesión no contiene una identidad válida." };
+            if (!string.Equals((rol ?? string.Empty).Trim(), AocrRolesInstitucionales.Dircav, StringComparison.OrdinalIgnoreCase))
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 403, Mensaje = "La operación requiere el rol activo DIRCAV." };
             if (!EsDircavAutorizado(rol))
             {
                 return new DircavDesignacionResult

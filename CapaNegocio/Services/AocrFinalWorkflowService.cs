@@ -188,12 +188,21 @@ namespace CapaNegocio.Services
                         TienePermiso = request.Actor.TienePermiso
                     }
                 });
-                if (entrega.Exito)
+                if (entrega != null && entrega.Exito)
                 {
                     resultado.Mensaje += " La entrega final quedó disponible y encolada para RT e Inspector.";
-                    resultado.EstadoNuevo = entrega.EstadoExpediente;
-                    resultado.VersionNueva = entrega.VersionExpediente;
-                    resultado.CorrelationId = entrega.CorrelationId;
+                    if (!string.IsNullOrEmpty(entrega.EstadoExpediente))
+                    {
+                        resultado.EstadoNuevo = entrega.EstadoExpediente;
+                    }
+                    if (entrega.VersionExpediente > 0)
+                    {
+                        resultado.VersionNueva = entrega.VersionExpediente;
+                    }
+                    if (!string.IsNullOrEmpty(entrega.CorrelationId))
+                    {
+                        resultado.CorrelationId = entrega.CorrelationId;
+                    }
                     
                     // Notificar cierre institucional
                     if (_notificacionService != null)
@@ -205,7 +214,7 @@ namespace CapaNegocio.Services
                         catch { /* No bloquear si la notificación falla */ }
                     }
                 }
-                else
+                else if (entrega != null)
                 {
                     resultado.Mensaje += " La legalización quedó confirmada; la entrega debe reintentarse de forma idempotente.";
                 }

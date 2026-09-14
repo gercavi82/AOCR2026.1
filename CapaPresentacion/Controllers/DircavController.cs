@@ -78,12 +78,8 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerUsuarioIdActual()
         {
-            if (Session != null && Session["UsuarioId"] != null)
-            {
-                int.TryParse(Session["UsuarioId"].ToString(), out var id);
-                return id;
-            }
-            return 0;
+            int id;
+            return new CapaPresentacion.Infrastructure.UserContextAccessor().TryGetUserId(Session, out id) ? id : 0;
         }
 
         private string ObtenerUsuarioLoginActual()
@@ -794,19 +790,7 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult DevolverAocrDirdac(DevolverAocrDircavRequest request)
         {
-            if (request == null) return JsonWorkflow(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la devolución."));
-            var rol = ObtenerRolActual();
-            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
-            request.Actor = new AocrWorkflowActor
-            {
-                UsuarioId = ObtenerUsuarioIdActual(),
-                UsuarioNombre = ObtenerUsuarioLoginActual(),
-                RolActivo = rol,
-                Ip = Request != null ? Request.UserHostAddress : null,
-                TienePermiso = true
-            };
-            request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
-            return JsonWorkflow(_finalWorkflowService.DevolverAocrDircav(request));
+            return JsonWorkflow(AocrWorkflowResult.Error(403, "ROL_NO_AUTORIZADO", "La devolución de AOCR a DIRCAV es exclusiva de la autoridad DIRDAC en su bandeja oficial."));
         }
 
         private ActionResult JsonWorkflow(AocrWorkflowResult result)

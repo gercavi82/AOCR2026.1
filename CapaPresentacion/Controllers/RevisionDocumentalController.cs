@@ -151,8 +151,16 @@ namespace CapaPresentacion.Controllers
             request.Decisiones = request.Decisiones ?? new List<DecisionDocumentoRequest>();
 
             var usuarioId = ObtenerIdUsuarioActual();
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated || usuarioId <= 0)
+            {
+                return JsonRevisionError(401, "La sesion no contiene una identidad valida.", request.SolicitudId, "Sesion invalida");
+            }
             var login = ObtenerCodigoUsuarioSesion();
             var rolActivo = ObtenerRolActivo();
+            if (!string.Equals((rolActivo ?? string.Empty).Trim(), AocrRolesInstitucionales.Inspector, StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonRevisionError(403, "La operacion requiere el rol activo INSPECTOR.", request.SolicitudId, "Rol no autorizado");
+            }
             var formToken = string.Empty;
             try
             {
@@ -430,6 +438,13 @@ namespace CapaPresentacion.Controllers
             var devueltos = revisionesResumen.Count(x => x.Value.Item1 == "DEVUELTO" || x.Value.Item1 == "OBSERVADO");
             var pendientes = documentosCierre.Count - aceptados - devueltos;
             var siguienteEstado = solicitud.Estado;
+
+            if (request.Finalizar && !RevisionDocumentalCoordinadorService.PuedeFinalizarRevision(documentosCierre.Count, pendientes))
+            {
+                return JsonRevisionError(422,
+                    "La revision no fue finalizada: debe existir documentacion y todos los documentos deben tener un resultado. Las decisiones guardadas se conservan.",
+                    solicitud.CodigoSolicitud, "Revision documental incompleta");
+            }
 
             if (pendientes <= 0 && request.Finalizar)
             {

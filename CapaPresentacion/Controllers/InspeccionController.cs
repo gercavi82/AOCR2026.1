@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -3935,6 +3935,12 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) { return new HttpStatusCodeResult(400, "ID inválido."); }
 
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(403, "El Administrador no puede ejecutar remisiones operativas (Regla 7).");
+            }
+
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) { return HttpNotFound("Inspección no encontrada."); }
 
@@ -4009,7 +4015,13 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult CoordinadorAprobar(int id)
         {
-            if (id <= 0) { return new HttpStatusCodeResult(400, "ID invÃ¡lido."); }
+            if (id <= 0) { return new HttpStatusCodeResult(400, "ID inválido."); }
+
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(403, "El Administrador no puede ejecutar aprobaciones operativas (Regla 7).");
+            }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) { return HttpNotFound("InspecciÃ³n no encontrada."); }
@@ -4349,6 +4361,12 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) { return new HttpStatusCodeResult(400, "ID inválido."); }
 
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpStatusCodeResult(403, "El Administrador no puede ejecutar devoluciones operativas (Regla 7).");
+            }
+
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) { return HttpNotFound("Inspección no encontrada."); }
 
@@ -4382,6 +4400,11 @@ namespace CapaPresentacion.Controllers
             var usuarioActual = ObtenerUsuarioActual();
 
             _informeDAO.RegistrarDevolucionCoordinador(informe.CodigoInforme, observacionDevolucion.Trim(), usuarioActual, "DEVUELTO_COORDINADOR", usuarioId);
+
+            if (solicitud != null)
+            {
+                _solicitudDAO.CambiarEstado(solicitud.CodigoSolicitud, AocrEstadosProceso.InformeTecnicoDevueltoInspector, usuarioId, "Informe devuelto al Inspector por Coordinación: " + observacionDevolucion.Trim());
+            }
 
             RegistrarAuditoriaInformeDigital(id,
                 "ENVIADO_A_COORDINADOR", "DEVUELTO_COORDINADOR", null, null,
@@ -7940,7 +7963,7 @@ namespace CapaPresentacion.Controllers
             if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase))
             {
                 estadoFinal = "FIRMADO_INSPECTOR";
-                autoEnviarADirdac = true;
+                autoEnviarADirdac = false;
             }
 
             ListaVerificacionOperacionalEae listaVerificacion;
@@ -8178,7 +8201,7 @@ namespace CapaPresentacion.Controllers
             }
             else
             {
-                TempData["Success"] = "Informe técnico firmado correctamente.";
+                TempData["Success"] = "Informe técnico firmado digitalmente. Remítalo formalmente a Coordinación para revisión.";
             }
 
             return RedirectToAction("Detalle", new { id });

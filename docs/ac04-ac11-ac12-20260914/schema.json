@@ -1,0 +1,2727 @@
+{
+  "mode": "read-only",
+  "requested_tables": [
+    "aocr_tbsolicitud",
+    "aocr_revision_documental_coordinador",
+    "aocr_tbhistorialestado",
+    "aocr_tbhistorial_estado",
+    "aocr_proceso_estado",
+    "aocr_evento_workflow",
+    "aocr_tbdocumento_generado",
+    "aocr_tbfirma_documento",
+    "aocr_tbcondiciones_limitaciones",
+    "aocr_entrega_final",
+    "aocr_entrega_documento",
+    "aocr_entrega_destinatario",
+    "email_queue",
+    "aocr_tbnotificacion",
+    "usuario",
+    "usuario_rol",
+    "rol"
+  ],
+  "columns": [
+    [
+      "aocr_entrega_destinatario",
+      "id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "entrega_id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "tipo_destinatario",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "usuario_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "correo",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "email_queue_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "estado_bandeja",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "estado_correo",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "message_id",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "ultimo_error",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "fecha_envio",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "updated_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "entrega_id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "documento_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "tipo_documento",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "version_documento",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "nombre_archivo",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "ruta_fisica",
+      "text",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "hash_sha256",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "tamanio",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "mime_type",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "nombre_firmante",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_entrega_documento",
+      "rol_firma",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "fecha_firma",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_entrega_documento",
+      "vigente",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_entrega_documento",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "solicitud_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "inspeccion_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "codigo_compania",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "compania",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "version_aocr",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "version_cl",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "estado",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "correlation_id",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "event_key",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "fecha_completada",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_entrega_final",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "created_by",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_entrega_final",
+      "updated_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "id",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "evento",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "event_key",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "correlation_id",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "modulo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "accion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "entidad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "entidad_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "solicitud_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "inspeccion_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "informe_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "nc_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "documento_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "estado_anterior",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "estado_nuevo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "usuario_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "usuario",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "rol",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "ip",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "observacion",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "version",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "hash",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "resultado",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "detalle_error",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_evento_workflow",
+      "intentos",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "fecha",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_evento_workflow",
+      "updated_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "solicitud_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "orden_recaudacion_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "inspeccion_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "informe_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "estado_actual",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "etapa_actual",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "rol_responsable",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "usuario_responsable_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "siguiente_accion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "observacion",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_proceso_estado",
+      "fecha_estado",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "activo",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "version",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "created_by",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "updated_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_proceso_estado",
+      "updated_by",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "solicitud_id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "inspector_original_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "inspector_confirmado_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "coordinador_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "documento_oficio_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "numero_oficio",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "estado",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "observacion_inspector",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "observacion_coordinador",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_finalizacion_inspector",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_decision_coordinador",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_habilitacion_lv",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_habilitacion_informe",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_creacion",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "fecha_actualizacion",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "activo",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "id",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "codigo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "codigo_inspeccion",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "codigo_informe",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "numero_aocr",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "version",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "estado",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "vigente",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "compania",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "operador_extranjero",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "representante_tecnico",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "tipo_operacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "rutas_autorizadas",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "alcance_autorizado",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "condiciones_aprobadas",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "limitaciones",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "observaciones",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "inspector_usuario_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "inspector_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "fecha_generacion",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "coordinador_usuario_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "coordinador_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "observacion_coordinador",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "fecha_revision_coordinador",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "dircav_usuario_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "dircav_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "observacion_dircav",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "fecha_firma_dircav",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "ruta_pdf_borrador",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "ruta_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "hash_pdf",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "hash_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "tamanio_pdf",
+      "bigint",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "codigo_verificacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "version_concurrencia",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "updated_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_documento",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_inspeccion",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "tipo_documento",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "numero_aocr",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "nombre_archivo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "ruta_documento",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "tamanio_pdf",
+      "bigint",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "estado",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "fecha_generacion",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_usuario",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "usuario_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "hash_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "fecha_liberacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_usuario_liberacion",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "disponible_rt",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "fecha_disponible_rt",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_compania",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_inspector",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "version",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "vigente",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "eliminado",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "usuario_creador_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "fecha_actualizacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "version_documento",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "completo",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "bloqueado",
+      "boolean",
+      "NO"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "hash_pdf",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "ruta_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "tamanio_pdf_firmado",
+      "bigint",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "codigo_usuario_firma",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "rol_firma",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "fecha_firma",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "version_concurrencia",
+      "bigint",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "codigo_firma",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "codigo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "codigo_inspeccion",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "tipo_documento",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "numero_aocr",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "nombre_archivo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "ruta_documento",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "hash_documento",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "codigo_qr",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "sujeto_certificado",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "nombre_firmante",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "cargo_firmante",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "fecha_firma",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "codigo_usuario",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "usuario_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "tamanio_pdf_firmado",
+      "bigint",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "firmado_por_rol",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "ruta_pdf_preliminar",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "ruta_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "hash_pdf_firmado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "tamanio_pdf_preliminar",
+      "bigint",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "fecha_generacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "nombre_director",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "cargo_director",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "estado_documento",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "version",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "codigo_historial",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "codigo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "estado_anterior",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "estado_nuevo",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "codigo_usuario",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "observaciones",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "fecha_cambio",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "codigonotificacion",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "codigousuario",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "titulo",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "mensaje",
+      "text",
+      "NO"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "tipo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "leida",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "fecha_lectura",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "url",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "icono",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "fechacreacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "fechalectura",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "modulo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "entidad_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "tipo_entidad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "event_key",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "correlation_id",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "updated_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "numero_solicitud",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_solicitud",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "tipo_solicitud",
+      "integer",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "estado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "nombre_operador",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "ruc",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "razon_social",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "email",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "telefono",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "direccion",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "ciudad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "provincia",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "pais",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "representante_legal",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "cedula_representante",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "tipo_operacion",
+      "character varying",
+      "NO"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "descripcion_operacion",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "observaciones",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_usuario",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "created_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "updated_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "created_by",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "updated_by",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "deleted_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "deleted_by",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_tecnico",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_recepcion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_solicitud_subsanacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_subsanacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_aprobacion_coordinador",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_emision_aocr",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_entrega_aocr",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "numero_aocr",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "ruta_archivo_pdf_aocr",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_usuario_aprobacion_coordinador",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_usuario_aprobacion_director",
+      "integer",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "pago_aprobado",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_aprobacion_pago",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "modulo_solicitud_rt_habilitado",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "notificado_coordinador_pago_aprobado",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_notificacion_coordinador_pago",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "notificado_rt_modulo_habilitado",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_notificacion_rt_modulo_habilitado",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "pendiente_asignacion_inspector",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "pendiente_carga_documental_rt",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "solicitud_finalizada_rt",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "fecha_finalizacion_rt",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "requiere_nueva_orden",
+      "boolean",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "resumen_operaciones_eae",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "numero_aoc",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aprobaciones_especiales",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aprobaciones_especiales_otros",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aeropuertos_ecuador",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aeropuertos_ecuador_otros",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "companias_seleccionadas",
+      "text",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "codigo_oaci",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "correo_representante_tecnico",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "nombre_comercial",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "tecnico_responsable_cedula",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "tecnico_responsable_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "tecnico_responsable_tipo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "inspector_apoyo_cedula",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "inspector_apoyo_nombre",
+      "character varying",
+      "YES"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "inspector_apoyo_tipo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "id",
+      "integer",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "to_address",
+      "character varying",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "subject",
+      "character varying",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "body",
+      "text",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "status",
+      "character varying",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "solicitud_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "orden_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "created_at",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "proximo_intento",
+      "timestamp without time zone",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "event_key",
+      "character varying",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "error_message",
+      "text",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "intentos",
+      "integer",
+      "NO"
+    ],
+    [
+      "email_queue",
+      "updated_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "tipo_notificacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "correlation_id",
+      "character varying",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "message_id",
+      "character varying",
+      "YES"
+    ],
+    [
+      "email_queue",
+      "sent_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "rol",
+      "codigorol",
+      "integer",
+      "NO"
+    ],
+    [
+      "rol",
+      "descripcion",
+      "character varying",
+      "NO"
+    ],
+    [
+      "rol",
+      "activo",
+      "boolean",
+      "NO"
+    ],
+    [
+      "rol",
+      "fecha_registro",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "rol",
+      "usuariocreado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "rol",
+      "fechacreado",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "rol",
+      "usuariomodificado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "rol",
+      "fechamodificado",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario",
+      "idusuario",
+      "integer",
+      "NO"
+    ],
+    [
+      "usuario",
+      "codigousuario",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "nombreusuario",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "apellidousuario",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "tipoidentificacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "cedulaidentificacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "correo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "clave",
+      "text",
+      "YES"
+    ],
+    [
+      "usuario",
+      "estadoactividad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "tipoaplicacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "identificaciontributaria",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "numeroruc",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigociudad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigodependencia",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigosubsistema",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigogestion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigomodulo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigorol",
+      "integer",
+      "YES"
+    ],
+    [
+      "usuario",
+      "centrocontable",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "usuariocreado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "fechacreado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "horacreado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "dispositivocreacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "usuariomodificado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "fechamodificado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "horamodificado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "dispositivomodificacion",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "descripcionsubsistema",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "horainicio",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "horafin",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "fechasistema",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "tipohorario",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "numeroaleatorio",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "nombrecorto",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "cargo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "estadocertificado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "estadoautoridad",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "rol",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "fechaultimaconexion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario",
+      "empresa_codigo",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "ruta_documento_legal",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "estado_designacion_rt",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "fecha_revision_designacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario",
+      "ruta_constancia_rt",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "titulo1",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "titulo2",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "telefono1",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "telefono2",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "correo_adicional",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "oid_centro_contable",
+      "numeric",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigo_ciudad_adic",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "codigorol_as400",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "must_change_password",
+      "boolean",
+      "YES"
+    ],
+    [
+      "usuario",
+      "password_changed_at",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario",
+      "correo_original",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario",
+      "correo_liberado",
+      "boolean",
+      "NO"
+    ],
+    [
+      "usuario",
+      "fecha_devolucion_designacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario",
+      "coordinador_devolucion_id",
+      "integer",
+      "YES"
+    ],
+    [
+      "usuario",
+      "observacion_devolucion",
+      "text",
+      "YES"
+    ],
+    [
+      "usuario_rol",
+      "idusuariorol",
+      "integer",
+      "NO"
+    ],
+    [
+      "usuario_rol",
+      "codigousuario",
+      "character varying",
+      "NO"
+    ],
+    [
+      "usuario_rol",
+      "codigorol",
+      "integer",
+      "NO"
+    ],
+    [
+      "usuario_rol",
+      "fechaasignacion",
+      "timestamp without time zone",
+      "YES"
+    ],
+    [
+      "usuario_rol",
+      "usuariocreado",
+      "character varying",
+      "YES"
+    ],
+    [
+      "usuario_rol",
+      "activo",
+      "boolean",
+      "YES"
+    ]
+  ],
+  "indexes": [
+    [
+      "aocr_entrega_destinatario",
+      "aocr_entrega_destinatario_pkey",
+      "CREATE UNIQUE INDEX aocr_entrega_destinatario_pkey ON public.aocr_entrega_destinatario USING btree (id)"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "ix_ac12_destinatario_bandeja",
+      "CREATE INDEX ix_ac12_destinatario_bandeja ON public.aocr_entrega_destinatario USING btree (usuario_id, tipo_destinatario, estado_bandeja)"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "ix_ac12_destinatario_queue",
+      "CREATE INDEX ix_ac12_destinatario_queue ON public.aocr_entrega_destinatario USING btree (email_queue_id)"
+    ],
+    [
+      "aocr_entrega_destinatario",
+      "ux_ac12_destinatario_logico",
+      "CREATE UNIQUE INDEX ux_ac12_destinatario_logico ON public.aocr_entrega_destinatario USING btree (entrega_id, tipo_destinatario, usuario_id)"
+    ],
+    [
+      "aocr_entrega_documento",
+      "aocr_entrega_documento_pkey",
+      "CREATE UNIQUE INDEX aocr_entrega_documento_pkey ON public.aocr_entrega_documento USING btree (id)"
+    ],
+    [
+      "aocr_entrega_documento",
+      "ix_ac12_documento_lookup",
+      "CREATE INDEX ix_ac12_documento_lookup ON public.aocr_entrega_documento USING btree (documento_id, entrega_id) WHERE (vigente = true)"
+    ],
+    [
+      "aocr_entrega_documento",
+      "ux_ac12_entrega_documento",
+      "CREATE UNIQUE INDEX ux_ac12_entrega_documento ON public.aocr_entrega_documento USING btree (entrega_id, tipo_documento, version_documento)"
+    ],
+    [
+      "aocr_entrega_final",
+      "aocr_entrega_final_pkey",
+      "CREATE UNIQUE INDEX aocr_entrega_final_pkey ON public.aocr_entrega_final USING btree (id)"
+    ],
+    [
+      "aocr_entrega_final",
+      "ix_ac12_entrega_estado",
+      "CREATE INDEX ix_ac12_entrega_estado ON public.aocr_entrega_final USING btree (estado, updated_at)"
+    ],
+    [
+      "aocr_entrega_final",
+      "ux_ac12_entrega_event_key",
+      "CREATE UNIQUE INDEX ux_ac12_entrega_event_key ON public.aocr_entrega_final USING btree (event_key)"
+    ],
+    [
+      "aocr_entrega_final",
+      "ux_ac12_entrega_version",
+      "CREATE UNIQUE INDEX ux_ac12_entrega_version ON public.aocr_entrega_final USING btree (solicitud_id, version_aocr, version_cl)"
+    ],
+    [
+      "aocr_evento_workflow",
+      "aocr_evento_workflow_pkey",
+      "CREATE UNIQUE INDEX aocr_evento_workflow_pkey ON public.aocr_evento_workflow USING btree (id)"
+    ],
+    [
+      "aocr_evento_workflow",
+      "ix_aocr_evento_workflow_correlation",
+      "CREATE INDEX ix_aocr_evento_workflow_correlation ON public.aocr_evento_workflow USING btree (correlation_id, fecha)"
+    ],
+    [
+      "aocr_evento_workflow",
+      "ix_aocr_evento_workflow_solicitud",
+      "CREATE INDEX ix_aocr_evento_workflow_solicitud ON public.aocr_evento_workflow USING btree (solicitud_id, fecha)"
+    ],
+    [
+      "aocr_evento_workflow",
+      "uq_aocr_evento_workflow_event_key",
+      "CREATE UNIQUE INDEX uq_aocr_evento_workflow_event_key ON public.aocr_evento_workflow USING btree (event_key)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "aocr_proceso_estado_pkey",
+      "CREATE UNIQUE INDEX aocr_proceso_estado_pkey ON public.aocr_proceso_estado USING btree (id)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "idx_aocr_estado_firma_institucional",
+      "CREATE INDEX idx_aocr_estado_firma_institucional ON public.aocr_proceso_estado USING btree (fecha_estado, solicitud_id, inspeccion_id) WHERE ((activo = true) AND ((estado_actual)::text = 'PENDIENTE_FIRMA_DIRDAC'::text))"
+    ],
+    [
+      "aocr_proceso_estado",
+      "idx_aocr_estado_firmas_institucionales",
+      "CREATE INDEX idx_aocr_estado_firmas_institucionales ON public.aocr_proceso_estado USING btree (fecha_estado, solicitud_id, inspeccion_id) WHERE ((activo = true) AND ((estado_actual)::text = 'PENDIENTE_FIRMAS_INSTITUCIONALES'::text))"
+    ],
+    [
+      "aocr_proceso_estado",
+      "ix_aocr_proceso_documentos_dcav",
+      "CREATE INDEX ix_aocr_proceso_documentos_dcav ON public.aocr_proceso_estado USING btree (estado_actual, fecha_estado DESC) WHERE (activo = true)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "ix_aocr_proceso_estado_bandeja",
+      "CREATE INDEX ix_aocr_proceso_estado_bandeja ON public.aocr_proceso_estado USING btree (estado_actual, activo, inspeccion_id)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "ix_aocr_proceso_estado_estado",
+      "CREATE INDEX ix_aocr_proceso_estado_estado ON public.aocr_proceso_estado USING btree (estado_actual)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "ix_aocr_proceso_estado_solicitud",
+      "CREATE INDEX ix_aocr_proceso_estado_solicitud ON public.aocr_proceso_estado USING btree (solicitud_id)"
+    ],
+    [
+      "aocr_proceso_estado",
+      "ux_aocr_proceso_estado_solicitud_activo",
+      "CREATE UNIQUE INDEX ux_aocr_proceso_estado_solicitud_activo ON public.aocr_proceso_estado USING btree (solicitud_id) WHERE (activo = true)"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "aocr_revision_documental_coordinador_pkey",
+      "CREATE UNIQUE INDEX aocr_revision_documental_coordinador_pkey ON public.aocr_revision_documental_coordinador USING btree (id)"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "aocr_revision_documental_coordinador_solicitud_id_key",
+      "CREATE UNIQUE INDEX aocr_revision_documental_coordinador_solicitud_id_key ON public.aocr_revision_documental_coordinador USING btree (solicitud_id)"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "ix_aocr_revdoc_coord_estado",
+      "CREATE INDEX ix_aocr_revdoc_coord_estado ON public.aocr_revision_documental_coordinador USING btree (estado)"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "ix_aocr_revdoc_coord_solicitud",
+      "CREATE INDEX ix_aocr_revdoc_coord_solicitud ON public.aocr_revision_documental_coordinador USING btree (solicitud_id)"
+    ],
+    [
+      "aocr_revision_documental_coordinador",
+      "ux_aocr_revdoc_coord_solicitud",
+      "CREATE UNIQUE INDEX ux_aocr_revdoc_coord_solicitud ON public.aocr_revision_documental_coordinador USING btree (solicitud_id)"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "aocr_tbcondiciones_limitaciones_pkey",
+      "CREATE UNIQUE INDEX aocr_tbcondiciones_limitaciones_pkey ON public.aocr_tbcondiciones_limitaciones USING btree (id)"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "ix_cl_estado_vigente",
+      "CREATE INDEX ix_cl_estado_vigente ON public.aocr_tbcondiciones_limitaciones USING btree (estado, vigente)"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "ux_cl_solicitud_version",
+      "CREATE UNIQUE INDEX ux_cl_solicitud_version ON public.aocr_tbcondiciones_limitaciones USING btree (codigo_solicitud, version)"
+    ],
+    [
+      "aocr_tbcondiciones_limitaciones",
+      "ux_cl_solicitud_vigente",
+      "CREATE UNIQUE INDEX ux_cl_solicitud_vigente ON public.aocr_tbcondiciones_limitaciones USING btree (codigo_solicitud) WHERE (vigente = true)"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "aocr_tbdocumento_generado_pkey",
+      "CREATE UNIQUE INDEX aocr_tbdocumento_generado_pkey ON public.aocr_tbdocumento_generado USING btree (codigo_documento)"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "idx_aocr_doc_inspector_bandeja",
+      "CREATE INDEX idx_aocr_doc_inspector_bandeja ON public.aocr_tbdocumento_generado USING btree (codigo_inspector, codigo_solicitud, codigo_inspeccion, estado) WHERE ((vigente = true) AND (eliminado = false))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "idx_aocr_documento_generado_solicitud_tipo",
+      "CREATE INDEX idx_aocr_documento_generado_solicitud_tipo ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, tipo_documento, fecha_generacion DESC)"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "idx_aocr_documento_pendiente_firma_dcav",
+      "CREATE INDEX idx_aocr_documento_pendiente_firma_dcav ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, codigo_documento, version) WHERE ((vigente = true) AND (eliminado = false) AND ((estado)::text = 'PENDIENTE_FIRMA_DCAV'::text))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "idx_aocr_documento_pendiente_firma_dgac",
+      "CREATE INDEX idx_aocr_documento_pendiente_firma_dgac ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, codigo_documento, version) WHERE ((vigente = true) AND (eliminado = false) AND ((estado)::text = 'PENDIENTE_FIRMA_DGAC'::text))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "ix_aocr_documento_envio_dcav",
+      "CREATE INDEX ix_aocr_documento_envio_dcav ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, codigo_inspeccion, estado, version DESC) WHERE ((vigente = true) AND (eliminado = false))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "ix_aocr_documentos_revision_dcav",
+      "CREATE INDEX ix_aocr_documentos_revision_dcav ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, codigo_inspeccion, estado, codigo_documento) WHERE ((vigente = true) AND (eliminado = false) AND ((estado)::text = 'ENVIADO_DCAV'::text))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "uq_aocr_doc_vigente_expediente_tipo",
+      "CREATE UNIQUE INDEX uq_aocr_doc_vigente_expediente_tipo ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, codigo_inspeccion, upper(TRIM(BOTH FROM tipo_documento))) WHERE ((vigente = true) AND (eliminado = false) AND (codigo_inspeccion IS NOT NULL) AND (upper(TRIM(BOTH FROM tipo_documento)) = ANY (ARRAY['RECONOCIMIENTO'::text, 'CONDICIONES_LIMITACIONES'::text])))"
+    ],
+    [
+      "aocr_tbdocumento_generado",
+      "ux_documento_final_vigente",
+      "CREATE UNIQUE INDEX ux_documento_final_vigente ON public.aocr_tbdocumento_generado USING btree (codigo_solicitud, upper((tipo_documento)::text)) WHERE (vigente = true)"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "aocr_tbfirma_documento_pkey",
+      "CREATE UNIQUE INDEX aocr_tbfirma_documento_pkey ON public.aocr_tbfirma_documento USING btree (codigo_firma)"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "idx_aocr_firma_documento_hash",
+      "CREATE INDEX idx_aocr_firma_documento_hash ON public.aocr_tbfirma_documento USING btree (hash_documento)"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "idx_aocr_firma_documento_solicitud",
+      "CREATE INDEX idx_aocr_firma_documento_solicitud ON public.aocr_tbfirma_documento USING btree (codigo_solicitud, fecha_firma DESC)"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "ix_aocr_firma_documento_cierre",
+      "CREATE INDEX ix_aocr_firma_documento_cierre ON public.aocr_tbfirma_documento USING btree (codigo_solicitud, upper((tipo_documento)::text), fecha_firma DESC)"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "uq_aocr_firma_institucional_vigente",
+      "CREATE UNIQUE INDEX uq_aocr_firma_institucional_vigente ON public.aocr_tbfirma_documento USING btree (codigo_solicitud, codigo_inspeccion, upper((tipo_documento)::text), version) WHERE ((estado_documento)::text = ANY (ARRAY[('FIRMADO_DGAC'::character varying)::text, ('FIRMADO_DCAV'::character varying)::text]))"
+    ],
+    [
+      "aocr_tbfirma_documento",
+      "ux_aocr_firma_documento_evidencia",
+      "CREATE UNIQUE INDEX ux_aocr_firma_documento_evidencia ON public.aocr_tbfirma_documento USING btree (codigo_solicitud, upper((tipo_documento)::text), hash_documento) WHERE (NULLIF(TRIM(BOTH FROM hash_documento), ''::text) IS NOT NULL)"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "aocr_tbhistorial_estado_pkey",
+      "CREATE UNIQUE INDEX aocr_tbhistorial_estado_pkey ON public.aocr_tbhistorial_estado USING btree (codigo_historial)"
+    ],
+    [
+      "aocr_tbhistorial_estado",
+      "idx_historial_solicitud",
+      "CREATE INDEX idx_historial_solicitud ON public.aocr_tbhistorial_estado USING btree (codigo_solicitud)"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "aocr_tbnotificacion_pkey",
+      "CREATE UNIQUE INDEX aocr_tbnotificacion_pkey ON public.aocr_tbnotificacion USING btree (codigonotificacion)"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "idx_notificacion_leida",
+      "CREATE INDEX idx_notificacion_leida ON public.aocr_tbnotificacion USING btree (leida)"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "idx_notificacion_usuario",
+      "CREATE INDEX idx_notificacion_usuario ON public.aocr_tbnotificacion USING btree (codigousuario)"
+    ],
+    [
+      "aocr_tbnotificacion",
+      "uq_aocr_tbnotificacion_event_key",
+      "CREATE UNIQUE INDEX uq_aocr_tbnotificacion_event_key ON public.aocr_tbnotificacion USING btree (event_key) WHERE (event_key IS NOT NULL)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aocr_tbsolicitud_numero_solicitud_key",
+      "CREATE UNIQUE INDEX aocr_tbsolicitud_numero_solicitud_key ON public.aocr_tbsolicitud USING btree (numero_solicitud)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "aocr_tbsolicitud_pkey",
+      "CREATE UNIQUE INDEX aocr_tbsolicitud_pkey ON public.aocr_tbsolicitud USING btree (codigo_solicitud)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "idx_solicitud_estado",
+      "CREATE INDEX idx_solicitud_estado ON public.aocr_tbsolicitud USING btree (estado)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "idx_solicitud_fecha",
+      "CREATE INDEX idx_solicitud_fecha ON public.aocr_tbsolicitud USING btree (fecha_solicitud DESC)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "idx_solicitud_numero",
+      "CREATE INDEX idx_solicitud_numero ON public.aocr_tbsolicitud USING btree (numero_solicitud)"
+    ],
+    [
+      "aocr_tbsolicitud",
+      "idx_solicitud_usuario",
+      "CREATE INDEX idx_solicitud_usuario ON public.aocr_tbsolicitud USING btree (codigo_usuario)"
+    ],
+    [
+      "email_queue",
+      "email_queue_pkey",
+      "CREATE UNIQUE INDEX email_queue_pkey ON public.email_queue USING btree (id)"
+    ],
+    [
+      "email_queue",
+      "idx_email_proximo_intento",
+      "CREATE INDEX idx_email_proximo_intento ON public.email_queue USING btree (proximo_intento)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_created_at",
+      "CREATE INDEX idx_email_queue_created_at ON public.email_queue USING btree (created_at)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_orden",
+      "CREATE INDEX idx_email_queue_orden ON public.email_queue USING btree (orden_id)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_proximo_intento",
+      "CREATE INDEX idx_email_queue_proximo_intento ON public.email_queue USING btree (proximo_intento)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_solicitud",
+      "CREATE INDEX idx_email_queue_solicitud ON public.email_queue USING btree (solicitud_id)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_solicitud_id",
+      "CREATE INDEX idx_email_queue_solicitud_id ON public.email_queue USING btree (solicitud_id)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_status",
+      "CREATE INDEX idx_email_queue_status ON public.email_queue USING btree (status, proximo_intento) WHERE ((status)::text = 'PENDIENTE'::text)"
+    ],
+    [
+      "email_queue",
+      "idx_email_queue_status_next",
+      "CREATE INDEX idx_email_queue_status_next ON public.email_queue USING btree (status, proximo_intento)"
+    ],
+    [
+      "email_queue",
+      "uq_email_queue_event_key",
+      "CREATE UNIQUE INDEX uq_email_queue_event_key ON public.email_queue USING btree (event_key) WHERE (event_key IS NOT NULL)"
+    ],
+    [
+      "email_queue",
+      "uq_email_queue_idempotencia",
+      "CREATE UNIQUE INDEX uq_email_queue_idempotencia ON public.email_queue USING btree (correlation_id, tipo_notificacion, to_address) WHERE (correlation_id IS NOT NULL)"
+    ],
+    [
+      "email_queue",
+      "ux_ac12_email_fisico",
+      "CREATE UNIQUE INDEX ux_ac12_email_fisico ON public.email_queue USING btree (event_key) WHERE ((event_key)::text ~~ 'ENTREGA_FINAL:%'::text)"
+    ],
+    [
+      "rol",
+      "rol_pkey",
+      "CREATE UNIQUE INDEX rol_pkey ON public.rol USING btree (codigorol)"
+    ],
+    [
+      "usuario",
+      "idx_usuario_correo_activo_lower",
+      "CREATE INDEX idx_usuario_correo_activo_lower ON public.usuario USING btree (lower((correo)::text)) WHERE (correo_liberado = false)"
+    ],
+    [
+      "usuario",
+      "usuario_codigousuario_key",
+      "CREATE UNIQUE INDEX usuario_codigousuario_key ON public.usuario USING btree (codigousuario)"
+    ],
+    [
+      "usuario",
+      "usuario_pkey",
+      "CREATE UNIQUE INDEX usuario_pkey ON public.usuario USING btree (idusuario)"
+    ],
+    [
+      "usuario",
+      "ux_usuario_codigousuario",
+      "CREATE UNIQUE INDEX ux_usuario_codigousuario ON public.usuario USING btree (codigousuario)"
+    ],
+    [
+      "usuario_rol",
+      "idx_usuariorol_rol",
+      "CREATE INDEX idx_usuariorol_rol ON public.usuario_rol USING btree (codigorol)"
+    ],
+    [
+      "usuario_rol",
+      "idx_usuariorol_usuario",
+      "CREATE INDEX idx_usuariorol_usuario ON public.usuario_rol USING btree (codigousuario)"
+    ],
+    [
+      "usuario_rol",
+      "uk_usuario_rol_unico",
+      "CREATE UNIQUE INDEX uk_usuario_rol_unico ON public.usuario_rol USING btree (codigousuario, codigorol)"
+    ],
+    [
+      "usuario_rol",
+      "usuario_rol_pkey",
+      "CREATE UNIQUE INDEX usuario_rol_pkey ON public.usuario_rol USING btree (idusuariorol)"
+    ]
+  ],
+  "missing_tables": [
+    "aocr_tbhistorialestado"
+  ]
+}

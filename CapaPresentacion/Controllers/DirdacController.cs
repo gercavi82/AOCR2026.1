@@ -99,8 +99,8 @@ namespace CapaPresentacion.Controllers
         {
             var rol = Convert.ToString(Session != null ? Session["Rol"] : null);
             var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
-            var idRaw = Convert.ToString(Session != null ? (Session["UsuarioId"] ?? Session["CodigoUsuario"]) : null);
-            int id; int.TryParse(idRaw, out id);
+            int id;
+            new CapaPresentacion.Infrastructure.UserContextAccessor().TryGetUserId(Session, out id);
             return new AocrWorkflowActor
             {
                 UsuarioId = id,

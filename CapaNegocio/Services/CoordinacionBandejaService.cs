@@ -29,12 +29,18 @@ namespace CapaNegocio.Services
         public List<SolicitudAOCR> ObtenerRevisionesPendientesCoordinador()
         {
             var todas = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
-            return todas.Where(s =>
-                string.Equals(s.Estado, AocrEstadosProceso.PendienteCoordinador, System.StringComparison.OrdinalIgnoreCase)
-                || string.Equals(s.Estado, EstadoSolicitud.AceptacionDocumental, System.StringComparison.OrdinalIgnoreCase)
-            )
+            return todas.Where(s => s != null && EsRevisionDocumentalPendiente(s.Estado))
             .OrderByDescending(s => s.UpdatedAt ?? s.FechaSolicitud ?? System.DateTime.MinValue)
             .ToList();
+        }
+
+        public static bool EsRevisionDocumentalPendiente(string estado)
+        {
+            var actual = (estado ?? string.Empty).Trim();
+            return string.Equals(actual, AocrEstadosProceso.PendienteCoordinador, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, EstadoSolicitud.AceptacionDocumental, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, AocrEstadosProceso.DevueltoCoordinador, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, AocrEstadosProceso.DevueltoCoordinadorPorDircav, System.StringComparison.OrdinalIgnoreCase);
         }
 
         public int ContarRevisionesPendientesCoordinador()

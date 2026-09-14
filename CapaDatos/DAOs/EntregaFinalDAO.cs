@@ -113,7 +113,7 @@ JOIN public.aocr_entrega_destinatario r ON r.entrega_id=e.id
 JOIN public.aocr_entrega_documento d ON d.entrega_id=e.id
 JOIN public.aocr_tbsolicitud s ON s.codigo_solicitud=e.solicitud_id
 WHERE r.usuario_id=@usuario AND r.estado_bandeja='DISPONIBLE'
-  AND ((@es_rt AND r.tipo_destinatario='RT' AND (@compania='' OR UPPER(e.codigo_compania)=UPPER(@compania)))
+  AND ((@es_rt AND r.tipo_destinatario='RT' AND ((@compania<>'' AND UPPER(e.codigo_compania)=UPPER(@compania)) OR (@compania='' AND EXISTS(SELECT 1 FROM public.usuario_empresa ue JOIN public.empresa emp ON emp.idempresa=ue.idempresa WHERE ue.idusuario=@usuario AND COALESCE(ue.activo,TRUE) AND UPPER(emp.codigoempresa)=UPPER(e.codigo_compania)))))
     OR (@es_inspector AND r.tipo_destinatario='INSPECTOR'))
 ORDER BY e.created_at DESC,d.tipo_documento;";
             using (var cn = new NpgsqlConnection(_connectionString))
@@ -137,7 +137,7 @@ ORDER BY e.created_at DESC,d.tipo_documento;";
                 const string sql = @"SELECT d.documento_id,d.ruta_fisica,d.nombre_archivo,d.hash_sha256,d.tamanio,d.mime_type,
 e.solicitud_id,e.codigo_compania,
 EXISTS(SELECT 1 FROM public.aocr_entrega_destinatario r WHERE r.entrega_id=e.id AND r.usuario_id=@usuario
- AND r.estado_bandeja='DISPONIBLE' AND ((r.tipo_destinatario='RT' AND @es_rt AND (@compania='' OR UPPER(e.codigo_compania)=UPPER(@compania)))
+ AND r.estado_bandeja='DISPONIBLE' AND ((r.tipo_destinatario='RT' AND @es_rt AND ((@compania<>'' AND UPPER(e.codigo_compania)=UPPER(@compania)) OR (@compania='' AND EXISTS(SELECT 1 FROM public.usuario_empresa ue JOIN public.empresa emp ON emp.idempresa=ue.idempresa WHERE ue.idusuario=@usuario AND COALESCE(ue.activo,TRUE) AND UPPER(emp.codigoempresa)=UPPER(e.codigo_compania)))))
  OR (r.tipo_destinatario='INSPECTOR' AND @es_inspector))) autorizado
 FROM public.aocr_entrega_documento d JOIN public.aocr_entrega_final e ON e.id=d.entrega_id
 WHERE d.documento_id=@documento AND d.vigente=TRUE ORDER BY d.id DESC LIMIT 1;";

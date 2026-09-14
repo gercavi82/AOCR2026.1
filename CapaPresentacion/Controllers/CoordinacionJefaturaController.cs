@@ -690,7 +690,7 @@ namespace CapaPresentacion.Controllers
                             || estado == EstadoSolicitud.EnRevision
                             || estado == EstadoSolicitud.Observada
                             || estado == EstadoSolicitud.AceptacionDocumental
-                            || string.Equals(s.Estado, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                            || CoordinacionBandejaService.EsRevisionDocumentalPendiente(s.Estado)
                             || string.Equals(s.Estado, AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase);
                     })
                     .OrderByDescending(s => s.FechaSolicitud ?? DateTime.MinValue)
@@ -5007,7 +5007,16 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult DevolverAlInspector(int solicitudId, string comentario)
         {
+            int coordinadorId;
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated
+                || !new CapaPresentacion.Infrastructure.UserContextAccessor().TryGetUserId(Session, out coordinadorId)
+                || coordinadorId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "La sesión no contiene una identidad válida.");
+            }
             var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (!string.Equals(rolSesion.Trim(), AocrRolesInstitucionales.Coordinador, StringComparison.OrdinalIgnoreCase))
+                return new HttpStatusCodeResult(403, "La operación requiere el rol activo COORDINADOR.");
             if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
                 return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Administrador no puede ejecutar devoluciones operativas (Regla 7).");
@@ -5041,14 +5050,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
-            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!CoordinacionBandejaService.EsRevisionDocumentalPendiente(estadoActual))
             {
                 return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido procesada previamente.");
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
             var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
             var svc = new RevisionDocumentalCoordinadorService();
@@ -5071,7 +5078,16 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult RemitirADircav(int solicitudId, string observacion)
         {
+            int coordinadorId;
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated
+                || !new CapaPresentacion.Infrastructure.UserContextAccessor().TryGetUserId(Session, out coordinadorId)
+                || coordinadorId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "La sesión no contiene una identidad válida.");
+            }
             var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+            if (!string.Equals(rolSesion.Trim(), AocrRolesInstitucionales.Coordinador, StringComparison.OrdinalIgnoreCase))
+                return new HttpStatusCodeResult(403, "La operación requiere el rol activo COORDINADOR.");
             if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
                 return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Administrador no puede ejecutar remisiones operativas (Regla 7).");
@@ -5100,14 +5116,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
-            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!CoordinacionBandejaService.EsRevisionDocumentalPendiente(estadoActual))
             {
                 return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido remitida previamente.");
             }
 
             var ctx = _usuarioContexto.ObtenerContextoActual();
-            var coordinadorId = ctx != null && ctx.UsuarioId > 0 ? ctx.UsuarioId : 1;
             var usuarioLogin = ctx != null && !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
             var svc = new RevisionDocumentalCoordinadorService();

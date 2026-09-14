@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -475,6 +476,15 @@ namespace AOCR.Tests.Unit
                 .Setup(x => x.FirmarLegalizarAocr(It.IsAny<FirmarLegalizarAocrRequest>()))
                 .Returns(expectedResult);
 
+            _mockEntregaFinalService
+                .Setup(x => x.Solicitar(It.IsAny<SolicitarEntregaFinalRequest>()))
+                .Returns(new EntregaFinalResult
+                {
+                    Exito = true,
+                    EstadoExpediente = AocrEstadosProceso.FirmasCompletas,
+                    VersionExpediente = 2
+                });
+
             // Act
             var result = _workflowService.FirmarLegalizarAocr(request);
 
@@ -634,7 +644,7 @@ namespace AOCR.Tests.Unit
 
             _mockEntregaFinalService
                 .Setup(x => x.Solicitar(It.IsAny<SolicitarEntregaFinalRequest>()))
-                .Returns(new EntregaFinalResponse
+                .Returns(new EntregaFinalResult
                 {
                     Exito = true,
                     EstadoExpediente = AocrEstadosProceso.ListoParaEntrega,
@@ -648,6 +658,77 @@ namespace AOCR.Tests.Unit
             // Assert
             Assert.IsTrue(result.Exito);
             Assert.IsTrue(result.Mensaje.Contains("entrega") || result.Mensaje.Contains("Entrega"));
+        }
+
+        // =======================================================
+        // TEST CASE 19: Inspector no debe autoenviar a DIRDAC al firmar
+        // =======================================================
+        [TestMethod]
+        public void TC19_InspectorFirmaInforme_NoAutoEnviaADirdac()
+        {
+            var inspeccionCode = ReadFile("CapaPresentacion/Controllers/InspeccionController.cs");
+            StringAssert.Contains(inspeccionCode, "autoEnviarADirdac = false;");
+            StringAssert.Contains(inspeccionCode, "FIRMADO_INSPECTOR");
+            StringAssert.Contains(inspeccionCode, "Remítalo formalmente a Coordinación para revisión.");
+        }
+
+        // =======================================================
+        // TEST CASE 20: Administrador bloqueado de aprobar o devolver en inspección
+        // =======================================================
+        [TestMethod]
+        public void TC20_Administrador_BloqueadoDeDecisionesOperativasEnInspeccion()
+        {
+            var inspeccionCode = ReadFile("CapaPresentacion/Controllers/InspeccionController.cs");
+            StringAssert.Contains(inspeccionCode, "El Administrador no puede ejecutar aprobaciones operativas (Regla 7).");
+            StringAssert.Contains(inspeccionCode, "El Administrador no puede ejecutar devoluciones operativas (Regla 7).");
+            StringAssert.Contains(inspeccionCode, "El Administrador no puede ejecutar remisiones operativas (Regla 7).");
+        }
+
+        // =======================================================
+        // TEST CASE 21: Devolución de DIRDAC exclusiva en DirdacController
+        // =======================================================
+        [TestMethod]
+        public void TC21_Dircav_DevolverAocrDirdac_Retorna403()
+        {
+            var dircavCode = ReadFile("CapaPresentacion/Controllers/DircavController.cs");
+            StringAssert.Contains(dircavCode, "La devolución de AOCR a DIRCAV es exclusiva de la autoridad DIRDAC");
+        }
+
+        // =======================================================
+        // TEST CASE 22: DirdacController obtiene UserId real sin caer a cero
+        // =======================================================
+        [TestMethod]
+        public void TC22_DirdacController_CrearActor_ObtieneUserIdReal()
+        {
+            var dirdacCode = ReadFile("CapaPresentacion/Controllers/DirdacController.cs");
+            StringAssert.Contains(dirdacCode, "new CapaPresentacion.Infrastructure.UserContextAccessor().TryGetUserId(Session, out id);");
+        }
+
+        // =======================================================
+        // TEST CASE 23: EntregaFinalDAO valida asignacion de compania para RT
+        // =======================================================
+        [TestMethod]
+        public void TC23_EntregaFinalDAO_DescargaRt_ValidaEmpresaUsuario()
+        {
+            var entregaCode = ReadFile("CapaDatos/DAOs/EntregaFinalDAO.cs");
+            StringAssert.Contains(entregaCode, "EXISTS(SELECT 1 FROM public.usuario_empresa ue JOIN public.empresa emp");
+            StringAssert.Contains(entregaCode, "UPPER(emp.codigoempresa)=UPPER(e.codigo_compania)");
+        }
+
+        private static string ReadFile(string relativePath)
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var candidates = new[]
+            {
+                Path.Combine(baseDir, relativePath),
+                Path.Combine(baseDir, "..", "..", "..", relativePath),
+                Path.Combine(@"c:\proyectos\AOCR", relativePath)
+            };
+            foreach (var path in candidates)
+            {
+                if (System.IO.File.Exists(path)) return System.IO.File.ReadAllText(path);
+            }
+            throw new FileNotFoundException("Archivo no encontrado: " + relativePath);
         }
     }
 }

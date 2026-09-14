@@ -69,6 +69,7 @@ namespace CapaNegocio.Services
             string comentario,
             string usuarioLogin)
         {
+            if (coordinadorId <= 0) return Error("La sesion no contiene una identidad valida.");
             var texto = NormalizarObservacion(comentario);
             if (string.IsNullOrWhiteSpace(texto))
             {
@@ -81,8 +82,7 @@ namespace CapaNegocio.Services
             if (solicitud == null) return Error("La solicitud no existe.");
 
             var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
-            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!CoordinacionBandejaService.EsRevisionDocumentalPendiente(estadoActual))
             {
                 return new RevisionDocumentalCoordinadorResultado
                 {
@@ -139,14 +139,17 @@ namespace CapaNegocio.Services
             string observacion,
             string usuarioLogin)
         {
+            if (coordinadorId <= 0) return Error("La sesion no contiene una identidad valida.");
             if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
+            var texto = NormalizarObservacion(observacion);
+            if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
+            if (texto.Length == 0) texto = "Remitido formalmente a DIRCAV por Coordinacion.";
 
             var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
             if (solicitud == null) return Error("La solicitud no existe.");
 
             var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
-            if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            if (!CoordinacionBandejaService.EsRevisionDocumentalPendiente(estadoActual))
             {
                 return new RevisionDocumentalCoordinadorResultado
                 {
@@ -155,7 +158,6 @@ namespace CapaNegocio.Services
                 };
             }
 
-            var texto = NormalizarObservacion(observacion) ?? "Remitido formalmente a DIRCAV por Coordinacion.";
             var login = string.IsNullOrWhiteSpace(usuarioLogin) ? "coordinador" : usuarioLogin;
 
             if (!_solicitudDao.CambiarEstado(solicitudId, AocrEstadosProceso.PendienteDircav, coordinadorId, texto))
@@ -205,6 +207,8 @@ namespace CapaNegocio.Services
             int inspectorId,
             string observacionGeneral)
         {
+            if (inspectorId <= 0) return Error("La sesion no contiene una identidad valida.");
+            if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
             Trace.TraceInformation("[REV_DOC][FINALIZAR_INSPECTOR_IN] SolicitudId={0}; InspectorId={1};", solicitudId, inspectorId);
             var observacion = NormalizarObservacion(observacionGeneral);
             if (observacion == null)
@@ -233,6 +237,8 @@ namespace CapaNegocio.Services
             int coordinadorId,
             string observacion)
         {
+            if (coordinadorId <= 0) return Error("La sesion no contiene una identidad valida.");
+            if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
             var texto = NormalizarObservacion(observacion);
             if (string.IsNullOrWhiteSpace(texto))
             {
@@ -271,6 +277,8 @@ namespace CapaNegocio.Services
             int inspectorId,
             string observacion)
         {
+            if (coordinadorId <= 0) return Error("La sesion no contiene una identidad valida.");
+            if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
             var texto = NormalizarObservacion(observacion);
             if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
 
@@ -346,6 +354,11 @@ namespace CapaNegocio.Services
                 return null;
             }
             return texto;
+        }
+
+        public static bool PuedeFinalizarRevision(int documentos, int pendientes)
+        {
+            return documentos > 0 && pendientes == 0;
         }
 
         private static RevisionDocumentalCoordinadorResultado Error(string mensaje)
