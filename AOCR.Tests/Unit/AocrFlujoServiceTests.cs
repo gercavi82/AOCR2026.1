@@ -88,7 +88,9 @@ namespace AOCR.Tests.Unit
             Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("Inspector", AocrFlujoAcciones.FirmarListaVerificacion));
             Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("InspectorTecnico", AocrFlujoAcciones.FirmarInformeTecnico));
             Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("DIRDAC", AocrFlujoAcciones.FirmarAocrFinal));
-            Assert.IsTrue(_flujo.RolPuedeEjecutarAccion("DCAV", AocrFlujoAcciones.LiberarDocumentosFinales));
+            // REGLA AC-12: LiberarDocumentosFinales es automático vía outbox; ningún rol lo ejecuta manualmente.
+            Assert.IsFalse(_flujo.RolPuedeEjecutarAccion("DCAV", AocrFlujoAcciones.LiberarDocumentosFinales),
+                "AC-12 gestiona la entrega final automáticamente; la liberación manual fue eliminada.");
         }
     }
 }

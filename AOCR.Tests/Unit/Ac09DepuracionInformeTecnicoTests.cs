@@ -16,15 +16,37 @@ namespace AOCR.Tests.Unit
     /// 3. Resumen de cumplimiento de observaciones repetido (notas retiradas del modal y condicionadas en PDF).
     /// 4. Reporte de infracción (retirado de documentos adjuntos base).
     /// 5. Reporte de suspensión de operaciones (retirado de documentos adjuntos base).
-    /// Asegura la preservación histórica, no eliminación destructiva de columnas y ausencia de títulos huérfanos en PDF.
+    /// Asegura la preservación histórica, no eliminación destructiva de columnas, ausencia de títulos huérfanos en PDF
+    /// y eliminación de rutas fijas hardcodeadas mediante descubrimiento dinámico de la raíz con AppDomain.
     /// </summary>
     [TestClass]
     public class Ac09DepuracionInformeTecnicoTests
     {
+        private static string ObtenerRutaRaizProyecto()
+        {
+            var dir = AppDomain.CurrentDomain.BaseDirectory;
+            while (!string.IsNullOrEmpty(dir))
+            {
+                if (File.Exists(Path.Combine(dir, "AOCR.sln")))
+                {
+                    return dir;
+                }
+                var parent = Directory.GetParent(dir);
+                if (parent == null) break;
+                dir = parent.FullName;
+            }
+            return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
+        private static string ResolverRuta(string rutaRelativa)
+        {
+            return Path.Combine(ObtenerRutaRaizProyecto(), rutaRelativa.TrimStart('\\', '/'));
+        }
+
         [TestMethod]
         public void Test01_DocumentosAdjuntosBase_NoContieneReporteInfraccionNiSuspension()
         {
-            var rutaHelper = @"c:\proyectos\AOCR\CapaPresentacion\Helpers\InformeTecnicoTemplateHelper.cs";
+            var rutaHelper = ResolverRuta(@"CapaPresentacion\Helpers\InformeTecnicoTemplateHelper.cs");
             Assert.IsTrue(File.Exists(rutaHelper), "InformeTecnicoTemplateHelper.cs debe existir.");
 
             var contenido = File.ReadAllText(rutaHelper);
@@ -63,7 +85,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test03_ValidarInformeParaFinalizar_NoExigeAlcanceComoObligatorio()
         {
-            var rutaController = @"c:\proyectos\AOCR\CapaPresentacion\Controllers\InspeccionController.cs";
+            var rutaController = ResolverRuta(@"CapaPresentacion\Controllers\InspeccionController.cs");
             Assert.IsTrue(File.Exists(rutaController), "InspeccionController.cs debe existir.");
 
             var contenido = File.ReadAllText(rutaController);
@@ -83,7 +105,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test04_ModalInformeTecnico_NoPoseeTextareaAlcanceNiNotasNiInputLicencia()
         {
-            var rutaModal = @"c:\proyectos\AOCR\CapaPresentacion\Views\InformeTecnico\_ModalInformeTecnico.cshtml";
+            var rutaModal = ResolverRuta(@"CapaPresentacion\Views\InformeTecnico\_ModalInformeTecnico.cshtml");
             Assert.IsTrue(File.Exists(rutaModal), "Debe existir _ModalInformeTecnico.cshtml.");
 
             var contenido = File.ReadAllText(rutaModal);
@@ -103,7 +125,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test05_ModalInformeTecnico_ConservaCedulaInspector()
         {
-            var rutaModal = @"c:\proyectos\AOCR\CapaPresentacion\Views\InformeTecnico\_ModalInformeTecnico.cshtml";
+            var rutaModal = ResolverRuta(@"CapaPresentacion\Views\InformeTecnico\_ModalInformeTecnico.cshtml");
             var contenido = File.ReadAllText(rutaModal);
 
             StringAssert.Contains(contenido, "Cédula del inspector", "Debe exhibir la etiqueta Cédula del inspector.");
@@ -114,7 +136,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test06_PdfInformeTecnico_UsaCedulaYNoLicenciaEnFirma()
         {
-            var rutaPdf = @"c:\proyectos\AOCR\CapaPresentacion\Views\Inspeccion\InformeTecnicoPdf.cshtml";
+            var rutaPdf = ResolverRuta(@"CapaPresentacion\Views\Inspeccion\InformeTecnicoPdf.cshtml");
             Assert.IsTrue(File.Exists(rutaPdf), "Debe existir InformeTecnicoPdf.cshtml.");
 
             var contenido = File.ReadAllText(rutaPdf);
@@ -128,7 +150,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test07_PdfInformeTecnico_CondicionaSeccionNotasParaEvitarTitulosHuerfanos()
         {
-            var rutaPdf = @"c:\proyectos\AOCR\CapaPresentacion\Views\Inspeccion\InformeTecnicoPdf.cshtml";
+            var rutaPdf = ResolverRuta(@"CapaPresentacion\Views\Inspeccion\InformeTecnicoPdf.cshtml");
             var contenido = File.ReadAllText(rutaPdf);
 
             // Debe existir la condición para no mostrar Notas si está vacío
@@ -138,7 +160,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test08_RevisionDireccion_AlcanceIntegradoSinSeccionDuplicada()
         {
-            var rutaRevision = @"c:\proyectos\AOCR\CapaPresentacion\Views\InformeTecnico\RevisionDireccion.cshtml";
+            var rutaRevision = ResolverRuta(@"CapaPresentacion\Views\InformeTecnico\RevisionDireccion.cshtml");
             Assert.IsTrue(File.Exists(rutaRevision), "Debe existir RevisionDireccion.cshtml.");
 
             var contenido = File.ReadAllText(rutaRevision);
@@ -160,7 +182,7 @@ namespace AOCR.Tests.Unit
             Assert.IsNotNull(tipoEntidad.GetProperty("Notas"), "La entidad debe conservar la propiedad Notas.");
 
             // Validar que InspeccionInformeDAO sigue teniendo las columnas en sus queries
-            var rutaDao = @"c:\proyectos\AOCR\CapaDatos\DAOs\InspeccionInformeDAO.cs";
+            var rutaDao = ResolverRuta(@"CapaDatos\DAOs\InspeccionInformeDAO.cs");
             var contenidoDao = File.ReadAllText(rutaDao);
 
             StringAssert.Contains(contenidoDao, "alcance", "El DAO debe mantener alcance en SELECT/INSERT/UPDATE.");
@@ -171,13 +193,35 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test10_FirmaPreview_UsaIdentificacionInstitucional()
         {
-            var rutaPreview = @"c:\proyectos\AOCR\CapaPresentacion\Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml";
+            var rutaPreview = ResolverRuta(@"CapaPresentacion\Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml");
             Assert.IsTrue(File.Exists(rutaPreview), "Debe existir InformeTecnicoFirmaPreview.cshtml.");
 
             var contenido = File.ReadAllText(rutaPreview);
 
             StringAssert.Contains(contenido, "elaboradoPor", "La vista previa debe mostrar al inspector elaboradoPor.");
             Assert.IsFalse(contenido.Contains("No. LICENCIA"), "La vista previa de firma no debe exigir No. LICENCIA.");
+        }
+
+        [TestMethod]
+        public void Test11_EliminarRutasFijasDeLasPruebasAc09()
+        {
+            var prefijoProhibido = "c:" + @"\proyectos\AOCR";
+
+            // Verificar que Ac09DepuracionInformeTecnicoTests no contiene rutas absolutas fijas c:\proyectos\AOCR
+            var rutaArchivoMatriz = ResolverRuta(@"AOCR.Tests\Unit\Ac09DepuracionInformeTecnicoTests.cs");
+            var contenidoMatriz = File.ReadAllText(rutaArchivoMatriz);
+
+            Assert.IsFalse(contenidoMatriz.Contains("@\"" + prefijoProhibido + "\\"), "Ac09DepuracionInformeTecnicoTests no debe contener @\"c:\\proyectos\\AOCR\\\"");
+            Assert.IsFalse(contenidoMatriz.Contains("\"" + prefijoProhibido + "\\"), "Ac09DepuracionInformeTecnicoTests no debe contener \"c:\\proyectos\\AOCR\\\"");
+
+            // Verificar que Ac09InformeTecnicoTests y Ac09PdfRenderTests descubren la raíz con AppDomain
+            var rutaInformeTests = ResolverRuta(@"AOCR.Tests\Integration\Ac09InformeTecnicoTests.cs");
+            var contenidoInformeTests = File.ReadAllText(rutaInformeTests);
+            Assert.IsFalse(contenidoInformeTests.Contains(prefijoProhibido), "Ac09InformeTecnicoTests no debe contener c:\\proyectos\\AOCR");
+
+            var rutaPdfTests = ResolverRuta(@"AOCR.Tests\Integration\Ac09PdfRenderTests.cs");
+            var contenidoPdfTests = File.ReadAllText(rutaPdfTests);
+            Assert.IsFalse(contenidoPdfTests.Contains(prefijoProhibido), "Ac09PdfRenderTests no debe contener c:\\proyectos\\AOCR");
         }
     }
 }

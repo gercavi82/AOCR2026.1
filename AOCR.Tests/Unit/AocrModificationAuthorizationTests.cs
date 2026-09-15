@@ -59,7 +59,9 @@ namespace AOCR.Tests.Unit
         public void AocrAuthorizationService_ShouldExposeSolicitudAocrGenerateForDirectionOnly()
         {
             var content = LeerArchivoRepositorio("CapaNegocio\\Services\\AocrAuthorizationService.cs");
-            StringAssert.Contains(content, "{ \"SolicitudAOCR/Generar\", new[] { \"DireccionJefaturaTecnica\", \"Administrador\" } }", "La matriz AOCR debe restringir la generación a Dirección/Jefatura o Administrador.");
+            // REGLA AC-11: DIRDAC fue añadido al permiso de generación porque debe poder
+            // generar el AOCR antes de firmarlo. La restricción institucional se mantiene.
+            StringAssert.Contains(content, "{ \"SolicitudAOCR/Generar\", new[] { \"DIRDAC\", \"DireccionJefaturaTecnica\", \"Administrador\" } }", "La matriz AOCR debe restringir la generación a DIRDAC, Dirección/Jefatura o Administrador.");
         }
 
         [TestMethod]

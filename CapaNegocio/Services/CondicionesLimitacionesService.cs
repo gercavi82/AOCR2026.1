@@ -37,6 +37,7 @@ namespace CapaNegocio.Services
         private readonly ListaVerificacionOperacionalEaeDAO _lvDao;
         private readonly AocrDocumentoGeneradoDAO _documentoGeneradoDao;
         private readonly AocrFirmaDocumentoDAO _firmaDao;
+        private readonly FirmaDigitalService _firmaDigitalService;
 
         public CondicionesLimitacionesService()
         {
@@ -49,6 +50,7 @@ namespace CapaNegocio.Services
             _lvDao = new ListaVerificacionOperacionalEaeDAO();
             _documentoGeneradoDao = new AocrDocumentoGeneradoDAO();
             _firmaDao = new AocrFirmaDocumentoDAO();
+            _firmaDigitalService = new FirmaDigitalService();
         }
 
         public CondicionesLimitacionesService(
@@ -60,7 +62,8 @@ namespace CapaNegocio.Services
             InspeccionInformeDAO informeDao,
             ListaVerificacionOperacionalEaeDAO lvDao,
             AocrDocumentoGeneradoDAO documentoGeneradoDao = null,
-            AocrFirmaDocumentoDAO firmaDao = null)
+            AocrFirmaDocumentoDAO firmaDao = null,
+            FirmaDigitalService firmaDigitalService = null)
         {
             _clDao = clDao ?? new CondicionesLimitacionesDAO();
             _solicitudDao = solicitudDao ?? new SolicitudAOCRDAO();
@@ -71,6 +74,7 @@ namespace CapaNegocio.Services
             _lvDao = lvDao ?? new ListaVerificacionOperacionalEaeDAO();
             _documentoGeneradoDao = documentoGeneradoDao ?? new AocrDocumentoGeneradoDAO();
             _firmaDao = firmaDao ?? new AocrFirmaDocumentoDAO();
+            _firmaDigitalService = firmaDigitalService ?? new FirmaDigitalService();
         }
 
         #region 1. Precondiciones y Construcción de Datos
@@ -541,35 +545,56 @@ namespace CapaNegocio.Services
                 };
             }
 
-            // 4. Construir modelo tipado para el PDF oficial
-            CondicionesLimitacionesPdfViewModel pdfModel;
-            try
-            {
-                pdfModel = ConstruirPdfModel(request.SolicitudId, cl, esVistaPrevia: false, dircavNombre: request.DircavUsuarioNombre);
-            }
-            catch (Exception ex)
+            // 4. Validar certificado digital y contraseña para firma criptográfica obligatoria (Regla 8 y 10)
+            if (request.CertificadoBytes == null || request.CertificadoBytes.Length == 0)
             {
                 return new CondicionesLimitacionesResultado
                 {
                     Exitoso = false,
                     HttpStatusCode = 400,
-                    Mensaje = $"No se puede firmar el documento: {ex.Message}"
+                    Mensaje = "Debe cargar un certificado digital válido en formato .p12 o .pfx."
                 };
             }
 
-            // 5. Generar PDF definitivo con membrete institucional
+            if (string.IsNullOrWhiteSpace(request.PasswordCertificado))
+            {
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "Debe ingresar la contraseña del certificado digital."
+                };
+            }
+
+            // 5. Construir modelo tipado para el PDF oficial
+            CondicionesLimitacionesPdfViewModel pdfModel;
+            try
+            {
+                pdfModel = ConstruirPdfModel(request.SolicitudId, cl, esVistaPrevia: false, dircavNombre: request.DircavUsuarioNombre);
+            }
+            catch (Exception)
+            {
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "No se puede preparar los datos oficiales para firmar el documento."
+                };
+            }
+
+            // 6. Generar PDF definitivo con membrete institucional
             byte[] pdfBytes;
             try
             {
                 pdfBytes = GenerarPdfOficial(pdfModel);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new CondicionesLimitacionesResultado
                 {
                     Exitoso = false,
                     HttpStatusCode = 500,
-                    Mensaje = $"Error al generar el documento PDF oficial: {ex.Message}"
+                    Mensaje = "Error al generar el documento PDF oficial."
                 };
             }
 
@@ -579,24 +604,113 @@ namespace CapaNegocio.Services
                 {
                     Exitoso = false,
                     HttpStatusCode = 500,
-                    Mensaje = "El archivo PDF generado está vacío o es inválido."
+                    Mensaje = "El archivo PDF base generado está vacío o es inválido."
                 };
             }
 
-            // 6. Calcular Hash SHA-256 e inmutabilidad
-            string hashFirmado;
-            using (var sha = SHA256.Create())
+            // 7. Aplicar Firma Digital Criptográfica (iTextSharp + BouncyCastle PKCS#12 con contenedor desprendido)
+            ResultadoFirmaDigital resultadoFirma;
+            try
             {
-                hashFirmado = BitConverter.ToString(sha.ComputeHash(pdfBytes)).Replace("-", "").ToUpperInvariant();
+                var qrPayload = $"SOLICITUD={request.SolicitudId}|DOC=CONDICIONES_LIMITACIONES|FIRMANTE={request.DircavUsuarioNombre}|ROL=DIRCAV|FECHA={DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                resultadoFirma = _firmaDigitalService.FirmarPdf(
+                    pdfBytes,
+                    request.CertificadoBytes,
+                    request.PasswordCertificado,
+                    nombreFirmante: request.DircavUsuarioNombre,
+                    motivo: "Firma institucional de Condiciones y Limitaciones AOCR",
+                    ubicacion: "Quito, Ecuador",
+                    rolFirmante: "DIRCAV",
+                    contenidoQr: qrPayload
+                );
+            }
+            catch (Exception)
+            {
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "Error al procesar la firma digital con el certificado proporcionado."
+                };
+            }
+
+            if (resultadoFirma == null || !resultadoFirma.Exitoso)
+            {
+                var detalle = resultadoFirma?.Mensaje ?? string.Empty;
+                string mensajeUsuario;
+                if (detalle.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    detalle.IndexOf("mac invalid", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    detalle.IndexOf("contrase", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    mensajeUsuario = "Contraseña del certificado digital incorrecta.";
+                }
+                else if (detalle.IndexOf("clave privada", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    mensajeUsuario = "El certificado digital no contiene una clave privada utilizable.";
+                }
+                else if (detalle.IndexOf("vigente", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         detalle.IndexOf("expirado", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    mensajeUsuario = "El certificado digital no está vigente o se encuentra expirado.";
+                }
+                else if (detalle.IndexOf("formato", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         detalle.IndexOf("p12", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    mensajeUsuario = "Debe cargar un certificado digital válido en formato .p12 o .pfx.";
+                }
+                else
+                {
+                    mensajeUsuario = "No se pudo firmar el documento con el certificado digital proporcionado.";
+                }
+
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = mensajeUsuario
+                };
+            }
+
+            var pdfFirmadoBytes = resultadoFirma.PdfFirmado;
+            if (pdfFirmadoBytes == null || pdfFirmadoBytes.Length == 0)
+            {
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 500,
+                    Mensaje = "El archivo firmado digitalmente está vacío o es inválido."
+                };
+            }
+
+            // 8. Verificación Criptográfica formal del PDF firmado
+            var verificacion = FirmaDigitalService.VerificarPdf(pdfFirmadoBytes);
+            if (!verificacion.EsValida)
+            {
+                return new CondicionesLimitacionesResultado
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 500,
+                    Mensaje = "Error de integridad: La firma digital aplicada no superó la verificación criptográfica."
+                };
+            }
+
+            var hashFirmado = resultadoFirma.HashSha256;
+            if (string.IsNullOrWhiteSpace(hashFirmado))
+            {
+                using (var sha = SHA256.Create())
+                {
+                    hashFirmado = BitConverter.ToString(sha.ComputeHash(pdfFirmadoBytes)).Replace("-", "").ToUpperInvariant();
+                }
             }
 
             var codigoVerificacion = Guid.NewGuid().ToString("N").Substring(0, 16).ToUpperInvariant();
 
-            // 7. Almacenamiento seguro bajo ~/App_Data/Uploads/AOCR/Condiciones/{solicitudId}/
+            // 9. Almacenamiento seguro transaccional con archivo temporal (Regla 16)
             var nombreArchivo = $"Condiciones_Limitaciones_{request.SolicitudId}_v{cl.Version}_Firmado.pdf";
             var rutaVirtual = $"~/App_Data/Uploads/AOCR/Condiciones/{request.SolicitudId}/{nombreArchivo}";
             var rutaFisica = FileStorageHelper.MapVirtualPath(rutaVirtual);
             var carpetaFisica = Path.GetDirectoryName(rutaFisica);
+            var rutaTemporal = Path.Combine(Path.GetTempPath(), $"cl_{request.SolicitudId}_{Guid.NewGuid():N}.tmp");
 
             try
             {
@@ -604,24 +718,29 @@ namespace CapaNegocio.Services
                 {
                     Directory.CreateDirectory(carpetaFisica);
                 }
-                File.WriteAllBytes(rutaFisica, pdfBytes);
+
+                // Guardado atómico: escribir en temp y mover al destino controlado
+                File.WriteAllBytes(rutaTemporal, pdfFirmadoBytes);
+                File.Copy(rutaTemporal, rutaFisica, overwrite: true);
+                try { if (File.Exists(rutaTemporal)) File.Delete(rutaTemporal); } catch { }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                try { if (File.Exists(rutaTemporal)) File.Delete(rutaTemporal); } catch { }
                 return new CondicionesLimitacionesResultado
                 {
                     Exitoso = false,
                     HttpStatusCode = 500,
-                    Mensaje = $"Error al persistir el archivo firmado en almacenamiento seguro: {ex.Message}"
+                    Mensaje = "Error al persistir el archivo firmado en almacenamiento seguro."
                 };
             }
 
-            // 8. Persistir firma y estado en transacción DB
+            // 10. Persistir firma y estado en transacción DB
             var okPersistencia = _clDao.RegistrarFirmaDircav(
                 cl.Id,
                 rutaVirtual,
                 hashFirmado,
-                pdfBytes.LongLength,
+                pdfFirmadoBytes.LongLength,
                 request.DircavUsuarioId,
                 request.DircavUsuarioNombre,
                 codigoVerificacion
@@ -629,7 +748,7 @@ namespace CapaNegocio.Services
 
             if (!okPersistencia)
             {
-                // Rollback de archivo si la BD falló
+                // Rollback del archivo si la BD falló (evitar archivos huérfanos)
                 try { if (File.Exists(rutaFisica)) File.Delete(rutaFisica); } catch { }
                 return new CondicionesLimitacionesResultado
                 {
@@ -639,7 +758,7 @@ namespace CapaNegocio.Services
                 };
             }
 
-            // 9. Verificar regla de cierre institucional dual:
+            // 11. Regla institucional de cierre dual (Reglas 14 y 15):
             // La entrega final se habilita ÚNICAMENTE cuando CL está firmada por DIRCAV Y AOCR está firmado por DIRDAC.
             var aocrDoc = _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(request.SolicitudId, "RECONOCIMIENTO");
             var aocrFirmado = aocrDoc != null && (string.Equals(aocrDoc.Estado, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(aocrDoc.HashPdfFirmado));
@@ -677,11 +796,8 @@ namespace CapaNegocio.Services
         {
             if (solicitudId <= 0) throw new ArgumentException("ID de solicitud inválido.");
 
-            // Validar RBAC
-            if (AocrRolesInstitucionales.EsAdministrador(rol))
-            {
-                throw new UnauthorizedAccessException("El rol Administrador no tiene permisos para descargar este documento (Regla 7).");
-            }
+            // Validar RBAC (Regla 4 y 5: Bloqueo de DIRDAC y Administrador)
+            ValidarRolLectura(rol);
 
             var cl = _clDao.ObtenerPorSolicitudVigente(solicitudId);
             if (cl == null || string.IsNullOrWhiteSpace(cl.RutaPdfFirmado))

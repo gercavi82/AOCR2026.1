@@ -497,10 +497,10 @@ namespace CapaDatos.DAOs
                             }
                         }
 
-                        // 2. Sincronizar en public.aocr_tbdocumento_generado
+                        // 2. Sincronizar en public.aocr_tbdocumento_generado (Regla 12 y 13: CL_FIRMADA_DIRCAV)
                         const string sqlDocGen = @"
                             UPDATE public.aocr_tbdocumento_generado
-                            SET estado = 'CONDICIONES_FIRMADAS_DCAV',
+                            SET estado = @estado_cl,
                                 ruta_pdf_firmado = @ruta,
                                 hash_pdf_firmado = @hash,
                                 tamanio_pdf_firmado = @tamanio,
@@ -514,6 +514,7 @@ namespace CapaDatos.DAOs
 
                         using (var cmdDoc = new NpgsqlCommand(sqlDocGen, cn, tx))
                         {
+                            cmdDoc.Parameters.AddWithValue("@estado_cl", AocrEstadoCl.ClFirmadaDircav);
                             cmdDoc.Parameters.AddWithValue("@ruta", rutaPdfFirmado);
                             cmdDoc.Parameters.AddWithValue("@hash", hashPdfFirmado);
                             cmdDoc.Parameters.AddWithValue("@tamanio", tamanioPdf);
@@ -548,6 +549,45 @@ namespace CapaDatos.DAOs
                             cmdFirma.Parameters.AddWithValue("@dircav_id", dircavId);
                             cmdFirma.ExecuteNonQuery();
                         }
+
+                        // 4. Auditoría institucional (Regla 18)
+                        try
+                        {
+                            const string sqlAudit = @"
+                                DO $$
+                                BEGIN
+                                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'aocr_tbauditoria') THEN
+                                        INSERT INTO public.aocr_tbauditoria (modulo, accion, usuario_id, detalle, fecha)
+                                        VALUES ('CONDICIONES_LIMITACIONES', 'FIRMA_DIRCAV', @dircav_id, @detalle, NOW());
+                                    END IF;
+                                END $$;";
+                            using (var cmdAudit = new NpgsqlCommand(sqlAudit, cn, tx))
+                            {
+                                cmdAudit.Parameters.AddWithValue("@dircav_id", dircavId);
+                                cmdAudit.Parameters.AddWithValue("@detalle", $"Firma DIRCAV de CL para Solicitud #{solicitudId}. Hash: {hashPdfFirmado}, CodVerif: {codigoVerificacion}");
+                                cmdAudit.ExecuteNonQuery();
+                            }
+                        }
+                        catch { }
+
+                        // 5. Encolar notificación en outbox transaccional (Regla 18)
+                        try
+                        {
+                            var emailItem = new CapaDatos.Services.EmailQueueItem
+                            {
+                                Para = "coordinador@dgac.gob.ec",
+                                ParaNombre = "Coordinación AOCR",
+                                Asunto = $"AOCR - Condiciones y Limitaciones Firmadas por DIRCAV #{solicitudId}",
+                                Cuerpo = $"Se ha aplicado la firma digital institucional de la Autoridad DIRCAV sobre las Condiciones y Limitaciones de la solicitud #{solicitudId}. El documento está listo a la espera de la legalización final del AOCR.",
+                                SolicitudId = solicitudId,
+                                TipoNotificacion = "CL_FIRMADA_DIRCAV",
+                                EventKey = $"CL_FIRMADA_{solicitudId}_{codigoVerificacion}",
+                                Estado = "PENDIENTE"
+                            };
+                            bool duplicate;
+                            new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                        }
+                        catch { }
 
                         tx.Commit();
                         return true;

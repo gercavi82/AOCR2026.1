@@ -23,7 +23,7 @@ namespace AOCR.Tests.Unit
         [DataRow("Generado Condiciones y Limitaciones", "En Revision Coordinador Final")]
         [DataRow("En Revision Coordinador Final", "Enviado DCAV")]
         [DataRow("Enviado DCAV", "Firmado DCAV")]
-        [DataRow("Firmado DCAV", "Finalizado")]
+        [DataRow("Firmado DCAV", AocrEstadosProceso.AocrPendienteDirdac)]
         [DataRow("Pendiente Asignacion RT", "En Inspeccion")]
         [DataRow("AOCR En Revision", "AOCR Validado")]
         [DataRow("AOCR Validado", "AOCR Legalizado")]
@@ -64,6 +64,9 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void EsTransicionPermitida_FlujoModificacionDirecta_DebeMantenerSecuenciaCompleta()
         {
+            // REGLA AC-11: FirmadoDcav ya no va directo a Finalizado.
+            // El flujo correcto pasa por AocrPendienteDirdac para completar la firma DIRDAC
+            // y luego AC-12 gestiona la entrega automática.
             var flujo = new[]
             {
                 EstadoSolicitud.AceptacionDocumental,
@@ -71,7 +74,7 @@ namespace AOCR.Tests.Unit
                 EstadoSolicitud.EnRevisionCoordinadorFinal,
                 EstadoSolicitud.EnviadoDcav,
                 EstadoSolicitud.FirmadoDcav,
-                EstadoSolicitud.Finalizado
+                AocrEstadosProceso.AocrPendienteDirdac
             };
 
             for (var index = 0; index < flujo.Length - 1; index++)

@@ -769,7 +769,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Route("Dircav/FirmarCondicionesLimitaciones")]
-        public ActionResult FirmarCondicionesLimitaciones(CondicionesLimitacionesFirmaRequest request)
+        public ActionResult FirmarCondicionesLimitaciones(CondicionesLimitacionesFirmaRequest request, HttpPostedFileBase certificadoDigital = null)
         {
             var rolActual = ObtenerRolActual();
             if (AocrRolesInstitucionales.EsAdministrador(rolActual))
@@ -790,43 +790,72 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(400, "Datos de solicitud inválidos.");
             }
 
+            // Extraer archivo de certificado si fue cargado en la petición
+            var archivo = certificadoDigital;
+            if (archivo == null && Request != null && Request.Files != null && Request.Files.Count > 0)
+            {
+                archivo = Request.Files["certificadoDigital"] ?? Request.Files["CertificadoDigital"] ?? Request.Files[0];
+            }
+
+            if (archivo != null && archivo.ContentLength > 0)
+            {
+                var extension = Path.GetExtension(archivo.FileName)?.ToLowerInvariant();
+                if (extension != ".p12" && extension != ".pfx")
+                {
+                    return new HttpStatusCodeResult(400, "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx.");
+                }
+
+                using (var ms = new MemoryStream())
+                {
+                    archivo.InputStream.CopyTo(ms);
+                    request.CertificadoBytes = ms.ToArray();
+                }
+            }
+
             request.DircavUsuarioId = ObtenerUsuarioIdActual();
             request.DircavUsuarioNombre = ObtenerUsuarioLoginActual();
             request.RolSolicitante = rolActual;
 
-            var resultado = _condicionesService.FirmarCondicionesLimitaciones(request);
-            if (!resultado.Exitoso)
+            try
             {
-                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
-            }
-
-            TempData["Success"] = resultado.Mensaje;
-            if (Request != null && Request.IsAjaxRequest())
-            {
-                return Json(new
+                var resultado = _condicionesService.FirmarCondicionesLimitaciones(request);
+                if (!resultado.Exitoso)
                 {
-                    ok = true,
-                    message = resultado.Mensaje,
-                    estado = resultado.Estado,
-                    documentoId = resultado.DocumentoId,
-                    hashPdf = resultado.HashPdf,
-                    expedienteFinalizado = resultado.ExpedienteFinalizado,
-                    idempotente = resultado.Idempotente
-                });
-            }
+                    return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+                }
 
-            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+                TempData["Success"] = resultado.Mensaje;
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new
+                    {
+                        ok = true,
+                        message = resultado.Mensaje,
+                        estado = resultado.Estado,
+                        documentoId = resultado.DocumentoId,
+                        hashPdf = resultado.HashPdf,
+                        expedienteFinalizado = resultado.ExpedienteFinalizado,
+                        idempotente = resultado.Idempotente
+                    });
+                }
+
+                return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+            }
+            catch (Exception)
+            {
+                return new HttpStatusCodeResult(500, "Ocurrió un error al procesar la firma de Condiciones y Limitaciones.");
+            }
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult FirmarCondiciones(int id, string passwordCertificado)
+        public ActionResult FirmarCondiciones(int id, string passwordCertificado, HttpPostedFileBase certificadoDigital = null)
         {
             return FirmarCondicionesLimitaciones(new CondicionesLimitacionesFirmaRequest
             {
                 SolicitudId = id,
                 PasswordCertificado = passwordCertificado
-            });
+            }, certificadoDigital);
         }
 
         // =======================================================
