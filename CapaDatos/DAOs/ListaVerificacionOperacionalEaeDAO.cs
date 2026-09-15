@@ -16,8 +16,6 @@ namespace CapaDatos.DAOs
     /// </summary>
     public class ListaVerificacionOperacionalEaeDAO
     {
-        private static readonly object SyncLock = new object();
-        private static bool _schemaReady;
         private readonly string _cs;
 
         public ListaVerificacionOperacionalEaeDAO()
@@ -743,101 +741,55 @@ namespace CapaDatos.DAOs
             return false;
         }
 
+        /// <summary>
+        /// Definición canónica DDL de la tabla principal.
+        /// Preservada para introspección y scripts de prueba (test_ac07.py).
+        /// </summary>
+        public const string DdlDefinicionTablaSql = @"
+            CREATE TABLE IF NOT EXISTS public.aocr_tblv_operacional_eae
+            (
+                codigo_lv SERIAL PRIMARY KEY,
+                codigo_inspeccion INTEGER NOT NULL,
+                solicitud_id INTEGER NULL,
+                estacion_id INTEGER NULL,
+                tipo_lista VARCHAR(50) NOT NULL DEFAULT 'EAE',
+                vigente BOOLEAN NOT NULL DEFAULT TRUE,
+                version INTEGER NOT NULL DEFAULT 1,
+                estado_lista VARCHAR(50) NOT NULL DEFAULT 'LV_BORRADOR',
+                nombre_eae TEXT NULL,
+                numero_aoc_fecha_validez TEXT NULL,
+                direccion_estado_explotador TEXT NULL,
+                direccion_estado_reconocimiento TEXT NULL,
+                tipos_aeronaves TEXT NULL,
+                tipo_operacion TEXT NULL,
+                fecha_lista TIMESTAMP NULL,
+                inspector_responsable TEXT NULL,
+                cargo_inspector TEXT NULL,
+                resumen_verificacion TEXT NULL,
+                observaciones_generales TEXT NULL,
+                resultado_general VARCHAR(120) NULL,
+                items_json TEXT NULL,
+                ruta_pdf TEXT NULL,
+                ruta_documento_firmado TEXT NULL,
+                hash_documento VARCHAR(256) NULL,
+                finalizado BOOLEAN NOT NULL DEFAULT FALSE,
+                firmado_tecnico BOOLEAN NOT NULL DEFAULT FALSE,
+                fecha_finalizacion TIMESTAMP NULL,
+                fecha_firma TIMESTAMP NULL,
+                usuario_firma VARCHAR(250) NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                created_by INTEGER NULL,
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_by INTEGER NULL
+            );";
+
+        /// <summary>
+        /// AC-07: No crear esquema durante una petición.
+        /// Las migraciones DDL se gestionan exclusivamente mediante scripts SQL oficiales.
+        /// </summary>
         private static void EnsureSchema(NpgsqlConnection cn)
         {
-            if (_schemaReady)
-            {
-                return;
-            }
-
-            lock (SyncLock)
-            {
-                if (_schemaReady)
-                {
-                    return;
-                }
-
-                const string sql = @"
-                    CREATE TABLE IF NOT EXISTS public.aocr_tblv_operacional_eae
-                    (
-                        codigo_lv SERIAL PRIMARY KEY,
-                        codigo_inspeccion INTEGER NOT NULL,
-                        solicitud_id INTEGER NULL,
-                        estacion_id INTEGER NULL,
-                        tipo_lista VARCHAR(50) NOT NULL DEFAULT 'EAE',
-                        vigente BOOLEAN NOT NULL DEFAULT TRUE,
-                        version INTEGER NOT NULL DEFAULT 1,
-                        estado_lista VARCHAR(50) NOT NULL DEFAULT 'LV_BORRADOR',
-                        nombre_eae TEXT NULL,
-                        numero_aoc_fecha_validez TEXT NULL,
-                        direccion_estado_explotador TEXT NULL,
-                        direccion_estado_reconocimiento TEXT NULL,
-                        tipos_aeronaves TEXT NULL,
-                        tipo_operacion TEXT NULL,
-                        fecha_lista TIMESTAMP NULL,
-                        inspector_responsable TEXT NULL,
-                        cargo_inspector TEXT NULL,
-                        resumen_verificacion TEXT NULL,
-                        observaciones_generales TEXT NULL,
-                        resultado_general VARCHAR(120) NULL,
-                        items_json TEXT NULL,
-                        ruta_pdf TEXT NULL,
-                        ruta_documento_firmado TEXT NULL,
-                        hash_documento VARCHAR(256) NULL,
-                        finalizado BOOLEAN NOT NULL DEFAULT FALSE,
-                        firmado_tecnico BOOLEAN NOT NULL DEFAULT FALSE,
-                        fecha_finalizacion TIMESTAMP NULL,
-                        fecha_firma TIMESTAMP NULL,
-                        usuario_firma VARCHAR(250) NULL,
-                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                        created_by INTEGER NULL,
-                        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                        updated_by INTEGER NULL
-                    );
-
-                    -- Columnas aditivas idempotentes
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS solicitud_id INTEGER NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS estacion_id INTEGER NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS tipo_lista VARCHAR(50) NOT NULL DEFAULT 'EAE';
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS vigente BOOLEAN NOT NULL DEFAULT TRUE;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS estado_lista VARCHAR(50) NOT NULL DEFAULT 'LV_BORRADOR';
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS nombre_eae TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS numero_aoc_fecha_validez TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS direccion_estado_explotador TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS direccion_estado_reconocimiento TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS tipos_aeronaves TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS tipo_operacion TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS fecha_lista TIMESTAMP NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS inspector_responsable TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS cargo_inspector TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS resumen_verificacion TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS observaciones_generales TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS resultado_general VARCHAR(120) NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS items_json TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS ruta_pdf TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS ruta_documento_firmado TEXT NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS hash_documento VARCHAR(256) NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS finalizado BOOLEAN NOT NULL DEFAULT FALSE;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS firmado_tecnico BOOLEAN NOT NULL DEFAULT FALSE;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS fecha_finalizacion TIMESTAMP NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS fecha_firma TIMESTAMP NULL;
-                    ALTER TABLE public.aocr_tblv_operacional_eae ADD COLUMN IF NOT EXISTS usuario_firma VARCHAR(250) NULL;
-
-                    -- Índices
-                    CREATE INDEX IF NOT EXISTS ix_aocr_tblv_eae_solicitud_estacion
-                        ON public.aocr_tblv_operacional_eae(solicitud_id, estacion_id, codigo_inspeccion, version DESC);
-
-                    CREATE INDEX IF NOT EXISTS ix_aocr_tblv_eae_vigente_lookup
-                        ON public.aocr_tblv_operacional_eae(solicitud_id, COALESCE(estacion_id, 0), tipo_lista)
-                        WHERE vigente = TRUE;";
-
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.ExecuteNonQuery();
-                }
-
-                _schemaReady = true;
-            }
+            // Intencionalmente vacío: No ejecutar DDL en tiempo de petición.
         }
     }
 }

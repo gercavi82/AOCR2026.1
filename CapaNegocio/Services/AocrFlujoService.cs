@@ -88,15 +88,36 @@ namespace CapaNegocio.Services
                 return string.Equals(actual, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
             }
 
-            if ((actual == EstadoSolicitud.Pendiente
-                    || actual == EstadoSolicitud.EnRevision
-                    || actual == EstadoSolicitud.DocumentacionPendiente
-                    || actual == EstadoSolicitud.Subsanada
-                    || actual == EstadoSolicitud.EnInspeccion
-                    || string.Equals(actual, AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase)) &&
+            // AC-04: Transiciones prohibidas de salto directo
+            var esOrigenInspector = actual == EstadoSolicitud.Pendiente
+                || actual == EstadoSolicitud.EnRevision
+                || actual == EstadoSolicitud.DocumentacionPendiente
+                || actual == EstadoSolicitud.Subsanada
+                || actual == EstadoSolicitud.EnInspeccion
+                || string.Equals(actual, AocrEstadosProceso.PendienteRevisionInspector, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, AocrEstadosProceso.RevisionInspectorEnProceso, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(actual, AocrEstadosProceso.DevueltoInspector, StringComparison.OrdinalIgnoreCase);
+
+            if (esOrigenInspector && (
+                string.Equals(destino, AocrEstadosProceso.PendienteDircav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(destino, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(destino, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)))
+            {
+                return false; // Prohibido: Inspector NUNCA remite directo a DIRCAV ni a DIRDAC
+            }
+
+            if (string.Equals(actual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase) && (
+                string.Equals(destino, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(destino, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)))
+            {
+                return false; // Prohibido: Coordinador NUNCA remite directo a DIRDAC en esta etapa
+            }
+
+            if (esOrigenInspector &&
                 (destino == EstadoSolicitud.Observada
                     || destino == EstadoSolicitud.AceptacionDocumental
-                    || string.Equals(destino, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)))
+                    || string.Equals(destino, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(destino, AocrEstadosProceso.RevisionInspectorEnProceso, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }

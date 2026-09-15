@@ -184,6 +184,7 @@ namespace CapaNegocio.Services
                 case "EN_REVISION_DOCUMENTAL":
                 case "PENDIENTE_REVISION_DOCUMENTAL":
                 case "PENDIENTE_REVISION_INSPECTOR":
+                case "REVISION_INSPECTOR_EN_PROCESO":
                 case "SUBSANADA":
                 case "SUBSANADA_RT":
                 case "SUBSANADO_RT":

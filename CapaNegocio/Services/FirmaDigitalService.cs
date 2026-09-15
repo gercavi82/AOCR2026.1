@@ -6,12 +6,46 @@ using System.Security.Cryptography;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using iTextSharp.text.pdf.security;
+using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.X509;
 
 namespace CapaNegocio.Services
 {
+    internal class BouncyCastleDetachedSignatureContainer : IExternalSignatureContainer
+    {
+        private readonly AsymmetricKeyParameter _key;
+        private readonly X509Certificate[] _chain;
+
+        public BouncyCastleDetachedSignatureContainer(AsymmetricKeyParameter key, X509Certificate[] chain)
+        {
+            _key = key;
+            _chain = chain;
+        }
+
+        public byte[] Sign(Stream data)
+        {
+            var gen = new CmsSignedDataGenerator();
+            var signer = new SignerInfoGeneratorBuilder()
+                .Build(new Asn1SignatureFactory("SHA256WITHRSA", _key), _chain[0]);
+            gen.AddSignerInfoGenerator(signer);
+
+            gen.AddCertificates(CollectionUtilities.CreateStore(_chain));
+
+            var proc = new CmsProcessableInputStream(data);
+            var signed = gen.Generate(proc, false);
+            return signed.GetEncoded();
+        }
+
+        public void ModifySigningDictionary(PdfDictionary signDic)
+        {
+            signDic.Put(PdfName.FILTER, PdfName.ADOBE_PPKLITE);
+            signDic.Put(PdfName.SUBFILTER, PdfName.ADBE_PKCS7_DETACHED);
+        }
+    }
     public class FirmaDigitalService
     {
         public InformacionCertificadoDigital LeerCertificado(byte[] certificadoBytes, string passwordCertificado)
@@ -115,14 +149,15 @@ namespace CapaNegocio.Services
                     {
                         var stamp = PdfStamper.CreateSignature(reader, output, '\0', tempFilePath, true);
                         var appearance = stamp.SignatureAppearance;
+                        appearance.SetVisibleSignature(new Rectangle(0, 0, 0, 0), 1, "FirmaDigital_" + (rolFirmante ?? "DIRCAV"));
                         appearance.Reason = string.IsNullOrWhiteSpace(motivo) ? "Firma digital AOCR" : motivo.Trim();
                         appearance.Location = string.IsNullOrWhiteSpace(ubicacion) ? "Sistema AOCR DGAC" : ubicacion.Trim();
                         appearance.SignDate = fechaFirma;
                         appearance.Acro6Layers = true;
                         appearance.Layer2Text = " ";
 
-                        var signature = new PrivateKeySignature(llavePrivada, DigestAlgorithms.SHA256);
-                        MakeSignature.SignDetached(appearance, signature, cadena, null, null, null, 0, CryptoStandard.CMS);
+                        var container = new BouncyCastleDetachedSignatureContainer(llavePrivada, cadena);
+                        MakeSignature.SignExternalContainer(appearance, container, 8192);
 
                         var pdfFirmado = output.ToArray();
                         RegistrarDiagnosticoITextSharp("SIGN_OK", rolFirmante);
@@ -147,6 +182,52 @@ namespace CapaNegocio.Services
             {
                 System.Diagnostics.Trace.TraceError("[FirmaDigital][ERROR] " + ObtenerDetalleExcepcion(ex));
                 return ResultadoFirmaDigital.Error("No se pudo aplicar la firma digital al PDF: " + ObtenerDetalleExcepcion(ex));
+            }
+        }
+
+        public static ResultadoVerificacionFirmaPdf VerificarPdf(byte[] pdfBytes)
+        {
+            if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                return ResultadoVerificacionFirmaPdf.Fallo("El archivo PDF está vacío o no fue proporcionado.");
+            }
+
+            try
+            {
+                using (var reader = new PdfReader(pdfBytes))
+                {
+                    var af = reader.AcroFields;
+                    var names = af.GetSignatureNames();
+                    if (names == null || names.Count == 0)
+                    {
+                        return ResultadoVerificacionFirmaPdf.Fallo("El documento PDF no contiene ninguna firma digital criptográfica.");
+                    }
+
+                    foreach (string name in names)
+                    {
+                        var pk = af.VerifySignature(name);
+                        var integridad = pk.Verify();
+                        if (!integridad)
+                        {
+                            return ResultadoVerificacionFirmaPdf.Fallo(string.Format("La firma '{0}' no es válida o el contenido del PDF fue alterado después de la firma.", name));
+                        }
+
+                        var cert = pk.SigningCertificate;
+                        var cubreTodo = af.SignatureCoversWholeDocument(name);
+                        return ResultadoVerificacionFirmaPdf.Exito(
+                            nombreFirma: name,
+                            sujetoCertificado: cert != null && cert.SubjectDN != null ? cert.SubjectDN.ToString() : null,
+                            fechaFirma: pk.SignDate,
+                            cubreTodoElDocumento: cubreTodo
+                        );
+                    }
+
+                    return ResultadoVerificacionFirmaPdf.Fallo("No se pudo validar ninguna de las firmas digitales.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResultadoVerificacionFirmaPdf.Fallo("Error al verificar la firma digital del PDF: " + ex.Message);
             }
         }
 
@@ -181,6 +262,11 @@ namespace CapaNegocio.Services
             if (rol == "DIRDAC" || rol == "DIRECTOR_GENERAL")
             {
                 return new Rectangle(300f, 30f, 565f, 135f);
+            }
+
+            if (rol == "DIRCAV" || rol == "DIRCAV_DESIGNACION")
+            {
+                return new Rectangle(36f, 36f, 290f, 135f);
             }
 
             return new Rectangle(30f, 30f, 295f, 135f);
@@ -245,12 +331,19 @@ namespace CapaNegocio.Services
                 || rol == "LV_EAE_INSPECTOR"
                 || rol == "INFORME_TECNICO_DIRDAC"
                 || rol == "DIRDAC"
-                || rol == "DIRECTOR_GENERAL";
+                || rol == "DIRECTOR_GENERAL"
+                || rol == "DIRCAV"
+                || rol == "DIRCAV_DESIGNACION";
         }
 
         private static string ObtenerTituloBloqueFirma(string rolFirmante)
         {
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
+            if (rol == "DIRCAV" || rol == "DIRCAV_DESIGNACION")
+            {
+                return "DIRECCIÓN DE CERTIFICACIÓN AERONÁUTICA\n";
+            }
+
             if (rol == "INFORME_TECNICO_INSPECTOR")
             {
                 return "Firmado electronicamente por:\n";
@@ -290,6 +383,11 @@ namespace CapaNegocio.Services
             if (rol == "INFORME_TECNICO_DIRDAC")
             {
                 return "DIRDAC";
+            }
+
+            if (rol == "DIRCAV" || rol == "DIRCAV_DESIGNACION")
+            {
+                return "DIRCAV";
             }
 
             return rolFirmante ?? string.Empty;
@@ -849,6 +947,41 @@ namespace CapaNegocio.Services
         public static ResultadoFirmaDigital Error(string mensaje)
         {
             return new ResultadoFirmaDigital(false, mensaje, null, null, null);
+        }
+    }
+
+    public class ResultadoVerificacionFirmaPdf
+    {
+        public bool EsValida { get; set; }
+        public bool TieneFirmaDigital { get; set; }
+        public string Mensaje { get; set; }
+        public string NombreFirma { get; set; }
+        public string SujetoCertificado { get; set; }
+        public DateTime? FechaFirma { get; set; }
+        public bool CubreTodoElDocumento { get; set; }
+
+        public static ResultadoVerificacionFirmaPdf Exito(string nombreFirma, string sujetoCertificado, DateTime? fechaFirma, bool cubreTodoElDocumento)
+        {
+            return new ResultadoVerificacionFirmaPdf
+            {
+                EsValida = true,
+                TieneFirmaDigital = true,
+                Mensaje = "Firma digital criptográfica válida e íntegra.",
+                NombreFirma = nombreFirma,
+                SujetoCertificado = sujetoCertificado,
+                FechaFirma = fechaFirma,
+                CubreTodoElDocumento = cubreTodoElDocumento
+            };
+        }
+
+        public static ResultadoVerificacionFirmaPdf Fallo(string mensaje)
+        {
+            return new ResultadoVerificacionFirmaPdf
+            {
+                EsValida = false,
+                TieneFirmaDigital = false,
+                Mensaje = mensaje
+            };
         }
     }
 }

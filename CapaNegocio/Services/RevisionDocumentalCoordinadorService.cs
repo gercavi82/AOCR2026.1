@@ -76,6 +76,7 @@ namespace CapaNegocio.Services
             }
 
             if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
+            if (coordinadorId <= 0) return Error("Identificador de coordinador invalido.");
 
             var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
             if (solicitud == null) return Error("La solicitud no existe.");
@@ -92,28 +93,50 @@ namespace CapaNegocio.Services
             }
 
             var login = string.IsNullOrWhiteSpace(usuarioLogin) ? "coordinador" : usuarioLogin;
+            var eventKey = "AOCR_REV_DOC_DEV_INSP_" + solicitudId + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
 
-            if (!_solicitudDao.CambiarEstado(solicitudId, AocrEstadosProceso.DevueltoInspector, coordinadorId, "Devuelto a Inspector por Coordinacion: " + texto))
+            var resDao = _dao.EjecutarTransicionCoordinadorTransaccional(new TransicionCoordinadorParams
             {
-                return Error("No fue posible actualizar el estado de la solicitud a DEVUELTO_INSPECTOR.");
-            }
+                SolicitudId = solicitudId,
+                CoordinadorId = coordinadorId,
+                Accion = "COORDINADOR_DEVOLVER_INSPECTOR",
+                EstadoSolicitudDestino = AocrEstadosProceso.DevueltoInspector,
+                EstadoRevisionDestino = EstadoRevisionDocumentalCoordinador.ObservadaCoordinador,
+                Observacion = "Devuelto a Inspector por Coordinacion: " + texto,
+                UsuarioLogin = login,
+                EventKey = eventKey,
+                EmailDestinatario = solicitud.Email,
+                EmailNombre = solicitud.TecnicoResponsableNombre,
+                EmailAsunto = "AOCR - Revisión documental devuelta por Coordinador #" + solicitudId,
+                EmailCuerpo = "La Coordinación ha devuelto la revisión documental con observaciones: " + texto,
+                TipoNotificacion = "SOLICITUD_DEVUELTO_INSPECTOR"
+            });
 
-            _dao.RegistrarDecision(
-                solicitudId,
-                coordinadorId,
-                EstadoRevisionDocumentalCoordinador.ObservadaCoordinador,
-                null,
-                texto);
+            if (!resDao.Exitoso)
+            {
+                return new RevisionDocumentalCoordinadorResultado
+                {
+                    Ok = false,
+                    Mensaje = resDao.Mensaje
+                };
+            }
 
             if (InfraBl != null)
             {
-                InfraBl.RegistrarEventoHistorialRevision(
-                    solicitudId,
-                    null,
-                    "DEVUELTO_INSPECTOR",
-                    "Revision documental devuelta al Inspector por Coordinacion. Motivo: " + texto,
-                    coordinadorId,
-                    login);
+                try
+                {
+                    InfraBl.RegistrarEventoHistorialRevision(
+                        solicitudId,
+                        null,
+                        "DEVUELTO_INSPECTOR",
+                        "Revision documental devuelta al Inspector por Coordinacion. Motivo: " + texto,
+                        coordinadorId,
+                        login);
+                }
+                catch (Exception exHist)
+                {
+                    Trace.TraceWarning("[HIST][DEVUELTO_INSPECTOR] SolicitudId=" + solicitudId + "; Error=" + exHist.Message);
+                }
             }
 
             try
@@ -129,7 +152,7 @@ namespace CapaNegocio.Services
             {
                 Ok = true,
                 Mensaje = "La revision documental fue devuelta al Inspector exitosamente con las observaciones indicadas.",
-                Registro = _dao.ObtenerPorSolicitud(solicitudId)
+                Registro = resDao.Registro ?? _dao.ObtenerPorSolicitud(solicitudId)
             };
         }
 
@@ -140,6 +163,7 @@ namespace CapaNegocio.Services
             string usuarioLogin)
         {
             if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
+            if (coordinadorId <= 0) return Error("Identificador de coordinador invalido.");
 
             var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
             if (solicitud == null) return Error("La solicitud no existe.");
@@ -157,30 +181,50 @@ namespace CapaNegocio.Services
 
             var texto = NormalizarObservacion(observacion) ?? "Remitido formalmente a DIRCAV por Coordinacion.";
             var login = string.IsNullOrWhiteSpace(usuarioLogin) ? "coordinador" : usuarioLogin;
+            var eventKey = "AOCR_REV_DOC_REMIT_DIRCAV_" + solicitudId + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
 
-            if (!_solicitudDao.CambiarEstado(solicitudId, AocrEstadosProceso.PendienteDircav, coordinadorId, texto))
+            var resDao = _dao.EjecutarTransicionCoordinadorTransaccional(new TransicionCoordinadorParams
             {
-                return Error("No fue posible actualizar el estado de la solicitud a PENDIENTE_DIRCAV.");
-            }
+                SolicitudId = solicitudId,
+                CoordinadorId = coordinadorId,
+                Accion = "COORDINADOR_REMITIR_DIRCAV",
+                EstadoSolicitudDestino = AocrEstadosProceso.PendienteDircav,
+                EstadoRevisionDestino = EstadoRevisionDocumentalCoordinador.AceptadaCoordinador,
+                Observacion = texto,
+                UsuarioLogin = login,
+                EventKey = eventKey,
+                EmailDestinatario = solicitud.Email,
+                EmailNombre = solicitud.RazonSocial,
+                EmailAsunto = "AOCR - Expediente documental remitido a DIRCAV #" + solicitudId,
+                EmailCuerpo = "La Coordinación ha verificado la revisión documental y remitido el expediente a DIRCAV. " + texto,
+                TipoNotificacion = "SOLICITUD_PENDIENTE_DIRCAV"
+            });
 
-            var actual = _dao.ObtenerPorSolicitud(solicitudId);
-            var inspectorId = actual != null && actual.InspectorOriginalId.HasValue ? actual.InspectorOriginalId.Value : 0;
-            _dao.RegistrarDecision(
-                solicitudId,
-                coordinadorId,
-                EstadoRevisionDocumentalCoordinador.AceptadaCoordinador,
-                inspectorId > 0 ? (int?)inspectorId : null,
-                texto);
+            if (!resDao.Exitoso)
+            {
+                return new RevisionDocumentalCoordinadorResultado
+                {
+                    Ok = false,
+                    Mensaje = resDao.Mensaje
+                };
+            }
 
             if (InfraBl != null)
             {
-                InfraBl.RegistrarEventoHistorialRevision(
-                    solicitudId,
-                    null,
-                    "PENDIENTE_DIRCAV",
-                    "Revision documental verificada por Coordinacion y remitida oficialmente a DIRCAV. " + texto,
-                    coordinadorId,
-                    login);
+                try
+                {
+                    InfraBl.RegistrarEventoHistorialRevision(
+                        solicitudId,
+                        null,
+                        "PENDIENTE_DIRCAV",
+                        "Revision documental verificada por Coordinacion y remitida oficialmente a DIRCAV. " + texto,
+                        coordinadorId,
+                        login);
+                }
+                catch (Exception exHist)
+                {
+                    Trace.TraceWarning("[HIST][PENDIENTE_DIRCAV] SolicitudId=" + solicitudId + "; Error=" + exHist.Message);
+                }
             }
 
             try
@@ -196,7 +240,7 @@ namespace CapaNegocio.Services
             {
                 Ok = true,
                 Mensaje = "Expediente remitido exitosamente a DIRCAV para su atencion institucional.",
-                Registro = _dao.ObtenerPorSolicitud(solicitudId)
+                Registro = resDao.Registro ?? _dao.ObtenerPorSolicitud(solicitudId)
             };
         }
 

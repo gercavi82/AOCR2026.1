@@ -8,6 +8,8 @@ namespace CapaDatos.Constants
     public static class AocrEstadosProceso
     {
         // 1. Etapa Documental Inicial y Designación
+        public const string PendienteRevisionInspector = "PENDIENTE_REVISION_INSPECTOR";
+        public const string RevisionInspectorEnProceso = "REVISION_INSPECTOR_EN_PROCESO";
         public const string PendienteCoordinador = "PENDIENTE_COORDINADOR";
         public const string PendienteDircav = "PENDIENTE_DIRCAV";
         public const string PendienteRevisionCoordinador = "PENDIENTE_REVISION_COORDINADOR";

@@ -29,6 +29,7 @@ namespace CapaNegocio.Services
         private readonly SolicitudAocrCorreoService _correoService;
         private readonly AuditoriaDAO _auditoriaDao;
         private readonly DircavDesignacionService _dircavService;
+        private readonly FirmaDigitalService _firmaDigitalService;
 
         public DesignacionDocumentoService()
         {
@@ -38,6 +39,7 @@ namespace CapaNegocio.Services
             _correoService = new SolicitudAocrCorreoService();
             _auditoriaDao = new AuditoriaDAO();
             _dircavService = new DircavDesignacionService();
+            _firmaDigitalService = new FirmaDigitalService();
         }
 
         public DesignacionDocumentoService(
@@ -46,7 +48,8 @@ namespace CapaNegocio.Services
             SolicitudEstacionDAO estacionDao,
             SolicitudAocrCorreoService correoService = null,
             AuditoriaDAO auditoriaDao = null,
-            DircavDesignacionService dircavService = null)
+            DircavDesignacionService dircavService = null,
+            FirmaDigitalService firmaDigitalService = null)
         {
             _solicitudDao = solicitudDao ?? new SolicitudAOCRDAO();
             _designacionDao = designacionDao ?? new AocrDesignacionDAO();
@@ -54,6 +57,7 @@ namespace CapaNegocio.Services
             _correoService = correoService ?? new SolicitudAocrCorreoService();
             _auditoriaDao = auditoriaDao ?? new AuditoriaDAO();
             _dircavService = dircavService ?? new DircavDesignacionService();
+            _firmaDigitalService = firmaDigitalService ?? new FirmaDigitalService();
         }
 
         #region Precondiciones y Construcción de Datos
@@ -132,7 +136,10 @@ namespace CapaNegocio.Services
                 AutoridadDircavCargo = "Director de Certificación Aeronáutica (DIRCAV) - DGAC",
                 EsVistaPrevia = !designacion.Firmado,
                 HashDocumento = designacion.HashDocumento,
-                CodigoVerificacion = $"AOCR-VERIF-{solicitudId}-{designacion.Id}-{designacion.Version}"
+                HuellaCertificado = designacion.HuellaCertificado,
+                CodigoVerificacion = !string.IsNullOrWhiteSpace(designacion.CodigoVerificacion)
+                    ? designacion.CodigoVerificacion
+                    : $"AOCR-VERIF-{solicitudId}-{designacion.Id}-{designacion.Version}"
             };
 
             foreach (var est in estaciones.Where(e => e.Activo))
@@ -333,6 +340,10 @@ namespace CapaNegocio.Services
                 };
                 celdaSello.AddElement(new Paragraph("CONTROL DE INTEGRIDAD Y VERIFICACIÓN", fuenteSubtitulo));
                 celdaSello.AddElement(new Paragraph($"Código: {model.CodigoVerificacion}", fuentePequena));
+                if (!string.IsNullOrWhiteSpace(model.HuellaCertificado))
+                {
+                    celdaSello.AddElement(new Paragraph($"Huella Certificado: {model.HuellaCertificado}", fuentePequena));
+                }
                 if (!string.IsNullOrWhiteSpace(model.HashDocumento))
                 {
                     celdaSello.AddElement(new Paragraph($"Hash SHA-256: {model.HashDocumento.Substring(0, Math.Min(32, model.HashDocumento.Length))}...", fuentePequena));
@@ -378,9 +389,10 @@ namespace CapaNegocio.Services
         }
 
         /// <summary>
-        /// Firma formalmente la designación de inspectores (Exclusivo DIRCAV).
-        /// Garantiza idempotencia, genera el PDF firmado, calcula hash SHA-256,
-        /// guarda en almacenamiento protegido, actualiza BD y encola notificación al inspector.
+        /// Firma formalmente la designación de inspectores con firma digital criptográfica X.509 real (Exclusivo DIRCAV).
+        /// Valida precondiciones AC-02 y AC-05, valida el certificado digital PKCS#12 (.p12/.pfx),
+        /// aplica MakeSignature.SignDetached via FirmaDigitalService, calcula hash SHA-256 post-firma,
+        /// guarda de forma atómica (archivo temporal con rollback) y ejecuta transacción en base de datos.
         /// </summary>
         public DircavDesignacionResult FirmarDesignacion(
             int solicitudId,
@@ -390,24 +402,73 @@ namespace CapaNegocio.Services
             byte[] certificadoBytes = null,
             string passwordCert = null)
         {
-            // 1. Segregación estricta: Solo DIRCAV puede firmar
+            // 1. Segregación estricta: Solo DIRCAV puede firmar. DIRDAC, Admin, Coord, Inspector, RT y Financiero reciben 403.
             if (!_dircavService.EsDircavAutorizado(rol))
             {
                 return new DircavDesignacionResult
                 {
                     Exitoso = false,
                     HttpStatusCode = 403,
-                    Mensaje = "Acceso denegado: La firma del oficio de designación es atribución exclusiva de la Autoridad DIRCAV. DIRDAC, Administrador y Coordinador tienen prohibida esta acción."
+                    Mensaje = "Acceso denegado: La firma del oficio de designación es atribución exclusiva de la Autoridad DIRCAV. DIRDAC, Administrador, Coordinador, Inspector, RT y Financiero tienen prohibida esta acción."
                 };
             }
 
             if (solicitudId <= 0)
                 return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 400, Mensaje = "ID de solicitud inválido." };
 
+            // 2. Validación de certificado digital y contraseña obligatorios
+            if (certificadoBytes == null || certificadoBytes.Length == 0)
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "Debe proporcionar el archivo de certificado digital (.p12 o .pfx)."
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(passwordCert))
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "Debe ingresar la contraseña del certificado digital."
+                };
+            }
+
+            // 3. Validación criptográfica del certificado (clave privada, integridad, vigencia y formato)
+            var infoCert = _firmaDigitalService.LeerCertificado(certificadoBytes, passwordCert);
+            if (!infoCert.Exitoso)
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = infoCert.Mensaje
+                };
+            }
+
+            // Extraer huella digital SHA-1 (Thumbprint) del certificado X.509
+            string huellaCert = string.Empty;
+            try
+            {
+                using (var x509 = new System.Security.Cryptography.X509Certificates.X509Certificate2(certificadoBytes, passwordCert))
+                {
+                    huellaCert = x509.Thumbprint;
+                }
+            }
+            catch
+            {
+                // Si ocurre una lectura alternativa, dejar huella disponible
+            }
+
+            // 4. Validar existencia de solicitud
             var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
             if (solicitud == null)
                 return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 404, Mensaje = "Solicitud no encontrada." };
 
+            // 5. Validar existencia de designación formal previa (AC-05)
             var designacion = _designacionDao.ObtenerDesignacionVigente(solicitudId);
             if (designacion == null)
             {
@@ -419,7 +480,7 @@ namespace CapaNegocio.Services
                 };
             }
 
-            // 2. Control de Idempotencia: si ya está firmada, retornar el resultado confirmado sin duplicar
+            // 6. Control de Idempotencia: si ya está firmada, retornar 200 sin duplicar archivos ni modificar datos
             if (designacion.Firmado)
             {
                 return new DircavDesignacionResult
@@ -433,7 +494,7 @@ namespace CapaNegocio.Services
                 };
             }
 
-            // 3. Construir datos y validar precondiciones de AC-02 y AC-05
+            // 7. Construir datos y validar precondiciones de AC-02 (estaciones y fechas independientes)
             DesignacionPdfViewModel model;
             try
             {
@@ -452,10 +513,11 @@ namespace CapaNegocio.Services
             model.EsVistaPrevia = false;
             model.FechaFirma = DateTime.Now;
             model.AutoridadDircavNombre = !string.IsNullOrWhiteSpace(dircavNombre) ? dircavNombre : "Autoridad DIRCAV";
+            model.HuellaCertificado = huellaCert;
 
-            // 4. Generar el PDF oficial
-            var pdfBytes = GenerarPdfOficial(model, esVistaPrevia: false);
-            if (pdfBytes == null || pdfBytes.Length == 0)
+            // 8. Generar el PDF oficial base con membrete y estaciones
+            var pdfBaseBytes = GenerarPdfOficial(model, esVistaPrevia: false);
+            if (pdfBaseBytes == null || pdfBaseBytes.Length == 0)
             {
                 return new DircavDesignacionResult
                 {
@@ -465,14 +527,40 @@ namespace CapaNegocio.Services
                 };
             }
 
-            // 5. Calcular Hash SHA-256
-            string hashDoc;
-            using (var sha = SHA256.Create())
+            // 9. Aplicar firma digital criptográfica CMS/PKCS#7 real (iTextSharp + BouncyCastle)
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                pdfBaseBytes,
+                certificadoBytes,
+                passwordCert,
+                nombreFirmante: model.AutoridadDircavNombre,
+                motivo: "Designación formal de inspectores AOCR",
+                ubicacion: "Quito, Ecuador",
+                rolFirmante: "DIRCAV_DESIGNACION",
+                contenidoQr: null,
+                posicionFirmaVisual: null);
+
+            if (!resultadoFirma.Exitoso || resultadoFirma.PdfFirmado == null || resultadoFirma.PdfFirmado.Length == 0)
             {
-                hashDoc = BitConverter.ToString(sha.ComputeHash(pdfBytes)).Replace("-", "").ToUpperInvariant();
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "Error al aplicar la firma digital criptográfica: " + resultadoFirma.Mensaje
+                };
             }
 
-            // 6. Almacenamiento seguro bajo ~/App_Data/Uploads/Designaciones/{solicitudId}/
+            var pdfFirmadoBytes = resultadoFirma.PdfFirmado;
+            var hashDoc = resultadoFirma.HashSha256;
+            if (string.IsNullOrWhiteSpace(hashDoc))
+            {
+                using (var sha = SHA256.Create())
+                {
+                    hashDoc = BitConverter.ToString(sha.ComputeHash(pdfFirmadoBytes)).Replace("-", "").ToUpperInvariant();
+                }
+            }
+
+            // 10. Gestión de archivo temporal antes del almacenamiento final
+            var tempFilePath = Path.Combine(Path.GetTempPath(), $"aocr_desig_tmp_{Guid.NewGuid():N}.pdf");
             var nombreArchivo = $"Designacion_{solicitudId}_v{designacion.Version}_Firmada.pdf";
             var rutaVirtual = $"~/App_Data/Uploads/Designaciones/{solicitudId}/{nombreArchivo}";
             var rutaFisica = FileStorageHelper.MapVirtualPath(rutaVirtual);
@@ -480,59 +568,71 @@ namespace CapaNegocio.Services
 
             try
             {
-                if (!Directory.Exists(dirFisico))
-                {
-                    Directory.CreateDirectory(dirFisico);
-                }
-                File.WriteAllBytes(rutaFisica, pdfBytes);
-            }
-            catch (Exception exStorage)
-            {
-                return new DircavDesignacionResult
-                {
-                    Exitoso = false,
-                    HttpStatusCode = 500,
-                    Mensaje = $"Error al almacenar el archivo PDF firmado: {exStorage.Message}"
-                };
-            }
+                // Escribir en archivo temporal
+                File.WriteAllBytes(tempFilePath, pdfFirmadoBytes);
 
-            // 7. Persistencia en Base de Datos
-            try
-            {
-                _designacionDao.MarcarFirmada(
-                    designacion.Id,
-                    rutaVirtual,
-                    hashDoc,
-                    dircavNombre ?? "DIRCAV",
-                    DateTime.Now,
-                    pdfBytes.LongLength
-                );
-
-                solicitud.Estado = AocrEstadosProceso.DesignacionFirmadaDircav;
-                solicitud.UpdatedAt = DateTime.Now;
-                _solicitudDao.Actualizar(solicitud);
-
-                // Auditoría
-                try
+                // 11. Ejecutar persistencia atómica con control transaccional de BD y Almacenamiento
+                using (var cn = _designacionDao.CrearConexion())
                 {
-                    _auditoriaDao.Registrar(new Auditoria
+                    cn.Open();
+                    using (var tx = cn.BeginTransaction())
                     {
-                        Entidad = "DIRCAV",
-                        Accion = "FIRMAR_DESIGNACION_INSPECTOR",
-                        Usuario = dircavNombre ?? "DIRCAV",
-                        Fecha = DateTime.Now,
-                        DatosPrevios = AocrEstadosProceso.DesignacionPendienteFirmaDircav,
-                        DatosNuevos = $"{AocrEstadosProceso.DesignacionFirmadaDircav} Oficio:{model.NumeroDesignacion} Hash:{hashDoc}"
-                    });
-                }
-                catch { }
+                        var paramTx = new DircavFirmarDesignacionParams
+                        {
+                            SolicitudId = solicitudId,
+                            EstacionId = null,
+                            DircavUsuarioId = dircavUsuarioId,
+                            DircavUsuarioNombre = dircavNombre ?? "DIRCAV",
+                            RutaPdf = rutaVirtual,
+                            RutaDocumentoFirmado = rutaVirtual,
+                            HashDocumento = hashDoc,
+                            TamanioBytes = pdfFirmadoBytes.LongLength,
+                            HuellaCertificado = huellaCert,
+                            CodigoVerificacion = model.CodigoVerificacion,
+                            MimeType = "application/pdf"
+                        };
 
-                // 8. Encolar correo al Inspector asignado post-commit
-                try
-                {
-                    _correoService.NotificarEvento(solicitud, "DESIGNACION_FIRMADA_INSPECTOR", $"Oficio {model.NumeroDesignacion} emitido por DIRCAV.");
+                        var resTx = _designacionDao.EjecutarFirmaDesignacionTransaccional(paramTx, tx);
+                        if (!resTx.Exitoso)
+                        {
+                            tx.Rollback();
+                            // Requisito 12: Fallo de BD elimina archivo temporal
+                            try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); } catch { }
+                            return new DircavDesignacionResult
+                            {
+                                Exitoso = false,
+                                HttpStatusCode = resTx.HttpStatusCode,
+                                Mensaje = resTx.Mensaje
+                            };
+                        }
+
+                        // Mover a almacenamiento final institucional
+                        try
+                        {
+                            if (!Directory.Exists(dirFisico))
+                            {
+                                Directory.CreateDirectory(dirFisico);
+                            }
+                            File.Copy(tempFilePath, rutaFisica, overwrite: true);
+                        }
+                        catch (Exception exStorage)
+                        {
+                            // Requisito 13: Fallo de almacenamiento ejecuta rollback
+                            tx.Rollback();
+                            try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); } catch { }
+                            try { if (File.Exists(rutaFisica)) File.Delete(rutaFisica); } catch { }
+                            return new DircavDesignacionResult
+                            {
+                                Exitoso = false,
+                                HttpStatusCode = 500,
+                                Mensaje = "Fallo de almacenamiento al guardar el PDF firmado: " + exStorage.Message
+                            };
+                        }
+
+                        // Commit atómico definitivo de la transacción
+                        tx.Commit();
+                    }
                 }
-                catch { }
 
                 return new DircavDesignacionResult
                 {
@@ -541,24 +641,31 @@ namespace CapaNegocio.Services
                     DesignacionId = designacion.Id,
                     Version = designacion.Version,
                     NuevoEstado = AocrEstadosProceso.DesignacionFirmadaDircav,
-                    Mensaje = "Oficio de designación firmado y notificado oficialmente al Inspector asignado."
+                    Mensaje = "Oficio de designación firmado digitalmente con éxito y notificado oficialmente al Inspector asignado."
                 };
             }
-            catch (Exception exDb)
+            catch (Exception ex)
             {
-                // Rollback de archivo si la base de datos falla
-                try
-                {
-                    if (File.Exists(rutaFisica)) File.Delete(rutaFisica);
-                }
-                catch { }
-
+                // Requisito 12: Fallo de BD / proceso elimina archivo temporal
+                try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); } catch { }
                 return new DircavDesignacionResult
                 {
                     Exitoso = false,
                     HttpStatusCode = 500,
-                    Mensaje = $"Error de base de datos al registrar la firma de la designación: {exDb.Message}"
+                    Mensaje = $"Error inesperado al firmar digitalmente la designación: {ex.Message}"
                 };
+            }
+            finally
+            {
+                // Limpieza garantizada del archivo temporal
+                try
+                {
+                    if (File.Exists(tempFilePath))
+                    {
+                        File.Delete(tempFilePath);
+                    }
+                }
+                catch { }
             }
         }
 

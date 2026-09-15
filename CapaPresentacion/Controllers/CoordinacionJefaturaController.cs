@@ -5007,6 +5007,12 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult DevolverAlInspector(int solicitudId, string comentario)
         {
+            var ctx = _usuarioContexto.ObtenerContextoActual();
+            if (ctx == null || ctx.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+
             var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
             if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
@@ -5047,11 +5053,6 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido procesada previamente.");
             }
 
-            var ctx = _usuarioContexto.ObtenerContextoActual();
-            if (ctx == null || ctx.UsuarioId <= 0)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
-            }
             var coordinadorId = ctx.UsuarioId;
             var usuarioLogin = !string.IsNullOrWhiteSpace(ctx.LoginNormalizado) ? ctx.LoginNormalizado : "coordinador";
 
@@ -5075,6 +5076,12 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult RemitirADircav(int solicitudId, string observacion)
         {
+            var ctxRemision = _usuarioContexto.ObtenerContextoActual();
+            if (ctxRemision == null || ctxRemision.UsuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+
             var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
             if (User.IsInRole("Administrador") || string.Equals(rolSesion, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
@@ -5110,11 +5117,6 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(HttpStatusCode.Conflict, "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido remitida previamente.");
             }
 
-            var ctxRemision = _usuarioContexto.ObtenerContextoActual();
-            if (ctxRemision == null || ctxRemision.UsuarioId <= 0)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
-            }
             var coordinadorIdRemision = ctxRemision.UsuarioId;
             var usuarioLoginRemision = !string.IsNullOrWhiteSpace(ctxRemision.LoginNormalizado) ? ctxRemision.LoginNormalizado : "coordinador";
 

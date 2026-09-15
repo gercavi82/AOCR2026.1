@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Transactions;
 using System.Web;
@@ -414,16 +415,22 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult DevolverPendientesLista(ValidacionListaVerificacionResultado resultado)
         {
-            Response.StatusCode = 400;
-            Response.TrySkipIisCustomErrors = true;
+            if (Response != null)
+            {
+                Response.StatusCode = 400;
+                Response.TrySkipIisCustomErrors = true;
+                Response.SuppressFormsAuthenticationRedirect = true;
+            }
             return Json(new
             {
                 success = false,
-                message = resultado.Mensaje,
-                cantidadPendientes = resultado.CantidadPendientes,
-                pendientes = resultado.Pendientes.Select(p => new { codigo = p.Codigo, etiqueta = p.Etiqueta, errores = p.Errores }),
-                erroresCabecera = resultado.ErroresCabecera
-            });
+                message = resultado != null ? resultado.Mensaje : "Existen elementos obligatorios pendientes en la lista de verificación.",
+                cantidadPendientes = resultado != null ? resultado.CantidadPendientes : 0,
+                pendientes = resultado != null && resultado.Pendientes != null
+                    ? resultado.Pendientes.Select(p => new { codigo = p.Codigo, etiqueta = p.Etiqueta, errores = p.Errores })
+                    : Enumerable.Empty<object>(),
+                erroresCabecera = resultado != null ? resultado.ErroresCabecera : new List<string>()
+            }, JsonRequestBehavior.AllowGet);
         }
 
         private int ResolverCodigoInspeccionDesdeRequest(string valorPrincipal = null)
@@ -2997,6 +3004,15 @@ namespace CapaPresentacion.Controllers
                     return DevolverResultadoListaVerificacionOperacionalEae(403, "No autorizado para editar la lista de verificación operacional.");
                 }
 
+                var rolActual = ObtenerRolActual();
+                if (CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolActual)
+                    || CapaDatos.Constants.AocrRolesInstitucionales.EsDirdac(rolActual)
+                    || CapaDatos.Constants.AocrRolesInstitucionales.EsCoordinador(rolActual)
+                    || CapaDatos.Constants.AocrRolesInstitucionales.EsDircav(rolActual))
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(403, "Acceso denegado: Ni el Administrador ni DIRDAC ni Coordinación pueden editar la Lista de Verificación.");
+                }
+
                 string mensajeBloqueoDocumentalRt;
                 if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
                 {
@@ -3054,35 +3070,15 @@ namespace CapaPresentacion.Controllers
                     { "estacionId", estacionId.HasValue ? estacionId.Value.ToString() : string.Empty }
                 });
 
+                if (listaActual != null && (listaActual.FirmadoTecnico || AocrEstadosListaVerificacion.EstaFirmada(listaActual.EstadoLista)))
+                {
+                    _logger.LogInfo("[GestionInspeccion] Modificación LV/EAE rechazada porque la lista ya estaba firmada y es inmutable. InspeccionId=" + id
+                        + ", CodigoLv=" + listaActual.CodigoListaVerificacion);
+                    return DevolverResultadoListaVerificacionOperacionalEae(409, "Conflicto (409): La lista de verificación ya se encuentra firmada oficialmente y es inmutable.");
+                }
+
                 if (listaActual != null && listaActual.Finalizado)
                 {
-                    if (listaActual.FirmadoTecnico)
-                    {
-                        _logger.LogInfo("[GestionInspeccion] Guardado LV/EAE omitido porque la lista ya estaba finalizada y firmada. InspeccionId=" + id
-                            + ", CodigoLv=" + listaActual.CodigoListaVerificacion);
-
-                        if (esSolicitudAjax)
-                        {
-                            return Json(new
-                            {
-                                success = true,
-                                finalized = true,
-                                alreadyFinalized = true,
-                                signed = true,
-                                alreadySigned = true,
-                                message = "La lista de verificación operacional EAE ya se encontraba finalizada y firmada digitalmente.",
-                                estado = FirstNonEmpty(listaActual.EstadoLista, "LV_FIRMADA"),
-                                codigoLista = listaActual.CodigoListaVerificacion,
-                                version = listaActual.Version,
-                                redirectUrl = redirectInformeUrl,
-                                reportModalUrl = Url.Action("ModalInformeTecnico", "Inspeccion", new { codigoInspeccion = id })
-                            });
-                        }
-
-                        TempData["Success"] = "La lista de verificación operacional EAE ya se encontraba finalizada y firmada digitalmente.";
-                        return Redirect(redirectInformeUrl);
-                    }
-
                     if (finalizar)
                     {
                         _logger.LogInfo("[GestionInspeccion] Finalización LV/EAE omitida porque la lista ya estaba finalizada. InspeccionId=" + id
@@ -3109,33 +3105,21 @@ namespace CapaPresentacion.Controllers
                         return Redirect(redirectFirmaUrl);
                     }
 
-                    var mensajeListaFinalizada = "La lista de verificación operacional EAE ya fue finalizada y no admite nuevas modificaciones desde este panel.";
-                    if (esSolicitudAjax)
-                    {
-                        return DevolverResultadoListaVerificacionOperacionalEae(409, mensajeListaFinalizada);
-                    }
-
-                    TempData["Error"] = mensajeListaFinalizada;
-                    return RedirectToAction("Detalle", new { id, estacionId });
+                    var mensajeListaFinalizada = "Conflicto (409): La lista de verificación operacional EAE ya fue finalizada y no admite nuevas modificaciones desde este panel.";
+                    return DevolverResultadoListaVerificacionOperacionalEae(409, mensajeListaFinalizada);
                 }
 
                 var lista = ConstruirListaVerificacionOperacionalEaeDesdeFormulario(id, form, listaActual, solicitud);
                 lista.EstacionId = estacionId;
 
-                string mensajeValidacion;
-                if (finalizar && !ValidarListaVerificacionOperacionalEaeParaFinalizar(lista, out mensajeValidacion))
+                var validacionCompletitud = _listaVerificacionService.EvaluarCompletitud(lista);
+                if (!validacionCompletitud.EsValida)
                 {
-                    _logger.LogWarning("[GestionInspeccion] Finalizacion LV/EAE rechazada por validacion. InspeccionId=" + id + ", Mensaje=" + (mensajeValidacion ?? string.Empty));
-
-                    if (esSolicitudAjax)
-                    {
-                        return DevolverPendientesLista(_listaVerificacionService.EvaluarCompletitud(lista));
-                    }
-
-                    TempData["Error"] = mensajeValidacion;
-                    return RedirectToAction("Detalle", new { id, estacionId });
+                    _logger.LogWarning("[GestionInspeccion] Operación LV/EAE rechazada por validación de completitud. InspeccionId=" + id + ", Mensaje=" + validacionCompletitud.Mensaje);
+                    return DevolverPendientesLista(validacionCompletitud);
                 }
 
+                lista.EstadoLista = AocrEstadosListaVerificacion.Completa;
                 var listaGuardada = _listaVerificacionOperacionalEaeDAO.GuardarBorrador(lista, usuarioId);
                 HidratarListaVerificacionOperacionalEae(listaGuardada, solicitud, inspeccion);
                 _logger.LogInfo("[GestionInspeccion] LV/EAE guardada. InspeccionId=" + id
@@ -3153,14 +3137,14 @@ namespace CapaPresentacion.Controllers
                             success = true,
                             finalized = false,
                             signed = false,
-                            message = "Borrador de la lista de verificación operacional EAE guardado correctamente.",
-                            estado = FirstNonEmpty(listaGuardada.EstadoLista, "BORRADOR"),
+                            message = "Lista de verificación guardada correctamente.",
+                            estado = listaGuardada.EstadoLista,
                             codigoLista = listaGuardada.CodigoListaVerificacion,
                             version = listaGuardada.Version
-                        });
+                        }, JsonRequestBehavior.AllowGet);
                     }
 
-                    TempData["Success"] = "Borrador de la lista de verificación operacional EAE guardado correctamente.";
+                    TempData["Success"] = "Lista de verificación guardada correctamente.";
                     return RedirectToAction("Detalle", new { id, estacionId });
                 }
 
@@ -3259,6 +3243,15 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para finalizar la lista de verificación operacional.");
             }
 
+            var rolActual = ObtenerRolActual();
+            if (CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsDirdac(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsCoordinador(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsDircav(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Ni el Administrador ni DIRDAC ni Coordinación pueden finalizar la Lista de Verificación.");
+            }
+
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
@@ -3292,18 +3285,20 @@ namespace CapaPresentacion.Controllers
                 HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
                 if (lista == null)
                 {
-                    TempData["Error"] = "Primero debe registrar un borrador de la lista de verificación operacional EAE.";
-                    return RedirectToAction("Detalle", new { id, estacionId });
+                    return DevolverResultadoListaVerificacionOperacionalEae(400, "Primero debe registrar un borrador de la lista de verificación operacional EAE.");
+                }
+
+                if (lista.FirmadoTecnico || AocrEstadosListaVerificacion.EstaFirmada(lista.EstadoLista))
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(409, "Conflicto (409): La lista de verificación ya se encuentra firmada oficialmente y es inmutable.");
                 }
 
                 if (lista.Finalizado)
                 {
-                    TempData["Success"] = lista.FirmadoTecnico
-                        ? "La lista de verificación operacional EAE ya se encontraba finalizada y firmada digitalmente."
-                        : "La lista de verificación operacional EAE ya se encontraba finalizada. Continúe con la firma digital.";
+                    TempData["Success"] = "La lista de verificación operacional EAE ya se encontraba finalizada. Continúe con la firma digital.";
                     return Redirect(ConstruirUrlDetalle(id, new Dictionary<string, string>
                     {
-                        { lista.FirmadoTecnico ? "autoOpenInformeTecnico" : "lvAutoFlow", lista.FirmadoTecnico ? "true" : "sign" },
+                        { "lvAutoFlow", "sign" },
                         { "estacionId", estacionId.HasValue ? estacionId.Value.ToString() : string.Empty }
                     }));
                 }
@@ -3381,9 +3376,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var rolActual = ObtenerRolActual();
-            if (CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolActual) || CapaDatos.Constants.AocrRolesInstitucionales.EsDirdac(rolActual))
+            if (CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsDirdac(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsCoordinador(rolActual)
+                || CapaDatos.Constants.AocrRolesInstitucionales.EsDircav(rolActual))
             {
-                return DevolverResultadoListaVerificacionOperacionalEae(403, "Acceso denegado: Ni el Administrador ni DIRDAC pueden firmar la Lista de Verificación.");
+                return DevolverResultadoListaVerificacionOperacionalEae(403, "Acceso denegado: Solo el Inspector asignado puede firmar la Lista de Verificación.");
             }
 
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
@@ -3426,13 +3424,12 @@ namespace CapaPresentacion.Controllers
             HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
             if (lista == null || !lista.Finalizado)
             {
-                if (esSolicitudAjax)
-                {
-                    return DevolverResultadoListaVerificacionOperacionalEae(409, "Debe finalizar la lista de verificación operacional EAE antes de firmarla.");
-                }
+                return DevolverResultadoListaVerificacionOperacionalEae(400, "Debe finalizar la lista de verificación operacional EAE antes de firmarla.");
+            }
 
-                TempData["Error"] = "Debe finalizar la lista de verificación operacional EAE antes de firmarla.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            if (lista.FirmadoTecnico || AocrEstadosListaVerificacion.EstaFirmada(lista.EstadoLista))
+            {
+                return DevolverResultadoListaVerificacionOperacionalEae(409, "Conflicto (409): La lista de verificación ya se encuentra firmada oficialmente y es inmutable.");
             }
 
             var redirectInformeUrl = ConstruirUrlDetalle(codigoInspeccion, new Dictionary<string, string>
@@ -3440,29 +3437,6 @@ namespace CapaPresentacion.Controllers
                 { "autoOpenInformeTecnico", "true" },
                 { "estacionId", estacionId.HasValue ? estacionId.Value.ToString() : string.Empty }
             });
-
-            if (lista.FirmadoTecnico)
-            {
-                if (esSolicitudAjax)
-                {
-                    return Json(new
-                    {
-                        success = true,
-                        finalized = true,
-                        signed = true,
-                        alreadySigned = true,
-                        message = "La lista de verificación operacional EAE ya se encontraba firmada digitalmente.",
-                        estado = FirstNonEmpty(lista.EstadoLista, "LV_FIRMADA"),
-                        codigoLista = lista.CodigoListaVerificacion,
-                        version = lista.Version,
-                        redirectUrl = redirectInformeUrl,
-                        reportModalUrl = Url.Action("ModalInformeTecnico", "Inspeccion", new { codigoInspeccion })
-                    });
-                }
-
-                TempData["Success"] = "La lista de verificación operacional EAE ya se encontraba firmada digitalmente.";
-                return Redirect(redirectInformeUrl);
-            }
 
             string mensajeValidacion;
             if (!ValidarListaVerificacionOperacionalEaeParaFinalizar(lista, out mensajeValidacion))
@@ -3872,11 +3846,11 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para firmar el informe técnico.");
             }
 
-            return FirmarInformePorRol(codigoInspeccion, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR", autoEnviarADirdac: false);
+            return FirmarInformePorRol(codigoInspeccion, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR");
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_COORD_GRUPO + "," + ROLES_FIRMA_DIRDAC)]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarADirdac(int id)
         {
@@ -3885,10 +3859,30 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(400, "ID inválido.");
             }
 
-            // AC-04: Bloqueo estricto del bypass Inspector -> DIRDAC
-            if (User.IsInRole(ROL_INSPECTOR) && !EsAdmin() && !User.IsInRole(ROL_DIRDAC) && !User.IsInRole(ROL_DIRECCION))
+            var usuarioIdSesion = ObtenerCodigoUsuario();
+            if (usuarioIdSesion <= 0)
             {
-                return new HttpStatusCodeResult(403, "Acceso denegado: El Inspector no puede remitir directamente a DIRDAC. El flujo base exige remisión a Coordinación.");
+                return new HttpStatusCodeResult(HttpStatusCode.Unauthorized, "Sesión no válida o expirada.");
+            }
+
+            var rolSesion = Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+
+            // AC-04: Administrador nunca toma decisiones operativas (Regla 7)
+            if (EsAdmin() || User.IsInRole(ROL_ADMIN) || CapaDatos.Constants.AocrRolesInstitucionales.EsAdministrador(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "El Administrador no puede ejecutar acciones operativas (Regla 7).");
+            }
+
+            // AC-04: Bloqueo estricto del bypass Inspector -> DIRDAC
+            if (User.IsInRole(ROL_INSPECTOR) || CapaDatos.Constants.AocrRolesInstitucionales.EsInspector(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: El Inspector no puede remitir directamente a DIRDAC ni a DIRCAV. El flujo base exige remisión a Coordinación.");
+            }
+
+            // AC-04: Bloqueo estricto del bypass Coordinador -> DIRDAC (El Coordinador remite a DIRCAV)
+            if (User.IsInRole(ROL_COORD) || User.IsInRole(ROL_COORD_ALIAS) || User.IsInRole(ROL_COORD_GRUPO) || CapaDatos.Constants.AocrRolesInstitucionales.EsCoordinador(rolSesion))
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Acceso denegado: El Coordinador no puede remitir directamente a DIRDAC. El flujo institucional exige remisión a DIRCAV.");
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
@@ -7916,7 +7910,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private ActionResult FirmarInformePorRol(int id, string passwordCertificado, string nombreCampoArchivo, string rolFirma, string estadoFinal, bool autoEnviarADirdac)
+        private ActionResult FirmarInformePorRol(int id, string passwordCertificado, string nombreCampoArchivo, string rolFirma, string estadoFinal)
         {
             if (id <= 0)
             {
@@ -7940,7 +7934,6 @@ namespace CapaPresentacion.Controllers
             if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase))
             {
                 estadoFinal = "FIRMADO_INSPECTOR";
-                autoEnviarADirdac = false;
             }
 
             ListaVerificacionOperacionalEae listaVerificacion;
@@ -8152,16 +8145,6 @@ namespace CapaPresentacion.Controllers
                 string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase)
                     ? "INFORME_TECNICO_FIRMADO_INSPECTOR"
                     : "INFORME_TECNICO_FIRMADO_DIRECCION");
-
-            if (autoEnviarADirdac)
-            {
-                var informeActualizado = _informeDAO.ObtenerPorId(informe.CodigoInforme);
-                var resultadoEnvio = EnviarInformeADirdacInterno(inspeccion, solicitudInforme, informeActualizado, usuarioId);
-                TempData[resultadoEnvio.Exitoso ? "Success" : "Warning"] = resultadoEnvio.Exitoso
-                    ? "El Informe Técnico fue firmado correctamente y enviado a DIRDAC / Dirección - Jefatura para revisión institucional."
-                    : "El Informe Técnico fue firmado correctamente, pero " + resultadoEnvio.Mensaje;
-                return RedirectToAction("Detalle", new { id });
-            }
 
             var solicitudFinal = solicitudInforme;
             var informeFinal = _informeDAO.ObtenerPorId(informe.CodigoInforme) ?? informe;

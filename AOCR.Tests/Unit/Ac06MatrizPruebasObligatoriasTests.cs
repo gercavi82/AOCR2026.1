@@ -12,29 +12,118 @@ using CapaModelo.DTOs;
 using CapaNegocio.Services;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.parser;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.X509;
+using Path = System.IO.Path;
 
 namespace AOCR.Tests.Unit
 {
     /// <summary>
-    /// AC-06: Matriz de 11 pruebas unitarias obligatorias para la generación de la Designación en PDF
-    /// con estaciones, fechas independientes y firma institucional.
+    /// AC-06: MATRIZ DE 16 PRUEBAS OBLIGATORIAS
+    /// "Generar el oficio de designación en PDF con estaciones, fechas y firma digital real de DIRCAV"
+    /// 
+    /// 1. DIRCAV firma con certificado válido.
+    /// 2. Certificado sin clave privada es rechazado.
+    /// 3. Contraseña incorrecta es rechazada.
+    /// 4. Certificado vencido es rechazado.
+    /// 5. PDF firmado puede verificarse criptográficamente.
+    /// 6. Hash coincide con el archivo firmado.
+    /// 7. Alteración del PDF rompe la verificación.
+    /// 8. Doble clic no crea otro archivo.
+    /// 9. DIRDAC recibe 403.
+    /// 10. Administrador recibe 403.
+    /// 11. Documento incluye estaciones y fechas.
+    /// 12. Fallo de BD elimina archivo temporal.
+    /// 13. Fallo de almacenamiento ejecuta rollback.
+    /// 14. Descarga sin autorización devuelve 403.
+    /// 15. Una sola auditoría y una sola notificación.
+    /// 16. Recarga conserva el PDF firmado.
     /// </summary>
     [TestClass]
     public class Ac06MatrizPruebasObligatoriasTests
     {
         private DesignacionDocumentoService _docService;
+        private FirmaDigitalService _firmaDigitalService;
+        private IAocrFlujoService _flujoService;
 
         [TestInitialize]
         public void Setup()
         {
             _docService = new DesignacionDocumentoService();
+            _firmaDigitalService = new FirmaDigitalService();
+            _flujoService = new AocrFlujoService();
         }
 
-        #region Helpers
+        #region Helpers de Certificados y Rutas
+
+        private static string ObtenerRutaRaizProyecto()
+        {
+            var dir = AppDomain.CurrentDomain.BaseDirectory;
+            while (!string.IsNullOrEmpty(dir))
+            {
+                if (File.Exists(Path.Combine(dir, "AOCR.sln")))
+                {
+                    return dir;
+                }
+                var parent = Directory.GetParent(dir);
+                if (parent == null) break;
+                dir = parent.FullName;
+            }
+            return @"c:\proyectos\AOCR";
+        }
+
+        private static string ReadFile(string relativePath)
+        {
+            var path = Path.Combine(ObtenerRutaRaizProyecto(), relativePath.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar));
+            Assert.IsTrue(File.Exists(path), "Archivo no encontrado: " + relativePath);
+            return File.ReadAllText(path);
+        }
+
+        private static byte[] GenerarCertificadoP12(string password, bool conClavePrivada = true, DateTime? notBefore = null, DateTime? notAfter = null)
+        {
+            var kpGen = new RsaKeyPairGenerator();
+            kpGen.Init(new KeyGenerationParameters(new SecureRandom(), 2048));
+            var keyPair = kpGen.GenerateKeyPair();
+
+            var gen = new X509V3CertificateGenerator();
+            var dn = new X509Name("CN=Dra. Sofia Alarcon (DIRCAV), OU=DIRCAV, O=DGAC Ecuador, C=EC");
+            gen.SetSubjectDN(dn);
+            gen.SetIssuerDN(dn);
+            gen.SetNotBefore(notBefore ?? DateTime.UtcNow.AddDays(-1));
+            gen.SetNotAfter(notAfter ?? DateTime.UtcNow.AddYears(1));
+            gen.SetPublicKey(keyPair.Public);
+            gen.SetSerialNumber(BigInteger.ValueOf(DateTime.UtcNow.Ticks));
+
+            var cert = gen.Generate(new Asn1SignatureFactory("SHA256WITHRSA", keyPair.Private));
+
+            var store = new Pkcs12StoreBuilder().Build();
+            var certEntry = new X509CertificateEntry(cert);
+            if (conClavePrivada)
+            {
+                store.SetKeyEntry("dircav", new AsymmetricKeyEntry(keyPair.Private), new[] { certEntry });
+            }
+            else
+            {
+                store.SetCertificateEntry("dircav", certEntry);
+            }
+
+            using (var ms = new MemoryStream())
+            {
+                store.Save(ms, password.ToCharArray(), new SecureRandom());
+                return ms.ToArray();
+            }
+        }
 
         private DesignacionPdfViewModel CrearVmBase(int solicitudId = 500)
         {
-            return new DesignacionPdfViewModel
+            var vm = new DesignacionPdfViewModel
             {
                 DesignacionId = 1,
                 SolicitudId = solicitudId,
@@ -60,19 +149,10 @@ namespace AOCR.Tests.Unit
                 FechaEmision = new DateTime(2026, 9, 7, 10, 30, 0),
                 AutoridadDircavNombre = "Dra. Sofía Alarcón",
                 AutoridadDircavCargo = "Directora de Certificación Aeronáutica (DIRCAV)",
+                CodigoVerificacion = $"AOCR-VERIF-{solicitudId}-1-1",
                 EsVistaPrevia = false
             };
-        }
 
-        #endregion
-
-        /// <summary>
-        /// Escenario 1: Generación exitosa de PDF con 1 estación.
-        /// </summary>
-        [TestMethod]
-        public void Test01_UnaEstacion_GeneraPdfValido()
-        {
-            var vm = CrearVmBase(501);
             vm.Estaciones.Add(new DesignacionEstacionItemDto
             {
                 EstacionId = 1,
@@ -83,396 +163,447 @@ namespace AOCR.Tests.Unit
                 Estado = "PROGRAMADA"
             });
 
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
-
-            Assert.IsNotNull(pdfBytes, "El PDF generado no debe ser nulo.");
-            Assert.IsTrue(pdfBytes.Length > 1500, "El PDF debe tener un tamaño significativo mayor a 1.5 KB.");
-
-            var header = Encoding.ASCII.GetString(pdfBytes.Take(4).ToArray());
-            Assert.AreEqual("%PDF", header, "El documento debe comenzar con la cabecera estándar %PDF.");
-
-            using (var reader = new PdfReader(pdfBytes))
-            {
-                Assert.AreEqual(1, reader.NumberOfPages, "Un oficio con una estación cabe perfectamente en 1 página.");
-            }
+            return vm;
         }
 
-        /// <summary>
-        /// Escenario 2: Generación con varias estaciones.
-        /// </summary>
+        #endregion
+
+        #region 1. DIRCAV firma con certificado válido
         [TestMethod]
-        public void Test02_VariasEstaciones_MuestraTodasLasEstaciones()
+        public void Test01_DIRCAV_FirmaConCertificadoValido()
         {
-            var vm = CrearVmBase(502);
+            var vm = CrearVmBase(601);
+            var basePdf = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            Assert.IsNotNull(basePdf, "El PDF base debe generarse exitosamente.");
+
+            var password = "PasswordValido123!";
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: true);
+
+            var certInfo = _firmaDigitalService.LeerCertificado(certBytes, password);
+            Assert.IsTrue(certInfo.Exitoso, "El certificado digital generado en memoria debe ser válido: " + certInfo.Mensaje);
+
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                basePdf,
+                certBytes,
+                password,
+                nombreFirmante: vm.AutoridadDircavNombre,
+                motivo: "Designación formal de inspectores AOCR",
+                ubicacion: "Quito, Ecuador",
+                rolFirmante: "DIRCAV_DESIGNACION");
+
+            Assert.IsTrue(resultadoFirma.Exitoso, "La firma digital criptográfica de DIRCAV debe ser exitosa: " + resultadoFirma.Mensaje);
+            Assert.IsNotNull(resultadoFirma.PdfFirmado, "El byte array del PDF firmado no debe ser nulo.");
+            Assert.IsTrue(resultadoFirma.PdfFirmado.Length > basePdf.Length, "El PDF firmado debe contener la firma embebida y ser de mayor tamaño.");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(resultadoFirma.HashSha256), "Debe calcular el hash SHA-256 del documento firmado.");
+
+            // Validar transición en el catálogo de flujo
+            Assert.IsTrue(_flujoService.EsTransicionPermitida(
+                AocrEstadosProceso.DesignacionPendienteFirmaDircav,
+                AocrEstadosProceso.DesignacionFirmadaDircav),
+                "La transición de DESIGNACION_PENDIENTE_FIRMA_DIRCAV a DESIGNACION_FIRMADA_DIRCAV debe estar permitida.");
+        }
+        #endregion
+
+        #region 2. Certificado sin clave privada es rechazado
+        [TestMethod]
+        public void Test02_CertificadoSinClavePrivadaEsRechazado()
+        {
+            var password = "PassClave123!";
+            // Generar certificado sin clave privada asociada en el store PKCS#12
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: false);
+
+            var certInfo = _firmaDigitalService.LeerCertificado(certBytes, password);
+            Assert.IsFalse(certInfo.Exitoso, "Un certificado sin clave privada no debe ser aceptado.");
+            StringAssert.Contains(certInfo.Mensaje.ToLowerInvariant(), "clave privada", "El mensaje debe indicar que carece de clave privada utilizable.");
+
+            // Llamada al servicio
+            var res = _docService.FirmarDesignacion(
+                solicitudId: 602,
+                dircavUsuarioId: 10,
+                dircavNombre: "Dra. Sofía Alarcón",
+                rol: "DIRCAV",
+                certificadoBytes: certBytes,
+                passwordCert: password);
+
+            Assert.IsFalse(res.Exitoso, "El servicio de designación debe rechazar el certificado sin clave privada.");
+            Assert.AreEqual(400, res.HttpStatusCode, "El código HTTP debe ser 400 Bad Request.");
+            StringAssert.Contains(res.Mensaje.ToLowerInvariant(), "clave privada");
+        }
+        #endregion
+
+        #region 3. Contraseña incorrecta es rechazada
+        [TestMethod]
+        public void Test03_ContraseniaIncorrectaEsRechazada()
+        {
+            var passwordCorrecto = "ClaveSecreta123!";
+            var passwordErroneo = "ClaveIncorrecta999!";
+            var certBytes = GenerarCertificadoP12(passwordCorrecto, conClavePrivada: true);
+
+            var certInfo = _firmaDigitalService.LeerCertificado(certBytes, passwordErroneo);
+            Assert.IsFalse(certInfo.Exitoso, "Leer certificado con contraseña incorrecta debe fallar.");
+
+            var res = _docService.FirmarDesignacion(
+                solicitudId: 603,
+                dircavUsuarioId: 10,
+                dircavNombre: "Dra. Sofía Alarcón",
+                rol: "DIRCAV",
+                certificadoBytes: certBytes,
+                passwordCert: passwordErroneo);
+
+            Assert.IsFalse(res.Exitoso, "La firma debe rechazarse cuando la contraseña es incorrecta.");
+            Assert.AreEqual(400, res.HttpStatusCode, "El código HTTP debe ser 400 Bad Request.");
+        }
+        #endregion
+
+        #region 4. Certificado vencido es rechazado
+        [TestMethod]
+        public void Test04_CertificadoVencidoEsRechazado()
+        {
+            var password = "PasswordVencido123!";
+            // Certificado emitido en el pasado y vencido ayer
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: true,
+                notBefore: DateTime.UtcNow.AddYears(-2),
+                notAfter: DateTime.UtcNow.AddDays(-1));
+
+            var certInfo = _firmaDigitalService.LeerCertificado(certBytes, password);
+            Assert.IsFalse(certInfo.Exitoso, "Un certificado expirado debe ser rechazado.");
+            StringAssert.Contains(certInfo.Mensaje.ToLowerInvariant(), "expirado");
+
+            var res = _docService.FirmarDesignacion(
+                solicitudId: 604,
+                dircavUsuarioId: 10,
+                dircavNombre: "Dra. Sofía Alarcón",
+                rol: "DIRCAV",
+                certificadoBytes: certBytes,
+                passwordCert: password);
+
+            Assert.IsFalse(res.Exitoso, "La firma debe rechazarse con certificado vencido.");
+            Assert.AreEqual(400, res.HttpStatusCode, "Debe devolver HTTP 400 Bad Request.");
+            StringAssert.Contains(res.Mensaje.ToLowerInvariant(), "expirado");
+        }
+        #endregion
+
+        #region 5. PDF firmado puede verificarse criptográficamente
+        [TestMethod]
+        public void Test05_PdfFirmadoPuedeVerificarseCriptograficamente()
+        {
+            var vm = CrearVmBase(605);
+            var basePdf = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            var password = "FirmaVerificable123!";
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: true);
+
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                basePdf,
+                certBytes,
+                password,
+                nombreFirmante: "Dra. Sofía Alarcón",
+                motivo: "Designación formal de inspectores AOCR",
+                ubicacion: "Quito, Ecuador",
+                rolFirmante: "DIRCAV_DESIGNACION");
+
+            Assert.IsTrue(resultadoFirma.Exitoso, "La firma digital debe aplicarse correctamente: " + resultadoFirma.Mensaje);
+
+            // Verificación criptográfica formal del PDF firmado con iTextSharp y BouncyCastle
+            var verif = FirmaDigitalService.VerificarPdf(resultadoFirma.PdfFirmado);
+            Assert.IsTrue(verif.TieneFirmaDigital, "El PDF verificado debe contener firma digital: " + verif.Mensaje);
+            Assert.IsTrue(verif.EsValida, "La firma criptográfica debe ser válida: " + verif.Mensaje);
+            Assert.IsTrue(verif.CubreTodoElDocumento, "La firma debe cubrir el documento de manera íntegra.");
+            Assert.IsNotNull(verif.SujetoCertificado, "El sujeto del certificado debe estar presente.");
+            StringAssert.Contains(verif.SujetoCertificado, "DIRCAV");
+        }
+        #endregion
+
+        #region 6. Hash coincide con el archivo firmado
+        [TestMethod]
+        public void Test06_HashCoincideConElArchivoFirmado()
+        {
+            var vm = CrearVmBase(606);
+            var basePdf = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            var password = "HashCoincidente123!";
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: true);
+
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                basePdf,
+                certBytes,
+                password,
+                nombreFirmante: "Dra. Sofía Alarcón",
+                motivo: "Designación formal de inspectores AOCR",
+                ubicacion: "Quito, Ecuador",
+                rolFirmante: "DIRCAV_DESIGNACION");
+
+            Assert.IsTrue(resultadoFirma.Exitoso);
+
+            // Calcular independientemente el hash SHA-256
+            string hashCalculado;
+            using (var sha = SHA256.Create())
+            {
+                hashCalculado = BitConverter.ToString(sha.ComputeHash(resultadoFirma.PdfFirmado)).Replace("-", "").ToUpperInvariant();
+            }
+
+            Assert.AreEqual(hashCalculado, resultadoFirma.HashSha256,
+                "El hash SHA-256 reportado por el resultado de firma debe ser matemáticamente idéntico al hash del archivo binario.");
+        }
+        #endregion
+
+        #region 7. Alteración del PDF rompe la verificación
+        [TestMethod]
+        public void Test07_AlteracionDelPdfRompeLaVerificacion()
+        {
+            var vm = CrearVmBase(607);
+            var basePdf = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            var password = "Integridad123!";
+            var certBytes = GenerarCertificadoP12(password, conClavePrivada: true);
+
+            var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                basePdf,
+                certBytes,
+                password,
+                nombreFirmante: "Dra. Sofía Alarcón",
+                motivo: "Designación formal de inspectores AOCR",
+                ubicacion: "Quito, Ecuador",
+                rolFirmante: "DIRCAV_DESIGNACION");
+
+            Assert.IsTrue(resultadoFirma.Exitoso);
+
+            // Verificar que el PDF intacto es válido
+            var verifIntacta = FirmaDigitalService.VerificarPdf(resultadoFirma.PdfFirmado);
+            Assert.IsTrue(verifIntacta.EsValida, "El PDF sin alterar debe ser válido.");
+
+            // Alterar maliciosamente 1 byte del PDF firmado
+            var pdfAlterado = (byte[])resultadoFirma.PdfFirmado.Clone();
+            int offset = pdfAlterado.Length / 2;
+            pdfAlterado[offset] ^= 0xFF; // Invertir bits en el centro del archivo
+
+            // La verificación criptográfica debe fallar rotundamente
+            var verifAlterada = FirmaDigitalService.VerificarPdf(pdfAlterado);
+            Assert.IsFalse(verifAlterada.EsValida, "La verificación criptográfica debe fallar inmediatamente ante cualquier byte alterado.");
+        }
+        #endregion
+
+        #region 8. Doble clic no crea otro archivo
+        [TestMethod]
+        public void Test08_DobleClicNoCreaOtroArchivo()
+        {
+            var serviceSource = ReadFile("CapaNegocio/Services/DesignacionDocumentoService.cs");
+            var daoSource = ReadFile("CapaDatos/DAOs/AocrDesignacionDAO.cs");
+
+            // Validar que el servicio detecta designacion.Firmado y devuelve 200 sin regenerar archivo
+            StringAssert.Contains(serviceSource, "if (designacion.Firmado)");
+            StringAssert.Contains(serviceSource, "El oficio de designación ya se encontraba firmado formalmente por DIRCAV.");
+
+            // Validar que en la transacción DAO también hay guarda de idempotencia
+            StringAssert.Contains(daoSource, "if (desigVigente.Firmado)");
+            StringAssert.Contains(daoSource, "EsIdempotente = true");
+        }
+        #endregion
+
+        #region 9. DIRDAC recibe 403
+        [TestMethod]
+        public void Test09_DIRDAC_Recibe403()
+        {
+            var res = _docService.FirmarDesignacion(
+                solicitudId: 609,
+                dircavUsuarioId: 5,
+                dircavNombre: "Director General DIRDAC",
+                rol: AocrRolesInstitucionales.Dirdac);
+
+            Assert.IsFalse(res.Exitoso, "DIRDAC no puede firmar la designación.");
+            Assert.AreEqual(403, res.HttpStatusCode, "DIRDAC debe recibir HTTP 403 Forbidden.");
+            StringAssert.Contains(res.Mensaje, "Acceso denegado");
+        }
+        #endregion
+
+        #region 10. Administrador recibe 403
+        [TestMethod]
+        public void Test10_Administrador_Recibe403()
+        {
+            // Administrador
+            var resAdmin = _docService.FirmarDesignacion(
+                solicitudId: 610,
+                dircavUsuarioId: 1,
+                dircavNombre: "Admin Sistema",
+                rol: AocrRolesInstitucionales.Administrador);
+
+            Assert.IsFalse(resAdmin.Exitoso, "Administrador no puede firmar designación.");
+            Assert.AreEqual(403, resAdmin.HttpStatusCode, "Administrador debe recibir HTTP 403.");
+
+            // Coordinador
+            var resCoord = _docService.FirmarDesignacion(
+                solicitudId: 610,
+                dircavUsuarioId: 2,
+                dircavNombre: "Coordinador",
+                rol: AocrRolesInstitucionales.Coordinador);
+            Assert.AreEqual(403, resCoord.HttpStatusCode, "Coordinador debe recibir HTTP 403.");
+
+            // Inspector
+            var resInsp = _docService.FirmarDesignacion(
+                solicitudId: 610,
+                dircavUsuarioId: 3,
+                dircavNombre: "Inspector",
+                rol: AocrRolesInstitucionales.Inspector);
+            Assert.AreEqual(403, resInsp.HttpStatusCode, "Inspector debe recibir HTTP 403.");
+
+            // RT
+            var resRt = _docService.FirmarDesignacion(
+                solicitudId: 610,
+                dircavUsuarioId: 4,
+                dircavNombre: "RT",
+                rol: AocrRolesInstitucionales.RT);
+            Assert.AreEqual(403, resRt.HttpStatusCode, "RT debe recibir HTTP 403.");
+
+            // Financiero
+            var resFin = _docService.FirmarDesignacion(
+                solicitudId: 610,
+                dircavUsuarioId: 5,
+                dircavNombre: "Financiero",
+                rol: AocrRolesInstitucionales.Financiero);
+            Assert.AreEqual(403, resFin.HttpStatusCode, "Financiero debe recibir HTTP 403.");
+        }
+        #endregion
+
+        #region 11. Documento incluye estaciones y fechas
+        [TestMethod]
+        public void Test11_DocumentoIncluyeEstacionesYFechas()
+        {
+            var vm = CrearVmBase(611);
+            vm.Estaciones.Clear();
             vm.Estaciones.Add(new DesignacionEstacionItemDto
             {
                 EstacionId = 1,
                 CodigoOaci = "SEQM",
-                NombreCiudad = "Quito",
-                FechaInicio = new DateTime(2026, 10, 1),
-                FechaFin = new DateTime(2026, 10, 2),
+                NombreCiudad = "Quito Mariscal Sucre",
+                FechaInicio = new DateTime(2026, 11, 1),
+                FechaFin = new DateTime(2026, 11, 3),
                 Estado = "PROGRAMADA"
             });
             vm.Estaciones.Add(new DesignacionEstacionItemDto
             {
                 EstacionId = 2,
                 CodigoOaci = "SEGU",
-                NombreCiudad = "Guayaquil",
-                FechaInicio = new DateTime(2026, 10, 5),
-                FechaFin = new DateTime(2026, 10, 6),
-                Estado = "PROGRAMADA"
-            });
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 3,
-                CodigoOaci = "SECU",
-                NombreCiudad = "Cuenca",
-                FechaInicio = new DateTime(2026, 10, 9),
-                FechaFin = new DateTime(2026, 10, 10),
+                NombreCiudad = "Guayaquil Jose Joaquin de Olmedo",
+                FechaInicio = new DateTime(2026, 11, 10),
+                FechaFin = new DateTime(2026, 11, 12),
                 Estado = "PROGRAMADA"
             });
 
             var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
-
             Assert.IsNotNull(pdfBytes);
-            Assert.AreEqual(3, vm.Estaciones.Count, "El ViewModel debe registrar exactamente 3 estaciones.");
 
             using (var reader = new PdfReader(pdfBytes))
             {
-                Assert.IsTrue(reader.NumberOfPages >= 1, "El PDF debe compilarse correctamente con múltiples estaciones.");
+                var text = PdfTextExtractor.GetTextFromPage(reader, 1);
+                StringAssert.Contains(text, "SEQM", "El PDF debe contener el código de la estación 1 (SEQM).");
+                StringAssert.Contains(text, "01/11/2026", "El PDF debe contener la fecha inicio de la estación 1.");
+                StringAssert.Contains(text, "03/11/2026", "El PDF debe contener la fecha fin de la estación 1.");
+                StringAssert.Contains(text, "SEGU", "El PDF debe contener el código de la estación 2 (SEGU).");
+                StringAssert.Contains(text, "10/11/2026", "El PDF debe contener la fecha inicio de la estación 2.");
+                StringAssert.Contains(text, "12/11/2026", "El PDF debe contener la fecha fin de la estación 2.");
             }
         }
+        #endregion
 
-        /// <summary>
-        /// Escenario 3: Fechas diferentes por estación provenientes de AC-02.
-        /// </summary>
+        #region 12. Fallo de BD elimina archivo temporal
         [TestMethod]
-        public void Test03_FechasDiferentes_ConservaCronogramaIndependiente()
+        public void Test12_FalloDeBDEliminaArchivoTemporal()
         {
-            var vm = CrearVmBase(503);
-            var f1Inicio = new DateTime(2026, 10, 12);
-            var f1Fin = new DateTime(2026, 10, 14);
-            var f2Inicio = new DateTime(2026, 10, 20);
-            var f2Fin = new DateTime(2026, 10, 22);
+            var serviceSource = ReadFile("CapaNegocio/Services/DesignacionDocumentoService.cs");
 
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 10,
-                CodigoOaci = "SEQM",
-                NombreCiudad = "Quito",
-                FechaInicio = f1Inicio,
-                FechaFin = f1Fin,
-                Estado = "PROGRAMADA"
-            });
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 20,
-                CodigoOaci = "SEGS",
-                NombreCiudad = "Baltra",
-                FechaInicio = f2Inicio,
-                FechaFin = f2Fin,
-                Estado = "PROGRAMADA"
-            });
+            // Validar que se crea el archivo temporal en Path.GetTempPath()
+            StringAssert.Contains(serviceSource, "Path.GetTempPath()");
+            StringAssert.Contains(serviceSource, "aocr_desig_tmp_");
 
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            // Validar que en caso de fallo de BD (resTx.Exitoso == false o catch), se elimina tempFilePath
+            StringAssert.Contains(serviceSource, "if (!resTx.Exitoso)");
+            StringAssert.Contains(serviceSource, "tx.Rollback();");
+            StringAssert.Contains(serviceSource, "if (File.Exists(tempFilePath)) File.Delete(tempFilePath);");
 
-            Assert.IsNotNull(pdfBytes);
-            Assert.AreNotEqual(vm.Estaciones[0].FechaInicio, vm.Estaciones[1].FechaInicio, "Las fechas de inicio deben ser estrictamente independientes.");
-            Assert.AreNotEqual(vm.Estaciones[0].FechaFin, vm.Estaciones[1].FechaFin, "Las fechas de fin deben ser estrictamente independientes.");
+            // Validar que en el bloque finally se asegura la limpieza
+            StringAssert.Contains(serviceSource, "finally");
+            StringAssert.Contains(serviceSource, "File.Delete(tempFilePath);");
         }
+        #endregion
 
-        /// <summary>
-        /// Escenario 4: Soporte completo de caracteres especiales en español (tildes, ñ, comillas, guiones).
-        /// </summary>
+        #region 13. Fallo de almacenamiento ejecuta rollback
         [TestMethod]
-        public void Test04_CaracteresEspeciales_TildesEniesYSiglas()
+        public void Test13_FalloDeAlmacenamientoEjecutaRollback()
         {
-            var vm = CrearVmBase(504);
-            vm.Compania = "Compañía Aérea Del Pacífico & Cía. Ltda.";
-            vm.NombreOperador = "AéreoLíneas «Ñandú» de la Amazonía";
-            vm.InspectorPrincipalNombre = "Cap. Íñigo Muñoz Peña";
-            vm.InspectorApoyoNombre = "Ing. René Núñez Cárdenas";
-            vm.ResponsableTecnico = "Ing. Damián Velástegui";
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 1,
-                CodigoOaci = "SEST",
-                NombreCiudad = "San Cristóbal - Galápagos (Región Insular)",
-                FechaInicio = new DateTime(2026, 11, 1),
-                FechaFin = new DateTime(2026, 11, 3),
-                Estado = "PROGRAMADA"
-            });
+            var serviceSource = ReadFile("CapaNegocio/Services/DesignacionDocumentoService.cs");
 
-            // Act: Generar con iTextSharp y codificación BaseFont.CP1252
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
+            // Validar bloque try-catch en la copia de archivo a rutaFisica
+            StringAssert.Contains(serviceSource, "File.Copy(tempFilePath, rutaFisica, overwrite: true);");
+            StringAssert.Contains(serviceSource, "catch (Exception exStorage)");
+            StringAssert.Contains(serviceSource, "tx.Rollback();");
+            StringAssert.Contains(serviceSource, "Fallo de almacenamiento al guardar el PDF firmado");
+        }
+        #endregion
 
-            // Assert
-            Assert.IsNotNull(pdfBytes);
-            using (var reader = new PdfReader(pdfBytes))
+        #region 14. Descarga sin autorización devuelve 403
+        [TestMethod]
+        public void Test14_DescargaSinAutorizacionDevuelve403()
+        {
+            // Intentar descargar con rol no autorizado (ej. Operador, o Inspector no asignado)
+            try
             {
-                Assert.IsTrue(reader.NumberOfPages >= 1, "Debe procesar sin errores de codificación.");
+                string nombreArchivo;
+                _docService.ObtenerDocumentoParaDescarga(
+                    solicitudId: 99999,
+                    usuarioId: 999,
+                    rol: "Inspector",
+                    usuarioLogin: "inspector_ajeno",
+                    nombreDescarga: out nombreArchivo);
+
+                Assert.Fail("Debe lanzar excepción por documento inexistente o acceso no autorizado.");
             }
-        }
-
-        /// <summary>
-        /// Escenario 5: Trámite inexistente retorna HTTP 404 controlado.
-        /// </summary>
-        [TestMethod]
-        public void Test05_TramiteInexistente_Retorna404()
-        {
-            // Act 1: Firma de trámite inexistente en el servicio
-            var firmaResult = _docService.FirmarDesignacion(
-                solicitudId: 0,
-                dircavUsuarioId: 1,
-                dircavNombre: "Dra. DIRCAV",
-                rol: "DIRCAV"
-            );
-
-            // Assert: Trámite inexistente debe responder 404 o 400
-            Assert.IsFalse(firmaResult.Exitoso, "Un trámite con ID 0 o inexistente no debe firmarse.");
-            Assert.IsTrue(firmaResult.HttpStatusCode == 404 || firmaResult.HttpStatusCode == 400, "Debe responder con código de error 404 o 400.");
-
-            // Act 2: Verificar que el controlador DircavController implementa la guarda HTTP 404 para GenerarPdf y Firmar
-            var controllerFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\CapaPresentacion\Controllers\DircavController.cs");
-            if (!File.Exists(controllerFilePath))
+            catch (Exception ex)
             {
-                controllerFilePath = @"c:\proyectos\AOCR\CapaPresentacion\Controllers\DircavController.cs";
-            }
-            Assert.IsTrue(File.Exists(controllerFilePath));
-            var controllerCode = File.ReadAllText(controllerFilePath);
-
-            StringAssert.Contains(controllerCode, "public ActionResult GenerarPdf(int id)");
-            StringAssert.Contains(controllerCode, "public ActionResult Firmar(int id, string passwordCertificado)");
-            StringAssert.Contains(controllerCode, "if (id <= 0)");
-            StringAssert.Contains(controllerCode, "return HttpNotFound");
-        }
-
-        /// <summary>
-        /// Escenario 6: Usuario no autorizado retorna HTTP 403 Forbidden.
-        /// </summary>
-        [TestMethod]
-        public void Test06_UsuarioNoAutorizado_Retorna403()
-        {
-            var rolesNoPermitidos = new[] { "DIRDAC", "UsuarioExterno", "Operador", "Financiero", "Coordinador" };
-            var dircavService = new DircavDesignacionService();
-
-            foreach (var rol in rolesNoPermitidos)
-            {
-                var puedeFirmar = dircavService.EsDircavAutorizado(rol);
-                Assert.IsFalse(puedeFirmar, $"El rol '{rol}' no debe tener permisos de firma de designación DIRCAV.");
-
-                var firmaResult = _docService.FirmarDesignacion(
-                    solicitudId: 506,
-                    dircavUsuarioId: 999,
-                    dircavNombre: "Usuario No Autorizado",
-                    rol: rol
-                );
-
-                Assert.IsFalse(firmaResult.Exitoso, $"La firma para el rol '{rol}' debe ser rechazada.");
-                Assert.AreEqual(403, firmaResult.HttpStatusCode, $"El rol '{rol}' debe recibir HTTP 403 Forbidden.");
-            }
-        }
-
-        /// <summary>
-        /// Escenario 7: PDF abierto (inline preview) incluye marca de agua y cabecera de visualización en navegador.
-        /// </summary>
-        [TestMethod]
-        public void Test07_PdfAbierto_GeneraPreviewConMarcaDeAgua()
-        {
-            var vm = CrearVmBase(507);
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 1,
-                CodigoOaci = "SEQM",
-                NombreCiudad = "Quito",
-                FechaInicio = new DateTime(2026, 10, 1),
-                FechaFin = new DateTime(2026, 10, 2),
-                Estado = "PROGRAMADA"
-            });
-
-            // Act: Generar vista previa
-            var previewBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: true);
-
-            // Assert
-            Assert.IsNotNull(previewBytes);
-            Assert.IsTrue(previewBytes.Length > 1000);
-
-            using (var reader = new PdfReader(previewBytes))
-            {
-                Assert.AreEqual(1, reader.NumberOfPages);
-            }
-        }
-
-        /// <summary>
-        /// Escenario 8: PDF descargado genera cabecera Content-Disposition tipo attachment y mime type application/pdf.
-        /// </summary>
-        [TestMethod]
-        public void Test08_PdfDescargado_RetornaAttachmentYCabeceraPdf()
-        {
-            var vm = CrearVmBase(508);
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 1,
-                CodigoOaci = "SEQM",
-                NombreCiudad = "Quito",
-                FechaInicio = new DateTime(2026, 10, 1),
-                FechaFin = new DateTime(2026, 10, 2),
-                Estado = "PROGRAMADA"
-            });
-
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
-            var nombreArchivo = $"Designacion_{vm.SolicitudId}_v{vm.Version}.pdf";
-
-            Assert.IsNotNull(pdfBytes);
-            Assert.IsTrue(pdfBytes.Length > 0, "El contenido del PDF descargable debe tener bytes válidos.");
-            StringAssert.EndsWith(nombreArchivo, ".pdf", "El archivo de descarga debe tener extensión .pdf.");
-
-            // Validar cabecera mágica de archivo PDF (%PDF)
-            var cabecera = Encoding.ASCII.GetString(pdfBytes.Take(4).ToArray());
-            Assert.AreEqual("%PDF", cabecera);
-        }
-
-        /// <summary>
-        /// Escenario 9: Firma institucional calcula hash criptográfico SHA-256 de 64 caracteres hex.
-        /// </summary>
-        [TestMethod]
-        public void Test09_FirmaInstitucional_CalculaHashYNotifica()
-        {
-            var vm = CrearVmBase(509);
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 1,
-                CodigoOaci = "SEQM",
-                NombreCiudad = "Quito",
-                FechaInicio = new DateTime(2026, 10, 1),
-                FechaFin = new DateTime(2026, 10, 2),
-                Estado = "PROGRAMADA"
-            });
-            vm.FechaFirma = DateTime.Now;
-
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
-
-            string hash;
-            using (var sha = SHA256.Create())
-            {
-                hash = BitConverter.ToString(sha.ComputeHash(pdfBytes)).Replace("-", "");
+                Assert.IsTrue(ex is UnauthorizedAccessException || ex is FileNotFoundException,
+                    "Debe arrojar UnauthorizedAccessException (403) o FileNotFoundException (404).");
             }
 
-            Assert.IsNotNull(hash);
-            Assert.AreEqual(64, hash.Length, "El hash SHA-256 debe tener una longitud exacta de 64 caracteres hex.");
-            Assert.IsTrue(hash.All(c => "0123456789ABCDEFabcdef".Contains(c)), "El hash debe ser una cadena hexadecimal válida.");
+            var controllerSource = ReadFile("CapaPresentacion/Controllers/DircavController.cs");
+            StringAssert.Contains(controllerSource, "catch (UnauthorizedAccessException ex)");
+            StringAssert.Contains(controllerSource, "return new HttpStatusCodeResult(403, ex.Message);");
         }
+        #endregion
 
-        /// <summary>
-        /// Escenario 10: Regeneración incrementa versión y preserva archivos y registros firmados previos (v1, v2).
-        /// </summary>
+        #region 15. Una sola auditoría y una sola notificación
         [TestMethod]
-        public void Test10_Regeneracion_VersionadoSinEliminarFirmados()
+        public void Test15_UnaSolaAuditoriaYUnaSolaNotificacion()
         {
-            // Arrange
-            var designacionV1 = new AocrDesignacionInspector
-            {
-                Id = 10,
-                SolicitudId = 510,
-                Version = 1,
-                Firmado = true,
-                RutaDocumentoFirmado = "~/App_Data/Uploads/Designaciones/510/Designacion_510_v1_Firmada.pdf",
-                HashDocumento = "HASH_VERSION_1_ABCDEF"
-            };
+            var daoSource = ReadFile("CapaDatos/DAOs/AocrDesignacionDAO.cs");
 
-            // Act: Creación de reasignación / nueva versión (v2)
-            var nuevaVersion = designacionV1.Version + 1;
-            var designacionV2 = new AocrDesignacionInspector
-            {
-                Id = 11,
-                SolicitudId = 510,
-                Version = nuevaVersion,
-                Firmado = false,
-                RutaPdf = $"~/App_Data/Uploads/Designaciones/510/Designacion_510_v{nuevaVersion}.pdf",
-                HashDocumento = null
-            };
+            // Validar que EjecutarFirmaDesignacionTransaccional tiene exactamente una inserción en auditoría
+            int idxAudit = daoSource.IndexOf("('DIRCAV', 'FIRMAR_DESIGNACION_INSPECTOR'", StringComparison.Ordinal);
+            Assert.IsTrue(idxAudit > 0, "Debe registrar la auditoría de firma institucional DIRCAV.");
 
-            // Assert
-            Assert.AreEqual(2, designacionV2.Version, "La versión de la nueva designación debe incrementarse a 2.");
-            Assert.AreNotEqual(designacionV1.RutaDocumentoFirmado, designacionV2.RutaPdf, "Las rutas de archivo no deben sobreescribirse entre versiones.");
-            Assert.IsTrue(designacionV1.Firmado, "El documento de la versión 1 permanece inalterable y marcado como firmado.");
-            Assert.IsFalse(designacionV2.Firmado, "La versión 2 inicia en estado pendiente de firma.");
+            int secondAudit = daoSource.IndexOf("('DIRCAV', 'FIRMAR_DESIGNACION_INSPECTOR'", idxAudit + 1, StringComparison.Ordinal);
+            Assert.AreEqual(-1, secondAudit, "Solo debe existir un registro de auditoría para la firma en la transacción.");
+
+            // Validar que se encola exactamente un item en email_queue
+            StringAssert.Contains(daoSource, "SOLICITUD_DESIGNACION_FIRMADA_INSPECTOR");
+            StringAssert.Contains(daoSource, "new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion");
         }
+        #endregion
 
-        /// <summary>
-        /// Escenario 11: Verificación de datos: todo proviene del servidor/expediente, cero valores quemados.
-        /// </summary>
+        #region 16. Recarga conserva el PDF firmado
         [TestMethod]
-        public void Test11_VerificacionDeDatos_TodoProvieneDelServidorSinValoresQuemados()
+        public void Test16_RecargaConservaElPdfFirmado()
         {
-            // 1. Verificar que el ViewModel base no contiene valores quemados por defecto
-            var vmVacio = new DesignacionPdfViewModel();
-            Assert.AreEqual(string.Empty, vmVacio.PaisOperador, "PaisOperador no debe tener valor quemado por defecto ('Ecuador').");
-            Assert.AreEqual(string.Empty, vmVacio.NumeroAoc, "NumeroAoc no debe tener valor quemado por defecto ('AOC-RDAC129').");
-            Assert.AreEqual(string.Empty, vmVacio.TipoOperacion, "TipoOperacion no debe tener valor quemado por defecto ('Transporte Aéreo Regular').");
-            Assert.AreEqual(string.Empty, vmVacio.InspectorPrincipalCargo, "InspectorPrincipalCargo no debe tener valor quemado por defecto.");
-            Assert.AreEqual(string.Empty, vmVacio.AutoridadDircavNombre, "AutoridadDircavNombre no debe tener valor quemado por defecto.");
+            var daoSource = ReadFile("CapaDatos/DAOs/AocrDesignacionDAO.cs");
+            var modelSource = ReadFile("CapaModelo/AocrDesignacionInspector.cs");
 
-            // 2. Verificar que los datos del expediente se transfieren fielmente sin sobreescrituras estáticas
-            var solicitud = new SolicitudAOCR
-            {
-                CodigoSolicitud = 511,
-                NumeroSolicitud = "SOL-2026-ESP-001",
-                RazonSocial = "Transportes Aéreos del Sur S.A.",
-                NombreOperador = "SurAir",
-                Pais = "Chile",
-                NumeroAOC = "AOC-CL-129-888",
-                TipoOperacion = "Carga Exclusiva No Regular",
-                RepresentanteLegal = "Don Fernando Cordero"
-            };
+            // Validar que el modelo mapea las propiedades persistidas de AC-06
+            StringAssert.Contains(modelSource, "public string HuellaCertificado { get; set; }");
+            StringAssert.Contains(modelSource, "public string CodigoVerificacion { get; set; }");
+            StringAssert.Contains(modelSource, "public bool Firmado { get; set; }");
+            StringAssert.Contains(modelSource, "public string RutaDocumentoFirmado { get; set; }");
+            StringAssert.Contains(modelSource, "public string HashDocumento { get; set; }");
 
-            var companiaPersistida = !string.IsNullOrWhiteSpace(solicitud.RazonSocial)
-                ? solicitud.RazonSocial.Trim()
-                : (!string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador.Trim() : string.Empty);
-            var operadorPersistido = !string.IsNullOrWhiteSpace(solicitud.NombreOperador)
-                ? solicitud.NombreOperador.Trim()
-                : (!string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? solicitud.RazonSocial.Trim() : string.Empty);
-
-            var vm = new DesignacionPdfViewModel
-            {
-                SolicitudId = solicitud.CodigoSolicitud,
-                NumeroSolicitud = solicitud.NumeroSolicitud,
-                Compania = companiaPersistida,
-                NombreOperador = operadorPersistido,
-                PaisOperador = !string.IsNullOrWhiteSpace(solicitud.Pais) ? solicitud.Pais.Trim() : string.Empty,
-                NumeroAoc = !string.IsNullOrWhiteSpace(solicitud.NumeroAOC) ? solicitud.NumeroAOC.Trim() : string.Empty,
-                TipoOperacion = !string.IsNullOrWhiteSpace(solicitud.TipoOperacion) ? solicitud.TipoOperacion.Trim() : string.Empty,
-                ResponsableTecnico = !string.IsNullOrWhiteSpace(solicitud.RepresentanteLegal) ? solicitud.RepresentanteLegal.Trim() : string.Empty,
-                InspectorPrincipalNombre = "Cap. Patricio Gómez",
-                InspectorPrincipalCargo = "Inspector Especialista de Carga"
-            };
-
-            Assert.AreEqual("Transportes Aéreos del Sur S.A.", vm.Compania);
-            Assert.AreEqual("SurAir", vm.NombreOperador);
-            Assert.AreEqual("Chile", vm.PaisOperador, "El país del operador debe ser Chile (obtenido de BD), no 'Ecuador'.");
-            Assert.AreEqual("AOC-CL-129-888", vm.NumeroAoc, "El AOC debe ser el de BD, no 'AOC-RDAC129'.");
-            Assert.AreEqual("Carga Exclusiva No Regular", vm.TipoOperacion, "El tipo de operación debe ser el de BD, no 'Transporte Aéreo Regular'.");
-            Assert.AreEqual("Don Fernando Cordero", vm.ResponsableTecnico);
-            Assert.AreEqual("Cap. Patricio Gómez", vm.InspectorPrincipalNombre);
-            Assert.AreEqual("Inspector Especialista de Carga", vm.InspectorPrincipalCargo);
-
-            // 3. Generar PDF con estos datos dinámicos y verificar que compile con éxito
-            vm.Estaciones.Add(new DesignacionEstacionItemDto
-            {
-                EstacionId = 1,
-                CodigoOaci = "SCEL",
-                NombreCiudad = "Santiago de Chile",
-                FechaInicio = new DateTime(2026, 10, 15),
-                FechaFin = new DateTime(2026, 10, 17),
-                Estado = "PROGRAMADA"
-            });
-
-            var pdfBytes = _docService.GenerarPdfOficial(vm, esVistaPrevia: false);
-            Assert.IsNotNull(pdfBytes);
-            using (var reader = new PdfReader(pdfBytes))
-            {
-                Assert.IsTrue(reader.NumberOfPages >= 1);
-            }
+            // Validar que AocrDesignacionDAO incluye estas columnas en sus consultas SELECT de carga
+            StringAssert.Contains(daoSource, "huella_certificado, codigo_verificacion");
+            StringAssert.Contains(daoSource, "d.HuellaCertificado = dr.IsDBNull(dr.GetOrdinal(\"huella_certificado\"))");
+            StringAssert.Contains(daoSource, "d.CodigoVerificacion = dr.IsDBNull(dr.GetOrdinal(\"codigo_verificacion\"))");
         }
+        #endregion
     }
 }

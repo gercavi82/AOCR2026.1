@@ -218,15 +218,29 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult AceptarDocumentacion(int id, string observacion)
+        public ActionResult AceptarDocumentacion(int id, string observacion, int? versionEsperada = null)
         {
             var rol = ObtenerRolActual();
             var usuarioId = ObtenerUsuarioIdActual();
             var usuarioLogin = ObtenerUsuarioLoginActual();
 
-            var resultado = _designacionService.AceptarDocumentacion(id, usuarioId, usuarioLogin, rol);
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede aceptar formalmente la documentación técnica.");
+            }
+
+            var resultado = _designacionService.AceptarDocumentacion(id, usuarioId, usuarioLogin, rol, versionEsperada, observacion);
             if (!resultado.Exitoso)
             {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
                 if (resultado.HttpStatusCode == 403)
                 {
                     return new HttpStatusCodeResult(403, resultado.Mensaje);
@@ -259,9 +273,23 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerUsuarioIdActual();
             var usuarioLogin = ObtenerUsuarioLoginActual();
 
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede devolver el expediente al Coordinador.");
+            }
+
             var resultado = _designacionService.DevolverAlCoordinador(id, usuarioId, usuarioLogin, motivo, rol);
             if (!resultado.Exitoso)
             {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
                 if (resultado.HttpStatusCode == 403)
                 {
                     return new HttpStatusCodeResult(403, resultado.Mensaje);
@@ -293,11 +321,21 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult DesignarInspector(int id, string inspectorCedula, string inspectorApoyoCedula, string observacion, int? estacionId)
+        public ActionResult DesignarInspector(int id, string inspectorCedula, string inspectorApoyoCedula, string observacion, int? estacionId, int? versionEsperada = null)
         {
             var rol = ObtenerRolActual();
             var usuarioId = ObtenerUsuarioIdActual();
             var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede designar formalmente al Inspector responsable.");
+            }
 
             var request = new DircavDesignacionRequest
             {
@@ -308,12 +346,17 @@ namespace CapaPresentacion.Controllers
                 Motivo = observacion,
                 DircavUsuarioId = usuarioId,
                 DircavUsuarioNombre = usuarioLogin,
-                RolSolicitante = rol
+                RolSolicitante = rol,
+                VersionEsperada = versionEsperada
             };
 
             var resultado = _designacionService.DesignarInspector(request);
             if (!resultado.Exitoso)
             {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
                 if (resultado.HttpStatusCode == 403)
                 {
                     return new HttpStatusCodeResult(403, resultado.Mensaje);
@@ -402,16 +445,55 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult FirmarDesignacion(int id, string passwordCertificado)
+        public ActionResult FirmarDesignacion(int id, string passwordCertificado, HttpPostedFileBase certificadoDigital = null)
         {
             var rol = ObtenerRolActual();
             var usuarioId = ObtenerUsuarioIdActual();
             var usuarioLogin = ObtenerUsuarioLoginActual();
 
-            // Validación estricta de rol exclusivo DIRCAV (bloquea DIRDAC, Admin, Coord e Inspector)
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            // Validación estricta de rol exclusivo DIRCAV (bloquea DIRDAC, Admin, Coord, Inspector, RT, Financiero con 403)
             if (!EsDircavAutorizado())
             {
                 return new HttpStatusCodeResult(403, "Acceso denegado: La firma del oficio de designación es competencia exclusiva de la Autoridad DIRCAV.");
+            }
+
+            var archivo = certificadoDigital;
+            if (archivo == null && Request != null && Request.Files != null && Request.Files.Count > 0)
+            {
+                archivo = Request.Files["certificadoDigital"] ?? Request.Files[0];
+            }
+
+            if (archivo == null || archivo.ContentLength == 0)
+            {
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = "Debe adjuntar el archivo de certificado digital (.p12 o .pfx)." });
+                }
+                TempData["Error"] = "Debe adjuntar el archivo de certificado digital (.p12 o .pfx).";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var extension = Path.GetExtension(archivo.FileName)?.ToLowerInvariant();
+            if (extension != ".p12" && extension != ".pfx")
+            {
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx." });
+                }
+                TempData["Error"] = "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            byte[] certBytes;
+            using (var ms = new MemoryStream())
+            {
+                archivo.InputStream.CopyTo(ms);
+                certBytes = ms.ToArray();
             }
 
             var resultado = _documentoDesignacionService.FirmarDesignacion(
@@ -419,12 +501,16 @@ namespace CapaPresentacion.Controllers
                 usuarioId,
                 usuarioLogin,
                 rol,
-                certificadoBytes: null,
+                certificadoBytes: certBytes,
                 passwordCert: passwordCertificado
             );
 
             if (!resultado.Exitoso)
             {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
                 if (resultado.HttpStatusCode == 403)
                 {
                     return new HttpStatusCodeResult(403, resultado.Mensaje);
@@ -439,11 +525,24 @@ namespace CapaPresentacion.Controllers
                 }
                 if (resultado.HttpStatusCode == 400)
                 {
+                    if (Request != null && Request.IsAjaxRequest())
+                    {
+                        return Json(new { exitoso = false, mensaje = resultado.Mensaje });
+                    }
                     TempData["Error"] = resultado.Mensaje;
                     return RedirectToAction("Detalle", new { id });
                 }
 
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = resultado.Mensaje });
+                }
                 return new HttpStatusCodeResult(resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { exitoso = true, mensaje = resultado.Mensaje, nuevoEstado = resultado.NuevoEstado, version = resultado.Version });
             }
 
             TempData["Success"] = resultado.Mensaje;

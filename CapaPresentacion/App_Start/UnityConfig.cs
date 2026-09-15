@@ -60,7 +60,8 @@ namespace CapaPresentacion
             container.RegisterFactory<CapaDatos.Services.IAuditService>(c =>
             {
                 var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();
-                var cs = cfg.GetConnectionString("PostgreSQL")
+            
+    var cs = cfg.GetConnectionString("PostgreSQL")
                          ?? cfg.GetConnectionString("AOCRConnection")
                          ?? string.Empty;
                 return new CapaDatos.Services.AuditService(cs);
@@ -84,6 +85,13 @@ namespace CapaPresentacion
                     c.Resolve<CapaDatos.Services.IEmailService>(),
                     null
                 ), new HierarchicalLifetimeManager());
+
+            // AC-05: Registro explícito de DircavController y servicios DIRCAV
+            container.RegisterType<AocrDesignacionDAO>(new HierarchicalLifetimeManager(), new InjectionConstructor());
+            container.RegisterType<DircavDesignacionService>(new HierarchicalLifetimeManager());
+            container.RegisterType<DircavBandejaService>(new HierarchicalLifetimeManager());
+            container.RegisterType<DesignacionDocumentoService>(new HierarchicalLifetimeManager());
+            container.RegisterType<Controllers.DircavController>(new HierarchicalLifetimeManager(), new InjectionConstructor());
 
             DependencyResolver.SetResolver(new UnityDependencyResolver(container));
         }

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using CapaDatos.Constants;
 using CapaDatos.Models;
+using CapaModelo;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -23,7 +25,6 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                EnsureSchema(cn);
                 using (var cmd = new NpgsqlCommand(SelectBase + " WHERE solicitud_id=@solicitud_id AND activo=TRUE LIMIT 1;", cn))
                 {
                     cmd.Parameters.AddWithValue("@solicitud_id", solicitudId);
@@ -43,7 +44,6 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                EnsureSchema(cn);
                 using (var tx = cn.BeginTransaction())
                 {
                     const string sql = @"
@@ -107,7 +107,6 @@ WHERE id=@id;", cn, tx))
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                EnsureSchema(cn);
                 using (var cmd = new NpgsqlCommand(@"
 UPDATE public.aocr_revision_documental_coordinador
 SET documento_oficio_id=@documento_id, fecha_actualizacion=NOW()
@@ -133,7 +132,6 @@ WHERE solicitud_id=@solicitud_id AND activo=TRUE;", cn))
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                EnsureSchema(cn);
                 using (var tx = cn.BeginTransaction())
                 {
                     using (var cmd = new NpgsqlCommand(@"
@@ -254,6 +252,212 @@ WHERE solicitud_id=@solicitud_id AND @inspector_id IS NOT NULL
                     return true;
                 }
             }
+        }
+
+        public TransicionCoordinadorResultadoDAO EjecutarTransicionCoordinadorTransaccional(TransicionCoordinadorParams p)
+        {
+            if (p == null)
+            {
+                return new TransicionCoordinadorResultadoDAO { Exitoso = false, Mensaje = "Parámetros nulos." };
+            }
+
+            if (p.SolicitudId <= 0)
+            {
+                return new TransicionCoordinadorResultadoDAO { Exitoso = false, Mensaje = "Identificador de solicitud inválido." };
+            }
+
+            if (p.CoordinadorId <= 0)
+            {
+                return new TransicionCoordinadorResultadoDAO { Exitoso = false, Mensaje = "Identificador de coordinador inválido." };
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        // 1. Bloqueo pesimista y verificación de estado/versión
+                        string estadoActual = null;
+                        int versionActual = 1;
+                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE(version, 1) FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
+                            using (var rd = cmd.ExecuteReader())
+                            {
+                                if (rd.Read())
+                                {
+                                    estadoActual = rd.IsDBNull(0) ? string.Empty : rd.GetString(0).Trim();
+                                    versionActual = rd.GetInt32(1);
+                                }
+                                else
+                                {
+                                    tx.Rollback();
+                                    return new TransicionCoordinadorResultadoDAO
+                                    {
+                                        Exitoso = false,
+                                        ConflictoEstado = true,
+                                        Mensaje = "La solicitud no existe."
+                                    };
+                                }
+                            }
+                        }
+
+                        if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+                        {
+                            tx.Rollback();
+                            return new TransicionCoordinadorResultadoDAO
+                            {
+                                Exitoso = false,
+                                ConflictoEstado = true,
+                                Mensaje = "La solicitud no se encuentra en estado PENDIENTE_COORDINADOR (estado actual: " + estadoActual + "). Puede haber sido procesada previamente."
+                            };
+                        }
+
+                        if (p.ExpectedVersion.HasValue && p.ExpectedVersion.Value > 0 && p.ExpectedVersion.Value != versionActual)
+                        {
+                            tx.Rollback();
+                            return new TransicionCoordinadorResultadoDAO
+                            {
+                                Exitoso = false,
+                                ConflictoVersion = true,
+                                Mensaje = "Conflicto de concurrencia: la versión esperada (" + p.ExpectedVersion.Value + ") no coincide con la actual (" + versionActual + ")."
+                            };
+                        }
+
+                        // 2. Actualizar estado y versión de la solicitud
+                        using (var cmd = new NpgsqlCommand(@"
+UPDATE public.aocr_tbsolicitud
+SET estado=@estado,
+    version=COALESCE(version, 1) + 1,
+    updated_at=NOW(),
+    updated_by=@updated_by
+WHERE codigo_solicitud=@solicitud_id;", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
+                            cmd.Parameters.AddWithValue("@estado", p.EstadoSolicitudDestino);
+                            cmd.Parameters.AddWithValue("@updated_by", (object)(p.UsuarioLogin ?? "coordinador"));
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 3. Actualizar registro de control documental del coordinador (sin alterar contenido técnico)
+                        using (var cmd = new NpgsqlCommand(@"
+UPDATE public.aocr_revision_documental_coordinador
+SET estado=@estado,
+    coordinador_id=@coordinador_id,
+    observacion_coordinador=@observacion,
+    fecha_decision_coordinador=NOW(),
+    fecha_actualizacion=NOW()
+WHERE solicitud_id=@solicitud_id AND activo=TRUE;", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
+                            cmd.Parameters.AddWithValue("@estado", p.EstadoRevisionDestino);
+                            cmd.Parameters.AddWithValue("@coordinador_id", p.CoordinadorId);
+                            cmd.Parameters.AddWithValue("@observacion", (object)(p.Observacion ?? string.Empty));
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 4. Inserción de historial documental
+                        using (var cmd = new NpgsqlCommand(@"
+INSERT INTO public.aocr_tbhistorial_documental
+(
+    codigo_solicitud,
+    codigo_documento,
+    evento,
+    detalle,
+    codigo_usuario,
+    fecha_evento,
+    created_at,
+    created_by
+)
+VALUES
+(
+    @solicitud_id,
+    NULL,
+    @evento,
+    @detalle,
+    @codigo_usuario,
+    NOW(),
+    NOW(),
+    @created_by
+);", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
+                            cmd.Parameters.AddWithValue("@evento", p.EstadoSolicitudDestino);
+                            cmd.Parameters.AddWithValue("@detalle", (object)(p.Observacion ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@codigo_usuario", p.CoordinadorId);
+                            cmd.Parameters.AddWithValue("@created_by", (object)(p.UsuarioLogin ?? "coordinador"));
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 5. Inserción de auditoría única
+                        using (var cmd = new NpgsqlCommand(@"
+INSERT INTO public.aocr_tbauditoria
+(
+    entidad,
+    accion,
+    usuario,
+    fecha,
+    datos_previos,
+    datos_nuevos
+)
+VALUES
+(
+    'SOLICITUD',
+    @accion,
+    @usuario,
+    NOW(),
+    @datos_previos,
+    @datos_nuevos
+);", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@accion", p.Accion ?? p.EstadoSolicitudDestino);
+                            cmd.Parameters.AddWithValue("@usuario", (object)(p.UsuarioLogin ?? "coordinador"));
+                            cmd.Parameters.AddWithValue("@datos_previos", "Estado=" + estadoActual + "; Version=" + versionActual);
+                            cmd.Parameters.AddWithValue("@datos_nuevos", "Estado=" + p.EstadoSolicitudDestino + "; Observacion=" + (p.Observacion ?? string.Empty));
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 6. Inserción en cola de correo (email_queue) con EventKey idempotente
+                        if (!string.IsNullOrWhiteSpace(p.EmailDestinatario) && !string.IsNullOrWhiteSpace(p.EventKey))
+                        {
+                            var emailItem = new CapaDatos.Services.EmailQueueItem
+                            {
+                                Para = p.EmailDestinatario,
+                                ParaNombre = p.EmailNombre,
+                                Asunto = p.EmailAsunto,
+                                Cuerpo = p.EmailCuerpo,
+                                SolicitudId = p.SolicitudId,
+                                TipoNotificacion = p.TipoNotificacion ?? ("SOLICITUD_" + p.EstadoSolicitudDestino),
+                                EventKey = p.EventKey,
+                                Estado = "PENDIENTE"
+                            };
+                            bool duplicate;
+                            new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                        }
+
+                        tx.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        return new TransicionCoordinadorResultadoDAO
+                        {
+                            Exitoso = false,
+                            Mensaje = "Error transaccional en la operación: " + ex.Message
+                        };
+                    }
+                }
+            }
+
+            return new TransicionCoordinadorResultadoDAO
+            {
+                Exitoso = true,
+                Mensaje = "Operación completada exitosamente.",
+                Registro = ObtenerPorSolicitud(p.SolicitudId)
+            };
         }
 
         private const string SelectBase = @"

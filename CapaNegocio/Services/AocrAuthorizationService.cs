@@ -93,9 +93,9 @@ namespace CapaNegocio.Services
             { "Documento", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "Tecnico", new[] { "Coordinacion" } },
             { "CoordinacionJefatura", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "RevisionDocumental", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "Inspeccion", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "InformeTecnico", new[] { "InspectorTecnico", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
+            { "RevisionDocumental", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "Inspeccion", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "InformeTecnico", new[] { "InspectorTecnico", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "Dircav", new[] { "DIRCAV" } },
             { "Dirdac", new[] { "DIRDAC" } },
             { "CorreoInstitucional", new[] { "Administrador" } },
@@ -104,72 +104,72 @@ namespace CapaNegocio.Services
 
         private static readonly IDictionary<string, string[]> ActionMatrix = new Dictionary<string, string[]>(Comparer)
         {
-            { "OrdenRecaudacion/Nueva", new[] { "Solicitante" } },
-            { "OrdenRecaudacion/Generar", new[] { "Solicitante" } },
-            { "OrdenRecaudacion/SubirComprobante", new[] { "Solicitante" } },
+            { "OrdenRecaudacion/Nueva", new[] { "Solicitante", "Administrador" } },
+            { "OrdenRecaudacion/Generar", new[] { "Solicitante", "Administrador" } },
+            { "OrdenRecaudacion/SubirComprobante", new[] { "Solicitante", "Administrador" } },
             { "OrdenRecaudacion/Descargar", new[] { "Solicitante", "Financiero", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
-            { "Financiero/Index", new[] { "Financiero" } },
+            { "Financiero/Index", new[] { "Financiero", "Administrador" } },
             { "Financiero/AprobarOrden", new[] { "Financiero" } },
             { "Financiero/AprobarPago", new[] { "Financiero" } },
             { "Financiero/RechazarOrden", new[] { "Financiero" } },
             { "Financiero/RechazarPago", new[] { "Financiero" } },
             { "Financiero/AprobarYEnviarAS400", new[] { "Financiero" } },
-            { "SolicitudAOCR/AbrirFormularioRT", new[] { "Solicitante" } },
-            { "SolicitudAOCR/EditarRT", new[] { "Solicitante" } },
-            { "SolicitudAOCR/GuardarProgresoRT", new[] { "Solicitante" } },
-            { "SolicitudAOCR/FinalizarRT", new[] { "Solicitante" } },
+            { "SolicitudAOCR/AbrirFormularioRT", new[] { "Solicitante", "Administrador" } },
+            { "SolicitudAOCR/EditarRT", new[] { "Solicitante", "Administrador" } },
+            { "SolicitudAOCR/GuardarProgresoRT", new[] { "Solicitante", "Administrador" } },
+            { "SolicitudAOCR/FinalizarRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/Detalle", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
-            { "SolicitudAOCR/Generar", new[] { "DIRDAC", "DireccionJefaturaTecnica" } },
+            { "SolicitudAOCR/Generar", new[] { "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/DescargarGenerada", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/Aprobar", new[] { "Coordinacion" } },
             { "SolicitudAOCR/AprobarJefatura", new[] { "DIRCAV", "DireccionJefaturaTecnica" } },
             { "SolicitudAOCR/Legalizar", new[] { "DIRDAC", "DireccionJefaturaTecnica" } },
             { "SolicitudAOCR/Emitir", new[] { "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "SolicitudAOCR/DecisionInstitucional", new[] { "DIRDAC", "DireccionJefaturaTecnica" } },
+            { "SolicitudAOCR/DecisionInstitucional", new[] { "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "Coordinador/AsignarInspector", new[] { "Coordinacion" } },
-            { "Tecnico/Index", new[] { "Coordinacion" } },
+            { "Tecnico/Index", new[] { "Coordinacion", "Administrador" } },
             { "Tecnico/AsignarInspector", new[] { "Coordinacion" } },
             { "Documento/Lista", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
-            { "Documento/Subir", new[] { "Solicitante" } },
+            { "Documento/Subir", new[] { "Solicitante", "Administrador" } },
             { "Documento/Descargar", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
-            { "CoordinacionJefatura/DashboardInspeccion", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "CoordinacionJefatura/ValidarAocr", new[] { "Coordinacion" } },
-            { "CoordinacionJefatura/RevisionVerificacion", new[] { "Coordinacion" } },
-            { "CoordinacionJefatura/DocumentoValidacionAocr", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "InspectorTecnico" } },
-            { "CoordinacionJefatura/GenerarDocumentoValidacionAocr", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "InspectorTecnico" } },
+            { "CoordinacionJefatura/DashboardInspeccion", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/ValidarAocr", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/RevisionVerificacion", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "CoordinacionJefatura/DocumentoValidacionAocr", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "InspectorTecnico", "Administrador" } },
+            { "CoordinacionJefatura/GenerarDocumentoValidacionAocr", new[] { "Coordinacion", "DIRCAV", "DIRDAC", "InspectorTecnico", "Administrador" } },
             { "CoordinacionJefatura/FirmarAceptacionDocumental", new[] { "Coordinacion" } },
-            { "RevisionDocumental/Index", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
-            { "RevisionDocumental/Revisar", new[] { "InspectorTecnico" } },
-            { "Inspeccion/Detalle", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/Index", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/Abrir", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/LV", new[] { "InspectorTecnico" } },
-            { "Inspeccion/ConfirmarRevisionDocumentalInspector", new[] { "InspectorTecnico" } },
-            { "Inspeccion/GuardarInformeTecnico", new[] { "InspectorTecnico" } },
-            { "Inspeccion/FinalizarInformeTecnico", new[] { "InspectorTecnico" } },
+            { "RevisionDocumental/Index", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
+            { "RevisionDocumental/Revisar", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/Detalle", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/Index", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/Abrir", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/LV", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/ConfirmarRevisionDocumentalInspector", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/GuardarInformeTecnico", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FinalizarInformeTecnico", new[] { "InspectorTecnico", "Administrador" } },
             { "Inspeccion/FirmarInformeInspector", new[] { "InspectorTecnico" } },
-            { "Inspeccion/GuardarListaVerificacionOperacionalEae", new[] { "InspectorTecnico" } },
-            { "Inspeccion/FinalizarListaVerificacionOperacionalEae", new[] { "InspectorTecnico" } },
+            { "Inspeccion/GuardarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/FinalizarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Administrador" } },
             { "Inspeccion/FirmarListaVerificacionOperacionalEae", new[] { "InspectorTecnico" } },
-            { "Inspeccion/VerInforme", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/DescargarInforme", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/VerListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/DescargarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/VerAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/DescargarAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/VerLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/DescargarLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante" } },
-            { "Inspeccion/CambiarEstado", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/SubirInforme", new[] { "InspectorTecnico" } },
-            { "Inspeccion/SubirDocumentoSolicitante", new[] { "Solicitante" } },
-            { "Inspeccion/RegistrarNoConforme", new[] { "InspectorTecnico" } },
-            { "Inspeccion/GuardarPosicionFirmaInformeTecnico", new[] { "InspectorTecnico", "DIRCAV", "DIRDAC" } },
+            { "Inspeccion/VerInforme", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/DescargarInforme", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/VerListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/DescargarListaVerificacionOperacionalEae", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/VerAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/DescargarAdjuntoInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/VerLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/DescargarLvEaeOficial", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Solicitante", "Administrador" } },
+            { "Inspeccion/CambiarEstado", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/SubirInforme", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/SubirDocumentoSolicitante", new[] { "Solicitante", "Administrador" } },
+            { "Inspeccion/RegistrarNoConforme", new[] { "InspectorTecnico", "Administrador" } },
+            { "Inspeccion/GuardarPosicionFirmaInformeTecnico", new[] { "InspectorTecnico", "DIRCAV", "DIRDAC", "Administrador" } },
             { "Inspeccion/AprobarNcSubsanacionDocumental", new[] { "Coordinacion" } },
-            { "Inspeccion/SolicitarNueva", new[] { "Coordinacion" } },
-            { "Documento/RevisarDocumentos", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/PrevisualizarInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/ModalInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC" } },
-            { "Inspeccion/RevisionDireccion", new[] { "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
+            { "Inspeccion/SolicitarNueva", new[] { "Coordinacion", "Administrador" } },
+            { "Documento/RevisarDocumentos", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/PrevisualizarInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/ModalInformeTecnico", new[] { "InspectorTecnico", "Coordinacion", "DIRCAV", "DIRDAC", "Administrador" } },
+            { "Inspeccion/RevisionDireccion", new[] { "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "Inspeccion/AprobarDecisionFinalDireccion", new[] { "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
             { "Inspeccion/DevolverDecisionFinalDireccion", new[] { "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
             { "Inspeccion/FirmarDireccion", new[] { "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica" } },
@@ -618,15 +618,39 @@ namespace CapaNegocio.Services
                     }
                 }
 
-                if (!esAdministrador
-                    && (Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
-                    || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
-                    || Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae")
-                    || Comparer.Equals(accion, "LV")))
+                if (Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae"))
                 {
+                    if (esAdministrador
+                        || rolesInspeccion.Contains("DIRDAC", Comparer)
+                        || rolesInspeccion.Contains("Coordinacion", Comparer)
+                        || rolesInspeccion.Contains("DIRCAV", Comparer))
+                    {
+                        motivo = "Acceso denegado: Solo el Inspector asignado puede firmar la Lista de Verificación.";
+                        return false;
+                    }
+
                     if (!PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
                     {
-                        motivo = "La inspección no está habilitada para gestionar la Lista de Verificación.";
+                        motivo = "Solo el Inspector asignado a esta inspección puede gestionar la Lista de Verificación.";
+                        return false;
+                    }
+                }
+                else if (!esAdministrador
+                    && (Comparer.Equals(accion, "GuardarListaVerificacionOperacionalEae")
+                    || Comparer.Equals(accion, "FinalizarListaVerificacionOperacionalEae")
+                    || Comparer.Equals(accion, "LV")))
+                {
+                    if (rolesInspeccion.Contains("DIRDAC", Comparer)
+                        || rolesInspeccion.Contains("Coordinacion", Comparer)
+                        || rolesInspeccion.Contains("DIRCAV", Comparer))
+                    {
+                        motivo = "Acceso denegado: Solo el Inspector asignado puede crear o editar la Lista de Verificación.";
+                        return false;
+                    }
+
+                    if (!PuedeInspectorAbrirLv(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    {
+                        motivo = "Solo el Inspector asignado a esta inspección puede gestionar la Lista de Verificación.";
                         return false;
                     }
                 }

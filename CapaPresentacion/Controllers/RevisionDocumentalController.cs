@@ -153,6 +153,17 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerIdUsuarioActual();
             var login = ObtenerCodigoUsuarioSesion();
             var rolActivo = ObtenerRolActivo();
+
+            if (usuarioId <= 0)
+            {
+                return JsonRevisionError(401, "Sesión no válida o expirada.", request.SolicitudId, "UsuarioId cero");
+            }
+
+            if (EsAdmin() || AocrRolesInstitucionales.EsAdministrador(rolActivo))
+            {
+                return JsonRevisionError(403, "El Administrador no puede ejecutar decisiones operativas.", request.SolicitudId, "Administrador bloqueado");
+            }
+
             var formToken = string.Empty;
             try
             {
@@ -232,7 +243,7 @@ namespace CapaPresentacion.Controllers
             var inspecciones = _solicitudAocrInfraBl.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
             var identidad = _inspectorIdentityService.ObtenerIdentidadInspector(usuarioId, login, login);
             var evaluacion = _inspectorIdentityService.EvaluarInspectorAsignado(solicitud.CodigoSolicitud, solicitud, inspecciones, identidad);
-            var puedeGuardar = EsAdmin() || (estadoRevisable && evaluacion != null && evaluacion.EsInspectorAsignado);
+            var puedeGuardar = estadoRevisable && evaluacion != null && evaluacion.EsInspectorAsignado;
 
             Trace.TraceInformation(
                 "[REV_DOC][AUTH_CHECK] SolicitudId=" + solicitud.CodigoSolicitud +
@@ -247,7 +258,7 @@ namespace CapaPresentacion.Controllers
 
             if (!estadoRevisable)
             {
-                return JsonRevisionError(403, "La solicitud no se encuentra en estado valido para revision documental.", solicitud.CodigoSolicitud, "Estado de solicitud no revisable");
+                return JsonRevisionError(409, "La solicitud no se encuentra en estado válido para revisión documental.", solicitud.CodigoSolicitud, "Estado incompatible");
             }
 
             if (!puedeGuardar)
@@ -1023,8 +1034,11 @@ namespace CapaPresentacion.Controllers
 
         private JsonResult JsonRevisionOk(string message, object data)
         {
-            Response.StatusCode = 200;
-            Response.TrySkipIisCustomErrors = true;
+            if (Response != null)
+            {
+                Response.StatusCode = 200;
+                Response.TrySkipIisCustomErrors = true;
+            }
             return Json(new AocrJsonResult
             {
                 ok = true,
@@ -1042,8 +1056,11 @@ namespace CapaPresentacion.Controllers
                 ? "No se pudo guardar la revision documental."
                 : message.Trim();
 
-            Response.StatusCode = safeCode;
-            Response.TrySkipIisCustomErrors = true;
+            if (Response != null)
+            {
+                Response.StatusCode = safeCode;
+                Response.TrySkipIisCustomErrors = true;
+            }
 
             Trace.TraceWarning(
                 "[REV_DOC][POST_" + safeCode + "] SolicitudId=" + solicitudId +

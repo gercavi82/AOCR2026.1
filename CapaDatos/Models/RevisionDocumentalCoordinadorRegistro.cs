@@ -30,4 +30,31 @@ namespace CapaDatos.Models
         public const string ObservadaCoordinador = "OBSERVADA_POR_COORDINADOR";
         public const string AceptadaCoordinador = "ACEPTADA_POR_COORDINADOR";
     }
+
+    public sealed class TransicionCoordinadorParams
+    {
+        public int SolicitudId { get; set; }
+        public int CoordinadorId { get; set; }
+        public string Accion { get; set; }
+        public string EstadoSolicitudDestino { get; set; }
+        public string EstadoRevisionDestino { get; set; }
+        public string Observacion { get; set; }
+        public string UsuarioLogin { get; set; }
+        public int? ExpectedVersion { get; set; }
+        public string EventKey { get; set; }
+        public string EmailDestinatario { get; set; }
+        public string EmailNombre { get; set; }
+        public string EmailAsunto { get; set; }
+        public string EmailCuerpo { get; set; }
+        public string TipoNotificacion { get; set; }
+    }
+
+    public sealed class TransicionCoordinadorResultadoDAO
+    {
+        public bool Exitoso { get; set; }
+        public bool ConflictoEstado { get; set; }
+        public bool ConflictoVersion { get; set; }
+        public string Mensaje { get; set; }
+        public RevisionDocumentalCoordinadorRegistro Registro { get; set; }
+    }
 }

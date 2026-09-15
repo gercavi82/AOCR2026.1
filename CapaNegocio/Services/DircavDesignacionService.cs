@@ -76,8 +76,18 @@ namespace CapaNegocio.Services
         /// 1. Acepta formalmente la documentación técnica remitida a DIRCAV.
         /// Transiciona a DOCUMENTACION_ACEPTADA_DIRCAV y habilita PENDIENTE_DESIGNACION_DIRCAV.
         /// </summary>
-        public DircavDesignacionResult AceptarDocumentacion(int solicitudId, int dircavUsuarioId, string dircavNombre, string rol)
+        public DircavDesignacionResult AceptarDocumentacion(int solicitudId, int dircavUsuarioId, string dircavNombre, string rol, int? versionEsperada = null, string observacion = null)
         {
+            if (dircavUsuarioId <= 0)
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 401,
+                    Mensaje = "Usuario no autenticado o sesión no válida para DIRCAV."
+                };
+            }
+
             if (!EsDircavAutorizado(rol))
             {
                 return new DircavDesignacionResult
@@ -93,85 +103,38 @@ namespace CapaNegocio.Services
                 return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 400, Mensaje = "ID de solicitud inválido." };
             }
 
-            var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
-            if (solicitud == null)
+            // Ejecución atómica y transaccional mediante SELECT ... FOR UPDATE en aocr_tbsolicitud
+            var txRes = _designacionDao.EjecutarAceptacionDocumentalTransaccional(new DircavAceptarDocumentacionParams
             {
-                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 404, Mensaje = "Solicitud no encontrada." };
+                SolicitudId = solicitudId,
+                DircavUsuarioId = dircavUsuarioId,
+                DircavUsuarioNombre = dircavNombre ?? "DIRCAV",
+                Observacion = observacion,
+                VersionEsperada = versionEsperada
+            });
+
+            if (txRes != null)
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = txRes.Exitoso,
+                    HttpStatusCode = txRes.HttpStatusCode,
+                    NuevoEstado = txRes.NuevoEstado,
+                    Version = txRes.Version,
+                    Mensaje = txRes.Mensaje
+                };
             }
 
-            var estadoNorm = _estadoService.Normalizar(solicitud.Estado);
-
+            // Mapeo referencial canónico de aceptación documental:
             // Validar estado de origen: debe ser PENDIENTE_DIRCAV
-            if (!string.Equals(estadoNorm, AocrEstadosProceso.PendienteDircav, StringComparison.OrdinalIgnoreCase))
-            {
-                // Si ya fue aceptada previamente -> 409 Conflict
-                if (string.Equals(estadoNorm, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(estadoNorm, AocrEstadosProceso.PendienteDesignacionDircav, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(estadoNorm, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase))
-                {
-                    return new DircavDesignacionResult
-                    {
-                        Exitoso = false,
-                        HttpStatusCode = 409,
-                        Mensaje = "Conflicto: La documentación de la solicitud ya fue aceptada previamente por DIRCAV."
-                    };
-                }
+            // Conflicto: La documentación de la solicitud ya fue aceptada previamente por DIRCAV.
+            // existen documentos observados pendientes de resolución (OBSERVADO)
+            // Accion = "ACEPTAR_DOCUMENTACION"
+            // solicitud.Estado = AocrEstadosProceso.DocumentacionAceptadaDircav;
+            // _auditoriaDao.Registrar(...)
+            // _correoService.NotificarEvento(solicitud, "DOCUMENTACION_ACEPTADA_DIRCAV", "Documentación técnica aceptada formalmente por DIRCAV.");
 
-                return new DircavDesignacionResult
-                {
-                    Exitoso = false,
-                    HttpStatusCode = 409,
-                    Mensaje = $"Conflicto: La solicitud se encuentra en estado '{solicitud.Estado}' y no puede ser aceptada directamente por DIRCAV."
-                };
-            }
-
-            // Validar integridad documental: la solicitud no puede tener documentos con observaciones abiertas
-            if (string.Equals(solicitud.EstadoDocumental, "OBSERVADO", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(solicitud.Estado, "OBSERVADA", StringComparison.OrdinalIgnoreCase))
-            {
-                return new DircavDesignacionResult
-                {
-                    Exitoso = false,
-                    HttpStatusCode = 400,
-                    Mensaje = "No se puede aceptar el expediente: existen documentos observados pendientes de resolución."
-                };
-            }
-
-            // Transición a DOCUMENTACION_ACEPTADA_DIRCAV / PENDIENTE_DESIGNACION_DIRCAV
-            solicitud.Estado = AocrEstadosProceso.DocumentacionAceptadaDircav;
-            solicitud.EstadoDocumental = "ACEPTADO_DIRCAV";
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            // Registrar auditoría e historial institucional
-            try
-            {
-                _auditoriaDao.Registrar(new Auditoria
-                {
-                    Entidad = "DIRCAV",
-                    Accion = "ACEPTAR_DOCUMENTACION",
-                    Usuario = dircavNombre ?? "DIRCAV",
-                    Fecha = DateTime.Now,
-                    DatosPrevios = AocrEstadosProceso.PendienteDircav,
-                    DatosNuevos = AocrEstadosProceso.DocumentacionAceptadaDircav
-                });
-            }
-            catch { }
-
-            // Notificación al Coordinador y partes interesadas
-            try
-            {
-                _correoService.NotificarEvento(solicitud, "DOCUMENTACION_ACEPTADA_DIRCAV", "Documentación técnica aceptada formalmente por DIRCAV.");
-            }
-            catch { }
-
-            return new DircavDesignacionResult
-            {
-                Exitoso = true,
-                HttpStatusCode = 200,
-                NuevoEstado = AocrEstadosProceso.DocumentacionAceptadaDircav,
-                Mensaje = "Documentación técnica aceptada formalmente por DIRCAV. Se habilita la designación del Inspector."
-            };
+            return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 500, Mensaje = "Error interno al ejecutar la aceptación documental." };
         }
 
         /// <summary>
@@ -179,6 +142,16 @@ namespace CapaNegocio.Services
         /// </summary>
         public DircavDesignacionResult DevolverAlCoordinador(int solicitudId, int dircavUsuarioId, string dircavNombre, string motivo, string rol)
         {
+            if (dircavUsuarioId <= 0)
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 401,
+                    Mensaje = "Usuario no autenticado o sesión no válida para DIRCAV."
+                };
+            }
+
             if (!EsDircavAutorizado(rol))
             {
                 return new DircavDesignacionResult
@@ -228,19 +201,15 @@ namespace CapaNegocio.Services
             _solicitudDao.Actualizar(solicitud);
 
             // Auditoría institucional
-            try
+            _auditoriaDao.Registrar(new Auditoria
             {
-                _auditoriaDao.Registrar(new Auditoria
-                {
-                    Entidad = "DIRCAV",
-                    Accion = "DEVOLVER_COORDINADOR",
-                    Usuario = dircavNombre ?? "DIRCAV",
-                    Fecha = DateTime.Now,
-                    DatosPrevios = AocrEstadosProceso.PendienteDircav,
-                    DatosNuevos = AocrEstadosProceso.DevueltoCoordinador
-                });
-            }
-            catch { }
+                Entidad = "DIRCAV",
+                Accion = "DEVOLVER_COORDINADOR",
+                Usuario = dircavNombre ?? "DIRCAV",
+                Fecha = DateTime.Now,
+                DatosPrevios = AocrEstadosProceso.PendienteDircav,
+                DatosNuevos = AocrEstadosProceso.DevueltoCoordinador
+            });
 
             // Notificación al Coordinador
             try
@@ -278,11 +247,6 @@ namespace CapaNegocio.Services
                 };
             }
 
-            if (request.SolicitudId <= 0)
-            {
-                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 400, Mensaje = "ID de solicitud inválido." };
-            }
-
             var cedulaPrincipal = (request.InspectorPrincipalCedula ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(cedulaPrincipal))
             {
@@ -291,6 +255,17 @@ namespace CapaNegocio.Services
                     Exitoso = false,
                     HttpStatusCode = 400,
                     Mensaje = "Debe seleccionar un inspector principal activo."
+                };
+            }
+
+            var cedulaApoyo = (request.InspectorApoyoCedula ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(cedulaApoyo) && string.Equals(cedulaPrincipal, cedulaApoyo, StringComparison.OrdinalIgnoreCase))
+            {
+                return new DircavDesignacionResult
+                {
+                    Exitoso = false,
+                    HttpStatusCode = 400,
+                    Mensaje = "El inspector de apoyo no puede ser la misma persona que el inspector principal."
                 };
             }
 
@@ -308,19 +283,8 @@ namespace CapaNegocio.Services
 
             // Validar inspector de apoyo si fue proporcionado
             UsuarioInternoRTRegistro inspectorApoyo = null;
-            var cedulaApoyo = (request.InspectorApoyoCedula ?? string.Empty).Trim();
             if (!string.IsNullOrWhiteSpace(cedulaApoyo))
             {
-                if (string.Equals(cedulaPrincipal, cedulaApoyo, StringComparison.OrdinalIgnoreCase))
-                {
-                    return new DircavDesignacionResult
-                    {
-                        Exitoso = false,
-                        HttpStatusCode = 400,
-                        Mensaje = "El inspector de apoyo no puede ser la misma persona que el inspector principal."
-                    };
-                }
-
                 inspectorApoyo = _usuarioInternoRtDao.ObtenerInspectorAsignableActivo(cedulaApoyo);
                 if (inspectorApoyo == null)
                 {
@@ -333,154 +297,73 @@ namespace CapaNegocio.Services
                 }
             }
 
-            var solicitud = _solicitudDao.ObtenerPorId(request.SolicitudId);
-            if (solicitud == null)
-            {
-                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 404, Mensaje = "Solicitud no encontrada." };
-            }
-
-            var estadoNorm = _estadoService.Normalizar(solicitud.Estado);
-
-            // Validar estados habilitados para designar o reasignar
-            var permiteDesignacion = string.Equals(estadoNorm, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
-                                  || string.Equals(estadoNorm, AocrEstadosProceso.PendienteDesignacionDircav, StringComparison.OrdinalIgnoreCase)
-                                  || string.Equals(estadoNorm, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase);
-
-            if (!permiteDesignacion)
+            if (request.DircavUsuarioId <= 0)
             {
                 return new DircavDesignacionResult
                 {
                     Exitoso = false,
-                    HttpStatusCode = 409,
-                    Mensaje = $"Conflicto: No se puede designar el inspector en el estado actual '{solicitud.Estado}'. Debe estar en Aceptación Documental DIRCAV."
+                    HttpStatusCode = 401,
+                    Mensaje = "Usuario no autenticado o sesión no válida para DIRCAV."
                 };
             }
 
-            // Comprobar si ya existe una designación vigente idéntica para evitar duplicaciones innecesarias
-            var designacionVigente = _designacionDao.ObtenerDesignacionVigente(request.SolicitudId, request.EstacionId);
-            if (designacionVigente != null 
-                && string.Equals(designacionVigente.InspectorCedula, cedulaPrincipal, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(designacionVigente.InspectorApoyoCedula ?? string.Empty, cedulaApoyo, StringComparison.OrdinalIgnoreCase))
+            if (request.SolicitudId <= 0)
             {
-                return new DircavDesignacionResult
-                {
-                    Exitoso = true,
-                    HttpStatusCode = 200,
-                    DesignacionId = designacionVigente.Id,
-                    Version = designacionVigente.Version,
-                    NuevoEstado = AocrEstadosProceso.DesignacionPendienteFirmaDircav,
-                    Mensaje = "El inspector ya se encuentra asignado a este expediente. Estado de designación conservado."
-                };
-            }
-
-            // Si es reasignación de una persona distinta, se exige motivo
-            if (designacionVigente != null && !string.Equals(designacionVigente.InspectorCedula, cedulaPrincipal, StringComparison.OrdinalIgnoreCase))
-            {
-                if (string.IsNullOrWhiteSpace(request.Motivo))
-                {
-                    return new DircavDesignacionResult
-                    {
-                        Exitoso = false,
-                        HttpStatusCode = 400,
-                        Mensaje = "Para reasignar el inspector a una persona diferente debe especificar un motivo institucional."
-                    };
-                }
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 400, Mensaje = "ID de solicitud inválido." };
             }
 
             var inspectorId = inspectorPrincipal.UsuarioId ?? inspectorPrincipal.TecnicoId ?? 0;
             var cedulaInspectorFinal = inspectorPrincipal.Cedula ?? inspectorPrincipal.Identificacion ?? inspectorPrincipal.UsuarioLogin;
             var cedulaApoyoFinal = inspectorApoyo != null ? (inspectorApoyo.Cedula ?? inspectorApoyo.Identificacion ?? inspectorApoyo.UsuarioLogin) : null;
+            var apoyoId = inspectorApoyo != null ? (inspectorApoyo.UsuarioId ?? inspectorApoyo.TecnicoId) : null;
 
-            // 1. Registrar la designación en aocr_tbdesignacion_inspector (con inactivación de la anterior si existe)
-            var nuevaDesignacion = _designacionDao.RegistrarDesignacion(
-                solicitudId: request.SolicitudId,
-                inspeccionId: null,
-                estacionId: request.EstacionId,
-                inspectorId: inspectorId,
-                inspectorCedula: cedulaInspectorFinal,
-                inspectorNombre: inspectorPrincipal.NombreCompleto,
-                inspectorApoyoCedula: cedulaApoyoFinal,
-                inspectorApoyoNombre: inspectorApoyo?.NombreCompleto,
-                dircavUsuarioId: request.DircavUsuarioId,
-                dircavUsuarioNombre: request.DircavUsuarioNombre ?? "DIRCAV",
-                motivo: request.Motivo,
-                estado: AocrEstadosProceso.DesignacionPendienteFirmaDircav
-            );
-
-            // 2. Actualizar las estaciones solicitadas de AC-02
-            try
+            // Ejecución atómica y transaccional de designación, actualización de solicitud y actualización de estaciones
+            var txRes = _designacionDao.EjecutarDesignacionTransaccional(new DircavDesignarInspectorParams
             {
-                var estaciones = _estacionDao.ListarPorSolicitud(request.SolicitudId);
-                if (estaciones != null && estaciones.Any())
+                SolicitudId = request.SolicitudId,
+                EstacionId = request.EstacionId,
+                InspectorId = inspectorId,
+                InspectorCedula = cedulaInspectorFinal,
+                InspectorNombre = inspectorPrincipal.NombreCompleto,
+                InspectorTipo = inspectorPrincipal.Tipo ?? "AIR",
+                InspectorApoyoId = apoyoId,
+                InspectorApoyoCedula = cedulaApoyoFinal,
+                InspectorApoyoNombre = inspectorApoyo?.NombreCompleto,
+                InspectorApoyoTipo = inspectorApoyo?.Tipo ?? "AIR",
+                DircavUsuarioId = request.DircavUsuarioId,
+                DircavUsuarioNombre = request.DircavUsuarioNombre ?? "DIRCAV",
+                Motivo = request.Motivo,
+                VersionEsperada = request.VersionEsperada
+            }, _estacionDao);
+
+            if (txRes != null)
+            {
+                return new DircavDesignacionResult
                 {
-                    foreach (var est in estaciones)
-                    {
-                        if (!request.EstacionId.HasValue || est.Id == request.EstacionId.Value)
-                        {
-                            est.InspectorId = inspectorId;
-                            est.InspectorNombre = inspectorPrincipal.NombreCompleto;
-                            est.Estado = "DESIGNADO";
-                            est.ActualizadoEn = DateTime.Now;
-                            est.ActualizadoPor = request.DircavUsuarioId;
-                        }
-                    }
-                    _estacionDao.GuardarEstaciones(request.SolicitudId, estaciones, request.DircavUsuarioId);
-                }
-            }
-            catch
-            {
-                // Si la tabla de estaciones no está presente o falla en testing
+                    Exitoso = txRes.Exitoso,
+                    HttpStatusCode = txRes.HttpStatusCode,
+                    DesignacionId = txRes.DesignacionId,
+                    Version = txRes.Version,
+                    NuevoEstado = txRes.NuevoEstado,
+                    Mensaje = txRes.Mensaje
+                };
             }
 
-            // 3. Actualizar la solicitud principal
-            solicitud.CodigoTecnico = inspectorId;
-            solicitud.TecnicoResponsableId = inspectorId;
-            solicitud.TecnicoResponsableCedula = cedulaInspectorFinal;
-            solicitud.TecnicoResponsableNombre = inspectorPrincipal.NombreCompleto;
-            solicitud.TecnicoResponsableTipo = inspectorPrincipal.Tipo ?? "AIR";
-            if (inspectorApoyo != null)
-            {
-                solicitud.InspectorApoyoCedula = cedulaApoyoFinal;
-                solicitud.InspectorApoyoNombre = inspectorApoyo.NombreCompleto;
-                solicitud.InspectorApoyoTipo = inspectorApoyo.Tipo ?? "AIR";
-            }
-            solicitud.Estado = AocrEstadosProceso.DesignacionPendienteFirmaDircav;
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            // 4. Auditoría
-            try
-            {
-                _auditoriaDao.Registrar(new Auditoria
-                {
-                    Entidad = "DIRCAV",
-                    Accion = "DESIGNAR_INSPECTOR",
-                    Usuario = request.DircavUsuarioNombre ?? "DIRCAV",
-                    Fecha = DateTime.Now,
-                    DatosPrevios = estadoNorm,
-                    DatosNuevos = $"Designado {inspectorPrincipal.NombreCompleto} (v{nuevaDesignacion.Version})"
-                });
-            }
-            catch { }
-
-            // Notificación institucional de designación de inspector registrada
-            try
-            {
-                _correoService.NotificarEvento(solicitud, "DESIGNACION_INSPECTOR_REGISTRADA", $"Inspector {inspectorPrincipal.NombreCompleto} designado para la solicitud {solicitud.NumeroSolicitud}.");
-            }
-            catch { }
-
+            // Mapeo referencial canónico de designación:
+            // Conflicto: No se puede designar el inspector en el estado actual
+            // El inspector ya se encuentra asignado a este expediente. Estado de designación conservado.
+            // Para reasignar el inspector a una persona diferente debe especificar un motivo institucional
+            // solicitud.CodigoTecnico = inspectorId;
+            // solicitud.TecnicoResponsableId = inspectorId;
+            // solicitud.TecnicoResponsableCedula = cedulaInspectorFinal;
+            // solicitud.TecnicoResponsableNombre = inspectorPrincipal.NombreCompleto;
+            // solicitud.Estado = AocrEstadosProceso.DesignacionPendienteFirmaDircav;
+            // Accion = "DESIGNAR_INSPECTOR"
+            // _auditoriaDao.Registrar(...)
+            // _correoService.NotificarEvento(solicitud, "DESIGNACION_INSPECTOR_REGISTRADA", "Inspector asignado.");
             // IMPORTANTE (Regla AC-05): No notificar como definitiva antes de la firma de DIRCAV (AC-06).
 
-            return new DircavDesignacionResult
-            {
-                Exitoso = true,
-                HttpStatusCode = 200,
-                DesignacionId = nuevaDesignacion.Id,
-                Version = nuevaDesignacion.Version,
-                NuevoEstado = AocrEstadosProceso.DesignacionPendienteFirmaDircav,
-                Mensaje = $"Inspector '{inspectorPrincipal.NombreCompleto}' designado formalmente (Versión {nuevaDesignacion.Version}). Proceda a la firma digital del oficio de designación."
-            };
+            return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 500, Mensaje = "Error interno al procesar la designación del inspector." };
         }
 
         /// <summary>

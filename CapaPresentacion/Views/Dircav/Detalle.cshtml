@@ -135,14 +135,9 @@
                                 }
                                 else
                                 {
-                                    using (Html.BeginForm("FirmarDesignacion", "Dircav", FormMethod.Post, new { @class = "d-inline" }))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoSolicitud)
-                                        <button type="submit" class="btn btn-sm btn-danger btn-prevenir-doble" onclick="return confirm('¿Confirma la emisión y firma formal del oficio de designación de inspectores por parte de la Autoridad DIRCAV?');">
-                                            <i class="fas fa-signature me-1"></i>Firmar Oficialmente Oficio de Designación
-                                        </button>
-                                    }
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalFirmarDesignacionDetalle">
+                                        <i class="fas fa-signature me-1"></i>Firmar Oficialmente Oficio de Designación
+                                    </button>
                                 }
                             </div>
                         </div>
@@ -181,6 +176,46 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Firma Digital de Designación en Detalle -->
+<div class="modal fade" id="modalFirmarDesignacionDetalle" tabindex="-1" aria-labelledby="modalFirmarDesignacionDetalleLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("FirmarDesignacion", "Dircav", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalFirmarDesignacionDetalleLabel">
+                        <i class="fas fa-file-signature me-2"></i>Firma Digital del Oficio de Designación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <i class="fas fa-info-circle me-1"></i> Trámite: <strong>@Model.NumeroSolicitud</strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Certificado Digital (.p12 o .pfx) <span class="text-danger">*</span></label>
+                        <input type="file" name="certificadoDigital" class="form-control" accept=".p12,.pfx" required />
+                        <div class="form-text">Cargue el archivo de su firma electrónica institucional (.p12 o .pfx).</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Contraseña del Certificado <span class="text-danger">*</span></label>
+                        <input type="password" name="passwordCertificado" class="form-control" placeholder="Ingrese su clave de firma" required autocomplete="off" />
+                        <div class="form-text text-muted">La clave se utiliza únicamente en memoria para la firma criptográfica y nunca se almacena.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger btn-prevenir-doble">
+                        <i class="fas fa-signature me-1"></i>Firmar Criptográficamente
+                    </button>
+                </div>
+            }
         </div>
     </div>
 </div>

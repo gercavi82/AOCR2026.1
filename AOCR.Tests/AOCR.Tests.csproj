@@ -61,6 +61,9 @@
     <Reference Include="itextsharp, Version=5.5.13.5, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
       <HintPath>..\packages\iTextSharp.5.5.13.5\lib\net461\itextsharp.dll</HintPath>
     </Reference>
+    <Reference Include="BouncyCastle.Cryptography, Version=2.0.0.0, Culture=neutral, PublicKeyToken=072edcf4a5328938, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.Cryptography.2.6.2\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -75,13 +78,16 @@
     <Compile Include="Unit\Ac02MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac04CoordinadorRevisionDocumentalTests.cs" />
     <Compile Include="Unit\Ac04MatrizPruebasFlujoInspectorCoordinadorDireccionTests.cs" />
+    <Compile Include="Unit\Ac04MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac05DircavAceptacionYDesignacionTests.cs" />
     <Compile Include="Unit\Ac05MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac06DesignacionPdfDircavTests.cs" />
     <Compile Include="Unit\Ac06MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac07ListaVerificacionPorEstacionTests.cs" />
+    <Compile Include="Unit\Ac07MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Integration\Ac07PersistenciaEstacionesTests.cs" />
     <Compile Include="Unit\Ac08ValidacionCompletitudLvTests.cs" />
+    <Compile Include="Unit\Ac08MatrizPruebasObligatoriasTests.cs" />
     <Compile Include="Unit\Ac09DepuracionInformeTecnicoTests.cs" />
     <Compile Include="Unit\Ac10CondicionesLimitacionesTests.cs" />
     <Compile Include="Unit\Ac11LegalizacionWorkflowTests.cs" />

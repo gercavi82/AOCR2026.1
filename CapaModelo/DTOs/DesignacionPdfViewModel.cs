@@ -45,6 +45,7 @@ namespace CapaModelo.DTOs
         public bool EsVistaPrevia { get; set; }
         public string HashDocumento { get; set; }
         public string CodigoVerificacion { get; set; }
+        public string HuellaCertificado { get; set; }
 
         public DesignacionPdfViewModel()
         {

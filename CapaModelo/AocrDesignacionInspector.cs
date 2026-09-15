@@ -39,6 +39,8 @@ namespace CapaModelo
         public string UsuarioFirma { get; set; }
         public long? TamanioBytes { get; set; }
         public string MimeType { get; set; } = "application/pdf";
+        public string HuellaCertificado { get; set; }
+        public string CodigoVerificacion { get; set; }
 
         public DateTime CreadoEn { get; set; } = DateTime.Now;
         public string CreadoPor { get; set; }
@@ -59,6 +61,7 @@ namespace CapaModelo
         public int DircavUsuarioId { get; set; }
         public string DircavUsuarioNombre { get; set; }
         public string RolSolicitante { get; set; }
+        public int? VersionEsperada { get; set; }
     }
 
     /// <summary>
