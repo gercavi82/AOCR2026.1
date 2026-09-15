@@ -142,6 +142,17 @@ namespace CapaDatos.DAOs
                 .Where(e => e != null && !string.IsNullOrWhiteSpace(e.EstacionCodigo))
                 .ToList();
 
+            // 0. Validar duplicados en la lista entrante
+            var codigosVistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var est in listaEntrante)
+            {
+                var cod = est.EstacionCodigo.Trim().ToUpperInvariant();
+                if (!codigosVistos.Add(cod))
+                {
+                    throw new EstacionDuplicadaException(string.Format("La estación '{0}' se encuentra duplicada en la solicitud.", cod));
+                }
+            }
+
             // 1. Obtener existentes en BD
             const string sqlExistentes = @"
                 SELECT id, UPPER(TRIM(estacion_codigo)) AS Codigo, version, activo
@@ -194,13 +205,20 @@ namespace CapaDatos.DAOs
                     int idExistente = existente.id;
                     int verActual = (int)existente.version;
 
+                    // Concurrencia optimista: Si se provee versión y difiere de la actual en BD, lanzar conflicto
+                    if (est.Version > 0 && est.Version != verActual)
+                    {
+                        throw new EstacionVersionConflictException(string.Format("Conflicto de versión en la estación '{0}'. Versión esperada: {1}, versión actual en BD: {2}.", codigoNorm, est.Version, verActual));
+                    }
+
                     conn.Execute(@"
                         UPDATE public.aocr_tbsolicitud_estacion
                         SET estacion_nombre = @nombreNorm,
                             fecha_inicio = @fInicio,
                             fecha_fin = @fFin,
-                            inspector_id = @inspectorId,
-                            inspector_nombre = @inspectorNombre,
+                            inspector_id = COALESCE(@inspectorId, inspector_id),
+                            inspector_nombre = COALESCE(NULLIF(@inspectorNombre, ''), inspector_nombre),
+                            inspeccion_id = COALESCE(@inspeccionId, inspeccion_id),
                             estado = COALESCE(NULLIF(@estado, ''), estado),
                             observacion = @observacion,
                             version = @nuevaVersion,
@@ -216,6 +234,7 @@ namespace CapaDatos.DAOs
                             fFin,
                             inspectorId = est.InspectorId,
                             inspectorNombre = est.InspectorNombre,
+                            inspeccionId = est.InspeccionId,
                             estado = est.Estado,
                             observacion = est.Observacion,
                             nuevaVersion = verActual + 1,

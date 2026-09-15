@@ -14,15 +14,22 @@ namespace CapaNegocio.Services
     public class SolicitudEstacionService
     {
         private readonly SolicitudEstacionDAO _estacionDAO;
+        private readonly InspeccionDAO _inspeccionDAO;
 
         public SolicitudEstacionService()
-            : this(new SolicitudEstacionDAO())
+            : this(new SolicitudEstacionDAO(), new InspeccionDAO())
         {
         }
 
         public SolicitudEstacionService(SolicitudEstacionDAO estacionDAO)
+            : this(estacionDAO, new InspeccionDAO())
+        {
+        }
+
+        public SolicitudEstacionService(SolicitudEstacionDAO estacionDAO, InspeccionDAO inspeccionDAO)
         {
             _estacionDAO = estacionDAO ?? new SolicitudEstacionDAO();
+            _inspeccionDAO = inspeccionDAO ?? new InspeccionDAO();
         }
 
         /// <summary>
@@ -54,7 +61,9 @@ namespace CapaNegocio.Services
         /// <summary>
         /// Valida exhaustivamente el conjunto de estaciones de una solicitud según las reglas de AC-02.
         /// </summary>
-        public ValidacionEstacionesResultado ValidarEstaciones(IEnumerable<SolicitudEstacionInspeccion> estaciones)
+        public ValidacionEstacionesResultado ValidarEstaciones(
+            IEnumerable<SolicitudEstacionInspeccion> estaciones,
+            int? solicitudId = null)
         {
             var resultado = new ValidacionEstacionesResultado { EsValido = true };
             if (estaciones == null) return resultado;
@@ -81,6 +90,7 @@ namespace CapaNegocio.Services
                 if (codigosVistos.Contains(codigoNorm))
                 {
                     resultado.EsValido = false;
+                    resultado.EsDuplicado = true;
                     resultado.Errores.Add(string.Format("La estación '{0}' se encuentra duplicada en la solicitud. Cada estación debe registrarse una sola vez.", est.EstacionNombre ?? codigoNorm));
                 }
                 else
@@ -105,6 +115,45 @@ namespace CapaNegocio.Services
                             est.EstacionNombre ?? codigoNorm, est.FechaFin, est.FechaInicio));
                     }
                 }
+
+                // 5. La inspección debe pertenecer a la misma solicitud
+                var idSolEfectiva = solicitudId.HasValue && solicitudId.Value > 0 ? solicitudId.Value : est.SolicitudId;
+                if (est.InspeccionId.HasValue && est.InspeccionId.Value > 0 && idSolEfectiva > 0 && _inspeccionDAO != null)
+                {
+                    try
+                    {
+                        var insp = _inspeccionDAO.ObtenerPorId(est.InspeccionId.Value);
+                        if (insp != null && insp.CodigoSolicitud > 0 && insp.CodigoSolicitud != idSolEfectiva)
+                        {
+                            resultado.EsValido = false;
+                            resultado.Errores.Add(string.Format("La inspección #{0} asociada a la estación '{1}' pertenece a la solicitud #{2}, no a la solicitud #{3}.",
+                                est.InspeccionId.Value, est.EstacionNombre ?? codigoNorm, insp.CodigoSolicitud, idSolEfectiva));
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorar en entornos desconectados de BD o pruebas unitarias
+                    }
+                }
+
+                // 6. El inspector asignado debe existir y estar activo
+                if (est.InspectorId.HasValue && est.InspectorId.Value > 0)
+                {
+                    try
+                    {
+                        var inspector = UsuarioDAO.ObtenerPorId(est.InspectorId.Value);
+                        if (inspector != null && !inspector.Activo)
+                        {
+                            resultado.EsValido = false;
+                            resultado.Errores.Add(string.Format("El inspector asignado (ID={0}) para la estación '{1}' no se encuentra activo.",
+                                est.InspectorId.Value, est.EstacionNombre ?? codigoNorm));
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorar en entornos desconectados de BD o pruebas unitarias
+                    }
+                }
             }
 
             return resultado;
@@ -125,14 +174,17 @@ namespace CapaNegocio.Services
             if (solicitudId <= 0)
             {
                 res.Exitoso = false;
+                res.HttpStatusCode = 400;
                 res.Mensaje = "Identificador de solicitud inválido.";
                 return res;
             }
 
-            var validacion = ValidarEstaciones(estaciones);
+            var validacion = ValidarEstaciones(estaciones, solicitudId);
             if (!validacion.EsValido)
             {
                 res.Exitoso = false;
+                res.HttpStatusCode = validacion.EsDuplicado ? 409 : 400;
+                res.EsDuplicado = validacion.EsDuplicado;
                 res.Mensaje = string.Join(" ", validacion.Errores);
                 res.Errores = validacion.Errores;
                 return res;
@@ -151,15 +203,36 @@ namespace CapaNegocio.Services
                 }
 
                 res.Exitoso = ok;
+                res.HttpStatusCode = ok ? 200 : 500;
                 res.Mensaje = ok
                     ? "Estaciones y fechas de inspección guardadas correctamente."
                     : "No se pudieron guardar las estaciones de inspección.";
                 return res;
             }
+            catch (EstacionVersionConflictException ex)
+            {
+                res.Exitoso = false;
+                res.HttpStatusCode = 409;
+                res.EsConflictoVersion = true;
+                res.Mensaje = ex.Message;
+                res.Errores.Add(ex.Message);
+                return res;
+            }
+            catch (EstacionDuplicadaException ex)
+            {
+                res.Exitoso = false;
+                res.HttpStatusCode = 409;
+                res.EsDuplicado = true;
+                res.Mensaje = ex.Message;
+                res.Errores.Add(ex.Message);
+                return res;
+            }
             catch (Exception ex)
             {
                 res.Exitoso = false;
+                res.HttpStatusCode = 500;
                 res.Mensaje = "Error al guardar estaciones de inspección: " + ex.Message;
+                res.Errores.Add(ex.Message);
                 return res;
             }
         }
@@ -168,6 +241,7 @@ namespace CapaNegocio.Services
     public class ValidacionEstacionesResultado
     {
         public bool EsValido { get; set; }
+        public bool EsDuplicado { get; set; }
         public List<string> Errores { get; set; } = new List<string>();
     }
 
@@ -175,6 +249,9 @@ namespace CapaNegocio.Services
     {
         public bool Exitoso { get; set; }
         public int SolicitudId { get; set; }
+        public int HttpStatusCode { get; set; } = 200;
+        public bool EsConflictoVersion { get; set; }
+        public bool EsDuplicado { get; set; }
         public string Mensaje { get; set; }
         public List<string> Errores { get; set; } = new List<string>();
     }

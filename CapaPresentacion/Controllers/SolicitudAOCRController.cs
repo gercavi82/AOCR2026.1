@@ -374,6 +374,28 @@ namespace CapaPresentacion.Controllers
             public List<SolicitudEstacionInspeccionItemVM> Estaciones { get; set; } = new List<SolicitudEstacionInspeccionItemVM>();
         }
 
+        private JsonResult JsonRespuestaEstaciones(int statusCode, bool success, string message, object data = null, string redirectUrl = null, int? id = null)
+        {
+            if (Response != null)
+            {
+                Response.StatusCode = statusCode;
+                Response.TrySkipIisCustomErrors = true;
+            }
+
+            return Json(new
+            {
+                success = success,
+                ok = success,
+                statusCode = statusCode,
+                httpStatusCode = statusCode,
+                message = message ?? string.Empty,
+                mensaje = message ?? string.Empty,
+                data = data,
+                redirectUrl = redirectUrl,
+                id = id
+            }, JsonRequestBehavior.AllowGet);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryTokenFromHeader]
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "GuardarProgresoRT", RequireCompanySelection = true, CodigoSolicitudParameter = "codigoSolicitud")]
@@ -383,47 +405,81 @@ namespace CapaPresentacion.Controllers
             {
                 if (request == null || request.CodigoSolicitud <= 0)
                 {
-                    return JsonGuardado(false, "Solicitud inválida para guardar estaciones.", null);
+                    return JsonRespuestaEstaciones(400, false, "Solicitud inválida para guardar estaciones.");
                 }
 
                 var usuarioId = ObtenerUsuarioActualId();
                 if (usuarioId <= 0)
                 {
-                    return JsonGuardado(false, "Sesión expirada.", null, Url.Action("Login", "Account"));
+                    return JsonRespuestaEstaciones(401, false, "Sesión expirada o inválida.", redirectUrl: Url.Action("Login", "Account"));
                 }
 
-                if (string.IsNullOrWhiteSpace(ObtenerCompaniaActivaCodigo()))
+                // Regla 10: Administrador no puede modificar estaciones operativas (devuelve HTTP 403)
+                if (EsAdmin())
                 {
-                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
+                    return JsonRespuestaEstaciones(403, false, "El usuario Administrador no puede modificar estaciones operativas.");
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(request.CodigoSolicitud);
                 if (solicitud == null)
                 {
-                    return JsonGuardado(false, "La solicitud no existe.", null);
+                    return JsonRespuestaEstaciones(404, false, "La solicitud no existe.");
                 }
 
-                if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
+                // Regla 9: RT solo puede modificar estaciones de su solicitud
+                if (solicitud.CodigoUsuario != usuarioId)
                 {
-                    return JsonGuardado(false, "No tiene permisos para guardar las estaciones de esta solicitud.", null);
+                    return JsonRespuestaEstaciones(403, false, "No tiene permisos para modificar las estaciones de esta solicitud.");
+                }
+
+                var companiaActiva = ObtenerCompaniaActivaCodigo();
+                if (string.IsNullOrWhiteSpace(companiaActiva))
+                {
+                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
+                    companiaActiva = ObtenerCompaniaActivaCodigo();
+                }
+
+                if (string.IsNullOrWhiteSpace(companiaActiva))
+                {
+                    return JsonRespuestaEstaciones(403, false, "Debe seleccionar una compañía activa para gestionar la solicitud.",
+                        redirectUrl: Url.Action("SeleccionarCompania", "Account", new { returnUrl = Request?.RawUrl }));
+                }
+
+                if (!SolicitudCoincideConCompaniaActiva(solicitud, companiaActiva))
+                {
+                    return JsonRespuestaEstaciones(403, false, "La solicitud no corresponde a la compañía activa del usuario.");
+                }
+
+                // Regla 9: RT solo puede modificar mientras el estado lo permita
+                if (!SolicitudEsEditableFormularioEmision(solicitud))
+                {
+                    return JsonRespuestaEstaciones(403, false, "El estado actual de la solicitud no permite modificar las estaciones operativas.");
+                }
+
+                if (request.Estaciones == null || !request.Estaciones.Any())
+                {
+                    return JsonRespuestaEstaciones(400, false, "Debe ingresar al menos una estación de inspección.");
                 }
 
                 var estacionesMapeadas = MapearEstacionesDesdeViewModel(request.Estaciones, request.CodigoSolicitud, usuarioId);
-                var validacion = _solicitudEstacionService.ValidarEstaciones(estacionesMapeadas);
+                var validacion = _solicitudEstacionService.ValidarEstaciones(estacionesMapeadas, request.CodigoSolicitud);
                 if (!validacion.EsValido)
                 {
-                    return JsonGuardado(false, string.Join(" ", validacion.Errores), null);
+                    int errCode = validacion.EsDuplicado ? 409 : 400;
+                    return JsonRespuestaEstaciones(errCode, false, string.Join(" ", validacion.Errores));
                 }
 
                 var res = _solicitudEstacionService.GuardarEstaciones(request.CodigoSolicitud, estacionesMapeadas, usuarioId);
                 if (!res.Exitoso)
                 {
-                    return JsonGuardado(false, res.Mensaje, null);
+                    int statusCode = res.HttpStatusCode > 0 ? res.HttpStatusCode : 500;
+                    return JsonRespuestaEstaciones(statusCode, false, res.Mensaje);
                 }
 
                 var persistidas = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(request.CodigoSolicitud, solicitud);
 
-                return JsonGuardado(
+                return JsonRespuestaEstaciones(
+                    200,
                     true,
                     "Estaciones y fechas de inspección guardadas correctamente.",
                     new
@@ -434,12 +490,20 @@ namespace CapaPresentacion.Controllers
                     },
                     id: request.CodigoSolicitud);
             }
+            catch (EstacionVersionConflictException ex)
+            {
+                return JsonRespuestaEstaciones(409, false, ex.Message);
+            }
+            catch (EstacionDuplicadaException ex)
+            {
+                return JsonRespuestaEstaciones(409, false, ex.Message);
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Trace.TraceError(
                     "[SOLICITUD_AOCR][GUARDAR_ESTACIONES] SolicitudId=" + (request != null ? request.CodigoSolicitud : 0) +
                     "; Resultado=ERROR; Detalle=" + ex);
-                return JsonGuardado(false, "No se pudieron guardar las estaciones por un error de base de datos. " + ex.Message, null);
+                return JsonRespuestaEstaciones(500, false, "No se pudieron guardar las estaciones por un error de base de datos. Se realizó rollback de la transacción.");
             }
         }
 
@@ -453,32 +517,49 @@ namespace CapaPresentacion.Controllers
 
             foreach (var item in items)
             {
-                if (item == null || string.IsNullOrWhiteSpace(item.EstacionCodigo)) continue;
+                if (item == null) continue;
 
-                DateTime fInicio;
-                if (!DateTime.TryParse(item.FechaInicio, out fInicio) || fInicio == default(DateTime))
+                DateTime fInicio = default(DateTime);
+                if (!string.IsNullOrWhiteSpace(item.FechaInicio))
                 {
-                    fInicio = DateTime.Today;
+                    DateTime parsed;
+                    if (DateTime.TryParse(item.FechaInicio, out parsed))
+                    {
+                        fInicio = parsed;
+                    }
                 }
 
-                DateTime fFin;
-                if (!DateTime.TryParse(item.FechaFin, out fFin) || fFin == default(DateTime))
+                DateTime fFin = default(DateTime);
+                if (!string.IsNullOrWhiteSpace(item.FechaFin))
+                {
+                    DateTime parsed;
+                    if (DateTime.TryParse(item.FechaFin, out parsed))
+                    {
+                        fFin = parsed;
+                    }
+                }
+                else if (fInicio != default(DateTime))
                 {
                     fFin = fInicio;
                 }
+
+                var cod = item.EstacionCodigo != null ? item.EstacionCodigo.Trim() : string.Empty;
 
                 resultado.Add(new SolicitudEstacionInspeccion
                 {
                     Id = item.Id,
                     SolicitudId = solicitudId,
-                    EstacionCodigo = item.EstacionCodigo.Trim(),
+                    EstacionCodigo = cod,
                     EstacionNombre = !string.IsNullOrWhiteSpace(item.EstacionNombre)
                         ? item.EstacionNombre.Trim()
-                        : SolicitudEstacionDAO.NormalizarNombreEstacion(item.EstacionCodigo, item.EstacionCodigo),
+                        : (!string.IsNullOrWhiteSpace(cod) ? SolicitudEstacionDAO.NormalizarNombreEstacion(cod, cod) : string.Empty),
                     FechaInicio = fInicio,
                     FechaFin = fFin,
+                    InspectorId = item.InspectorId,
                     InspectorNombre = item.InspectorNombre,
+                    InspeccionId = item.InspeccionId,
                     Estado = !string.IsNullOrWhiteSpace(item.Estado) ? item.Estado.Trim() : "SOLICITADA",
+                    Version = item.Version > 0 ? item.Version : 1,
                     Observacion = item.Observacion,
                     CreadoPor = usuarioId,
                     ActualizadoPor = usuarioId

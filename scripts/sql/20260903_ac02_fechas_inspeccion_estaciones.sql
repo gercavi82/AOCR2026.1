@@ -10,7 +10,7 @@
 
 DO $$
 BEGIN
-    -- 1. Crear tabla aditiva de estaciones por solicitud
+    -- 1. Crear tabla aditiva de estaciones por solicitud si no existe
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -48,7 +48,63 @@ BEGIN
         COMMENT ON COLUMN public.aocr_tbsolicitud_estacion.estado IS 'Estado de la estación en el flujo (SOLICITADA, PLANIFICADA, INSPECCIONADA, etc.)';
     END IF;
 
-    -- 2. Índice por solicitud_id para optimizar consultas de expedientes
+    -- 2. Asegurar CHECK de fechas (fecha_fin >= fecha_inicio)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_schema = 'public' 
+          AND table_name = 'aocr_tbsolicitud_estacion' 
+          AND constraint_name = 'chk_fechas_estacion'
+    ) THEN
+        ALTER TABLE public.aocr_tbsolicitud_estacion
+            ADD CONSTRAINT chk_fechas_estacion CHECK (fecha_fin >= fecha_inicio);
+    END IF;
+
+    -- 3. FK solicitud_id -> aocr_tbsolicitud(codigo_solicitud)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'aocr_tbsolicitud'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_schema = 'public' 
+          AND table_name = 'aocr_tbsolicitud_estacion' 
+          AND constraint_name = 'fk_solicitud_estacion_solicitud'
+    ) THEN
+        ALTER TABLE public.aocr_tbsolicitud_estacion
+            ADD CONSTRAINT fk_solicitud_estacion_solicitud
+            FOREIGN KEY (solicitud_id) REFERENCES public.aocr_tbsolicitud(codigo_solicitud) ON DELETE CASCADE;
+    END IF;
+
+    -- 4. FK inspeccion_id -> aocr_tbinspeccion(codigo_inspeccion)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'aocr_tbinspeccion'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_schema = 'public' 
+          AND table_name = 'aocr_tbsolicitud_estacion' 
+          AND constraint_name = 'fk_solicitud_estacion_inspeccion'
+    ) THEN
+        ALTER TABLE public.aocr_tbsolicitud_estacion
+            ADD CONSTRAINT fk_solicitud_estacion_inspeccion
+            FOREIGN KEY (inspeccion_id) REFERENCES public.aocr_tbinspeccion(codigo_inspeccion) ON DELETE SET NULL;
+    END IF;
+
+    -- 5. FK inspector_id -> usuario(idusuario) o relación institucional equivalente
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'usuario'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_schema = 'public' 
+          AND table_name = 'aocr_tbsolicitud_estacion' 
+          AND constraint_name = 'fk_solicitud_estacion_inspector'
+    ) THEN
+        ALTER TABLE public.aocr_tbsolicitud_estacion
+            ADD CONSTRAINT fk_solicitud_estacion_inspector
+            FOREIGN KEY (inspector_id) REFERENCES public.usuario(idusuario) ON DELETE SET NULL;
+    END IF;
+
+    -- 6. Índice por solicitud_id para optimizar consultas de expedientes
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes 
         WHERE schemaname = 'public' 
@@ -60,7 +116,7 @@ BEGIN
         WHERE (activo = TRUE);
     END IF;
 
-    -- 3. Índice único para evitar duplicados de la misma estación activa en una solicitud
+    -- 7. Índice único parcial para evitar duplicados de la misma estación activa en una solicitud
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes 
         WHERE schemaname = 'public' 

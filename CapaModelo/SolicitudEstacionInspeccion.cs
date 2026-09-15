@@ -45,4 +45,20 @@ namespace CapaModelo
             }
         }
     }
+
+    /// <summary>
+    /// Excepción lanzada cuando la versión enviada no coincide con la versión persistida en BD (AC-02 concurrencia optimista).
+    /// </summary>
+    public class EstacionVersionConflictException : Exception
+    {
+        public EstacionVersionConflictException(string message) : base(message) { }
+    }
+
+    /// <summary>
+    /// Excepción lanzada cuando se intenta registrar una estación duplicada en la misma solicitud (AC-02 unicidad).
+    /// </summary>
+    public class EstacionDuplicadaException : Exception
+    {
+        public EstacionDuplicadaException(string message) : base(message) { }
+    }
 }

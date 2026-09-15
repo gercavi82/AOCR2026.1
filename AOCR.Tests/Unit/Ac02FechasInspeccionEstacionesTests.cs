@@ -275,10 +275,31 @@ namespace AOCR.Tests.Unit
             Assert.AreEqual("Cap. Carlos Perez", resultado[0].InspectorNombre);
         }
 
+        private static string ObtenerRutaRaizProyecto()
+        {
+            var dir = AppDomain.CurrentDomain.BaseDirectory;
+            while (!string.IsNullOrEmpty(dir))
+            {
+                if (File.Exists(Path.Combine(dir, "AOCR.sln")))
+                {
+                    return dir;
+                }
+                var parent = Directory.GetParent(dir);
+                if (parent == null) break;
+                dir = parent.FullName;
+            }
+            return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
+        private static string ResolverRuta(string rutaRelativa)
+        {
+            return Path.Combine(ObtenerRutaRaizProyecto(), rutaRelativa.TrimStart('\\', '/'));
+        }
+
         [TestMethod]
         public void Test09_PlantillaPdf_AceptacionDocumental_PoseeEstructuraTablaEstaciones()
         {
-            var rutaPdf = @"c:\proyectos\AOCR\CapaPresentacion\Views\SolicitudAOCR\AceptacionDocumentalPdf.cshtml";
+            var rutaPdf = ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\AceptacionDocumentalPdf.cshtml");
             Assert.IsTrue(File.Exists(rutaPdf), "La vista AceptacionDocumentalPdf.cshtml debe existir.");
 
             var contenido = File.ReadAllText(rutaPdf);
@@ -292,7 +313,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test10_SeguridadRBAC_CoordinadorEInspector_PlanificacionRequiereAutorizacion()
         {
-            var rutaControlador = @"c:\proyectos\AOCR\CapaPresentacion\Controllers\InspeccionController.cs";
+            var rutaControlador = ResolverRuta(@"CapaPresentacion\Controllers\InspeccionController.cs");
             var contenido = File.ReadAllText(rutaControlador);
 
             var matches = Regex.Matches(contenido, @"\[Authorize\(Roles\s*=\s*ROL_COORD");
@@ -302,7 +323,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test11_RenderizadoResponsive_EstacionesTable_PoseeClasesAdaptables()
         {
-            var rutaFormulario = @"c:\proyectos\AOCR\CapaPresentacion\Views\SolicitudAOCR\_FormularioEmisionAOCR.cshtml";
+            var rutaFormulario = ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\_FormularioEmisionAOCR.cshtml");
             var contenidoFormulario = File.ReadAllText(rutaFormulario);
 
             Assert.IsTrue(contenidoFormulario.Contains("table-responsive"), "El formulario debe incluir contenedor responsive table-responsive.");
@@ -310,7 +331,7 @@ namespace AOCR.Tests.Unit
             Assert.IsTrue(contenidoFormulario.Contains("btnAgregarEstacion"), "El formulario debe incluir botón interactivo btnAgregarEstacion.");
             Assert.IsTrue(contenidoFormulario.Contains("btnEliminarEstacion"), "El formulario debe incluir botón interactivo btnEliminarEstacion.");
 
-            var rutaDetalle = @"c:\proyectos\AOCR\CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml";
+            var rutaDetalle = ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml");
             var contenidoDetalle = File.ReadAllText(rutaDetalle);
 
             Assert.IsTrue(contenidoDetalle.Contains("AC-02 Multi-Estación"), "El Detalle debe incluir badge o indicador AC-02 Multi-Estación.");
@@ -320,7 +341,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test12_Concurrencia_VersionadoOptimistaEnTablaEstacion()
         {
-            var rutaSql = @"c:\proyectos\AOCR\scripts\sql\20260903_ac02_fechas_inspeccion_estaciones.sql";
+            var rutaSql = ResolverRuta(@"scripts\sql\20260903_ac02_fechas_inspeccion_estaciones.sql");
             var contenidoSql = File.ReadAllText(rutaSql);
 
             StringAssert.Contains(contenidoSql, "version INTEGER NOT NULL DEFAULT 1");
@@ -331,7 +352,7 @@ namespace AOCR.Tests.Unit
         [TestMethod]
         public void Test13_RutaVirtualAocr_GeneracionCorrectaSinPrefijosHardcodeados()
         {
-            var rutaDetalle = @"c:\proyectos\AOCR\CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml";
+            var rutaDetalle = ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml");
             var contenido = File.ReadAllText(rutaDetalle);
 
             Assert.IsFalse(contenido.Contains("\"/aocr/SolicitudAOCR/Detalle\""), "No debe tener rutas absolutas codificadas.");

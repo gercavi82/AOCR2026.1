@@ -68,8 +68,11 @@ namespace CapaPresentacion.Models
         public string EstacionNombre { get; set; }
         public string FechaInicio { get; set; }
         public string FechaFin { get; set; }
+        public int? InspectorId { get; set; }
         public string InspectorNombre { get; set; }
+        public int? InspeccionId { get; set; }
         public string Estado { get; set; }
+        public int Version { get; set; } = 1;
         public string Observacion { get; set; }
     }
 
