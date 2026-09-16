@@ -1,0 +1,260 @@
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaPresentacion.Models.ViewModels.PendienteRevisionDireccionItemViewModel>>
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Informes técnicos por revisar";
+    var items = Model != null ? Model.Where(x => x != null).ToList() : new List<CapaPresentacion.Models.ViewModels.PendienteRevisionDireccionItemViewModel>();
+    var pendientesDecision = items.Count(x => string.Equals(x.AccionSiguienteDireccion, "RevisionDireccion", System.StringComparison.OrdinalIgnoreCase));
+    var pendientesFirma = items.Count(x =>
+        string.Equals(x.AccionSiguienteDireccion, "FirmarAocr", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(x.AccionSiguienteDireccion, "FirmarCondiciones", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(x.AccionSiguienteDireccion, "ValidarAocr", System.StringComparison.OrdinalIgnoreCase));
+    var informesConPdf = items.Count(x => !string.IsNullOrWhiteSpace(x.UrlPdfInformeFirmadoInspector));
+    var informesSatisfactorios = items.Count(x => string.Equals(x.ResultadoTecnicoFinal, "SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase));
+    var fechaActualizacion = System.DateTime.Now;
+}
+
+<div class="aocr-direction-reports-page" data-module="direction-pending-reports">
+    <nav class="aocr-reports-breadcrumb" aria-label="Ruta de navegación">
+        <ol>
+            <li><a href="@Url.Action("DashboardGerencial", "Direccion")">Centro de decisiones</a></li>
+            <li aria-current="page">Informes por revisar</li>
+        </ol>
+    </nav>
+
+    <header class="aocr-page-heading">
+        <div class="aocr-page-heading-copy">
+            <span class="aocr-page-eyebrow">DIRDAC · Decisión institucional</span>
+            <h1>Informes técnicos por revisar</h1>
+            <p>Revise los informes firmados por Inspector y determine si corresponde aprobarlos o devolverlos con observaciones.</p>
+        </div>
+        <div class="aocr-page-heading-actions">
+            <span class="aocr-heading-counter"><strong>@items.Count</strong> pendientes</span>
+            <a class="aocr-reports-btn aocr-reports-btn--light" href="@Url.Action("DashboardGerencial", "Direccion")">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Volver al centro de decisiones
+            </a>
+        </div>
+    </header>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="aocr-reports-message is-error" role="alert"><i class="fas fa-exclamation-circle"></i><span>@TempData["Error"]</span></div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="aocr-reports-message is-success" role="status"><i class="fas fa-check-circle"></i><span>@TempData["Success"]</span></div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="aocr-reports-message is-warning" role="alert"><i class="fas fa-exclamation-triangle"></i><span>@TempData["Warning"]</span></div>
+    }
+
+    <section class="aocr-report-kpis" aria-label="Indicadores de la bandeja">
+        <article class="aocr-report-kpi is-primary">
+            <span class="aocr-report-kpi-icon"><i class="fas fa-clipboard-list"></i></span>
+            <div><span>Pendientes de decisión</span><strong>@pendientesDecision</strong><small>Requieren decisión institucional</small></div>
+        </article>
+        <article class="aocr-report-kpi is-teal">
+            <span class="aocr-report-kpi-icon"><i class="fas fa-file-signature"></i></span>
+            <div><span>Pendientes de firma AOCR</span><strong>@pendientesFirma</strong><small>Siguiente etapa disponible</small></div>
+        </article>
+        <article class="aocr-report-kpi is-green">
+            <span class="aocr-report-kpi-icon"><i class="fas fa-file-pdf"></i></span>
+            <div><span>PDF firmado disponible</span><strong>@informesConPdf</strong><small>Documentos consultables</small></div>
+        </article>
+        <article class="aocr-report-kpi is-amber">
+            <span class="aocr-report-kpi-icon"><i class="fas fa-check-double"></i></span>
+            <div><span>Resultado satisfactorio</span><strong>@informesSatisfactorios</strong><small>Según resultado técnico real</small></div>
+        </article>
+    </section>
+
+    <section class="aocr-report-workspace" aria-labelledby="aocrReportWorkspaceTitle">
+        <header class="aocr-workspace-header">
+            <div>
+                <span class="aocr-workspace-icon"><i class="fas fa-inbox"></i></span>
+                <div>
+                    <h2 id="aocrReportWorkspaceTitle">Bandeja de revisión institucional</h2>
+                    <p>Informes remitidos por Inspector para decisión de Dirección o Jefatura técnica.</p>
+                </div>
+            </div>
+            <span class="aocr-workspace-updated"><i class="far fa-clock"></i> Actualizado @fechaActualizacion.ToString("dd/MM/yyyy HH:mm")</span>
+        </header>
+
+        @if (items.Any())
+        {
+            <div class="aocr-report-filters">
+                <div class="aocr-report-search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <label class="visually-hidden" for="aocrReportSearch">Buscar informes</label>
+                    <input id="aocrReportSearch" name="dirdacTraySearch" type="search" class="form-control dirdacTraySearch" placeholder="Buscar informe, solicitud, operadora o inspector" autocomplete="off" />
+                </div>
+                <div>
+                    <label for="aocrReportStatus">Estado</label>
+                    <select id="aocrReportStatus" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach (var estado in items.Select(x => x.EstadoInforme).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x))
+                        {
+                            <option value="@estado.ToUpperInvariant()">@estado</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label for="aocrReportInspector">Inspector</label>
+                    <select id="aocrReportInspector" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach (var inspector in items.Select(x => x.NombreInspector).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x))
+                        {
+                            <option value="@inspector.ToUpperInvariant()">@inspector</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label for="aocrReportDateFrom">Desde</label>
+                    <input id="aocrReportDateFrom" type="date" class="form-control" />
+                </div>
+                <div>
+                    <label for="aocrReportDateTo">Hasta</label>
+                    <input id="aocrReportDateTo" type="date" class="form-control" />
+                </div>
+                <button type="button" class="aocr-reports-btn aocr-reports-btn--secondary" id="aocrReportClear">
+                    <i class="fas fa-eraser"></i> Limpiar
+                </button>
+                <a class="aocr-reports-btn aocr-reports-btn--refresh" href="@Url.Action("PendientesDireccion", "Inspeccion")">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </a>
+            </div>
+
+            <div class="aocr-report-content">
+                <div class="aocr-report-table-wrapper">
+                    <table class="aocr-report-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Informe</th>
+                                <th scope="col">Operadora / empresa</th>
+                                <th scope="col">Inspector</th>
+                                <th scope="col">Fecha de emisión</th>
+                                <th scope="col">Tiempo pendiente</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col">Documento</th>
+                                <th scope="col">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in items)
+                        {
+                            var fecha = item.FechaFirmaInspector;
+                            var diasPendientes = fecha.HasValue ? System.Math.Max(0, (fechaActualizacion.Date - fecha.Value.Date).Days) : 0;
+                            var textoBusqueda = string.Join(" ", new[] {
+                                item.CodigoInforme.ToString(), item.NumeroSolicitud, item.NombreOperadora,
+                                item.NombreInspector, item.EstadoInforme, item.ResultadoTecnicoFinal
+                            }).ToLowerInvariant();
+                            var accion = item.AccionSiguienteDireccion ?? string.Empty;
+                            var esFirma = accion == "ValidarAocr" || accion == "FirmarAocr" || accion == "FirmarCondiciones";
+                            var claseEstado = accion == "RevisionDireccion" ? "is-review" : (esFirma ? "is-signature" : "is-neutral");
+                            <tr data-report-row
+                                data-search="@textoBusqueda"
+                                data-status="@((item.EstadoInforme ?? string.Empty).ToUpperInvariant())"
+                                data-inspector="@((item.NombreInspector ?? string.Empty).ToUpperInvariant())"
+                                data-date="@(fecha.HasValue ? fecha.Value.ToString("yyyy-MM-dd") : "")">
+                                <td>
+                                    <strong class="aocr-report-number">@(item.CodigoInforme > 0 ? "Informe #" + item.CodigoInforme : "Sin informe")</strong>
+                                    <span class="aocr-report-secondary">@item.NumeroSolicitud</span>
+                                    <small>Inspección @item.CodigoInspeccion · Solicitud @item.CodigoSolicitud</small>
+                                </td>
+                                <td><strong>@item.NombreOperadora</strong></td>
+                                <td><span class="aocr-inspector-cell"><i class="fas fa-user-check"></i>@item.NombreInspector</span></td>
+                                <td>
+                                    @if (fecha.HasValue)
+                                    {
+                                        <time datetime="@fecha.Value.ToString("s")">@fecha.Value.ToString("dd/MM/yyyy HH:mm")</time>
+                                    }
+                                    else
+                                    {
+                                        <span class="aocr-muted-value">No registrada</span>
+                                    }
+                                </td>
+                                <td><span class="aocr-pending-time">@(fecha.HasValue ? (diasPendientes == 0 ? "Hoy" : diasPendientes + (diasPendientes == 1 ? " día" : " días")) : "Sin fecha")</span></td>
+                                <td>
+                                    <span class="aocr-report-status @claseEstado">@item.EstadoInforme</span>
+                                    <small>@item.ResultadoTecnicoFinal</small>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(item.UrlPdfInformeFirmadoInspector))
+                                    {
+                                        <div class="aocr-document-actions">
+                                            <a href="@item.UrlPdfInformeFirmadoInspector" target="_blank" rel="noopener" title="Ver informe firmado">
+                                                <i class="fas fa-eye"></i> Ver
+                                            </a>
+                                            <a href="@item.UrlPdfInformeFirmadoInspector" download title="Descargar informe firmado">
+                                                <i class="fas fa-download"></i> Descargar
+                                            </a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="aocr-document-missing"><i class="far fa-file-alt"></i> No disponible</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a class="aocr-reports-btn aocr-reports-btn--decision"
+                                       href="@item.UrlRevision"
+                                       title="@item.MotivoAccionSiguiente">
+                                        <i class="@item.IconoAccionPrincipal"></i> @item.EtiquetaAccionPrincipal
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace(item.MotivoAccionSiguiente))
+                                    {
+                                        <small class="aocr-next-step">@item.MotivoAccionSiguiente</small>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                    <div class="aocr-table-empty-filter" id="aocrReportNoResults" hidden>
+                        <i class="fas fa-filter"></i>
+                        <strong>Sin resultados para los filtros seleccionados</strong>
+                        <span>Pruebe limpiando o modificando los criterios.</span>
+                    </div>
+                </div>
+                <footer class="aocr-table-footer">
+                    <span id="aocrReportVisibleCount">@items.Count registros</span>
+                </footer>
+            </div>
+        }
+        else
+        {
+            <div class="aocr-empty-state">
+                <span class="aocr-empty-state-icon"><i class="fas fa-check-double"></i></span>
+                <div>
+                    <h2>No tiene informes pendientes</h2>
+                    <p>La bandeja institucional está al día. Puede continuar con los procesos AOCR pendientes de firma.</p>
+                    <span class="aocr-empty-updated"><i class="far fa-clock"></i> Última actualización: @fechaActualizacion.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+                <div class="aocr-empty-actions">
+                    <a class="aocr-reports-btn aocr-reports-btn--primary"
+                       href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { DocumentoPendiente = "AOCR" })">
+                        <i class="fas fa-signature"></i> Ir a Firma AOCR
+                    </a>
+                    <a class="aocr-reports-btn aocr-reports-btn--secondary" href="@Url.Action("DashboardGerencial", "Direccion")">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <a class="aocr-reports-btn aocr-reports-btn--refresh" href="@Url.Action("PendientesDireccion", "Inspeccion")">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </a>
+                </div>
+            </div>
+        }
+    </section>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/Content/css/modules/aocr-direction-pending-reports.css")?v=20260728" />
+}
+
+@section Scripts {
+    <script src="@Url.Content("~/Scripts/modules/aocr-direction-pending-reports.js")?v=20260728"></script>
+}

@@ -1,0 +1,53 @@
+﻿@inherits System.Web.Mvc.WebViewPage<System.Collections.Generic.List<CapaModelo.SolicitudAOCR>>
+@using System.Linq
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = ViewBag.Title ?? "Generar Certificados AOCR";
+}
+
+<div class="container-fluid py-3">
+    <h3 class="mb-3"><i class="fas fa-file-signature"></i> @ViewBag.Title</h3>
+    <p class="text-muted">Solicitudes en fase final para emisión de certificados AOCR legalizados. La gestión de vista previa, firma y descarga se realiza desde la pantalla de certificado.</p>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info">No existen solicitudes legalizadas o emitidas para gestionar certificado.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Solicitud</th>
+                        <th>Operador</th>
+                        <th>RUC</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model)
+                    {
+                        <tr>
+                            <td>@s.CodigoSolicitud</td>
+                            <td>@Html.Encode(s.NombreOperador)</td>
+                            <td>@Html.Encode(s.Ruc)</td>
+                            <td><span class="badge bg-success">@Html.Encode(s.Estado)</span></td>
+                            <td>@(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
+                            <td>
+                                <div class="aocr-actions">
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud })">Detalle</a>
+                                    <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "Certificado", new { solicitudId = s.CodigoSolicitud })">Gestionar certificado</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+

@@ -1,0 +1,393 @@
+@page {
+    size: A4 portrait;
+    margin: 0;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    font-size: 9px;
+    line-height: 1.15;
+    background: #fff;
+}
+
+.pdf-document,
+.pdf-document * {
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.pdf-document {
+    width: 210mm;
+    margin: 0;
+}
+
+.pdf-page {
+    width: 210mm;
+    height: 297mm;
+    padding: 13mm 14mm 13mm 14mm;
+    position: relative;
+    page-break-inside: avoid;
+    overflow: hidden;
+}
+
+.page-break {
+    page-break-after: always;
+}
+
+.pdf-eae-header {
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.manual-top {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    font-size: 6.5pt;
+    color: #333;
+    border-bottom: 2px solid #000;
+}
+
+.manual-top td {
+    vertical-align: top;
+    border: none;
+    padding: 0 0 2px;
+}
+
+.manual-right {
+    width: 42%;
+    text-align: right;
+}
+
+.title-box {
+    width: 100%;
+    border: 1px solid #000;
+    margin: 0 0 10px;
+    text-align: center;
+    font-weight: bold;
+    page-break-inside: avoid;
+}
+
+.title-box > div {
+    padding: 8px 10px;
+}
+
+.title-box > div + div {
+    border-top: 1px solid #000;
+}
+
+.title-box > div:first-child,
+.title-box-main {
+    background: #d9d9d9;
+}
+
+.title-box > div:first-child {
+    font-size: 10pt;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.title-box-main {
+    font-size: 9.5pt;
+    line-height: 1.2;
+}
+
+.title-box-rdac {
+    background: #fff;
+    font-size: 9pt;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+}
+
+.field-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 8px;
+    table-layout: fixed;
+}
+
+.field-table td {
+    border: 1px solid #000;
+    padding: 5px 8px;
+    vertical-align: top;
+    line-height: 1.25;
+}
+
+.field-row {
+    font-size: 8.8pt;
+}
+
+.field-label {
+    font-weight: bold;
+}
+
+.field-value {
+    font-weight: normal;
+}
+
+.institution {
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 10pt;
+    line-height: 1.25;
+    margin-top: 4px;
+}
+
+.title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 9pt;
+    line-height: 1.25;
+    margin-top: 4px;
+}
+
+.rdac {
+    text-align: center;
+    font-weight: bold;
+    margin: 3px 0 6px;
+    font-size: 9pt;
+}
+
+.meta-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 4px;
+}
+
+.meta-list td {
+    border: none;
+    padding: 1.5px 2px;
+    vertical-align: top;
+    line-height: 1.25;
+}
+
+.meta-label {
+    width: 35%;
+    font-weight: bold;
+}
+
+.meta-value {
+    border-bottom: 1px solid #222 !important;
+    min-height: 12px;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+.eae-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    line-height: 1.15;
+}
+
+.eae-table th,
+.eae-table td {
+    border: 1px solid #000;
+    padding: 2mm;
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+.eae-table th {
+    background: #d9d9d9;
+    font-weight: bold;
+    text-align: left;
+}
+
+.eae-table td {
+    text-align: left;
+}
+
+.col-ref {
+    width: 10%;
+}
+
+.col-pregunta {
+    width: 17%;
+}
+
+.col-cumplimiento {
+    width: 17%;
+}
+
+.col-orientacion {
+    width: 24%;
+}
+
+.col-implementacion {
+    width: 15%;
+}
+
+.col-comentarios {
+    width: 17%;
+}
+
+.th-number {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.requirement-code {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.nota {
+    display: block;
+    font-style: italic;
+    margin-top: 1.5mm;
+    line-height: 1.15;
+}
+
+.literal {
+    display: block;
+    padding-left: 10px;
+}
+
+.check-option {
+    display: block;
+    white-space: nowrap;
+    line-height: 1.35;
+    margin-bottom: 1mm;
+}
+
+.check-box {
+    display: inline-block;
+    width: 3.6mm;
+    height: 3.6mm;
+    margin-right: 1.2mm;
+    border: 1px solid #000;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: bold;
+    font-size: 9px;
+    line-height: 3.2mm;
+}
+
+.check-label {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.check-option:last-child {
+    margin-bottom: 0;
+}
+
+.reference-cell,
+.question-cell,
+.orientation-cell,
+.comments-cell {
+    white-space: pre-line;
+}
+
+.eae-footer {
+    position: absolute;
+    left: 14mm;
+    right: 14mm;
+    bottom: 11mm;
+    border-top: 1px solid #000;
+    font-size: 10px;
+    font-weight: bold;
+    padding-top: 1mm;
+}
+
+.eae-footer table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.eae-footer td {
+    border: none;
+    padding: 0;
+}
+
+.eae-footer .left {
+    text-align: left;
+}
+
+.eae-footer .center {
+    text-align: center;
+}
+
+.eae-footer .right {
+    text-align: right;
+}
+
+.signature-block {
+    margin-top: 8mm;
+    margin-bottom: 5mm;
+    page-break-inside: avoid;
+    text-align: center;
+}
+
+.signature-title {
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 2.5mm;
+}
+
+.signature-slot {
+    width: 95mm;
+    min-height: 24mm;
+    margin: 0 auto 2.5mm;
+    border: 1px dashed #777;
+    position: relative;
+    padding-top: 9mm;
+    color: #666;
+    box-sizing: border-box;
+}
+
+.firma-anchor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    color: transparent;
+    font-size: 1px;
+    line-height: 1px;
+}
+
+.signature-data {
+    width: 70%;
+    margin: 0 auto;
+    font-size: 9px;
+}
+
+.signature-data td {
+    border: none;
+    padding: 1.2mm 1mm;
+    text-align: left;
+}
+
+.signature-label {
+    width: 18%;
+    font-weight: bold;
+}
+
+.signature-line {
+    border-bottom: 1px solid #000 !important;
+}
+
+.final-line {
+    margin-top: 14mm;
+    text-align: center;
+    font-size: 10px;
+    font-weight: bold;
+}

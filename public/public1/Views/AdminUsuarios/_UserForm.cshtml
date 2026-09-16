@@ -1,0 +1,141 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    var esEdicion = false;
+    if (ViewData["EsEdicion"] != null)
+    {
+        bool.TryParse(ViewData["EsEdicion"].ToString(), out esEdicion);
+    }
+    else
+    {
+        esEdicion = Model.IsEditMode;
+    }
+}
+
+@Html.HiddenFor(m => m.IdUsuario)
+
+<div class="card mb-3">
+    <div class="card-header">
+        <strong>Datos de usuario</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                @Html.LabelFor(m => m.CodigoUsuario, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.CodigoUsuario, new
+                {
+                    @class = "form-control",
+                    maxlength = "64",
+                    autocomplete = "off",
+                    @readonly = esEdicion ? "readonly" : (string)null
+                })
+                @Html.ValidationMessageFor(m => m.CodigoUsuario, null, new { @class = "text-danger" })
+            </div>
+            <div class="col-md-4">
+                @Html.LabelFor(m => m.NombreUsuario, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.NombreUsuario, new { @class = "form-control", maxlength = "120" })
+                @Html.ValidationMessageFor(m => m.NombreUsuario, null, new { @class = "text-danger" })
+            </div>
+            <div class="col-md-4">
+                @Html.LabelFor(m => m.ApellidoUsuario, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.ApellidoUsuario, new { @class = "form-control", maxlength = "120" })
+                @Html.ValidationMessageFor(m => m.ApellidoUsuario, null, new { @class = "text-danger" })
+            </div>
+            <div class="col-md-6">
+                @Html.LabelFor(m => m.Correo, new { @class = "form-label" })
+                @Html.TextBoxFor(m => m.Correo, new { @class = "form-control", maxlength = "160", type = "email" })
+                @Html.ValidationMessageFor(m => m.Correo, null, new { @class = "text-danger" })
+            </div>
+            <div class="col-md-3">
+                <label class="form-label d-block">Estado</label>
+                <div class="form-check mt-1">
+                    @Html.CheckBoxFor(m => m.Activo, new { @class = "form-check-input" })
+                    <label class="form-check-label" for="Activo">Usuario activo</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <strong>Companias RT</strong>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnSeleccionarTodasCompaniasAdmin">Seleccionar todas</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiarCompaniasAdmin">Limpiar</button>
+            <span class="small text-muted align-self-center" id="contadorCompaniasAdmin"></span>
+        </div>
+        <select class="form-select js-companias-rt-select"
+                id="CompaniasSeleccionadas"
+                name="CompaniasSeleccionadas"
+                multiple
+                size="10">
+            @if (Model.CatalogoCompanias != null && Model.CatalogoCompanias.Any())
+            {
+                foreach (var item in Model.CatalogoCompanias)
+                {
+                    <option value="@item.Value" @(item.Selected ? "selected" : null)>[@item.Value] @item.Text</option>
+                }
+            }
+        </select>
+        <small class="text-muted d-block mt-2">Seleccione una o varias companias para este usuario RT. Este bloque aplica cuando el usuario tenga un rol RT. Use clic simple para marcar o desmarcar.</small>
+        @Html.ValidationMessageFor(m => m.CompaniasSeleccionadas, null, new { @class = "text-danger d-block mt-1" })
+    </div>
+</div>
+
+@if (!esEdicion)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Credenciales</strong>
+        </div>
+        <div class="card-body">
+            <div class="form-check mb-3">
+                @Html.CheckBoxFor(m => m.GenerarPassword, new { @class = "form-check-input", id = "GenerarPassword" })
+                <label class="form-check-label" for="GenerarPassword">Generar contraseña temporal automáticamente</label>
+            </div>
+            <div class="js-password-manual-block @(Model.GenerarPassword ? "d-none" : string.Empty)">
+                @Html.LabelFor(m => m.PasswordInicial, new { @class = "form-label" })
+                @Html.PasswordFor(m => m.PasswordInicial, new { @class = "form-control", maxlength = "128", autocomplete = "new-password" })
+                <div class="form-text">Minimo 10 caracteres, con mayuscula, minuscula, numero y caracter especial.</div>
+                @Html.ValidationMessageFor(m => m.PasswordInicial, null, new { @class = "text-danger" })
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <strong>Roles y permisos</strong>
+    </div>
+    <div class="card-body">
+        @Html.ValidationMessageFor(m => m.RolesSeleccionados, null, new { @class = "text-danger d-block mb-2" })
+        <div class="row">
+            @if (Model.RolesDisponibles != null && Model.RolesDisponibles.Any())
+            {
+                foreach (var rol in Model.RolesDisponibles)
+                {
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="RolesSeleccionados"
+                                   id="rol_@rol.Value"
+                                   value="@rol.Value"
+                                   @(rol.Selected ? "checked" : null) />
+                            <label class="form-check-label" for="rol_@rol.Value">@rol.Text</label>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-12 text-muted">No hay roles disponibles.</div>
+            }
+        </div>
+    </div>
+</div>
