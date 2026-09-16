@@ -1914,9 +1914,13 @@
         if (!form) return false;
         clearValidationMessage(form);
         sincronizarCamposLvEae(form);
-        if (!requiereConfirmacion) return true;
         if (!window.AOCRValidacionLv) return showValidationMessage(form, 'No se pudo cargar la validacion. Recargue la pagina.', null);
-        return window.AOCRValidacionLv.validar(form, true).esValida;
+        var validacion = window.AOCRValidacionLv.validar(form, true);
+        if (!validacion.esValida) {
+            showValidationMessage(form, validacion.message, null);
+            return false;
+        }
+        return true;
     };
 
     var forms = document.querySelectorAll('#bloqueListaVerificacionOperacionalEae form[action*="GuardarListaVerificacionOperacionalEae"]');
@@ -1959,7 +1963,7 @@
                 : (form.getAttribute('data-lv-last-action') || (form.elements['lvSubmitAction'] ? form.elements['lvSubmitAction'].value : 'guardar') || 'guardar');
 
             setSubmitAction(this, action);
-            if (!window.validarComentariosLvEae(this, action === 'finalizar')) {
+            if (!window.validarComentariosLvEae(this, true)) {
                 event.preventDefault();
             }
         });

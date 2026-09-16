@@ -305,7 +305,7 @@
     <div class="modal fade" id="modalFirmarDircav" tabindex="-1" aria-labelledby="modalFirmarLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                @using (Html.BeginForm("FirmarCondicionesLimitaciones", "Dircav", FormMethod.Post, new { id = "formFirmarDircav" }))
+                @using (Html.BeginForm("FirmarCondicionesLimitaciones", "Dircav", FormMethod.Post, new { id = "formFirmarDircav", enctype = "multipart/form-data" }))
                 {
                     @Html.AntiForgeryToken()
                     @Html.Hidden("SolicitudId", Model.SolicitudId)
@@ -317,20 +317,26 @@
                     </div>
                     <div class="modal-body">
                         <div class="alert alert-info small mb-3">
-                            <i class="fas fa-shield-alt me-1"></i>Usted está a punto de estampar la <strong>firma institucional exclusiva de la Autoridad DIRCAV</strong> sobre las Condiciones y Limitaciones del trámite <strong>#@Model.NumeroSolicitud</strong>.
-                            El sistema generará el PDF inmutable, sellará el hash SHA-256 e incorporará el código de verificación oficial.
+                            <i class="fas fa-shield-alt me-1"></i>Usted está a punto de estampar la <strong>firma digital criptográfica exclusiva de la Autoridad DIRCAV</strong> sobre las Condiciones y Limitaciones del trámite <strong>#@Model.NumeroSolicitud</strong>.
+                            El sistema generará el PDF oficial inmutable, aplicará la firma criptográfica PKCS#7 desprendida verificable, sellará el hash SHA-256 e incorporará el código de verificación oficial.
                         </div>
 
                         <div class="mb-3">
-                            <label for="passwordCertificado" class="form-label fw-bold">Contraseña del Certificado / Token Digital:</label>
-                            <input type="password" class="form-control" id="passwordCertificado" name="PasswordCertificado" placeholder="Ingrese su clave de firma digital institucional..." autocomplete="current-password" />
-                            <div class="form-text">Si el ambiente opera con firma institucional del servidor, deje en blanco para validación automática.</div>
+                            <label for="certificadoDigital" class="form-label fw-bold">Archivo de Certificado Digital (.p12 / .pfx): <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="certificadoDigital" name="certificadoDigital" accept=".p12,.pfx" required />
+                            <div class="form-text">Cargue su certificado institucional válido en formato PKCS#12 (.p12 o .pfx).</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="passwordCertificado" class="form-label fw-bold">Contraseña del Certificado: <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="passwordCertificado" name="PasswordCertificado" placeholder="Ingrese la contraseña de su certificado digital..." autocomplete="current-password" required />
+                            <div class="form-text">La contraseña y la clave privada nunca se almacenan en el sistema.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success fw-bold px-4" id="btnConfirmarFirmarDircav">
-                            <i class="fas fa-stamp me-1"></i>Firmar y Legalizar Documento
+                        <button type="submit" class="btn btn-success fw-bold px-4 btn-prevenir-doble" id="btnConfirmarFirmarDircav">
+                            <i class="fas fa-stamp me-1"></i>Firmar Digitalmente CL
                         </button>
                     </div>
                 }

@@ -276,10 +276,6 @@
                 ? submitter.getAttribute('data-lv-submit-action')
                 : (form.getAttribute('data-lv-last-action') || 'guardar');
 
-            if (action !== 'finalizar') {
-                return;
-            }
-
             var errorValidacion = validarCompletitudCliente(form);
             if (errorValidacion) {
                 event.preventDefault();
@@ -296,11 +292,13 @@
                         return;
                     }
 
-                    notify('success', payload.message || 'Lista de verificación operacional EAE finalizada correctamente.');
-                    window.location.assign(payload.redirectUrl || window.location.href);
+                    notify('success', payload.message || (action === 'finalizar' ? 'Lista de verificación operacional EAE finalizada correctamente.' : 'Lista de verificación guardada correctamente.'));
+                    if (payload.redirectUrl) {
+                        window.location.assign(payload.redirectUrl);
+                    }
                 })
                 .catch(function (error) {
-                    notify('error', error && error.message ? error.message : 'No se pudo finalizar la lista de verificación operacional EAE.');
+                    notify('error', error && error.message ? error.message : 'No se pudo procesar la lista de verificación operacional EAE.');
                 })
                 .finally(function () {
                     setButtonsBusy(form, false, submitter);
