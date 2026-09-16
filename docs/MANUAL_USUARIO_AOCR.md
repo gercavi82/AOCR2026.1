@@ -1,427 +1,167 @@
-# Manual de usuario — Sistema AOCR (implementación actual)
+# Manual de Usuario — Sistema AOCR (Simplificación y Emisión AOCR)
 
-**Versión:** 2026-06-11  
-**Basado en:** `CapaPresentacion`, `CapaNegocio`, `CapaDatos` del repositorio AOCR  
-**No es documentación genérica:** cada ruta, estado, menú y mensaje citado corresponde al código desplegado.
-
-**Complementos:** [`MANUAL_FLUJO_RT_A_AOCR.md`](MANUAL_FLUJO_RT_A_AOCR.md) (recorrido RT→AOCR por fases) · `MANUAL_TECNICO_AOCR.md` (§16 LV · §17 Informe · §18 Mod. tipo 3) · `GUIA_VISUAL_POR_ROL.md` · `GUIA_INSPECTOR_SOLICITUD_12.md`
-
----
-
-## 0. Caso de prueba institucional documentado
-
-Use la solicitud **#12** para validar el flujo emisión post-asignación:
-
-| Campo | Valor de referencia (entorno `dgac_des`) |
-|-------|------------------------------------------|
-| Código interno | `12` |
-| Número institucional | `DGAC-GOP-2026-AOCR012` |
-| Operadora (ejemplo) | AMERICAN AIRLINES INC. |
-| Estado esperado tras asignación | `En Inspeccion` (`EstadoSolicitud.EnInspeccion`) |
-| Inspección vinculada | `CodigoInspeccion = 11` |
-| Inspector asignado | `CodigoTecnico` / `CodigoInspector = 43` (ej. CATOTA TORRES) |
-| Coordinación (COO-1 histórico) | Usuario revisor id `45` — **no cuenta** como decisión del inspector |
-| Documentos en revisión | 12 tipos (excluye `SOLICITUD_INSPECCION_EXT` del conteo documental) |
-| Publicación IIS | `C:\AOCR\publicacion1` (perfil `FolderProfile4`) |
-| Log aplicación | `CapaPresentacion/App_Data/Logs/AOCR_YYYYMMDD.log` |
+**Dirección General de Aviación Civil (DGAC) — Ecuador**  
+**Proyecto:** DGAC-006-05-02 *Otorgamiento del Reconocimiento del Certificado de Explotador de Servicios Aéreos (AOCR)*  
+**Versión:** 2.0 (Septiembre 2026 — Incorporación Acciones Correctivas AC-01 a AC-12)  
+**Entorno:** ASP.NET MVC 5 (.NET Framework 4.8) / PostgreSQL
 
 ---
 
-## 1. Roles canónicos en pantalla
+## 1. Introducción y Propósito
 
-El menú lateral usa roles **unificados** (`RoleGroupingHelper`), no los nombres crudos de BD:
-
-| Rol unificado (sesión) | Roles crudos que mapean | Usuario prueba habitual |
-|------------------------|-------------------------|-------------------------|
-| `Coordinacion` | `CoordinadorInspecciones`, `GEN_COORDINACION` (forzado) | `GEN_COORDINACION` |
-| `InspectorTecnico` | `Inspector`, `InspectorTecnico`, `EvaluadorTecnico`, `TECNICO` | Inspector id 43 |
-| `Solicitante` | RT / operador | Propietario solicitud |
-| `Financiero` | Perfil financiero | Revisor de órdenes |
-| `DireccionJefaturaTecnica` | DIRDAC / dirección | Bandeja `PendientesDireccion` |
-| `Administrador` | Acceso total | Soporte / QA |
-
-**Selector de rol:** si el usuario tiene varios perfiles unificados, debe elegir uno antes de operar; el menú se construye en `SidebarMenuBuilder.Build()`.
+El **Sistema AOCR** automatiza y simplifica el trámite de emisión, renovación y modificación de autorizaciones y reconocimientos a operadores aéreos extranjeros. Este manual proporciona las directrices operativas paso a paso para cada uno de los roles institucionales y externos que intervienen en el flujo del proceso.
 
 ---
 
-## 2. Menú lateral — rutas reales por perfil
+## 2. Roles y Actores del Sistema
 
-Textos y destinos extraídos de `SidebarMenuBuilder.cs`:
+El acceso al sistema está segmentado estrictamente por roles operativos y de seguridad:
 
-### 2.1 Coordinación (`Coordinacion`)
-
-| Etiqueta menú | Controller | Action | Badge (servicio) |
-|---------------|------------|--------|------------------|
-| Bandeja integral | `CoordinacionJefatura` | `DashboardInspeccion` | `CoordinacionBandejaService` → `CoordinatorDocumentalQueue` |
-| Pendientes de revisión | `CoordinacionJefatura` | `RevisionVerificacion` | Idem |
-| *(Grupo Solicitud)* Revisión documental | `CoordinacionJefatura` | `RevisionVerificacion` | Cola documental coordinador |
-| Inspecciones | `Inspeccion` | `Index` | — |
-
-**Asignación de inspector (no está como ítem suelto):** se accede desde la bandeja de coordinación hacia  
-`/Tecnico/Index` → `/Tecnico/AsignarInspector?solicitudId={id}&tipoInspector=OPS|AIR|TODOS`
-
-### 2.2 Inspector (`InspectorTecnico`)
-
-| Etiqueta menú | Controller | Action | Badge |
-|---------------|------------|--------|-------|
-| Dashboard técnico | `Dashboard` | `Inspector` | `InspectorPendingRevision` |
-| Revisión documental | `RevisionDocumental` | `Index` | `RevisionDocumentalBandejaService.ContarBandejaInspector` |
-| Pendientes de revisión | `RevisionDocumental` | `Index` | Idem |
-| Inspecciones | `Inspeccion` | `Index` | `InspectorBandejaService` |
-| Lista de Verificación LV/EAE | `Inspeccion` | `Index` | `?vista=operativa` |
-| Informe técnico y NC | `Inspeccion` | `Index` | — |
-
-### 2.3 RT / Solicitante
-
-| Etiqueta menú | Controller | Action | Parámetros |
-|---------------|------------|--------|------------|
-| Solicitud AOCR | `SolicitudAOCR` | `FormularioEmisionAOCR` | `tipoSolicitud=1` |
-| Renovación AOCR | `SolicitudAOCR` | `FormularioEmisionAOCR` | `tipoSolicitud=2` |
-| Condiciones y limitaciones | `SolicitudAOCR` | `FormularioEmisionAOCR` | `tipoSolicitud=3` |
-| Órdenes (RT) | `OrdenRecaudacion` | `Nueva` / `Detalles` | — |
-| Mis trámites | `SolicitudAOCR` | `MisSolicitudes` | — |
-| Documentos y expediente | `Documento` | `Subir` / `Lista` | — |
-
-### 2.4 Financiero
-
-| Etiqueta menú | Controller | Action |
-|---------------|------------|--------|
-| Dashboard financiero | `Financiero` | `Dashboard` |
-| Órdenes de recaudación | `Financiero` | `TodasOrdenes` |
-| Aprobar pago | `Financiero` | `AprobarPago` / `AprobarPagoConFactura` |
-
-### 2.5 DIRDAC (`DireccionJefaturaTecnica`)
-
-| Etiqueta menú | Controller | Action |
-|---------------|------------|--------|
-| Dashboard dirección | `CoordinacionJefatura` | `DashboardGerencial` |
-| Informe técnico y NC | `Inspeccion` | `PendientesDireccion` |
-| Listos para firma | `Inspeccion` | `PendientesDireccion` |
-| AOCR y condiciones | `CoordinacionJefatura` | `ValidarAocr` |
-
-**Regla de contadores:** el número del badge debe igualar las filas de la bandeja del mismo servicio (`AocrSidebarCounterService`).
-
----
-
-## 3. Tipos de solicitud y campo `tipoSolicitud`
-
-| Valor | Formulario | Destino tras firma coordinador (`RevisionDocumentalService.ResolverEstadoDestinoFirmaAceptacionDocumental`) |
-|-------|------------|-------------------------------------------------------------------------------------------------------------|
-| `1` | `SolicitudAOCR/FormularioEmisionAOCR?tipoSolicitud=1` | `Pendiente Asignacion RT` |
-| `2` | `...?tipoSolicitud=2` | `Pendiente Asignacion RT` |
-| `3` | `...?tipoSolicitud=3` | `Firmado Coordinador` → panel modificación en `Detalle.cshtml` |
-
-Constantes: `CapaDatos/Constants/EstadoConstants.cs` → clase `EstadoSolicitud`.
-
----
-
-## 4. Estados de solicitud relevantes (texto persistido)
-
-Estos son los valores **exactos** en columna estado de `aocr_tbsolicitud`:
-
-| Estado C# | Texto en BD / UI |
-|-----------|------------------|
-| `EnRevision` | `En Revision` |
-| `DocumentacionPendiente` | `Documentacion Pendiente` |
-| `Observada` | `Observada` |
-| `Subsanada` | `Subsanada` |
-| `AceptacionDocumental` | `Aceptacion Documental` |
-| `PendienteAsignacionRT` | `Pendiente Asignacion RT` |
-| `EnInspeccion` | `En Inspeccion` |
-| `RequiereInspeccion` | `Requiere Inspeccion` |
-| `GeneradoCondicionesLimitaciones` | `Generado Condiciones y Limitaciones` |
-| `FirmadoCoordinador` | `Firmado Coordinador` |
-| `AOCR_EnElaboracion` | `AOCR En Elaboracion` |
-| `AOCR_EnRevision` | `AOCR En Revision` |
-| `EnviadoDcav` | `Enviado DCAV` |
-| `FirmadoDcav` | `Firmado DCAV` |
-| `AOCR_EmitidoRecibido` | `AOCR Emitido/Recibido` |
-| `Finalizado` | `Finalizado` |
-
-**Regla verificada en código:** descargar PDF de aceptación documental **no** ejecuta transición a `Finalizado` (`SolicitudAOCRController` — sin atajo post-descarga).
-
----
-
-## 5. Flujo emisión (tipo 1/2) — secuencia verificable
-
-```text
-RT: SolicitudAOCR/FormularioEmisionAOCR (tipo 1 o 2)
-  → OrdenRecaudacion/Nueva + comprobante
-Financiero: Financiero/AprobarPago → estado avanza a carga documental
-RT: Documento/Subir + envío desde SolicitudAOCR/Detalle/{id}
-  → estado En Revision
-Coordinación: CoordinacionJefatura/RevisionVerificacion (pre-asignación)
-  → SolicitudAOCR/FirmarAceptacionDocumental/{id}
-  → Pendiente Asignacion RT
-Coordinación: Tecnico/Index → Tecnico/AsignarInspector (POST)
-  → En Inspeccion + registro en aocr_tbinspeccion
-Inspector: RevisionDocumental/Index → Documento/Lista?modo=revision
-  → Inspeccion/ConfirmarRevisionDocumentalInspector/{idInspeccion}
-  → LV (Guardar/Finalizar/FirmarListaVerificacionOperacionalEae)
-  → Informe (Guardar/Finalizar/FirmarInformeInspector) → FIRMADO_INSPECTOR
-DIRDAC: Inspeccion/PendientesDireccion → aprobación
-Coordinación: CoordinacionJefatura/ValidarAocr
-DIRDAC: firma AOCR → AOCR Emitido/Recibido
-RT: SolicitudAOCR/GeneradasFirmadas
+```
+ [Operador Aéreo / RT]  ──>  [Coordinación de Inspección]  ──>  [Inspector Técnico Asignado]
+          ▲                                                                 │
+          │                                                                 ▼
+ [Entrega Final AC-12] <── [DIRDAC: Firma AOCR] <── [DIRCAV: Firma CL] <── [Informe & Acta]
 ```
 
----
-
-## 6. Revisión documental — dos fases (regla central del sistema)
-
-### 6.1 Fase A — Coordinación **pre-asignación** (COO-1)
-
-**Condición código:** `SolicitudAocrInfraBL.EsRevisionDocumentalPreAsignacion` = true cuando:
-- **No** hay inspector asignado (`TieneInspectorAsignado` = false), y
-- Estado ∈ `{ En Revision, Documentacion Pendiente, Subsanada }`.
-
-| Aspecto | Comportamiento |
-|---------|----------------|
-| Pantalla | `CoordinacionJefatura/RevisionVerificacion` o revisión desde `SolicitudAOCR/Detalle` |
-| Revisiones que cuentan | Todas en `aocr_tbrevision_documental` (`ObtenerUltimasRevisionesPorSolicitud`) |
-| Inferencia `documento.estado = Aprobado` | **Sí** cuenta como ACEPTADO si no hay fila en revisiones |
-| Observación típica prueba | *"Revision documental institucional pre-asignacion (COO-1)"* (script dev o coordinador) |
-
-### 6.2 Fase B — Inspector **post-asignación**
-
-**Condición código:** `RequiereDecisionDocumentalInspector(codigoSolicitud)` = `TieneInspectorAsignado` (campo `CodigoTecnico` en solicitud **o** `CodigoInspector` en inspección).
-
-| Aspecto | Comportamiento |
-|---------|----------------|
-| Bandeja | `/RevisionDocumental/Index` — servicio `RevisionDocumentalBandejaService` |
-| Pantalla de decisión | `/Documento/Lista?solicitudId={id}&modo=revision&origen=revision-documental` |
-| Revisiones que cuentan | Solo donde `codigo_usuario_revisor` ∈ `{CodigoTecnico, CodigoInspector}` |
-| Inferencia desde `Aprobado` en BD | **No** — sin revisión del inspector → **PENDIENTE** |
-| Revisor / observación en UI | Solo datos de revisión del inspector (`ViewBag.EsFaseInspectorDocumental`) |
-
-**Endpoints AJAX de decisión** (`DocumentoController`):
-
-| Acción | URL | Validación observación |
-|--------|-----|------------------------|
-| Aceptar | `POST Documento/AceptarDocumentoSolicitud` | Devolución N/A |
-| Devolver | `POST Documento/DevolverDocumentoSolicitud` | Motivo ≥ 10 caracteres |
-| Reabrir | `POST Documento/ReabrirDocumentoSolicitud` | Solo Coordinación / Admin |
-
-Persistencia: `RevisionDocumentalDAO.RegistrarRevision` → tabla `aocr_tbrevision_documental`.
-
-### 6.3 Textos exactos de la pantalla `Documento/Lista`
-
-Definidos en `Views/Documento/Lista.cshtml`:
-
-| Modo | `ViewBag.ModoDocumentos` | Título tabla | Badge capacidad |
-|------|--------------------------|--------------|-----------------|
-| Consulta | `ver` | **Archivos del expediente** | **Solo lectura** |
-| Revisión | `revision` | **Bandeja de revisión documental** | **Revisión activa** (si `PuedeRevisarDocumentos=true`) |
-
-**Error frecuente validado:** abrir `modo=ver` desde `Inspeccion/Detalle` (enlace consulta) muestra expediente **sin** botones Aceptar/Devolver — es correcto para consulta, incorrecto para decidir.
-
-### 6.4 Acciones en bandeja `RevisionDocumental/Index`
-
-Según estado de cada fila (`RevisionDocumentalSolicitudRowViewModel`):
-
-| Condición | Botón | Destino |
-|-----------|-------|---------|
-| Documentos pendientes de decisión | **Revisar documentación** | `Documento/Lista?modo=revision` |
-| Todos aceptados, falta confirmación | **Confirmar fase documental** | `Inspeccion/Detalle/{CodigoInspeccion}` |
-| Cierre confirmado | **Continuar en LV/EAE** | `Inspeccion/Detalle/{CodigoInspeccion}` |
-
-Códigos de fila: `EN_REVISION_DOCUMENTAL`, `PENDIENTE_CONFIRMACION_INSPECTOR`, `LISTO_INSPECCION_CAMPO`.
+| Rol Institucional | Perfil / Denominación | Responsabilidad Principal |
+| :--- | :--- | :--- |
+| **Representante Técnico (RT)** | Solicitante / Operador Extranjero | Carga de solicitud, carga de requisitos documentales, pago de tasas, recepción de documentos legalizados. |
+| **Financiero** | Recaudación y Tesorería | Validación de comprobantes de pago y emisión de facturas. |
+| **Coordinador** | Jefatura / Coordinación de Inspecciones | Revisión previa de documentos, aceptación formal, emisión de designación y asignación de inspectores. |
+| **Inspector Técnico** | Operaciones (OPS) / Aeronavegabilidad (AIR) | Revisión técnica documental, ejecución de listas de verificación por estación, emisión de informe técnico y no conformidades. |
+| **DIRCAV** | Director de Certificación Aeronáutica | Revisión final técnica, aprobación y firma electrónica del documento de **Condiciones y Limitaciones (C&L)**. |
+| **DIRDAC** | Director General de Aviación Civil | Máxima autoridad: revisión institucional, devolución motivada o firma/legalización final del **Certificado AOCR**. |
 
 ---
 
-## 7. Coordinación — procedimiento preciso
+## 3. Guía Operativa por Rol
 
-### 7.1 Firma aceptación documental
+### 3.1 Representante Técnico (RT / Operador Extranjero)
 
-- **Ruta:** `POST SolicitudAOCR/FirmarAceptacionDocumental/{id}`
-- **Autorización:** `[AocrAuthorize(Modulo = "CoordinacionJefatura", Accion = "FirmarAceptacionDocumental")]`
-- **Servicio:** `RevisionDocumentalService.PrepararFirmaAceptacionDocumental`
-- **Log:** `[FirmarAceptacionDocumental]` en log de aplicación
+#### A. Ingreso y Registro de Solicitud
+1. Ingrese al portal con su usuario y contraseña asignados.
+2. En el menú lateral izquierdo, seleccione el tipo de trámite:
+   * **Solicitud AOCR (Emisión inicial):** Para compañías que operan por primera vez.
+   * **Renovación AOCR:** Prórroga de vigencia de reconocimiento existente.
+   * **Condiciones y Limitaciones:** Para modificaciones (inclusión de nuevas aeronaves, nuevas rutas/estaciones o cambio de RT).
+3. Complete los datos de la aerolínea, flota de aeronaves, tripulaciones y las **estaciones/aeropuertos en Ecuador** donde operará.
+4. Presione **"Guardar y Continuar"**. El sistema generará el número oficial de trámite (ej. `DGAC-GOP-2026-AOCR0XX`).
 
-| Tipo | Estado destino exacto |
-|------|----------------------|
-| 1 / 2 | `Pendiente Asignacion RT` |
-| 3 | `Firmado Coordinador` |
+#### B. Carga de Documentos Requeridos
+1. Diríjase a la sección **"Documentos y Expediente"**.
+2. Cargue en formato PDF cada uno de los requisitos obligatorios:
+   * Copia de AOC del país de origen vigente.
+   * Especificaciones Operacionales (OpSpecs).
+   * Manual de Operaciones / Manual de Vuelo.
+   * Certificados de Aeronavegabilidad y Matrícula de aeronaves.
+   * Pólizas de seguro vigentes para Ecuador.
+   * Permiso de Operación CNAC y Poder legal del Representante en Ecuador.
+3. Una vez cargados todos los archivos, presione **"Enviar a Revisión Institucional"**.
 
-### 7.2 Asignar inspector
+#### C. Subsanación de Documentos (En caso de devolución)
+* Si un documento es observado o devuelto por el Coordinador o el Inspector, recibirá una notificación automática por correo.
+* Ingrese a **"Mis Trámites"**, abra la solicitud y en la pestaña de documentos identifique los marcados como **"DEVUELTO"**.
+* Cargue la versión corregida y presione **"Reenviar Documentos Subsanados"**.
 
-1. `/Tecnico/Index` — datos: `CoordinacionBandejaService.ObtenerPendientesAsignacion()`
-2. `/Tecnico/AsignarInspector?solicitudId=12&tipoInspector=OPS`
-3. **POST** `Tecnico/AsignarInspector` con:
-   - `inspectorPrincipal` (cédula/login del catálogo `UsuarioInternoRTBL.ListarInspectoresAsignables`)
-   - `fechaInspeccion`, `horaInspeccion`
-   - Filtros: `OPS` | `AIR` | `TODOS`
-4. **Autorización:** `[AocrAuthorize(Modulo = "Tecnico", Accion = "AsignarInspector")]`
-5. **Log éxito:** `[GestionInspeccion]`
-6. **Estado esperado solicitud #12:** `En Inspeccion`
-
----
-
-## 8. Inspector — procedimiento preciso (solicitud #12)
-
-### 8.1 Revisión documental
-
-1. Login usuario inspector id **43**.
-2. Menú **Revisión documental** → `/RevisionDocumental/Index`.
-3. Fila `DGAC-GOP-2026-AOCR012` → **Revisar documentación**.
-4. URL resultante:
-   ```
-   /Documento/Lista?solicitudId=12&modo=revision&origen=revision-documental
-   ```
-5. Verificar **12 filas** (aprox.) con:
-   - Estado: badge gris **PENDIENTE**
-   - Observación: vacía
-   - Revisado por: vacío
-   - Botones: **Aceptar** / **Devolver**
-6. Tras aceptar cada documento:
-   - `POST Documento/AceptarDocumentoSolicitud`
-   - Revisor = nombre del inspector en sesión (no `GERMAN ALBERTO` / id 45)
-7. Log: `[DOC_FLOW]`, `[DOC_SOLICITUD]`
-
-### 8.2 Confirmar cierre documental
-
-1. `/Inspeccion/Detalle/11`
-2. Botón: **Confirmar cierre documental** (`Views/Inspeccion/Detalle.cshtml` línea ~3388)
-3. **POST** `Inspeccion/ConfirmarRevisionDocumentalInspector/11`
-4. **Autorización:** `[AocrAuthorize(Modulo = "Inspeccion", Accion = "ConfirmarRevisionDocumentalInspector")]`
-5. Confirmación registrada si:
-   - `inspeccion.estado_documental` ∈ `{ EN_REVISION, ACEPTADA, APROBADO }`, **o**
-   - `inspeccion.Comentarios` contiene *"Inspector confirmó revisión documental"*
-   - (`RevisionDocumentalService.InspectorConfirmoCierreDocumental`)
-
-**Mensaje UI si LV bloqueada:** *"Revise la documentación cargada y confirme el cierre documental antes de habilitar la LV/EAE y el informe técnico."*
-
-### 8.3 LV/EAE
-
-| Paso | Acción HTTP | Atributo AocrAuthorize |
-|------|-------------|------------------------|
-| Guardar borrador | `POST Inspeccion/GuardarListaVerificacionOperacionalEae` | `GuardarListaVerificacionOperacionalEae` |
-| Finalizar PDF | `POST Inspeccion/FinalizarListaVerificacionOperacionalEae/{id}` | `FinalizarListaVerificacionOperacionalEae` |
-| Firmar | `POST Inspeccion/FirmarListaVerificacionOperacionalEae` | `FirmarListaVerificacionOperacionalEae` |
-
-Precondición: `RevisionDocumentalService.PuedeInspectorAbrirFaseOperativaLv` = fase documental aprobada **+** cierre confirmado.
-
-**Textos UI bloqueo:** *"BLOQUEADO POR LV/EAE"*, *"Debe finalizar y firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico."*
-
-### 8.4 Informe técnico
-
-| Paso | Acción HTTP | Resultado |
-|------|-------------|-----------|
-| Guardar | `POST Inspeccion/GuardarInformeTecnico` | Borrador |
-| Finalizar | `POST Inspeccion/FinalizarInformeTecnico/{id}` | PDF generado |
-| Firmar inspector | `POST Inspeccion/FirmarInformeInspector` | `FIRMADO_INSPECTOR` + envío DIRDAC |
-
-Modal: `GET Inspeccion/ModalInformeTecnico` · PDF en `App_Data/Documentos/...`
+#### D. Descarga de Documentos Finales Legalizados (AC-12)
+* Cuando el trámite culmine con las firmas del Director General y Director de Certificación, recibirá una notificación de disponibilidad.
+* En su bandeja de **"Mis Trámites"**, aparecerá la sección **"Documentos Legalizados Disponibles"**.
+* Podrá descargar con verificación de autenticidad:
+  1. **Certificado AOCR Oficial** (firmado por DIRDAC).
+  2. **Hoja de Condiciones y Limitaciones** (firmada por DIRCAV).
 
 ---
 
-## 9. Financiero — procedimiento preciso
-
-| Paso | Ruta | Notas |
-|------|------|-------|
-| Bandeja | `Financiero/TodasOrdenes` o `Financiero/Index?estado=TODAS` | Badge = `FinancialPendingReviewOrders` |
-| Detalle | `Financiero/DetalleOrden/{id}` | — |
-| Aprobar | `Financiero/AprobarPago/{id}` o `AprobarPagoConFactura` | Correo vía `AocrEmailFlujoService` (idempotente por `event_key`) |
-| Rechazar | `Financiero/RechazarOrden/{id}?motivo=...` | — |
-
-**Validación contador:** sidebar badge financiero = filas en bandeja con mismo filtro `FinancialOrderStateHelper`.
+### 3.2 Rol Financiero (Recaudación)
+1. Ingrese a **"Financiero" > "Órdenes de Recaudación"**.
+2. Localice el trámite por número de solicitud o nombre del operador.
+3. Verifique el comprobante de depósito/transferencia bancaria cargado por el RT.
+4. Ingrese el número de comprobante/factura institucional y presione **"Aprobar Pago"**.
+5. El sistema habilitará inmediatamente el expediente para que Coordinación proceda con la asignación.
 
 ---
 
-## 10. DIRDAC — procedimiento preciso
+### 3.3 Coordinador de Inspecciones (`GEN_COORDINACION`)
 
-| Paso | Ruta | Efecto |
-|------|------|--------|
-| Bandeja informes | `Inspeccion/PendientesDireccion` | Informes con `FIRMADO_INSPECTOR` |
-| Aprobar informe | Acción en bandeja (controlador `InspeccionController`) | Solicitud → `AOCR En Elaboracion` / revisión según tipo |
-| Validar AOCR | `CoordinacionJefatura/ValidarAocr` | Revisión formal coordinación |
-| Firma DIRDAC | `Inspeccion/FirmarInformeDirdac` (informe) + flujo firma AOCR | `Enviado DCAV` → `Firmado DCAV` → `AOCR Emitido/Recibido` |
-
----
-
-## 11. Documentos incluidos en conteo documental
-
-`SolicitudAocrInfraBL.DebeIncluirEnRevisionDocumental` excluye **solo** `SOLICITUD_INSPECCION_EXT`.
-
-Tipos canónicos reconocidos (entre otros):
-
-- `COMPROBANTE_PAGO`
-- `CERTIFICADO_AERONAVEGABILIDAD`
-- `MANUAL_OPERACIONES`
-- `OPSPECS_ESPECIFICACIONES_OPERACIONALES`
-- `COPIA_AOC_VALIDA`
-- `CERTIFICADO_RUIDO_AERONAVES_EAE`
-- `PERMISO_OPERACION_CNAC`
-- `COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR`
-
-Se toma la **última versión** por tipo (`Version`, `FechaCarga`, `CodigoDocumento`).
+#### A. Aceptación Formal de Documentos y Designación (AC-05 / AC-06)
+1. Ingrese a **"Coordinación" > "Bandeja Integral"** o **"Revisión y Verificación"**.
+2. Seleccione la solicitud pendiente.
+3. Verifique el cumplimiento preliminar de la documentación base.
+4. Presione **"Asignar Inspector"** (`/Tecnico/AsignarInspector`):
+   * Seleccione el inspector técnico responsable (ej. Operaciones o Aeronavegabilidad).
+   * Defina las **fechas individuales y cronograma programado para cada estación declarada** (AC-02).
+5. Al confirmar, el sistema genera de forma automática el **Acta de Designación en PDF con firma institucional** y notifica al inspector designado y al operador.
 
 ---
 
-## 12. Modificación tipo 3 — ramas exactas
+### 3.4 Inspector Técnico Asignado
 
-Detección: `AocrModificationWorkflowService.TieneNuevoAeropuertoDeclarado` (campo `AeropuertosEcuador` no vacío).
+#### A. Revisión Técnica Documental Especializada
+1. Ingrese a **"Dashboard Técnico" > "Revisión Documental"**.
+2. Abra la solicitud asignada. Se mostrará la lista de documentos con estado **"PENDIENTE"**.
+3. Revise cada archivo y seleccione para cada uno:
+   * **ACEPTAR:** Si cumple cabalmente con las regulaciones aeronáuticas (RDAC).
+   * **DEVOLVER / OBSERVAR:** Si está incompleto o desactualizado. Ingrese de forma obligatoria el motivo detallado de la observación.
+4. Una vez calificados todos los documentos, presione **"Confirmar Cierre Documental"**. Esto desbloqueará la fase operativa de inspección.
 
-| Escenario | Acción permitida | Controlador |
-|-----------|------------------|-------------|
-| Con aeropuertos nuevos | Solo `CerrarFaseDocumentalNuevoAeropuertoModificacion` | `SolicitudAOCRController` |
-| Sin aeropuertos | Generar CL **o** derivar inspección | Panel `Detalle.cshtml` |
-| Tras `Requiere Inspeccion` | RT crea orden | `OrdenRecaudacion/Nueva` |
+#### B. Listas de Verificación Operacional (LV / EAE por Estación — AC-07 / AC-08)
+1. En el menú de la inspección, ingrese a **"Lista de Verificación LV/EAE"**.
+2. **Seleccione la estación a inspeccionar:** Cada estación tiene su propia lista de chequeo independiente.
+3. Califique cada ítem de la lista:
+   * `SATISFACTORIO`
+   * `NO SATISFACTORIO`
+   * `NO APLICA`
+4. **Regla de integridad:** El sistema no permitirá guardar ni firmar la lista hasta que el **100% de los elementos** hayan sido calificados y los no satisfactorios cuenten con su respectivo hallazgo redactado.
+5. Firme electrónicamente la lista de chequeo de la estación.
 
-Bloqueos: `PrepararGeneracionCondicionesLimitaciones` rechaza si hay nuevo aeropuerto.
-
----
-
-## 13. Errores — síntoma, causa en código, acción
-
-| Síntoma en UI | Causa en implementación | Acción |
-|---------------|------------------------|--------|
-| Docs ACEPTADO + revisor coordinador sin actuar inspector | `modo=ver` o inferencia antigua desde `documento.ValidadoPor` | Usar `modo=revision`; republicar DLLs recientes |
-| Badge **Solo lectura** | `ViewBag.ModoDocumentos = ver` | Entrar por `RevisionDocumental/Index` |
-| Bandeja revisión vacía | Sin asignación o `InspeccionDAO` sin filas para inspector 43 | Coordinación: `Tecnico/AsignarInspector` |
-| LV candado | `InspectorConfirmoCierreDocumental` = false | Confirmar cierre en `Inspeccion/Detalle/11` |
-| HTTP 403 en LV/Informe | `ValidarAutorizacionFlujoInspeccion` — usuario ≠ inspector asignado | Verificar `CodigoInspector` en inspección #11 |
-| Asignación error 500 | Desalineación bandeja/recaudación (corregido en `SolicitudAOCRDAO`) | Ver log `[AOCR][ASIGNACION_INSPECTOR]` |
-
-**Marcadores log:**
-
-```text
-[DOC_FLOW] Accion=BANDEJA_INSPECTOR
-[DOC_SOLICITUD] solicitudId=12; modo=revision
-[FirmarAceptacionDocumental]
-[GestionInspeccion]
-[AUTH] Acceso bloqueado
-```
+#### C. Informe Técnico y Conclusiones (AC-09)
+1. Ingrese a **"Informe Técnico"**.
+2. Redacte el análisis técnico de las inspecciones realizadas.
+3. En caso de existir **No Conformidades**, regístrelas con su plazo máximo de subsanación.
+4. Seleccione el dictamen: **FAVORABLE** o **DESFAVORABLE**.
+5. Presione **"Firmar y Remitir a Dirección"**. El expediente avanzará a la bandeja de DIRCAV.
 
 ---
 
-## 14. Checklist validación — solicitud #12
+### 3.5 Director de Certificación Aeronáutica y Vigilancia Continua (DIRCAV — AC-11)
 
-| # | Prueba exacta | Evidencia | ☐ |
-|---|---------------|-----------|---|
-| 1 | `GEN_COORDINACION` → `Tecnico/AsignarInspector?solicitudId=12` sin error | Log `[GestionInspeccion]` | ☐ |
-| 2 | Estado solicitud = `En Inspeccion` | `SolicitudAOCR/Detalle/12` | ☐ |
-| 3 | Inspector 43 → `RevisionDocumental/Index` muestra #12 | ≥1 fila | ☐ |
-| 4 | `Documento/Lista?solicitudId=12&modo=revision` — 12 docs **PENDIENTE** | Captura | ☐ |
-| 5 | Columnas observación/revisor vacías antes de decidir | Captura | ☐ |
-| 6 | Aceptar 1 doc → revisor = inspector 43 | Fila actualizada | ☐ |
-| 7 | Todos aceptados → botón **Confirmar fase documental** en bandeja | `RevisionDocumental/Index` | ☐ |
-| 8 | `ConfirmarRevisionDocumentalInspector/11` → LV sin candado | `Inspeccion/Detalle/11` | ☐ |
-| 9 | LV finalizada + firmada | Badge *LV firmada* | ☐ |
-| 10 | Informe → `FirmarInformeInspector` → `FIRMADO_INSPECTOR` | Panel informe | ☐ |
+1. Ingrese con el perfil **DIRCAV** a la bandeja **"Validar AOCR / Condiciones y Limitaciones"**.
+2. Revise el expediente completo: Informe Técnico del Inspector, Listas de Verificación firmadas y documentos habilitantes.
+3. **Generación y Firma de Condiciones y Limitaciones (C&L):**
+   * El sistema genera el documento oficial de Condiciones y Limitaciones con las especificaciones de aeronaves, rutas y bases operacionales aprobadas.
+   * Realice la firma electrónica del documento C&L.
+4. **Remisión al Director General:**
+   * Una vez firmadas las Condiciones y Limitaciones, presione el botón **"Remitir AOCR a DIRDAC"**.
+   * El estado del expediente pasará a `AOCR_PENDIENTE_DIRDAC`.
+   * *(En caso de identificar errores del inspector, puede presionar "Devolver a Coordinador" con la debida justificación).*
 
 ---
 
-## 15. Glosario (términos del código)
+### 3.6 Director General de Aviación Civil (DIRDAC — AC-11)
 
-| Término | Definición en AOCR |
-|---------|-------------------|
-| COO-1 | Revisión pre-asignación; revisiones con revisor ≠ inspector asignado |
-| `aocr_tbrevision_documental` | Tabla de decisiones por documento |
-| `FlujoDocumentalCodigo` | Ej. `EN_REVISION_INSPECTOR`, `PENDIENTE_CONFIRMACION_INSPECTOR` |
-| `EsFaseInspectorDocumental` | `ViewBag` en `Documento/Lista` cuando hay inspector asignado |
-| Post-asignación coordinador | `AocrPostPagoWorkflowService.EsFlujoPostAsignacionCoordinador` — no exige pago RT si ya asignó coordinación |
+1. Ingrese con el perfil **DIRDAC** a la bandeja **"Bandeja AOCR Dirección General"** (`/Dirdac/BandejaAocr`).
+2. En la lista de trámites pendientes, seleccione el expediente a legalizar.
+3. En la pantalla de detalle (`/Dirdac/Detalle`), podrá constatar:
+   * El Certificado AOCR generado en borrador institucional.
+   * El documento de Condiciones y Limitaciones debidamente **firmado por DIRCAV**.
+   * El informe técnico consolidado y evidencias.
+4. **Acciones disponibles:**
+   * **Devolver a DIRCAV:** Si requiere aclaración o corrección técnica de fondo. El expediente regresa a DIRCAV con la observación formal.
+   * **Firmar y Legalizar AOCR:** Aplica la firma electrónica de la Máxima Autoridad sobre el Certificado AOCR.
+5. **Cierre y Entrega Automática:**
+   * Al registrarse la firma del DIRDAC, el sistema consolida las firmas completas, activa la entrega digital segura (AC-12) y notifica automáticamente al operador aéreo y a los inspectores.
 
 ---
 
-*Última actualización: 2026-06-11 — alineado a código en `CapaPresentacion/Controllers/DocumentoController.cs`, `RevisionDocumentalController.cs`, `InspeccionController.cs`, `TecnicoController.cs`, `CapaNegocio/SolicitudAocrInfraBL.cs`.*
+## 4. Preguntas Frecuentes y Solución de Problemas
+
+| Situación / Pregunta | Causa Común | Solución Operativa |
+| :--- | :--- | :--- |
+| **No puedo ver el botón para evaluar la Lista de Verificación (LV)** | El inspector no ha realizado el cierre formal de la revisión documental. | Ingrese a la revisión documental de la solicitud y presione *"Confirmar Cierre Documental"*. |
+| **El sistema me indica "Error 403 / No autorizado" al firmar el AOCR** | Se intenta firmar el Certificado AOCR con un rol distinto a DIRDAC (ej. Administrador o Inspector). | Ingrese estrictamente con el usuario y rol institucional asignado a la Dirección General. |
+| **No se permite guardar la Lista de Verificación** | Existen preguntas o ítems sin calificar en la lista de chequeo de la estación. | Revise que todos los ítems tengan seleccionada una opción (Satisfactorio / No Satisfactorio / No Aplica). |
+| **El operador no recibe el correo de finalización** | La cola de correos realiza reintentos automáticos si el servidor receptor presenta demoras. | El operador puede ingresar directamente al sistema con sus credenciales y descargar los documentos en la sección *"Mis Trámites"*. |
+
+---
+*Manual actualizado por la Dirección de Tecnologías de la Información y Comunicación (DTIC) — DGAC Ecuador.*
