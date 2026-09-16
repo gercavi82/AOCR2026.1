@@ -2861,6 +2861,7 @@
     <Content Include="Content\documents\pagos\pago_4_20260128093124050.pdf" />
     <Content Include="Content\documents\pagos\pago_4_20260128094248498.pdf" />
     <Content Include="Content\documents\pagos\pago_4_20260128102444522.pdf" />
+    <Content Include="connectionStrings.config" />
     <None Include="Scripts\jquery-3.6.4.intellisense.js" />
     <Content Include="Scripts\jquery-3.6.4.js" />
     <Content Include="Scripts\jquery-3.6.4.min.js" />
