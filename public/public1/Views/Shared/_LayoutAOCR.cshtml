@@ -71,6 +71,7 @@
         var pdfViewerJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js");
         var pdfLibUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.min.js");
         var pdfWorkerUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.worker.min.js");
+        var cumulativeFileUploadUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-cumulative-file-upload.js");
         try
         {
             var faviconPath = Server.MapPath("~/Content/imganes/logo1.png");
@@ -118,6 +119,7 @@
     <link href="@aocrSidebarCssHref" rel="stylesheet" />
     <link href="@aocrHeadersCssHref" rel="stylesheet" />
     <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
+    <link href="~/Content/aocr-cumulative-file-upload.css" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->
     <style>
@@ -1035,6 +1037,7 @@
 
     <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
     <script src="@responsiveJsUrl"></script>
+    <script src="@cumulativeFileUploadUrl"></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

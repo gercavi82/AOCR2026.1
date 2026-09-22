@@ -1,0 +1,154 @@
+/**
+ * AOCR Cumulative File Upload - Estilos
+ * 
+ * Estilos para la funcionalidad de carga acumulativa de archivos
+ */
+
+/* Contenedor principal de la lista de archivos */
+.cumulative-file-list {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background-color: #ffffff;
+    overflow: hidden;
+}
+
+/* Fila individual de archivo */
+.cumulative-file-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.cumulative-file-row:last-child {
+    border-bottom: none;
+}
+
+.cumulative-file-row:hover {
+    background-color: #f8f9fa !important;
+}
+
+/* Información del archivo */
+.cumulative-file-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    min-width: 0; /* Para que text-overflow funcione */
+}
+
+/* Nombre del archivo */
+.cumulative-file-name {
+    display: block;
+    font-weight: 500;
+    color: #212529;
+    word-break: break-word;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.cumulative-file-row:hover .cumulative-file-name {
+    text-decoration: underline;
+}
+
+/* Metadata del archivo */
+.cumulative-file-meta {
+    display: block;
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+}
+
+/* Botón de eliminar */
+.cumulative-file-row .btn-outline-danger {
+    flex-shrink: 0;
+    margin-left: 0.75rem;
+    white-space: nowrap;
+}
+
+.cumulative-file-row .btn-outline-danger:hover {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+/* Estado vacío */
+.cumulative-file-list .text-muted {
+    padding: 1rem;
+    text-align: center;
+    font-style: italic;
+}
+
+/* Alertas de notificación */
+.alert {
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive para dispositivos móviles */
+@media (max-width: 576px) {
+    .cumulative-file-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cumulative-file-info {
+        width: 100%;
+        margin-bottom: 0.75rem;
+    }
+
+    .cumulative-file-row .btn-outline-danger {
+        width: 100%;
+        margin-left: 0;
+        text-align: left;
+    }
+}
+
+/* Etiqueta de resumen de archivos */
+#archivosSummary,
+#fileSummary_* {
+    display: block;
+    margin: 0.5rem 0;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #f0f7ff;
+    border-left: 3px solid #0d6efd;
+    border-radius: 0.25rem;
+}
+
+/* Mejoras para inputs file con data-cumulative-upload */
+input[type="file"][data-cumulative-upload="true"] {
+    cursor: pointer;
+}
+
+input[type="file"][data-cumulative-upload="true"]::-webkit-file-upload-button {
+    cursor: pointer;
+}
+
+/* Animación de carga */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.cumulative-file-list.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
