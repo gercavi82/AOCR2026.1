@@ -5186,9 +5186,8 @@ namespace CapaPresentacion.Controllers
             if (userId <= 0) return null;
 
             usuario = usuario ?? UsuarioDAO.ObtenerPorId(userId);
-            var blSolicitud = new SolicitudBL();
-            var year = DateTime.Now.Year;
-            var numero = blSolicitud.GenerarNumeroSolicitud(year);
+            // El DAO asigna el GOP desde la OR bloqueada en la misma transaccion.
+            var numero = string.Empty;
             var empresaNombre = (empresaNombreOverride ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(empresaNombre))
             {

@@ -149,6 +149,7 @@
     <Compile Include="Unit\RegistroRtNotificacionServiceTests.cs" />
     <Compile Include="Unit\SolicitudEstacionTransaccionTests.cs" />
     <Compile Include="Unit\LugaresFechasInspeccionTests.cs" />
+    <Compile Include="Unit\NumeracionGopOrTests.cs" />
     <Compile Include="Integration\LugaresFechasPdfTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
     <Compile Include="Unit\UsuarioContextoServiceTests.cs" />

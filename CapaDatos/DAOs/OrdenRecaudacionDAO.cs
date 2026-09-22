@@ -2167,6 +2167,14 @@ namespace CapaDatos.DAOs
                     conn.Open();
                     using (var tx = conn.BeginTransaction())
                     {
+                        using (var numeroCmd = new NpgsqlCommand("SELECT numero_orden FROM public.aocr_or_orden WHERE id = @id FOR UPDATE", conn, tx))
+                        {
+                            numeroCmd.Parameters.AddWithValue("id", ordenId);
+                            var numeroOrden = numeroCmd.ExecuteScalar() as string;
+                            if (string.IsNullOrWhiteSpace(numeroOrden) || !System.Text.RegularExpressions.Regex.IsMatch(numeroOrden, @"^DGAC-OR-\d{4}-AOCR\d+$"))
+                                throw new InvalidOperationException("La orden no tiene un numero institucional valido.");
+                            solicitud.NumeroSolicitud = numeroOrden.Replace("DGAC-OR-", "DGAC-GOP-");
+                        }
                         var solicitudDao = new SolicitudAOCRDAO();
                         var codigoSolicitud = solicitudDao.InsertarConReturn(conn, tx, solicitud);
                         if (codigoSolicitud <= 0)

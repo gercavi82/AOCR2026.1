@@ -215,12 +215,9 @@ namespace CapaNegocio
 
         public string GenerarNumeroSolicitud(int year)
         {
-            var total = _solicitudDAO
-                .ListarActivas()
-                .Count(s => s.FechaSolicitud.HasValue && s.FechaSolicitud.Value.Year == year);
-
-            // Formato requerido: DGAC-GOP-YYYY-AOCR###
-            return $"DGAC-GOP-{year}-AOCR{(total + 1):D3}";
+            // Un solo contador anual reserva el correlativo para el expediente GOP/OR.
+            return new CapaNegocio.Services.OrdenRecaudacionService()
+                .GenerarNumeroOrdenInstitucional(year).Replace("DGAC-OR-", "DGAC-GOP-");
         }
 
         private static void PreservarCamposControlEnActualizacion(SolicitudAOCR modelo, SolicitudAOCR actual)

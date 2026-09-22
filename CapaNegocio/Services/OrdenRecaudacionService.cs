@@ -196,11 +196,7 @@ namespace CapaNegocio.Services
                     return vinculada;
                 }
 
-                _logger.LogWarning(string.Format(
-                    CultureInfo.InvariantCulture,
-                    "[ORDEN_NUM][GOP_LINK_CONFLICT] NumeroOrden={0}; CodigoSolicitud={1}. Se usara secuencia institucional para evitar duplicado.",
-                    vinculada,
-                    codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : string.Empty));
+                throw new InvalidOperationException("La solicitud ya tiene una orden con el mismo correlativo. Abra la orden existente; no se asignara un numero diferente.");
             }
 
             return GenerarNumeroOrdenInstitucional(anio);

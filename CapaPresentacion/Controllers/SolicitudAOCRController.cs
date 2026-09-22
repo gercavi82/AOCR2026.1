@@ -401,119 +401,16 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "GuardarProgresoRT", RequireCompanySelection = true, CodigoSolicitudParameter = "codigoSolicitud")]
         public JsonResult GuardarEstaciones(GuardarEstacionesRequest request)
         {
-            try
-            {
-                if (request == null || request.CodigoSolicitud <= 0)
-                {
-                    return JsonRespuestaEstaciones(400, false, "Solicitud inválida para guardar estaciones.");
-                }
-
-                var usuarioId = ObtenerUsuarioActualId();
-                if (usuarioId <= 0)
-                {
-                    return JsonRespuestaEstaciones(401, false, "Sesión expirada o inválida.", redirectUrl: Url.Action("Login", "Account"));
-                }
-
-                // Regla 10: Administrador no puede modificar estaciones operativas (devuelve HTTP 403)
-                if (EsAdmin())
-                {
-                    return JsonRespuestaEstaciones(403, false, "El usuario Administrador no puede modificar estaciones operativas.");
-                }
-
-                var solicitud = _solicitudDAO.ObtenerPorId(request.CodigoSolicitud);
-                if (solicitud == null)
-                {
-                    return JsonRespuestaEstaciones(404, false, "La solicitud no existe.");
-                }
-
-                // Regla 9: RT solo puede modificar estaciones de su solicitud
-                if (solicitud.CodigoUsuario != usuarioId)
-                {
-                    return JsonRespuestaEstaciones(403, false, "No tiene permisos para modificar las estaciones de esta solicitud.");
-                }
-
-                var companiaActiva = ObtenerCompaniaActivaCodigo();
-                if (string.IsNullOrWhiteSpace(companiaActiva))
-                {
-                    CompaniaActivaRecoveryHelper.TryRestoreFromSolicitud(Session, request.CodigoSolicitud, usuarioId, EsAdmin());
-                    companiaActiva = ObtenerCompaniaActivaCodigo();
-                }
-
-                if (string.IsNullOrWhiteSpace(companiaActiva))
-                {
-                    return JsonRespuestaEstaciones(403, false, "Debe seleccionar una compañía activa para gestionar la solicitud.",
-                        redirectUrl: Url.Action("SeleccionarCompania", "Account", new { returnUrl = Request?.RawUrl }));
-                }
-
-                if (!SolicitudCoincideConCompaniaActiva(solicitud, companiaActiva))
-                {
-                    return JsonRespuestaEstaciones(403, false, "La solicitud no corresponde a la compañía activa del usuario.");
-                }
-
-                // Regla 9: RT solo puede modificar mientras el estado lo permita
-                if (!SolicitudEsEditableFormularioEmision(solicitud))
-                {
-                    return JsonRespuestaEstaciones(403, false, "El estado actual de la solicitud no permite modificar las estaciones operativas.");
-                }
-
-                if (request.Estaciones == null || !request.Estaciones.Any())
-                {
-                    return JsonRespuestaEstaciones(400, false, "Debe ingresar al menos una estación de inspección.");
-                }
-
-                var estacionesMapeadas = MapearEstacionesDesdeViewModel(request.Estaciones, request.CodigoSolicitud, usuarioId);
-                var validacion = _solicitudEstacionService.ValidarEstaciones(estacionesMapeadas, request.CodigoSolicitud);
-                if (!validacion.EsValido)
-                {
-                    int errCode = validacion.EsDuplicado ? 409 : 400;
-                    return JsonRespuestaEstaciones(errCode, false, string.Join(" ", validacion.Errores));
-                }
-
-                var res = _solicitudEstacionService.GuardarEstaciones(request.CodigoSolicitud, estacionesMapeadas, usuarioId);
-                if (!res.Exitoso)
-                {
-                    int statusCode = res.HttpStatusCode > 0 ? res.HttpStatusCode : 500;
-                    return JsonRespuestaEstaciones(statusCode, false, res.Mensaje);
-                }
-
-                var persistidas = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(request.CodigoSolicitud, solicitud);
-
-                return JsonRespuestaEstaciones(
-                    200,
-                    true,
-                    "Estaciones y fechas de inspección guardadas correctamente.",
-                    new
-                    {
-                        solicitudId = request.CodigoSolicitud,
-                        total = persistidas.Count,
-                        estaciones = persistidas
-                    },
-                    id: request.CodigoSolicitud);
-            }
-            catch (EstacionVersionConflictException ex)
-            {
-                return JsonRespuestaEstaciones(409, false, ex.Message);
-            }
-            catch (EstacionDuplicadaException ex)
-            {
-                return JsonRespuestaEstaciones(409, false, ex.Message);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Trace.TraceError(
-                    "[SOLICITUD_AOCR][GUARDAR_ESTACIONES] SolicitudId=" + (request != null ? request.CodigoSolicitud : 0) +
-                    "; Resultado=ERROR; Detalle=" + ex);
-                return JsonRespuestaEstaciones(500, false, "No se pudieron guardar las estaciones por un error de base de datos. Se realizó rollback de la transacción.");
-            }
+            return JsonRespuestaEstaciones(403, false,
+                "Los detalles de inspeccion son de solo lectura en la Solicitud AOCR.");
         }
 
-        private List<SolicitudEstacionInspeccion> MapearEstacionesDesdeViewModel(
-            IEnumerable<SolicitudEstacionInspeccionItemVM> items,
-            int solicitudId,
-            int? usuarioId)
+        private void PreservarDetallesInspeccionRegistrados(SolicitudAOCR solicitud)
         {
-            return (items ?? Enumerable.Empty<SolicitudEstacionInspeccionItemVM>())
-                .Where(item => item != null).Select(item => item.ToEntity(solicitudId, usuarioId)).ToList();
+            var registrada = solicitud.CodigoSolicitud > 0
+                ? _solicitudDAO.ObtenerPorId(solicitud.CodigoSolicitud) : null;
+            solicitud.AeropuertosEcuador = registrada != null ? registrada.AeropuertosEcuador : null;
+            solicitud.AeropuertosEcuadorOtros = registrada != null ? registrada.AeropuertosEcuadorOtros : null;
         }
 
         private string ObtenerTipoSolicitud(int? tipoSolicitud)
@@ -1426,11 +1323,7 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, mensaje = "Debe detallar las aprobaciones especiales en el campo OTROS." }, JsonRequestBehavior.AllowGet);
                 }
 
-                if (ContieneValorLista(vm.Solicitud.AeropuertosEcuador, "OTROS") &&
-                    string.IsNullOrWhiteSpace(vm.Solicitud.AeropuertosEcuadorOtros))
-                {
-                    return Json(new { success = false, mensaje = "Debe detallar el aeropuerto cuando selecciona OTROS." }, JsonRequestBehavior.AllowGet);
-                }
+
 
                 if (vm.Solicitud.CodigoSolicitud <= 0)
                 {
@@ -1718,13 +1611,7 @@ namespace CapaPresentacion.Controllers
 
                 string seccion = !string.IsNullOrWhiteSpace(payload.Seccion) ? payload.Seccion.Trim() : "general";
 
-                if (string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase))
-                {
-                    var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(
-                        MapearEstacionesDesdeViewModel(payload.Estaciones, sol.CodigoSolicitud, usuarioId),
-                        sol.AeropuertosEcuador, sol.AeropuertosEcuadorOtros);
-                    if (errorFechas != null) return JsonEnvelope(false, "VALIDATION_ERROR", errorFechas, data: null);
-                }
+                PreservarDetallesInspeccionRegistrados(sol);
 
                 // Validaciones mínimas independientes de sección
                 var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
@@ -1864,21 +1751,6 @@ namespace CapaPresentacion.Controllers
                             data: null);
                     }
                     idFinal = actual.CodigoSolicitud;
-                }
-
-                // AC-02: Persistir estaciones y fechas independientes asociadas a la solicitud
-                if (string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase) && payload.Estaciones != null)
-                {
-                    var entidadesEstaciones = MapearEstacionesDesdeViewModel(payload.Estaciones, idFinal, usuarioId);
-
-                    if (entidadesEstaciones.Any())
-                    {
-                        var resEst = _solicitudEstacionService.GuardarEstaciones(idFinal, entidadesEstaciones, usuarioId);
-                        if (!resEst.Exitoso)
-                        {
-                            return JsonEnvelope(false, "VALIDATION_ERROR", resEst.Mensaje, data: null);
-                        }
-                    }
                 }
 
                 var persistida = _solicitudDAO.ObtenerPorId(idFinal);
@@ -2153,10 +2025,7 @@ namespace CapaPresentacion.Controllers
             {
                 using (var scope = new TransactionScope(TransactionScopeOption.Required, opciones, TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    var estacionesValidadas = MapearEstacionesDesdeViewModel(vm.Estaciones, vm.Solicitud.CodigoSolicitud, usuarioId);
-                    var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(estacionesValidadas,
-                        vm.Solicitud.AeropuertosEcuador, vm.Solicitud.AeropuertosEcuadorOtros);
-                    if (errorFechas != null) throw new ApplicationException(errorFechas);
+                    PreservarDetallesInspeccionRegistrados(vm.Solicitud);
 
                     string mensajeOut;
                     bool exito;
@@ -2185,17 +2054,6 @@ namespace CapaPresentacion.Controllers
                     _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
 
                     // AC-02: Guardar estaciones con fechas de inspección independientes
-                    var estacionesMapeadas = MapearEstacionesDesdeViewModel(vm.Estaciones, idFinal, usuarioId);
-                    if (estacionesMapeadas.Any())
-                    {
-                        etapaGuardado = "ESTACIONES";
-                        var resEst = _solicitudEstacionService.GuardarEstaciones(idFinal, estacionesMapeadas, usuarioId);
-                        if (!resEst.Exitoso)
-                        {
-                            throw new ApplicationException(resEst.Mensaje);
-                        }
-                    }
-
                     if (Request?.Files != null && Request.Files.Count > 0)
                     {
                         etapaGuardado = "DOCUMENTOS_REQUEST";

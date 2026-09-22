@@ -10,6 +10,28 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class LugaresFechasInspeccionTests
     {
+        [TestMethod]
+        public void SolicitudAocr_RechazaEdicionDirectaDeLugaresYFechas()
+        {
+            var controller = (CapaPresentacion.Controllers.SolicitudAOCRController)
+                System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(CapaPresentacion.Controllers.SolicitudAOCRController));
+            var context = new System.Web.HttpContext(
+                new System.Web.HttpRequest("", "http://localhost/", ""),
+                new System.Web.HttpResponse(new System.IO.StringWriter()));
+            controller.ControllerContext = new System.Web.Mvc.ControllerContext(
+                new System.Web.HttpContextWrapper(context), new System.Web.Routing.RouteData(), controller);
+            var result = controller.GuardarEstaciones(new CapaPresentacion.Controllers.SolicitudAOCRController.GuardarEstacionesRequest
+            {
+                CodigoSolicitud = 150,
+                Estaciones = new List<SolicitudEstacionInspeccionItemVM>
+                {
+                    new SolicitudEstacionInspeccionItemVM { EstacionCodigo = "GYE", FechaInicio = "2026-09-22", FechaFin = "2026-09-25" }
+                }
+            });
+            Assert.AreEqual(403, context.Response.StatusCode);
+            Assert.AreEqual(false, result.Data.GetType().GetProperty("success").GetValue(result.Data));
+        }
+
         private static SolicitudEstacionInspeccion Lugar(string codigo, string fecha)
         {
             return new SolicitudEstacionInspeccionItemVM { EstacionCodigo = codigo, FechaInspeccion = fecha, Version = 3 }.ToEntity(150, 95);

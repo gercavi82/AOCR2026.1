@@ -329,8 +329,9 @@ namespace AOCR.Tests.Unit
             Assert.IsTrue(contenidoFormulario.Contains("table-responsive"), "El formulario debe incluir contenedor responsive table-responsive.");
             Assert.IsFalse(contenidoFormulario.Contains("tablaEstacionesInspeccion"), "No debe duplicar estaciones en Punto 3.");
             Assert.IsFalse(contenidoFormulario.Contains("btnAgregarEstacion"));
-            Assert.IsTrue(contenidoFormulario.Contains("data-inspection-stations"));
-            Assert.IsTrue(contenidoFormulario.Contains("inspection-date-control"));
+            Assert.IsFalse(contenidoFormulario.Contains("id=\"inspeccion-lugares\""));
+            Assert.IsTrue(contenidoFormulario.Contains("id=\"detallesInspeccionConsulta\""));
+            Assert.IsFalse(contenidoFormulario.Contains("inspection-date-control"));
             var detalle = File.ReadAllText(ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml"));
             Assert.IsTrue(detalle.Contains("@est.RangoFechasTexto"));
         }

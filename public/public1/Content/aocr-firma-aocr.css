@@ -1,0 +1,361 @@
+.aocr-signature-page {
+    background: #f4f8fb;
+    color: #1f2937;
+    padding: 24px;
+    min-height: calc(100vh - 80px);
+}
+
+.aocr-signature-header,
+.aocr-summary-card,
+.aocr-document-card,
+.aocr-pdf-preview-card,
+.aocr-signature-panel,
+.aocr-final-result,
+.aocr-signature-status {
+    background: #fff;
+    border: 1px solid #dbe8f3;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(15, 85, 120, 0.08);
+}
+
+.aocr-signature-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+.aocr-signature-header h1,
+.aocr-card-head h2 {
+    color: #0a405c;
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.aocr-signature-header h1 {
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.aocr-signature-header p {
+    margin: 8px 0 0;
+    color: #4b5563;
+}
+
+.aocr-eyebrow {
+    color: #0f5578;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+    margin: 0 0 4px;
+    text-transform: uppercase;
+}
+
+.aocr-header-state,
+.aocr-badge {
+    border: 1px solid #dbe8f3;
+    border-radius: 8px;
+    color: #92400e;
+    background: #fff7df;
+    padding: 10px 12px;
+    white-space: nowrap;
+}
+
+.aocr-header-state span {
+    display: block;
+    font-size: 12px;
+    color: #4b5563;
+}
+
+.aocr-header-state strong {
+    display: block;
+    color: inherit;
+}
+
+.aocr-header-state.is-success,
+.aocr-badge.is-success,
+.aocr-signature-result.is-success {
+    background: #e7f7ed;
+    color: #166534;
+    border-color: #bde7c9;
+}
+
+.aocr-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.aocr-signature-status {
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    color: #92400e;
+    background: #fff7df;
+}
+
+.aocr-signature-status ul {
+    margin: 10px 0;
+    padding-left: 18px;
+}
+
+.aocr-summary-card {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.aocr-summary-card div {
+    padding: 14px 16px;
+    background: #fff;
+}
+
+.aocr-summary-card span,
+.aocr-doc-meta dt,
+.aocr-signer-meta dt {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.aocr-summary-card strong,
+.aocr-doc-meta dd,
+.aocr-signer-meta dd {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.aocr-signature-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+    align-items: start;
+}
+
+.aocr-signature-main {
+    display: grid;
+    gap: 16px;
+}
+
+.aocr-document-card,
+.aocr-pdf-preview-card,
+.aocr-signature-panel,
+.aocr-final-result {
+    padding: 20px;
+}
+
+.aocr-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.aocr-card-head h2 {
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+.aocr-doc-meta,
+.aocr-signer-meta {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.aocr-doc-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.aocr-doc-meta div,
+.aocr-signer-meta div {
+    border: 1px solid #dbe8f3;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.aocr-signature-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.aocr-signature-actions form {
+    margin: 0;
+}
+
+.aocr-btn {
+    align-items: center;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 700;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 14px;
+    text-decoration: none;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.aocr-btn-primary {
+    background: #0f5578;
+    color: #fff;
+}
+
+.aocr-btn-primary:hover {
+    background: #0a405c;
+    color: #fff;
+}
+
+.aocr-btn-outline {
+    background: #fff;
+    border-color: #0f5578;
+    color: #0f5578;
+}
+
+.aocr-btn-outline:hover {
+    background: #eef7fb;
+    color: #0a405c;
+}
+
+.aocr-btn-success {
+    background: #166534;
+    color: #fff;
+}
+
+.aocr-btn-success:hover {
+    background: #14532d;
+    color: #fff;
+}
+
+.aocr-btn-danger-soft {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.aocr-pdf-preview-card iframe {
+    border: 1px solid #dbe8f3;
+    border-radius: 8px;
+    display: block;
+    height: 540px;
+    width: 100%;
+}
+
+.aocr-empty-preview {
+    align-items: center;
+    background: #f8fbfd;
+    border: 1px dashed #b9d0e2;
+    border-radius: 8px;
+    color: #64748b;
+    display: flex;
+    min-height: 180px;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+}
+
+.aocr-field {
+    display: grid;
+    gap: 6px;
+    margin: 14px 0;
+}
+
+.aocr-field span {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.aocr-field input {
+    border: 1px solid #c9dceb;
+    border-radius: 8px;
+    min-height: 40px;
+    padding: 8px 10px;
+    width: 100%;
+}
+
+.aocr-field input:focus {
+    border-color: #0f5578;
+    box-shadow: 0 0 0 3px rgba(15, 85, 120, 0.12);
+    outline: none;
+}
+
+.aocr-signature-result {
+    background: #f8fbfd;
+    border: 1px solid #dbe8f3;
+    border-radius: 8px;
+    color: #334155;
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 14px;
+}
+
+.aocr-signature-result strong,
+.aocr-signature-result span {
+    overflow-wrap: anywhere;
+}
+
+.aocr-final-result {
+    margin-top: 16px;
+    min-height: 0;
+}
+
+.aocr-is-loading {
+    opacity: .72;
+    pointer-events: none;
+}
+
+@media (max-width: 1100px) {
+    .aocr-summary-card {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aocr-signature-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 680px) {
+    .aocr-signature-page {
+        padding: 12px;
+    }
+
+    .aocr-signature-header,
+    .aocr-card-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .aocr-signature-header h1 {
+        font-size: 23px;
+    }
+
+    .aocr-summary-card,
+    .aocr-doc-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .aocr-signature-actions,
+    .aocr-signature-actions form,
+    .aocr-btn {
+        width: 100%;
+    }
+
+    .aocr-pdf-preview-card iframe {
+        height: 420px;
+    }
+}
