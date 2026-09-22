@@ -29,34 +29,34 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>09/22/2026 11:02:12</publishTime>
+      <publishTime>09/22/2026 14:17:23</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>09/22/2026 11:02:12</publishTime>
+      <publishTime>09/22/2026 14:17:23</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
-      <publishTime>09/16/2026 10:51:43</publishTime>
+      <publishTime>09/22/2026 14:17:22</publishTime>
     </File>
     <File Include="bin/CapaModelo.pdb">
-      <publishTime>09/16/2026 10:51:43</publishTime>
+      <publishTime>09/22/2026 14:17:22</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>09/22/2026 11:02:13</publishTime>
+      <publishTime>09/22/2026 14:17:24</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>09/22/2026 11:02:13</publishTime>
+      <publishTime>09/22/2026 14:17:24</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>09/22/2026 11:02:15</publishTime>
+      <publishTime>09/22/2026 14:17:26</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>09/22/2026 11:02:15</publishTime>
+      <publishTime>09/22/2026 14:17:26</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>09/16/2026 10:51:43</publishTime>
@@ -8438,7 +8438,7 @@
       <publishTime>06/05/2026 12:32:32</publishTime>
     </File>
     <File Include="Views/Shared/_LayoutAOCR.cshtml">
-      <publishTime>09/22/2026 12:07:09</publishTime>
+      <publishTime>09/22/2026 14:16:54</publishTime>
     </File>
     <File Include="Views/Shared/_LoginPartial.cshtml">
       <publishTime>01/28/2026 10:36:51</publishTime>
@@ -8531,7 +8531,7 @@
       <publishTime>05/20/2026 20:44:20</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml">
-      <publishTime>09/07/2026 10:30:53</publishTime>
+      <publishTime>09/22/2026 14:16:54</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR_REVISION.md">
       <publishTime>01/19/2026 11:29:45</publishTime>
@@ -8588,7 +8588,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>09/22/2026 13:55:26</publishTime>
+      <publishTime>09/22/2026 14:18:24</publishTime>
     </File>
   </ItemGroup>
 </Project>
