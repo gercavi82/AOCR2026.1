@@ -5,8 +5,6 @@
 @if (Model != null)
 {
     var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-4 d-none" : "row mb-4";
-    var placeholderAeropuertos = "Ej: Quito, Guayaquil, Manta";
-    var puedeEditarAeropuertos = Model.EsNuevaOrden || (Model.PuedeEditarSolicitudInspeccionExt && Model.PuedeGenerarSolicitud);
 
     <div class="@panelClass" id="panelSolicitudInspeccion">
         <div class="col-md-12">
@@ -31,54 +29,21 @@
                         </div>
                     }
 
-                    <div class="mb-3">
-                        <label class="form-label" for="AeropuertosSolicitados">Aeropuertos solicitados</label>
-                        @if (puedeEditarAeropuertos)
+                    <input type="hidden" id="AeropuertosSolicitados" name="AeropuertosSolicitados" value="@Model.AeropuertosSolicitados" />
+                    <input type="hidden" id="FechasInspeccion" name="FechasInspeccion" value="@Model.FechasInspeccion" />
+                    <table class="table table-sm" id="inspection-place-preview">
+                        <thead><tr><th>Aeropuerto / Lugar</th><th>Fecha requerida</th></tr></thead>
+                        <tbody>
+                        @foreach (var lugar in Model.Estaciones)
                         {
-                            <input type="text"
-                                   id="AeropuertosSolicitados"
-                                   name="AeropuertosSolicitados"
-                                   class="form-control"
-                                   maxlength="500"
-                                   value="@Model.AeropuertosSolicitados"
-                                   placeholder="@placeholderAeropuertos" />
-                            <small class="text-muted">Se completa automáticamente con los lugares de inspección seleccionados.</small>
+                            <tr><td>@lugar.EstacionNombre</td><td>@lugar.RangoFechasTexto</td></tr>
                         }
-                        else
-                        {
-                            <input type="text"
-                                   id="AeropuertosSolicitados"
-                                   class="form-control bg-light"
-                                   value="@Model.AeropuertosSolicitados"
-                                   placeholder="@placeholderAeropuertos"
-                                   readonly="readonly" />
-                            <small class="text-muted">Los aeropuertos quedaron registrados al generar el PDF y ya no pueden modificarse.</small>
-                        }
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label" for="FechasInspeccion">Fechas estimadas de inspección</label>
-                        @if (puedeEditarAeropuertos)
-                        {
-                            <input type="text"
-                                   id="FechasInspeccion"
-                                   name="FechasInspeccion"
-                                   class="form-control"
-                                   maxlength="500"
-                                   value="@Model.FechasInspeccion"
-                                   placeholder="Ej: 20/07/2026 al 24/07/2026" />
-                            <small class="text-muted">Indique el periodo estimado de inspección.</small>
-                        }
-                        else
-                        {
-                            <input type="text"
-                                   id="FechasInspeccion"
-                                   class="form-control bg-light"
-                                   value="@Model.FechasInspeccion"
-                                   placeholder="Ej: 20/07/2026 al 24/07/2026"
-                                   readonly="readonly" />
-                        }
-                    </div>
+                        </tbody>
+                    </table>
+                    @if (!Model.EsNuevaOrden && Model.Estaciones.Count == 0)
+                    {
+                        <p class="text-muted">Registro anterior: @Model.AeropuertosSolicitados. @Model.FechasInspeccion</p>
+                    }
 
                     @if (Model.EsNuevaOrden)
                     {
@@ -269,202 +234,4 @@
         </script>
     }
 
-    <style>
-        /* ── Estilos AOCR para el Calendario de Fechas de Inspección ── */
-        .daterangepicker {
-            border: 1px solid #c8d6e5;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            font-family: inherit;
-        }
-        .daterangepicker td.available {
-            color: #2c3e50 !important;
-            font-weight: 500;
-        }
-        .daterangepicker td.off,
-        .daterangepicker td.off.in-range,
-        .daterangepicker td.off.start-date,
-        .daterangepicker td.off.end-date {
-            color: #b0bec5 !important;
-        }
-        .daterangepicker td.active,
-        .daterangepicker td.active:hover {
-            background-color: #0d6efd !important;
-            color: #fff !important;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        .daterangepicker td.in-range {
-            background-color: #e3f0ff !important;
-            color: #0d6efd !important;
-        }
-        .daterangepicker td.available:hover {
-            background-color: #d0e6ff !important;
-            color: #0a58ca !important;
-            border-radius: 4px;
-        }
-        .daterangepicker th.month {
-            color: #1a3a5c;
-            font-weight: 700;
-            font-size: 14px;
-        }
-        .daterangepicker th.next,
-        .daterangepicker th.prev {
-            color: #0d6efd;
-            font-size: 16px;
-        }
-        .daterangepicker th.next:hover,
-        .daterangepicker th.prev:hover {
-            color: #0a58ca;
-            background-color: #e3f0ff;
-            border-radius: 4px;
-        }
-        .daterangepicker thead tr:first-child th {
-            color: #5a7a9a;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        .daterangepicker .drp-buttons {
-            border-top: 1px solid #e8eef3;
-            padding: 8px 12px;
-        }
-        .daterangepicker .drp-buttons .btn {
-            font-size: 13px;
-            padding: 5px 16px;
-            border-radius: 4px;
-        }
-        .daterangepicker .drp-buttons .cancelBtn {
-            color: #6c757d;
-            border-color: #ced4da;
-        }
-        .daterangepicker .drp-buttons .cancelBtn:hover {
-            background-color: #f8f9fa;
-        }
-        .daterangepicker .drp-buttons .applyBtn {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-        }
-        .daterangepicker .calendar-table {
-            padding: 4px;
-        }
-    </style>
-
-    <script>
-    (function () {
-        'use strict';
-
-        function cargarRecurso(tipo, src) {
-            if (tipo === 'css') {
-                if (document.querySelector('link[href="' + src + '"]')) return;
-                var link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = src;
-                document.head.appendChild(link);
-            } else {
-                if (document.querySelector('script[src="' + src + '"]')) return;
-                var script = document.createElement('script');
-                script.src = src;
-                script.async = false;
-                document.head.appendChild(script);
-            }
-        }
-
-        function inicializarCalendarioFechas() {
-            if (typeof window.jQuery === 'undefined') return;
-            var $ = window.jQuery;
-            var $input = $('#FechasInspeccion');
-            if ($input.length === 0 || $input.prop('readonly') || $input.data('daterangepicker')) return;
-
-            // Cargar dependencias si no existen
-            if (typeof window.moment === 'undefined') {
-                cargarRecurso('js', 'https://cdn.jsdelivr.net/momentjs/latest/moment.min.js');
-            }
-            if (typeof $.fn.daterangepicker === 'undefined') {
-                cargarRecurso('css', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css');
-                cargarRecurso('js', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js');
-            }
-
-            // Esperar que ambas dependencias estén disponibles
-            var intentos = 0;
-            var esperarDependencias = setInterval(function () {
-                intentos++;
-                if (intentos > 50) { clearInterval(esperarDependencias); return; } // 5 seg timeout
-
-                if (typeof window.moment !== 'undefined' && typeof $.fn.daterangepicker === 'function') {
-                    clearInterval(esperarDependencias);
-
-                    // Re-check por si se inicializó mientras esperábamos
-                    var $el = $('#FechasInspeccion');
-                    if ($el.length === 0 || $el.prop('readonly') || $el.data('daterangepicker')) return;
-
-                    $el.daterangepicker({
-                        locale: {
-                            format: 'DD/MM/YYYY',
-                            separator: ' - ',
-                            applyLabel: 'Aplicar',
-                            cancelLabel: 'Limpiar',
-                            fromLabel: 'Desde',
-                            toLabel: 'Hasta',
-                            customRangeLabel: 'Personalizado',
-                            daysOfWeek: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
-                            monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
-                            firstDay: 1
-                        },
-                        autoUpdateInput: false,
-                        opens: 'center'
-                    });
-
-                    $el.on('apply.daterangepicker', function (ev, picker) {
-                        $(this).val(picker.startDate.format('DD/MM/YYYY') + ' al ' + picker.endDate.format('DD/MM/YYYY'));
-                    });
-
-                    $el.on('cancel.daterangepicker', function () {
-                        $(this).val('');
-                    });
-
-                    console.log('[AOCR] Calendario de fechas de inspección inicializado correctamente.');
-                }
-            }, 100);
-        }
-
-        // Estrategia 1: Al cargar el DOM
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function () { setTimeout(inicializarCalendarioFechas, 300); });
-        } else {
-            setTimeout(inicializarCalendarioFechas, 300);
-        }
-
-        // Estrategia 2: Observar cuando el panel se haga visible (para vista Nueva donde empieza oculto con d-none)
-        if (typeof MutationObserver !== 'undefined') {
-            var observerIniciado = false;
-            var observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (m) {
-                    if (m.type === 'attributes' && m.attributeName === 'class') {
-                        var panel = document.getElementById('panelSolicitudInspeccion');
-                        if (panel && !panel.classList.contains('d-none') && !observerIniciado) {
-                            observerIniciado = true;
-                            setTimeout(inicializarCalendarioFechas, 200);
-                        }
-                    }
-                });
-            });
-            var panelEl = document.getElementById('panelSolicitudInspeccion');
-            if (panelEl) {
-                observer.observe(panelEl, { attributes: true, attributeFilter: ['class'] });
-            } else {
-                // Panel aún no existe, esperar
-                document.addEventListener('DOMContentLoaded', function () {
-                    var p = document.getElementById('panelSolicitudInspeccion');
-                    if (p) observer.observe(p, { attributes: true, attributeFilter: ['class'] });
-                });
-            }
-        }
-
-        // Estrategia 3: Exponer función global para que Nueva.cshtml pueda llamarla manualmente
-        window.AOCR = window.AOCR || {};
-        window.AOCR.inicializarCalendarioFechasInspeccion = inicializarCalendarioFechas;
-
-    })();
-    </script>
 }

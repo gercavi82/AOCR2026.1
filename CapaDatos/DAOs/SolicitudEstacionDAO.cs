@@ -406,6 +406,7 @@ namespace CapaDatos.DAOs
         {
             if (string.IsNullOrWhiteSpace(token)) return "EST";
             var limpio = token.Trim().ToUpperInvariant();
+            if (limpio == "OTROS" || limpio == "OTRA_PROVINCIA" || limpio == "OTRA") return "OTROS";
 
             if (limpio.Contains("QUITO") || limpio == "UIO") return "UIO";
             if (limpio.Contains("GUAYAQUIL") || limpio == "GYE") return "GYE";

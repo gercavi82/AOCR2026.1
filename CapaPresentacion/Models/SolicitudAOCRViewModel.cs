@@ -63,6 +63,24 @@ namespace CapaPresentacion.Models
 
     public class SolicitudEstacionInspeccionItemVM
     {
+        public SolicitudEstacionInspeccion ToEntity(int solicitudId, int? usuarioId)
+        {
+            DateTime inicio, fin;
+            var unica = !string.IsNullOrWhiteSpace(FechaInspeccion);
+            DateTime.TryParseExact(unica ? FechaInspeccion : FechaInicio, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out inicio);
+            DateTime.TryParseExact(unica ? FechaInspeccion : FechaFin, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out fin);
+            if (!unica && string.IsNullOrWhiteSpace(FechaFin)) fin = inicio;
+            return new SolicitudEstacionInspeccion
+            {
+                Id = Id, SolicitudId = solicitudId, EstacionCodigo = EstacionCodigo, EstacionNombre = EstacionNombre,
+                FechaInicio = inicio, FechaFin = fin, Version = Version, Estado = Estado ?? "SOLICITADA",
+                InspectorId = InspectorId, InspectorNombre = InspectorNombre, InspeccionId = InspeccionId,
+                Observacion = Observacion, CreadoPor = usuarioId, ActualizadoPor = usuarioId
+            };
+        }
+
         public int Id { get; set; }
         public string EstacionCodigo { get; set; }
         public string EstacionNombre { get; set; }

@@ -105,6 +105,8 @@ namespace CapaPresentacion.Models.ViewModels
 
     public class SolicitudInspeccionPdfViewModel
     {
+        public System.Collections.Generic.List<CapaModelo.SolicitudEstacionInspeccion> Estaciones { get; set; }
+            = new System.Collections.Generic.List<CapaModelo.SolicitudEstacionInspeccion>();
         public int OrdenId { get; set; }
         public int? SolicitudId { get; set; }
         public string NombreRT { get; set; }

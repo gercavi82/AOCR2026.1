@@ -351,6 +351,7 @@
                         <a class="list-group-item list-group-item-action wizard-step" id="list-aeronaves-list" data-bs-toggle="list" href="#aeronaves" role="tab" aria-controls="aeronaves">
                             <i class="fas fa-plane"></i> 2. Informacion de Aeronaves
                         </a>
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-inspeccion-lugares" data-bs-toggle="list" href="#inspeccion-lugares" role="tab">Detalles de Inspección</a>
                         <a class="list-group-item list-group-item-action wizard-step" id="list-operaciones-list" data-bs-toggle="list" href="#operaciones" role="tab" aria-controls="operaciones">
                             <i class="fas fa-globe-americas"></i> 3. Operaciones EAE
                         </a>
@@ -679,14 +680,27 @@
 
                             <hr>
 
+                            <div class="text-right mt-3">
+                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow">
+                                    <i class="fas fa-save"></i> Guardar Operaciones
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="comprobante" role="tabpanel" aria-labelledby="list-comprobante-list" style="display:none !important;"><!-- contenido movido a #anexos --></div>
+
+                <div class="tab-pane fade" id="inspeccion-lugares" role="tabpanel" aria-labelledby="list-inspeccion-lugares">
+                    <div class="card card-custom"><div class="card-header-custom"><h5>Detalles de Inspección</h5></div><div class="card-body">
                             <div class="row">
                                 <div class="col-md-12 mb-3">
                                     <h6 class="font-weight-bold"><i class="fas fa-plane-departure text-primary"></i> Lugares de Inspección <span class="text-danger">*</span> 
-                                        <span class="badge badge-info" style="font-size: 0.75rem;"><i class="fas fa-check-circle"></i> AC-02 (Consolidado)</span>
+                                        
                                     </h6>
                                     <p class="text-muted small mb-2">Selecciona los aeropuertos donde requieres inspección y la fecha requerida para cada uno.</p>
                                     
-                                    <div class="card p-3 bg-light border-0" id="lugaresInspeccionContainer">
+                                    <div class="card p-3 bg-light border-0" id="lugaresInspeccionContainer" data-inspection-stations="@Newtonsoft.Json.JsonConvert.SerializeObject(Model.Estaciones)">
                                         <!-- Quito -->
                                         <div class="airport-checkbox-group mb-3" id="group-quito">
                                             <div class="airport-checkbox-wrapper">
@@ -760,12 +774,12 @@
                                             <div class="airport-checkbox-wrapper">
                                                 <div class="custom-control custom-checkbox">
                                                     <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="aeropuertoOtros" value="Otros" @(aeropuertosEcuadorSet.Contains("OTROS") ? "checked" : "")>
-                                                    <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
+                                                    <label class="custom-control-label" for="aeropuertoOtros">Otra provincia/localidad</label>
                                                 </div>
                                             </div>
                                             <div class="airport-date-wrapper">
                                                 <div class="mt-2 mb-2" id="aeropuertoOtrosContenedor" style="display:none;">
-                                                    <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
+                                                    <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Provincia / localidad" aria-label="Provincia / localidad" />
                                                 </div>
                                                 <div class="inspection-date-control" id="inspection-date-otros">
                                                     <label class="inspection-date-label required">Fecha requerida de inspección</label>
@@ -778,17 +792,9 @@
                                 </div>
                             </div>
 
-                            <div class="text-right mt-3">
-                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow">
-                                    <i class="fas fa-save"></i> Guardar Operaciones
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        <button type="button" class="btn btn-primary" onclick="guardarPestana('operaciones')">Guardar lugares y fechas</button>
+                    </div></div>
                 </div>
-
-                <div class="tab-pane fade" id="comprobante" role="tabpanel" aria-labelledby="list-comprobante-list" style="display:none !important;"><!-- contenido movido a #anexos --></div>
-
                 <div class="tab-pane fade" id="anexos" role="tabpanel" aria-labelledby="list-anexos-list">
                     <div class="card card-custom">
                         <div class="card-header-custom">
@@ -1929,30 +1935,8 @@
   }
 
   // AC-02: Extraer estaciones y fechas independientes de la tabla responsive
-  function obtenerEstacionesDesdeTabla() {
-    var estaciones = [];
-    $('#tablaEstacionesInspeccion tbody tr').each(function() {
-      var $tr = $(this);
-      if ($tr.hasClass('sin-estaciones')) return;
-      var cod = ($tr.data('codigo') || $tr.find('td').eq(0).text() || '').trim();
-      var matchCod = cod.match(/^([A-Za-z0-9]+)/);
-      var codigoFinal = matchCod ? matchCod[1].toUpperCase() : cod.toUpperCase();
-      var nom = ($tr.data('nombre') || $tr.find('td').eq(0).text() || '').trim();
-      var inicio = ($tr.data('inicio') || $tr.find('td').eq(1).text() || '').trim();
-      var fin = ($tr.data('fin') || $tr.find('td').eq(2).text() || '').trim();
-      var idVal = parseInt($tr.data('id') || '0', 10) || 0;
-
-      if (codigoFinal) {
-        estaciones.push({
-          Id: idVal,
-          EstacionCodigo: codigoFinal,
-          EstacionNombre: nom,
-          FechaInicio: inicio,
-          FechaFin: fin || inicio
-        });
-      }
-    });
-    return estaciones;
+  function obtenerLugaresInspeccion() {
+    return window.AocrInspectionDateManager.getEstaciones();
   }
 
   function construirMetadatosDocumentos() {
@@ -2087,6 +2071,7 @@
     }
 
   $(document).ready(function(){
+    if (window.AocrInspectionDateManager) window.AocrInspectionDateManager.init();
     buildCarta12901();
     updateChecklist();
     
@@ -2109,104 +2094,6 @@
     if (window.AOCR && AOCR.resetAocrUiGuardado) {
       AOCR.resetAocrUiGuardado('form-init');
     }
-
-    // AC-02: Alternar input para otra estación
-    $('#selEstacionNueva').on('change', function() {
-      $('#txtEstacionOtraNombre').toggle($(this).val() === 'OTRA');
-    });
-
-    // AC-02: Agregar estación a la tabla con validación
-    $('#btnAgregarEstacion').on('click', function() {
-      var $alerta = $('#alertaEstacionError').hide().text('');
-      var selVal = ($('#selEstacionNueva').val() || '').trim();
-      var selText = $('#selEstacionNueva option:selected').text();
-      var codigo = selVal;
-      var nombre = selText;
-
-      if (!selVal) {
-        $alerta.text('Debe seleccionar o ingresar una estación.').show();
-        return;
-      }
-
-      if (selVal === 'OTRA') {
-        var otraNom = ($('#txtEstacionOtraNombre').val() || '').trim();
-        if (!otraNom) {
-          $alerta.text('Debe especificar el nombre o código de la otra estación.').show();
-          return;
-        }
-        codigo = otraNom.slice(0, 10).toUpperCase();
-        nombre = otraNom;
-      }
-
-      var fInicio = ($('#txtEstacionFechaInicio').val() || '').trim();
-      var fFin = ($('#txtEstacionFechaFin').val() || '').trim();
-
-      if (!fInicio) {
-        $alerta.text('La fecha de inicio de inspección es obligatoria.').show();
-        return;
-      }
-
-      if (fFin && fFin < fInicio) {
-        $alerta.text('La fecha final no puede ser anterior a la fecha inicial.').show();
-        return;
-      }
-
-      if (!fFin) {
-        fFin = fInicio;
-      }
-
-      // Validar que no esté duplicada
-      var existe = false;
-      $('#tablaEstacionesInspeccion tbody tr').each(function() {
-        var codExistente = ($(this).data('codigo') || '').toUpperCase();
-        if (codExistente === codigo.toUpperCase()) {
-          existe = true;
-          return false;
-        }
-      });
-
-      if (existe) {
-        $alerta.text('La estación ya se encuentra registrada en la tabla.').show();
-        return;
-      }
-
-      // Eliminar fila de placeholder si existe
-      $('#tablaEstacionesInspeccion tbody tr.sin-estaciones').remove();
-
-      // Agregar fila
-      var $tr = $('<tr>')
-        .attr('data-id', '0')
-        .attr('data-codigo', codigo)
-        .attr('data-nombre', nombre)
-        .attr('data-inicio', fInicio)
-        .attr('data-fin', fFin);
-
-      $tr.append($('<td>').html('<strong>' + codigo + '</strong> - ' + nombre));
-      $tr.append($('<td>').addClass('text-center').text(fInicio));
-      $tr.append($('<td>').addClass('text-center').text(fFin));
-      $tr.append($('<td>').addClass('text-center').html(
-        '<button type="button" class="btn btn-outline-danger btn-xs btnEliminarEstacion" title="Retirar estación">' +
-        '<i class="fas fa-trash-alt"></i></button>'
-      ));
-
-      $('#tablaEstacionesInspeccion tbody').append($tr);
-
-      // Limpiar campos
-      $('#selEstacionNueva').val('');
-      $('#txtEstacionOtraNombre').val('').hide();
-      $('#txtEstacionFechaInicio').val('');
-      $('#txtEstacionFechaFin').val('');
-    });
-
-    // AC-02: Eliminar estación de la tabla
-    $(document).on('click', '.btnEliminarEstacion', function() {
-      $(this).closest('tr').remove();
-      if ($('#tablaEstacionesInspeccion tbody tr').length === 0) {
-        $('#tablaEstacionesInspeccion tbody').append(
-          '<tr class="sin-estaciones text-center text-muted"><td colspan="4">No se han registrado fechas independientes para estaciones. Puede agregar una o más estaciones arriba.</td></tr>'
-        );
-      }
-    });
 
     // Guardar Operaciones botón
     $('#btnGuardarOperaciones').on('click', function() {
@@ -2485,7 +2372,7 @@
       camposBase.NumeroAOC = datosMapeados.NumeroAOC || '';
       camposBase.AeropuertosEcuador = datosMapeados.AeropuertosEcuador || '';
       camposBase.AeropuertosEcuadorOtros = datosMapeados.AeropuertosEcuadorOtros || '';
-      var estacionesOperaciones = typeof obtenerEstacionesDesdeTabla === 'function' ? obtenerEstacionesDesdeTabla() : [];
+      var estacionesOperaciones = typeof obtenerLugaresInspeccion === 'function' ? obtenerLugaresInspeccion() : [];
       return { seccion: seccion, solicitud: camposBase, estaciones: estacionesOperaciones };
     }
     return { seccion: seccion, solicitud: camposBase };
@@ -2537,6 +2424,9 @@
   }
 
   function guardarPestana(seccion) {
+    if (seccion === 'operaciones' && !window.AocrInspectionDateManager.validateAllAirportDates()) {
+      window.AocrInspectionDateManager.showError(); return;
+    }
     if (window.AocrFormularioEmision) {
       return AocrFormularioEmision.guardarProgreso(seccion);
     }
@@ -2556,6 +2446,9 @@
   }
 
   function guardarFormularioCore(moduloFe){
+    if (!window.AocrInspectionDateManager.validateAllAirportDates()) {
+      window.AocrInspectionDateManager.showError(); return;
+    }
     var aeronaves = obtenerAeronavesDesdeTabla();
 
         if (!esTelefonoNumericoValido($('#telefonoEcuador').val() || $('#telefonoCompania').val())) {
@@ -2631,7 +2524,7 @@
       NumeroComprobante: $('#numeroComprobante').val() || '',
       DocumentosCarga: construirMetadatosDocumentos(),
       Aeronaves: aeronaves,
-      Estaciones: obtenerEstacionesDesdeTabla()
+      Estaciones: obtenerLugaresInspeccion()
     };
     
     // Interceptar XHR para debugging (solo si window.AOCR_DEBUG === true)

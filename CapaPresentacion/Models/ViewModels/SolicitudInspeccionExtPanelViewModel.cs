@@ -5,6 +5,7 @@ namespace CapaPresentacion.Models.ViewModels
 {
     public class SolicitudInspeccionExtPanelViewModel
     {
+        public List<CapaModelo.SolicitudEstacionInspeccion> Estaciones { get; set; } = new List<CapaModelo.SolicitudEstacionInspeccion>();
         public int OrdenId { get; set; }
         public string EstadoOrden { get; set; }
         public bool TieneInspeccionExt { get; set; }

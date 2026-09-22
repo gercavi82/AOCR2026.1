@@ -1,247 +1,104 @@
-/**
- * AOCR - Inspection Date Consolidation (Punto 4 Refactor)
- * 
- * Maneja la selección de aeropuertos y fechas de inspección
- * directamente en "Lugares de Inspección" sin duplicar en Punto 3
- * 
- * Features:
- * - Show/hide date picker cuando se marca/desmarca aeropuerto
- * - Validar que cada aeropuerto marcado tenga fecha
- * - Recolectar datos en formato Location-Date pairs
- * - Retrocompatibilidad con datos legacy (FechaInicio/FechaFin)
- */
-
-;(function($, window) {
+﻿(function ($, window) {
     'use strict';
-
-    window.AocrInspectionDateManager = {
-        // Configuración de aeropuertos
-        airports: {
-            'quito': { code: 'UIO', name: 'Quito', selector: '#quito' },
-            'guayaquil': { code: 'GYE', name: 'Guayaquil', selector: '#guayaquil' },
-            'manta': { code: 'MEC', name: 'Manta', selector: '#manta' },
-            'latacunga': { code: 'LTX', name: 'Latacunga', selector: '#latacunga' }
-        },
-
-        // Estado interno de fechas seleccionadas
-        selectedDates: {},
-
-        /**
-         * Inicializar manejador de fechas
-         */
-        init: function() {
-            var self = this;
-
-            // Listener para cambios en checkboxes de aeropuertos
-            $(document).on('change', '.aeropuerto-ecuador', function() {
-                self.handleAirportChange($(this));
-            });
-
-            // Listener para cambios en date inputs
-            $(document).on('change', '.inspection-date-input', function() {
-                self.handleDateChange($(this));
-            });
-
-            // Cargar fechas existentes si hay
-            self.loadExistingDates();
-
-            // Listener para validación al guardar
-            $(document).on('click', '#btnGuardarOperaciones', function(e) {
-                if (!self.validateAllAirportDates()) {
-                    e.preventDefault();
-                    self.showError('Todos los aeropuertos seleccionados deben tener fecha de inspección definida.');
+    var codes = { QUITO: 'UIO', GUAYAQUIL: 'GYE', MANTA: 'MEC', LATACUNGA: 'LTX', OTROS: 'OTROS', OTRA_PROVINCIA: 'OTROS' };
+    var selector = '.aeropuerto-ecuador, .lugar-inspeccion-check';
+    function key($check) { return String($check.val() || '').toUpperCase(); }
+    function otherInput() { return $('#ProvinciaInspeccion, #aeropuertoOtrosDetalle').first(); }
+    function box($check) { return $check.data('inspection-box'); }
+    function dateText(value) { var p = (value || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : ''; }
+    var manager = window.AocrInspectionDateManager = {
+        init: function () {
+            if (!$(selector).length) return;
+            var seed = $('[data-inspection-stations]').first().attr('data-inspection-stations');
+            var saved = seed ? JSON.parse(seed) : [];
+            $(selector).each(function (index) {
+                var $check = $(this);
+                if ($check.data('inspection-box')) return;
+                var code = codes[key($check)];
+                var $box = $('#inspection-date-' + (code === 'OTROS' ? 'otros' : key($check).toLowerCase()));
+                if (!$box.length) {
+                    $box = $('<div class="inspection-date-control mt-2"><label>Fecha requerida de inspección</label><input type="date" class="form-control inspection-date-input"></div>');
+                    if (code === 'OTROS' && $('#divProvinciaInspeccion').length) $('#divProvinciaInspeccion').after($box);
+                    else $check.closest('label').after($box);
                 }
+                var id = 'fecha-lugar-' + index;
+                $box.find('label').attr('for', id);
+                $box.find('input[type=date]').attr('id', id);
+                $check.data('inspection-box', $box);
+                var record = saved.filter(function (e) { return String(e.EstacionCodigo).toUpperCase() === code; })[0];
+                if (!record && code === 'OTROS') record = saved.filter(function(e) { return ['UIO', 'GYE', 'MEC', 'LTX'].indexOf(String(e.EstacionCodigo).toUpperCase()) < 0; })[0];
+                if (record) {
+                    $check.prop('checked', true).data('station-record', record);
+                    if (code === 'OTROS') otherInput().val(record.EstacionNombre || '');
+                    var date = record.FechaInspeccion || (record.FechaInicio === record.FechaFin ? record.FechaInicio : '');
+                    $box.find('input').val(date || '');
+                    if (!date && record.FechaInicio) $box.append($('<small class="d-block text-muted">').text('Registro anterior: ' + dateText(record.FechaInicio) + ' al ' + dateText(record.FechaFin) + '. Seleccione la fecha requerida.'));
+                }
+                manager.toggle($check, false);
             });
-
-            console.log('[AOCR] Inspection Date Manager initialized');
+            $(document).off('change.inspectionDates', selector).on('change.inspectionDates', selector, function () { manager.toggle($(this), true); manager.refreshPreview(); });
+            $(document).off('input.inspectionDates change.inspectionDates', '.inspection-date-input, #ProvinciaInspeccion, #aeropuertoOtrosDetalle')
+                .on('input.inspectionDates change.inspectionDates', '.inspection-date-input, #ProvinciaInspeccion, #aeropuertoOtrosDetalle', function () { manager.refreshPreview(); });
+            // Native form submission (Nueva Orden) and AJAX (Solicitud AOCR) share this data model.
+            $(selector).closest('form').off('submit.inspectionDates').on('submit.inspectionDates', function (e) {
+                if ($('#seccionViaticos').length && !$('#seccionViaticos').is(':visible')) return;
+                if (!manager.validateAllAirportDates()) { e.preventDefault(); e.stopImmediatePropagation(); manager.showError(); return false; }
+                manager.prepareSubmission($(this));
+            });
+            manager.refreshPreview();
         },
-
-        /**
-         * Manejar cambio en checkbox de aeropuerto
-         */
-        handleAirportChange: function($checkbox) {
-            var value = $checkbox.val().toLowerCase();
-            var isChecked = $checkbox.is(':checked');
-            var dateContainerId = 'inspection-date-' + value;
-            var $dateContainer = $('#' + dateContainerId);
-
-            if (isChecked) {
-                // Mostrar date picker
-                $dateContainer.fadeIn(200);
-                $dateContainer.find('.inspection-date-input').focus();
-            } else {
-                // Ocultar y limpiar
-                $dateContainer.fadeOut(200);
-                var $input = $dateContainer.find('.inspection-date-input');
-                $input.val('');
-                delete this.selectedDates[value];
+        toggle: function ($check, clear) {
+            var checked = $check.is(':checked'), $box = box($check);
+            if (!$box) return;
+            $box.toggle(checked).find('input').prop('disabled', !checked).prop('required', checked);
+            if (!checked && clear) { $box.find('input').val('').removeClass('is-invalid'); $check.removeData('station-record'); }
+            if (codes[key($check)] === 'OTROS') {
+                otherInput().prop('disabled', !checked).prop('required', checked);
+                if (!checked && clear) otherInput().val('');
+                $('#divProvinciaInspeccion, #aeropuertoOtrosContenedor').toggle(checked);
             }
         },
-
-        /**
-         * Manejar cambio en date input
-         */
-        handleDateChange: function($input) {
-            var dateStr = $input.val();
-            var value = $input.data('airport').toLowerCase();
-            
-            if (dateStr) {
-                this.selectedDates[value] = dateStr;
-            } else {
-                delete this.selectedDates[value];
-            }
-
-            console.log('[AOCR] Selected dates:', this.selectedDates);
-        },
-
-        /**
-         * Validar que todos los aeropuertos marcados tengan fecha
-         */
-        validateAllAirportDates: function() {
-            var self = this;
-            var allValid = true;
-
-            $('.aeropuerto-ecuador:checked').each(function() {
-                var $checkbox = $(this);
-                var value = $checkbox.val().toLowerCase();
-                var $dateInput = $('#inspection-date-' + value + ' .inspection-date-input');
-
-                if (!$dateInput.val()) {
-                    allValid = false;
-                    $dateInput.addClass('is-invalid');
-                    console.warn('[AOCR] Missing date for airport:', value);
-                } else {
-                    $dateInput.removeClass('is-invalid');
-                }
+        validateAllAirportDates: function () {
+            var valid = $(selector).filter(':checked').length > 0;
+            $(selector).filter(':checked').each(function () {
+                var $input = box($(this)).find('input[type=date]');
+                var ok = !!$input.val() && $input[0].checkValidity();
+                $input.toggleClass('is-invalid', !ok); valid = valid && ok;
+                if (codes[key($(this))] === 'OTROS' && !$.trim(otherInput().val())) valid = false;
             });
-
-            return allValid;
+            return valid;
         },
-
-        /**
-         * Obtener objeto de datos formateado para enviar al servidor
-         */
-        getFormattedData: function() {
-            var self = this;
-            var data = [];
-
-            $('.aeropuerto-ecuador:checked').each(function() {
-                var $checkbox = $(this);
-                var value = $checkbox.val();
-                var $dateInput = $('#inspection-date-' + value.toLowerCase() + ' .inspection-date-input');
-                var dateStr = $dateInput.val();
-
-                if (dateStr) {
-                    data.push({
-                        aeropuerto: value,
-                        codigo: self.getAirportCode(value),
-                        nombre: self.getAirportName(value),
-                        fecha: dateStr // formato: YYYY-MM-DD
-                    });
-                }
+        getEstaciones: function () {
+            return $(selector).filter(':checked').map(function () {
+                var $check = $(this), code = codes[key($check)], old = $check.data('station-record') || {};
+                var date = box($check).find('input').val() || '';
+                return { Id: old.Id || 0, Version: old.Version || 1, EstacionCodigo: code,
+                    EstacionNombre: code === 'OTROS' ? $.trim(otherInput().val()) : $check.val(),
+                    FechaInspeccion: date, FechaInicio: date, FechaFin: date };
+            }).get();
+        },
+        prepareSubmission: function ($form) {
+            $form.find('.inspection-station-field').remove();
+            manager.getEstaciones().forEach(function (station, i) {
+                Object.keys(station).forEach(function (prop) {
+                    $('<input type="hidden" class="inspection-station-field">').attr('name', 'Estaciones[' + i + '].' + prop).val(station[prop]).appendTo($form);
+                });
             });
-
-            // Manejar "Otros"
-            if ($('#aeropuertoOtros:checked').length > 0) {
-                var otrosDetail = $('#aeropuertoOtrosDetalle').val();
-                var otrosDate = $('#inspection-date-otros .inspection-date-input').val();
-                if (otrosDetail && otrosDate) {
-                    data.push({
-                        aeropuerto: 'OTROS',
-                        codigo: 'OTROS',
-                        nombre: otrosDetail,
-                        fecha: otrosDate
-                    });
-                }
-            }
-
-            return data;
         },
-
-        /**
-         * Obtener código de aeropuerto
-         */
-        getAirportCode: function(name) {
-            var key = name.toLowerCase();
-            return this.airports[key] ? this.airports[key].code : 'XXX';
+        refreshPreview: function () {
+            var stations = manager.getEstaciones();
+            var $body = $('#inspection-place-preview tbody').empty();
+            stations.forEach(function (station) {
+                var $row = $('<tr>'); $('<td>').text(station.EstacionNombre + (station.EstacionCodigo === 'OTROS' ? '' : ' (' + station.EstacionCodigo + ')')).appendTo($row);
+                $('<td>').text(dateText(station.FechaInspeccion) || 'Seleccione una fecha').appendTo($row); $body.append($row);
+            });
+            $('#FechasInspeccion').val(stations.map(function (s) { return s.EstacionNombre + ': ' + dateText(s.FechaInspeccion); }).join('; '));
         },
-
-        /**
-         * Obtener nombre de aeropuerto
-         */
-        getAirportName: function(name) {
-            var key = name.toLowerCase();
-            return this.airports[key] ? this.airports[key].name : name;
-        },
-
-        /**
-         * Cargar fechas existentes desde objetos hidden o data attribute
-         */
-        loadExistingDates: function() {
-            var self = this;
-
-            // Buscar data en atributos data-* o valores ocultos
-            // Ejemplo: data-inspection-dates='{"quito":"2026-09-22","guayaquil":"2026-09-26"}'
-            var existingDatesJson = $('#formAOCR').data('inspection-dates');
-            
-            if (existingDatesJson) {
-                try {
-                    var dates = typeof existingDatesJson === 'string' 
-                        ? JSON.parse(existingDatesJson) 
-                        : existingDatesJson;
-
-                    $.each(dates, function(airport, date) {
-                        var $checkbox = $('[value="' + airport + '"].aeropuerto-ecuador');
-                        var $dateInput = $('#inspection-date-' + airport.toLowerCase() + ' .inspection-date-input');
-
-                        if ($checkbox.length && $dateInput.length) {
-                            $checkbox.prop('checked', true);
-                            $dateInput.val(date);
-                            self.selectedDates[airport.toLowerCase()] = date;
-
-                            // Mostrar date picker
-                            $('#inspection-date-' + airport.toLowerCase()).show();
-                        }
-                    });
-
-                    console.log('[AOCR] Loaded existing inspection dates');
-                } catch (e) {
-                    console.error('[AOCR] Error loading existing dates:', e);
-                }
-            }
-        },
-
-        /**
-         * Mostrar error en UI
-         */
-        showError: function(message) {
-            // Crear alerta Bootstrap
-            var $alert = $('<div class="alert alert-danger alert-dismissible fade show" role="alert">')
-                .html('<strong>Error:</strong> ' + message)
-                .prependTo($('#formAOCR'));
-
-            setTimeout(function() {
-                $alert.fadeOut(function() { $alert.remove(); });
-            }, 5000);
-        },
-
-        /**
-         * Mostrar éxito
-         */
-        showSuccess: function(message) {
-            var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">')
-                .html('<strong>Éxito:</strong> ' + message)
-                .prependTo($('#formAOCR'));
-
-            setTimeout(function() {
-                $alert.fadeOut(function() { $alert.remove(); });
-            }, 3000);
+        showError: function () {
+            var msg = 'Seleccione al menos un lugar y su fecha requerida de inspección. Complete también la provincia/localidad si seleccionó Otro.';
+            if (window.Swal) window.Swal.fire({ icon: 'warning', title: 'Fechas de inspección', text: msg });
+            else window.alert(msg);
         }
     };
-
-    // Inicializar cuando el DOM esté listo
-    $(document).ready(function() {
-        window.AocrInspectionDateManager.init();
-    });
-
+    $(function () { manager.init(); });
 }(jQuery, window));

@@ -733,6 +733,22 @@ namespace CapaPresentacion.Controllers
                     return View(model);
                 }
 
+                var estacionesInspeccion = (model.Estaciones ?? new List<SolicitudEstacionInspeccionItemVM>())
+                    .Where(e => e != null).Select(e => e.ToEntity(0, idUsuario)).ToList();
+                if (requiereSolicitudInspeccion)
+                {
+                    var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(estacionesInspeccion,
+                        model.LugarInspeccion, model.ProvinciaInspeccion);
+                    if (errorFechas != null)
+                    {
+                        ModelState.AddModelError("Estaciones", errorFechas);
+                        PrepararNuevaOrdenViewModel(model, requiereSolicitudInspeccion);
+                        return View(model);
+                    }
+                    model.AeropuertosSolicitados = string.Join(", ", estacionesInspeccion.Select(e => e.EstacionNombre));
+                    model.FechasInspeccion = string.Join("; ", estacionesInspeccion.Select(e => e.EstacionNombre + ": " + e.RangoFechasTexto));
+                }
+
                 // Calcular totales
                 decimal subtotal = 0m, admin = 0m;
                 foreach (var det in detalles)
@@ -872,9 +888,20 @@ namespace CapaPresentacion.Controllers
                             lugarEmisionDb);
 
                         var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAuto);
+                        codigoSolicitud = codigoSolicitudGenerado;
                         if (codigoSolicitudGenerado <= 0)
                         {
                             TempData["Error"] = "La orden se creó, pero no se pudo generar y vincular la solicitud asociada.";
+                            return RedirectToAction("Detalles", new { id = ordenId });
+                        }
+                    }
+
+                    if (requiereSolicitudInspeccion)
+                    {
+                        var guardadoLugares = new SolicitudEstacionService().GuardarEstaciones(codigoSolicitud.Value, estacionesInspeccion, idUsuario);
+                        if (!guardadoLugares.Exitoso)
+                        {
+                            TempData["Error"] = guardadoLugares.Mensaje;
                             return RedirectToAction("Detalles", new { id = ordenId });
                         }
                     }
@@ -3273,6 +3300,7 @@ namespace CapaPresentacion.Controllers
 
             return new SolicitudInspeccionExtPanelViewModel
             {
+                Estaciones = ObtenerLugaresFechados(orden),
                 OrdenId = orden != null ? orden.Id : 0,
                 EstadoOrden = orden != null ? EstadoOrden.NormalizarEstado(orden.Estado) : string.Empty,
                 TieneInspeccionExt = requiere,
@@ -3837,6 +3865,14 @@ namespace CapaPresentacion.Controllers
             return true;
         }
 
+        private List<SolicitudEstacionInspeccion> ObtenerLugaresFechados(OrdenRecaudacionModel orden)
+        {
+            var solicitudId = orden == null ? 0 : ObtenerCodigoSolicitudOrden(orden);
+            return solicitudId > 0
+                ? new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId)
+                : new List<SolicitudEstacionInspeccion>();
+        }
+
         private CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel BuildSolicitudInspeccionPdfModel(OrdenRecaudacionModel orden, string aeropuertosSolicitados, string fechasInspeccion)
         {
             CompletarDatosOrdenParaVista(orden);
@@ -3851,9 +3887,17 @@ namespace CapaPresentacion.Controllers
             }
 
             var nombreCompletoRt = ObtenerNombreCompletoRepresentanteTecnico(orden, usuario);
+            var lugaresFechados = ObtenerLugaresFechados(orden);
+            if (lugaresFechados.Count > 0)
+            {
+                aeropuertosSolicitados = string.Join(", ", lugaresFechados.Select(e => e.EstacionNombre));
+                fechasInspeccion = string.Join("; ", lugaresFechados.Select(e => e.EstacionNombre + ": " + e.RangoFechasTexto));
+            }
+
 
             return new CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel
             {
+                Estaciones = lugaresFechados,
                 OrdenId = orden.Id,
                 SolicitudId = ObtenerCodigoSolicitudOrden(orden),
                 NombreRT = nombreCompletoRt,

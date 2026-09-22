@@ -512,61 +512,8 @@ namespace CapaPresentacion.Controllers
             int solicitudId,
             int? usuarioId)
         {
-            var resultado = new List<SolicitudEstacionInspeccion>();
-            if (items == null) return resultado;
-
-            foreach (var item in items)
-            {
-                if (item == null) continue;
-
-                DateTime fInicio = default(DateTime);
-                if (!string.IsNullOrWhiteSpace(item.FechaInicio))
-                {
-                    DateTime parsed;
-                    if (DateTime.TryParse(item.FechaInicio, out parsed))
-                    {
-                        fInicio = parsed;
-                    }
-                }
-
-                DateTime fFin = default(DateTime);
-                if (!string.IsNullOrWhiteSpace(item.FechaFin))
-                {
-                    DateTime parsed;
-                    if (DateTime.TryParse(item.FechaFin, out parsed))
-                    {
-                        fFin = parsed;
-                    }
-                }
-                else if (fInicio != default(DateTime))
-                {
-                    fFin = fInicio;
-                }
-
-                var cod = item.EstacionCodigo != null ? item.EstacionCodigo.Trim() : string.Empty;
-
-                resultado.Add(new SolicitudEstacionInspeccion
-                {
-                    Id = item.Id,
-                    SolicitudId = solicitudId,
-                    EstacionCodigo = cod,
-                    EstacionNombre = !string.IsNullOrWhiteSpace(item.EstacionNombre)
-                        ? item.EstacionNombre.Trim()
-                        : (!string.IsNullOrWhiteSpace(cod) ? SolicitudEstacionDAO.NormalizarNombreEstacion(cod, cod) : string.Empty),
-                    FechaInicio = fInicio,
-                    FechaFin = fFin,
-                    InspectorId = item.InspectorId,
-                    InspectorNombre = item.InspectorNombre,
-                    InspeccionId = item.InspeccionId,
-                    Estado = !string.IsNullOrWhiteSpace(item.Estado) ? item.Estado.Trim() : "SOLICITADA",
-                    Version = item.Version > 0 ? item.Version : 1,
-                    Observacion = item.Observacion,
-                    CreadoPor = usuarioId,
-                    ActualizadoPor = usuarioId
-                });
-            }
-
-            return resultado;
+            return (items ?? Enumerable.Empty<SolicitudEstacionInspeccionItemVM>())
+                .Where(item => item != null).Select(item => item.ToEntity(solicitudId, usuarioId)).ToList();
         }
 
         private string ObtenerTipoSolicitud(int? tipoSolicitud)
@@ -1036,12 +983,14 @@ namespace CapaPresentacion.Controllers
                     }
 
                     // AC-02: Estaciones independientes (aocr_tbsolicitud_estacion / fallback histórico)
-                    var estacionesBD = _solicitudEstacionService.ObtenerEstacionesPorSolicitud(oid.Value, vm.Solicitud);
+                    var estacionesBD = new SolicitudEstacionDAO().ListarPorSolicitud(oid.Value);
                     if (estacionesBD != null && estacionesBD.Any())
                     {
                         vm.Estaciones = estacionesBD.Select(e => new SolicitudEstacionInspeccionItemVM
                         {
                             Id = e.Id,
+                            Version = e.Version,
+                            FechaInspeccion = e.FechaInicio.Date == e.FechaFin.Date ? e.FechaInicio.ToString("yyyy-MM-dd") : null,
                             EstacionCodigo = e.EstacionCodigo,
                             EstacionNombre = e.EstacionNombre,
                             FechaInicio = e.FechaInicio != default(DateTime) ? e.FechaInicio.ToString("yyyy-MM-dd") : string.Empty,
@@ -1769,6 +1718,14 @@ namespace CapaPresentacion.Controllers
 
                 string seccion = !string.IsNullOrWhiteSpace(payload.Seccion) ? payload.Seccion.Trim() : "general";
 
+                if (string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase))
+                {
+                    var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(
+                        MapearEstacionesDesdeViewModel(payload.Estaciones, sol.CodigoSolicitud, usuarioId),
+                        sol.AeropuertosEcuador, sol.AeropuertosEcuadorOtros);
+                    if (errorFechas != null) return JsonEnvelope(false, "VALIDATION_ERROR", errorFechas, data: null);
+                }
+
                 // Validaciones mínimas independientes de sección
                 var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
                 var companiaActivaNombre = ObtenerCompaniaActivaNombre();
@@ -1912,26 +1869,7 @@ namespace CapaPresentacion.Controllers
                 // AC-02: Persistir estaciones y fechas independientes asociadas a la solicitud
                 if (string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase) && payload.Estaciones != null)
                 {
-                    var entidadesEstaciones = payload.Estaciones
-                        .Where(e => !string.IsNullOrWhiteSpace(e.EstacionCodigo))
-                        .Select(e =>
-                        {
-                            DateTime dtIni, dtFin;
-                            bool hasIni = DateTime.TryParse(e.FechaInicio, out dtIni);
-                            bool hasFin = DateTime.TryParse(e.FechaFin, out dtFin);
-                            return new SolicitudEstacionInspeccion
-                            {
-                                Id = e.Id,
-                                SolicitudId = idFinal,
-                                EstacionCodigo = (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(),
-                                EstacionNombre = (e.EstacionNombre ?? string.Empty).Trim(),
-                                FechaInicio = hasIni ? dtIni.Date : default(DateTime),
-                                FechaFin = hasFin ? dtFin.Date : (hasIni ? dtIni.Date : default(DateTime)),
-                                InspectorNombre = e.InspectorNombre,
-                                Estado = string.IsNullOrWhiteSpace(e.Estado) ? "SOLICITADA" : e.Estado,
-                                Observacion = e.Observacion
-                            };
-                        }).ToList();
+                    var entidadesEstaciones = MapearEstacionesDesdeViewModel(payload.Estaciones, idFinal, usuarioId);
 
                     if (entidadesEstaciones.Any())
                     {
@@ -2213,6 +2151,11 @@ namespace CapaPresentacion.Controllers
             {
                 using (var scope = new TransactionScope(TransactionScopeOption.Required, opciones, TransactionScopeAsyncFlowOption.Enabled))
                 {
+                    var estacionesValidadas = MapearEstacionesDesdeViewModel(vm.Estaciones, vm.Solicitud.CodigoSolicitud, usuarioId);
+                    var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(estacionesValidadas,
+                        vm.Solicitud.AeropuertosEcuador, vm.Solicitud.AeropuertosEcuadorOtros);
+                    if (errorFechas != null) throw new ApplicationException(errorFechas);
+
                     string mensajeOut;
                     bool exito;
 

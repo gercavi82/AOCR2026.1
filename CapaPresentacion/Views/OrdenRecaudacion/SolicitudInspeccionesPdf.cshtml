@@ -144,6 +144,16 @@
         <td class="pdf-label">Teléfono RT</td>
         <td>@valorPdf(Model.TelefonoRT)</td>
     </tr>
+    @if (Model.Estaciones != null && Model.Estaciones.Count > 0)
+    {
+        <tr><th>Aeropuerto / Lugar</th><th>Fecha requerida</th></tr>
+        foreach (var lugar in Model.Estaciones)
+        {
+            <tr><td>@lugar.EstacionNombre</td><td>@lugar.RangoFechasTexto</td></tr>
+        }
+    }
+    else
+    {
     <tr>
         <td class="pdf-label">Aeropuertos solicitados</td>
         <td>@valorPdf(Model.AeropuertosSolicitados)</td>
@@ -152,6 +162,8 @@
         <td class="pdf-label">Fechas estimadas de inspección</td>
         <td>@valorPdf(Model.FechasInspeccion)</td>
     </tr>
+    }
+
 </table>
 
 <p class="pdf-paragraph">

@@ -623,6 +623,9 @@
     <Content Include="Scripts\aocr-lv-eae-validacion.js" />
     <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\aocr-formulario-emision.js" />
+    <Content Include="Scripts\aocr-inspection-dates-inline.js" />
+    <Content Include="Scripts\aocr-inspection-dates-form-integration.js" />
+    <Content Include="Content\aocr-inspection-dates-inline.css" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
     <Content Include="Content\dist\js\pages\dashboard.js" />

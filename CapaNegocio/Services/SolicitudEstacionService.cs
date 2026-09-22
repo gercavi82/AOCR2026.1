@@ -13,6 +13,28 @@ namespace CapaNegocio.Services
     /// </summary>
     public class SolicitudEstacionService
     {
+        public static string ValidarFechasPorLugar(IEnumerable<SolicitudEstacionInspeccion> estaciones, string lugares, string otraLocalidad)
+        {
+            var seleccionados = (lugares ?? string.Empty).Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(SolicitudEstacionDAO.NormalizarCodigoEstacion).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var lista = (estaciones ?? Enumerable.Empty<SolicitudEstacionInspeccion>()).Where(e => e != null).ToList();
+            if (seleccionados.Count == 0) return "Seleccione al menos un lugar de inspección.";
+            if (seleccionados.Contains("OTROS") && string.IsNullOrWhiteSpace(otraLocalidad))
+                return "Indique la provincia o localidad del otro lugar de inspección.";
+            if (lista.Count != seleccionados.Count || lista.Select(e => SolicitudEstacionDAO.NormalizarCodigoEstacion(e.EstacionCodigo)).Distinct().Count() != lista.Count)
+                return "Cada lugar seleccionado debe tener una fecha de inspección; no se permiten lugares duplicados o sin seleccionar.";
+            foreach (var est in lista)
+            {
+                var codigo = SolicitudEstacionDAO.NormalizarCodigoEstacion(est.EstacionCodigo);
+                if (!seleccionados.Contains(codigo)) return "Se recibió una fecha para un lugar de inspección no seleccionado.";
+                if (est.FechaInicio == default(DateTime) || est.FechaFin.Date != est.FechaInicio.Date)
+                    return "Seleccione una fecha requerida de inspección para " + (est.EstacionNombre ?? codigo) + ".";
+                est.EstacionCodigo = codigo;
+                est.EstacionNombre = codigo == "OTROS" ? otraLocalidad.Trim() : SolicitudEstacionDAO.NormalizarNombreEstacion(codigo, codigo);
+            }
+            return null;
+        }
+
         private readonly SolicitudEstacionDAO _estacionDAO;
         private readonly InspeccionDAO _inspeccionDAO;
 
@@ -74,6 +96,8 @@ namespace CapaNegocio.Services
             for (int i = 0; i < lista.Count; i++)
             {
                 var est = lista[i];
+                if (est.FechaInspeccion.HasValue)
+                    est.FechaInicio = est.FechaFin = est.FechaInspeccion.Value.Date;
                 var indiceVisual = i + 1;
 
                 // 1. Estación obligatoria

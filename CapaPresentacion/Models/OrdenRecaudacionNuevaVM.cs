@@ -10,6 +10,7 @@ namespace CapaPresentacion.Models
 {
     public class OrdenRecaudacionNuevaVM
     {
+        public List<SolicitudEstacionInspeccionItemVM> Estaciones { get; set; } = new List<SolicitudEstacionInspeccionItemVM>();
         [Required(ErrorMessage = "RUC/Cédula es obligatorio")]
         [RucCedulaValidation(ErrorMessage = "RUC/Cédula inválido (10 o 13 dígitos válidos)")]
         public string RucCedula { get; set; }
