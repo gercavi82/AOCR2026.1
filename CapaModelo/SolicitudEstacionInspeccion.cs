@@ -12,8 +12,17 @@ namespace CapaModelo
         public int SolicitudId { get; set; }
         public string EstacionCodigo { get; set; }
         public string EstacionNombre { get; set; }
+        
+        // Fechas de rango (legacy, mantener para backward compatibility)
         public DateTime FechaInicio { get; set; }
         public DateTime FechaFin { get; set; }
+        
+        // Nueva: Fecha única de inspección por ubicación (Punto 4 - refactor)
+        public DateTime? FechaInspeccion { get; set; }
+        
+        // Para "Otra provincia/localidad"
+        public string ProvinciaOtrosNombre { get; set; }
+        
         public int? InspectorId { get; set; }
         public string InspectorNombre { get; set; }
         public int? InspeccionId { get; set; }
@@ -27,10 +36,16 @@ namespace CapaModelo
         public int? ActualizadoPor { get; set; }
 
         // Propiedad calculada para formato legible de fechas en vistas y PDF
+        // Prioriza FechaInspeccion (nueva) sobre rango legacy
         public string RangoFechasTexto
         {
             get
             {
+                if (FechaInspeccion.HasValue && FechaInspeccion != default(DateTime))
+                {
+                    return FechaInspeccion.Value.ToString("dd/MM/yyyy");
+                }
+
                 if (FechaInicio == default(DateTime))
                 {
                     return "Fecha no definida";

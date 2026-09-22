@@ -239,7 +239,12 @@
                                        name="archivos_@doc.CodigoDocumento"
                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                                        multiple
-                                       data-card="docCard_@doc.CodigoDocumento" />
+                                       data-cumulative-upload="true"
+                                       data-card="docCard_@doc.CodigoDocumento"
+                                       data-file-list-target="fileList_@doc.CodigoDocumento"
+                                       data-file-summary-target="fileSummary_@doc.CodigoDocumento" />
+                                <small id="fileSummary_@doc.CodigoDocumento" class="form-text text-muted">Sin archivos nuevos seleccionados.</small>
+                                <div id="fileList_@doc.CodigoDocumento" class="mt-2"></div>
                                 <div class="file-name-display d-none" id="fileName_@doc.CodigoDocumento"></div>
                             </div>
                         </div>
@@ -325,34 +330,38 @@
 @section scripts {
 <script>
     $(document).ready(function () {
-        // Resaltar tarjeta al seleccionar archivo
+        // Actualizar el estado visual de la tarjeta cuando se acumulan archivos
         $('.doc-file-input').on('change', function () {
             var cardId = $(this).data('card');
             var card = $('#' + cardId);
             var docId = cardId.replace('docCard_', '');
-            var display = $('#fileName_' + docId);
+            var input = this;
 
-            if (this.files && this.files.length > 0) {
+            // Usar el método getFileCount si está disponible (API de cumulative upload)
+            var fileCount = input.getFileCount ? input.getFileCount() : (input.files ? input.files.length : 0);
+
+            if (fileCount > 0) {
                 card.addClass('has-file');
-                var nombres = Array.prototype.slice.call(this.files).map(function (file) {
-                    return file.name;
-                });
-                display.text('\u2713 ' + nombres.length + ' archivo(s): ' + nombres.join(', ')).removeClass('d-none');
             } else {
                 card.removeClass('has-file');
-                display.addClass('d-none');
             }
         });
 
         // Confirmación antes de enviar
         $('#formSubsanar').on('submit', function (e) {
             var archivosSeleccionados = 0;
+            var documentosPendientes = 0;
+
             $('.doc-file-input').each(function () {
-                if (this.files && this.files.length > 0) archivosSeleccionados++;
+                documentosPendientes++;
+                // Usar getFileCount si está disponible (cumulative upload), si no usar this.files.length
+                var fileCount = this.getFileCount ? this.getFileCount() : (this.files ? this.files.length : 0);
+                if (fileCount > 0) {
+                    archivosSeleccionados++;
+                }
             });
 
-            var totalDevueltos = $('.doc-file-input').length;
-            if (archivosSeleccionados < totalDevueltos) {
+            if (archivosSeleccionados < documentosPendientes) {
                 e.preventDefault();
                 Swal.fire({
                     title: 'Subsanación incompleta',

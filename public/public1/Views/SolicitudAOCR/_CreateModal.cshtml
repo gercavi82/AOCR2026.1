@@ -59,13 +59,24 @@
                 <h5 class="text-warning border-bottom pb-2 font-weight-bold">
                     <i class="bi bi-cloud-upload-fill mr-2"></i> Documentación de Respaldo
                 </h5>
-                <div class="custom-file">
-                    <input type="file" name="ArchivosSubidos" class="custom-file-input" id="archivos" multiple>
+                <div class="custom-file mb-3">
+                    <input type="file" 
+                           name="ArchivosSubidos" 
+                           class="custom-file-input" 
+                           id="archivos" 
+                           multiple
+                           data-cumulative-upload="true"
+                           data-file-list-target="archivosListaSeleccionados"
+                           data-file-summary-target="archivosSummary">
                     <label class="custom-file-label border-dashed text-center py-4 h-auto" for="archivos">
                         <i class="bi bi-file-earmark-arrow-up h3 d-block"></i>
                         Arrastre sus documentos PDF aquí o haga clic para seleccionar
                     </label>
                 </div>
+                <!-- Resumen de archivos seleccionados -->
+                <small id="archivosSummary" class="form-text text-muted">Sin archivos nuevos seleccionados.</small>
+                <!-- Lista de archivos seleccionados -->
+                <div id="archivosListaSeleccionados" class="mt-2"></div>
             </div>
         </div>
 
@@ -101,29 +112,38 @@
 </style>
 
 <script>
-    // Mostrar nombres de archivos seleccionados
-    $('.custom-file-input').on('change', function () {
-        let fileName = $(this).val().split('\\').pop();
-        $(this).next('.custom-file-label').addClass("selected").html(fileName || "Seleccionar archivos");
-    });
-
-    // Manejo del POST vía AJAX para evitar recargar toda la página
-    $("#formAOCR").on("submit", function (e) {
-        e.preventDefault();
-        var formData = new FormData(this);
-
-        $.ajax({
-            url: this.action,
-            type: this.method,
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (res) {
-                if (res.success) {
-                    $('#modalFormulario').modal('hide');
-                    location.reload(); // Recarga el tablero para ver la nueva solicitud
-                }
+    // Script de manejo de carga de formulario AOCR
+    $(document).ready(function () {
+        // El script aocr-cumulative-file-upload.js ya se encarga de inicializar
+        // los inputs con data-cumulative-upload="true"
+        
+        // Manejo del POST vía AJAX para evitar recargar toda la página
+        $("#formAOCR").on("submit", function (e) {
+            e.preventDefault();
+            
+            // Obtener el input de archivos acumulativos
+            var fileInput = document.getElementById('archivos');
+            var fileCount = fileInput ? (fileInput.getFileCount ? fileInput.getFileCount() : 0) : 0;
+            
+            if (fileCount === 0 && !confirm('No ha seleccionado archivos. ¿Desea continuar?')) {
+                return false;
             }
+
+            var formData = new FormData(this);
+
+            $.ajax({
+                url: this.action,
+                type: this.method,
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.success) {
+                        $('#modalFormulario').modal('hide');
+                        location.reload(); // Recarga el tablero para ver la nueva solicitud
+                    }
+                }
+            });
         });
     });
 </script>

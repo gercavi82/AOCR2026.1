@@ -72,6 +72,9 @@
         var pdfLibUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.min.js");
         var pdfWorkerUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.worker.min.js");
         var cumulativeFileUploadUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-cumulative-file-upload.js");
+        var inspectionDatesInlineCssUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-inspection-dates-inline.css");
+        var inspectionDatesInlineJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-inspection-dates-inline.js");
+        var inspectionDatesFormIntegrationJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-inspection-dates-form-integration.js");
     }
 
     <title>@pageTitle - DGAC Sistema AOCR</title>
@@ -109,6 +112,7 @@
     <link href="@aocrHeadersCssHref" rel="stylesheet" />
     <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
     <link href="~/Content/aocr-cumulative-file-upload.css" rel="stylesheet" />
+    <link href="@inspectionDatesInlineCssUrl" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->
     <style>
@@ -1027,6 +1031,8 @@
     <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
     <script src="@responsiveJsUrl"></script>
     <script src="@cumulativeFileUploadUrl"></script>
+    <script src="@inspectionDatesInlineJsUrl"></script>
+    <script src="@inspectionDatesFormIntegrationJsUrl"></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

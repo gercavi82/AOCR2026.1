@@ -680,114 +680,104 @@
                             <hr>
 
                             <div class="row">
-                                <div class="col-md-5 mb-3">
-                                    <h6 class="font-weight-bold"><i class="fas fa-plane-departure text-primary"></i> Aeropuertos dentro del Ecuador</h6>
-                                    <div class="card p-3 bg-light border-0">
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="quito" value="Quito" @(aeropuertosEcuadorSet.Contains("QUITO") ? "checked" : "")>
-                                            <label class="custom-control-label" for="quito">Quito (UIO)</label>
+                                <div class="col-md-12 mb-3">
+                                    <h6 class="font-weight-bold"><i class="fas fa-plane-departure text-primary"></i> Lugares de Inspección <span class="text-danger">*</span> 
+                                        <span class="badge badge-info" style="font-size: 0.75rem;"><i class="fas fa-check-circle"></i> AC-02 (Consolidado)</span>
+                                    </h6>
+                                    <p class="text-muted small mb-2">Selecciona los aeropuertos donde requieres inspección y la fecha requerida para cada uno.</p>
+                                    
+                                    <div class="card p-3 bg-light border-0" id="lugaresInspeccionContainer">
+                                        <!-- Quito -->
+                                        <div class="airport-checkbox-group mb-3" id="group-quito">
+                                            <div class="airport-checkbox-wrapper">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="quito" value="Quito" @(aeropuertosEcuadorSet.Contains("QUITO") ? "checked" : "")>
+                                                    <label class="custom-control-label" for="quito">Quito (UIO)</label>
+                                                </div>
+                                            </div>
+                                            <div class="airport-date-wrapper">
+                                                <div class="inspection-date-control" id="inspection-date-quito">
+                                                    <label class="inspection-date-label required">Fecha requerida de inspección</label>
+                                                    <input type="date" class="inspection-date-input" data-airport="Quito" />
+                                                    <small class="inspection-date-help">Selecciona la fecha en que requieres la inspección</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="guayaquil" value="Guayaquil" @(aeropuertosEcuadorSet.Contains("GUAYAQUIL") ? "checked" : "")>
-                                            <label class="custom-control-label" for="guayaquil">Guayaquil (GYE)</label>
-                                        </div>
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="manta" value="Manta" @(aeropuertosEcuadorSet.Contains("MANTA") ? "checked" : "")>
-                                            <label class="custom-control-label" for="manta">Manta (MEC)</label>
-                                        </div>
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="latacunga" value="Latacunga" @(aeropuertosEcuadorSet.Contains("LATACUNGA") ? "checked" : "")>
-                                            <label class="custom-control-label" for="latacunga">Latacunga (LTX)</label>
-                                        </div>
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="aeropuertoOtros" value="Otros" @(aeropuertosEcuadorSet.Contains("OTROS") ? "checked" : "")>
-                                            <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
-                                        </div>
-                                        <div class="mt-2" id="aeropuertoOtrosContenedor" style="display:none;">
-                                            <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div class="col-md-7 mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="font-weight-bold mb-0"><i class="fas fa-calendar-alt text-primary"></i> Estaciones y Fechas de Inspección Independientes</h6>
-                                        <span class="badge badge-info" style="font-size: 0.75rem;"><i class="fas fa-check-circle"></i> AC-02</span>
-                                    </div>
-                                    <p class="text-muted small mb-2">Cada estación solicitada dispone de sus propias fechas o rango de inspección independientes.</p>
-
-                                    <div class="card p-2 p-sm-3 mb-2 border bg-white shadow-sm">
-                                        <div class="form-row align-items-end">
-                                            <div class="form-group col-12 col-sm-4 mb-2">
-                                                <label class="small font-weight-bold mb-1">Estación / Aeropuerto *</label>
-                                                <select id="selEstacionNueva" class="form-control form-control-sm">
-                                                    <option value="">-- Seleccionar --</option>
-                                                    <option value="UIO">Quito (UIO)</option>
-                                                    <option value="GYE">Guayaquil (GYE)</option>
-                                                    <option value="MEC">Manta (MEC)</option>
-                                                    <option value="LTX">Latacunga (LTX)</option>
-                                                    <option value="CUE">Cuenca (CUE)</option>
-                                                    <option value="GPS">Baltra (GPS)</option>
-                                                    <option value="SCY">San Cristóbal (SCY)</option>
-                                                    <option value="OTRA">Otra estación...</option>
-                                                </select>
-                                                <input type="text" id="txtEstacionOtraNombre" class="form-control form-control-sm mt-1" style="display:none;" placeholder="Nombre de otra estación" />
+                                        <!-- Guayaquil -->
+                                        <div class="airport-checkbox-group mb-3" id="group-guayaquil">
+                                            <div class="airport-checkbox-wrapper">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="guayaquil" value="Guayaquil" @(aeropuertosEcuadorSet.Contains("GUAYAQUIL") ? "checked" : "")>
+                                                    <label class="custom-control-label" for="guayaquil">Guayaquil (GYE)</label>
+                                                </div>
                                             </div>
-                                            <div class="form-group col-6 col-sm-3 mb-2">
-                                                <label class="small font-weight-bold mb-1">Fecha Inicio *</label>
-                                                <input type="date" id="txtEstacionFechaInicio" class="form-control form-control-sm" />
-                                            </div>
-                                            <div class="form-group col-6 col-sm-3 mb-2">
-                                                <label class="small font-weight-bold mb-1">Fecha Fin *</label>
-                                                <input type="date" id="txtEstacionFechaFin" class="form-control form-control-sm" />
-                                            </div>
-                                            <div class="form-group col-12 col-sm-2 mb-2">
-                                                <button type="button" id="btnAgregarEstacion" class="btn btn-sm btn-success btn-block" title="Agregar estación">
-                                                    <i class="fas fa-plus"></i> Agregar
-                                                </button>
+                                            <div class="airport-date-wrapper">
+                                                <div class="inspection-date-control" id="inspection-date-guayaquil">
+                                                    <label class="inspection-date-label required">Fecha requerida de inspección</label>
+                                                    <input type="date" class="inspection-date-input" data-airport="Guayaquil" />
+                                                    <small class="inspection-date-help">Selecciona la fecha en que requieres la inspección</small>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div id="alertaEstacionError" class="alert alert-danger py-1 px-2 small mb-0 mt-1" style="display:none;"></div>
-                                    </div>
 
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-sm table-hover mb-0" id="tablaEstacionesInspeccion">
-                                            <thead class="thead-light">
-                                                <tr>
-                                                    <th>Estación</th>
-                                                    <th class="text-center" style="width: 25%;">Fecha Inicio</th>
-                                                    <th class="text-center" style="width: 25%;">Fecha Fin</th>
-                                                    <th class="text-center" style="width: 15%;">Acción</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @if (Model != null && Model.Estaciones != null && Model.Estaciones.Any())
-                                                {
-                                                    foreach (var est in Model.Estaciones)
-                                                    {
-                                                        <tr data-id="@est.Id" data-codigo="@est.EstacionCodigo" data-nombre="@est.EstacionNombre" data-inicio="@est.FechaInicio" data-fin="@est.FechaFin">
-                                                            <td><strong>@est.EstacionCodigo</strong> - @est.EstacionNombre</td>
-                                                            <td class="text-center">@est.FechaInicio</td>
-                                                            <td class="text-center">@est.FechaFin</td>
-                                                            <td class="text-center">
-                                                                <button type="button" class="btn btn-outline-danger btn-xs btnEliminarEstacion" title="Retirar estación">
-                                                                    <i class="fas fa-trash-alt"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <tr class="sin-estaciones text-center text-muted">
-                                                        <td colspan="4">No se han registrado fechas independientes para estaciones. Puede agregar una o más estaciones arriba.</td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
+                                        <!-- Manta -->
+                                        <div class="airport-checkbox-group mb-3" id="group-manta">
+                                            <div class="airport-checkbox-wrapper">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="manta" value="Manta" @(aeropuertosEcuadorSet.Contains("MANTA") ? "checked" : "")>
+                                                    <label class="custom-control-label" for="manta">Manta (MEC)</label>
+                                                </div>
+                                            </div>
+                                            <div class="airport-date-wrapper">
+                                                <div class="inspection-date-control" id="inspection-date-manta">
+                                                    <label class="inspection-date-label required">Fecha requerida de inspección</label>
+                                                    <input type="date" class="inspection-date-input" data-airport="Manta" />
+                                                    <small class="inspection-date-help">Selecciona la fecha en que requieres la inspección</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Latacunga -->
+                                        <div class="airport-checkbox-group mb-3" id="group-latacunga">
+                                            <div class="airport-checkbox-wrapper">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="latacunga" value="Latacunga" @(aeropuertosEcuadorSet.Contains("LATACUNGA") ? "checked" : "")>
+                                                    <label class="custom-control-label" for="latacunga">Latacunga (LTX)</label>
+                                                </div>
+                                            </div>
+                                            <div class="airport-date-wrapper">
+                                                <div class="inspection-date-control" id="inspection-date-latacunga">
+                                                    <label class="inspection-date-label required">Fecha requerida de inspección</label>
+                                                    <input type="date" class="inspection-date-input" data-airport="Latacunga" />
+                                                    <small class="inspection-date-help">Selecciona la fecha en que requieres la inspección</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Otros -->
+                                        <div class="airport-checkbox-group mb-3" id="group-otros">
+                                            <div class="airport-checkbox-wrapper">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="aeropuertoOtros" value="Otros" @(aeropuertosEcuadorSet.Contains("OTROS") ? "checked" : "")>
+                                                    <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
+                                                </div>
+                                            </div>
+                                            <div class="airport-date-wrapper">
+                                                <div class="mt-2 mb-2" id="aeropuertoOtrosContenedor" style="display:none;">
+                                                    <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@AocrTextoPlano(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
+                                                </div>
+                                                <div class="inspection-date-control" id="inspection-date-otros">
+                                                    <label class="inspection-date-label required">Fecha requerida de inspección</label>
+                                                    <input type="date" class="inspection-date-input" data-airport="Otros" />
+                                                    <small class="inspection-date-help">Selecciona la fecha en que requieres la inspección</small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
                             <div class="text-right mt-3">
                                 <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow">
                                     <i class="fas fa-save"></i> Guardar Operaciones

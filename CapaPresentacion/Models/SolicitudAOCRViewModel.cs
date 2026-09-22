@@ -66,8 +66,17 @@ namespace CapaPresentacion.Models
         public int Id { get; set; }
         public string EstacionCodigo { get; set; }
         public string EstacionNombre { get; set; }
+        
+        // Legacy: fechas de rango
         public string FechaInicio { get; set; }
         public string FechaFin { get; set; }
+        
+        // Nueva: fecha única de inspección
+        public string FechaInspeccion { get; set; }
+        
+        // Para "Otra provincia/localidad"
+        public string ProvinciaOtrosNombre { get; set; }
+        
         public int? InspectorId { get; set; }
         public string InspectorNombre { get; set; }
         public int? InspeccionId { get; set; }

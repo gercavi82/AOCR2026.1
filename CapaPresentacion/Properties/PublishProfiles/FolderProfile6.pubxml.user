@@ -8438,7 +8438,7 @@
       <publishTime>06/05/2026 12:32:32</publishTime>
     </File>
     <File Include="Views/Shared/_LayoutAOCR.cshtml">
-      <publishTime>09/08/2026 09:51:26</publishTime>
+      <publishTime>09/22/2026 12:07:09</publishTime>
     </File>
     <File Include="Views/Shared/_LoginPartial.cshtml">
       <publishTime>01/28/2026 10:36:51</publishTime>
@@ -8522,10 +8522,10 @@
       <publishTime>09/08/2026 10:59:08</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Subsanar.cshtml">
-      <publishTime>07/14/2026 14:14:07</publishTime>
+      <publishTime>09/22/2026 12:07:09</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_CreateModal.cshtml">
-      <publishTime>09/08/2026 09:48:35</publishTime>
+      <publishTime>09/22/2026 12:07:09</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_ErrorSolicitud.cshtml">
       <publishTime>05/20/2026 20:44:20</publishTime>
@@ -8588,7 +8588,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>09/22/2026 11:51:19</publishTime>
+      <publishTime>09/22/2026 13:55:26</publishTime>
     </File>
   </ItemGroup>
 </Project>
