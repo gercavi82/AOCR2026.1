@@ -27,8 +27,8 @@ namespace CapaNegocio.Services
             {
                 var codigo = SolicitudEstacionDAO.NormalizarCodigoEstacion(est.EstacionCodigo);
                 if (!seleccionados.Contains(codigo)) return "Se recibió una fecha para un lugar de inspección no seleccionado.";
-                if (est.FechaInicio == default(DateTime) || est.FechaFin.Date != est.FechaInicio.Date)
-                    return "Seleccione una fecha requerida de inspección para " + (est.EstacionNombre ?? codigo) + ".";
+                if (est.FechaInicio == default(DateTime) || est.FechaFin == default(DateTime) || est.FechaFin.Date < est.FechaInicio.Date)
+                    return "Seleccione un rango de fechas válido para " + (est.EstacionNombre ?? codigo) + ".";
                 est.EstacionCodigo = codigo;
                 est.EstacionNombre = codigo == "OTROS" ? otraLocalidad.Trim() : SolicitudEstacionDAO.NormalizarNombreEstacion(codigo, codigo);
             }

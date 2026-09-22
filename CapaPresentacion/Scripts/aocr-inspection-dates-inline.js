@@ -1,4 +1,4 @@
-﻿(function ($, window) {
+(function ($, window) {
     'use strict';
     var codes = { QUITO: 'UIO', GUAYAQUIL: 'GYE', MANTA: 'MEC', LATACUNGA: 'LTX', OTROS: 'OTROS', OTRA_PROVINCIA: 'OTROS' };
     var selector = '.aeropuerto-ecuador, .lugar-inspeccion-check';
@@ -21,18 +21,20 @@
                     if (code === 'OTROS' && $('#divProvinciaInspeccion').length) $('#divProvinciaInspeccion').after($box);
                     else $check.closest('label').after($box);
                 }
-                var id = 'fecha-lugar-' + index;
-                $box.find('label').attr('for', id);
-                $box.find('input[type=date]').attr('id', id);
+                $box.empty();
+                ['inicio', 'fin'].forEach(function (part) {
+                    var id = 'fecha-lugar-' + index + '-' + part;
+                    $('<label class="inspection-date-label required">').attr('for', id).text(part === 'inicio' ? 'Desde' : 'Hasta').appendTo($box);
+                    $('<input type="date" class="form-control inspection-date-input">').attr('id', id).attr('data-range', part).appendTo($box);
+                });
                 $check.data('inspection-box', $box);
                 var record = saved.filter(function (e) { return String(e.EstacionCodigo).toUpperCase() === code; })[0];
                 if (!record && code === 'OTROS') record = saved.filter(function(e) { return ['UIO', 'GYE', 'MEC', 'LTX'].indexOf(String(e.EstacionCodigo).toUpperCase()) < 0; })[0];
                 if (record) {
                     $check.prop('checked', true).data('station-record', record);
                     if (code === 'OTROS') otherInput().val(record.EstacionNombre || '');
-                    var date = record.FechaInspeccion || (record.FechaInicio === record.FechaFin ? record.FechaInicio : '');
-                    $box.find('input').val(date || '');
-                    if (!date && record.FechaInicio) $box.append($('<small class="d-block text-muted">').text('Registro anterior: ' + dateText(record.FechaInicio) + ' al ' + dateText(record.FechaFin) + '. Seleccione la fecha requerida.'));
+                    $box.find('[data-range=inicio]').val(record.FechaInicio || record.FechaInspeccion || '');
+                    $box.find('[data-range=fin]').val(record.FechaFin || record.FechaInspeccion || '');
                 }
                 manager.toggle($check, false);
             });
@@ -51,7 +53,7 @@
             var checked = $check.is(':checked'), $box = box($check);
             if (!$box) return;
             $box.toggle(checked).find('input').prop('disabled', !checked).prop('required', checked);
-            if (!checked && clear) { $box.find('input').val('').removeClass('is-invalid'); $check.removeData('station-record'); }
+            if (!checked && clear) { $box.find('input').val('').removeClass('is-invalid'); }
             if (codes[key($check)] === 'OTROS') {
                 otherInput().prop('disabled', !checked).prop('required', checked);
                 if (!checked && clear) otherInput().val('');
@@ -62,7 +64,8 @@
             var valid = $(selector).filter(':checked').length > 0;
             $(selector).filter(':checked').each(function () {
                 var $input = box($(this)).find('input[type=date]');
-                var ok = !!$input.val() && $input[0].checkValidity();
+                var start = $input.filter('[data-range=inicio]').val(), end = $input.filter('[data-range=fin]').val();
+                var ok = !!start && !!end && end >= start && $input.toArray().every(function (input) { return input.checkValidity(); });
                 $input.toggleClass('is-invalid', !ok); valid = valid && ok;
                 if (codes[key($(this))] === 'OTROS' && !$.trim(otherInput().val())) valid = false;
             });
@@ -71,10 +74,11 @@
         getEstaciones: function () {
             return $(selector).filter(':checked').map(function () {
                 var $check = $(this), code = codes[key($check)], old = $check.data('station-record') || {};
-                var date = box($check).find('input').val() || '';
+                var start = box($check).find('[data-range=inicio]').val() || '';
+                var end = box($check).find('[data-range=fin]').val() || '';
                 return { Id: old.Id || 0, Version: old.Version || 1, EstacionCodigo: code,
                     EstacionNombre: code === 'OTROS' ? $.trim(otherInput().val()) : $check.val(),
-                    FechaInspeccion: date, FechaInicio: date, FechaFin: date };
+                    FechaInicio: start, FechaFin: end, Estado: old.Estado || '', Observacion: old.Observacion || '' };
             }).get();
         },
         prepareSubmission: function ($form) {
@@ -90,12 +94,23 @@
             var $body = $('#inspection-place-preview tbody').empty();
             stations.forEach(function (station) {
                 var $row = $('<tr>'); $('<td>').text(station.EstacionNombre + (station.EstacionCodigo === 'OTROS' ? '' : ' (' + station.EstacionCodigo + ')')).appendTo($row);
-                $('<td>').text(dateText(station.FechaInspeccion) || 'Seleccione una fecha').appendTo($row); $body.append($row);
+                $('<td>').text(manager.rangeText(station) || 'Seleccione Desde y Hasta').appendTo($row); $body.append($row);
             });
-            $('#FechasInspeccion').val(stations.map(function (s) { return s.EstacionNombre + ': ' + dateText(s.FechaInspeccion); }).join('; '));
+            $('#FechasInspeccion').val(stations.map(function (s) { return s.EstacionNombre + ': ' + manager.rangeText(s); }).join('; '));
+        },
+        rangeText: function (station) {
+            if (!station.FechaInicio || !station.FechaFin) return '';
+            return dateText(station.FechaInicio) + (station.FechaInicio === station.FechaFin ? '' : ' al ' + dateText(station.FechaFin));
+        },
+        updateSaved: function (stations) {
+            (stations || []).forEach(function (station) {
+                $(selector).each(function () {
+                    if (codes[key($(this))] === station.EstacionCodigo) $(this).data('station-record', station);
+                });
+            });
         },
         showError: function () {
-            var msg = 'Seleccione al menos un lugar y su fecha requerida de inspección. Complete también la provincia/localidad si seleccionó Otro.';
+            var msg = 'Seleccione al menos un lugar y complete Desde y Hasta. La fecha final no puede ser anterior a la inicial. Complete también la provincia/localidad si seleccionó Otro.';
             if (window.Swal) window.Swal.fire({ icon: 'warning', title: 'Fechas de inspección', text: msg });
             else window.alert(msg);
         }

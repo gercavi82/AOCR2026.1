@@ -315,6 +315,7 @@
             if (hooks.sincronizarUrl && r.id) {
                 hooks.sincronizarUrl(r.id);
             }
+            if (r.data && r.data.estaciones && window.AocrInspectionDateManager) window.AocrInspectionDateManager.updateSaved(r.data.estaciones);
             var snapshot = r.data && r.data.solicitud ? r.data.solicitud : null;
             if (snapshot && hooks.aplicarDatosPersistidos) {
                 hooks.aplicarDatosPersistidos(snapshot, seccion);

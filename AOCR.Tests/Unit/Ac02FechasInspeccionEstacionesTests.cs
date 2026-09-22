@@ -327,15 +327,12 @@ namespace AOCR.Tests.Unit
             var contenidoFormulario = File.ReadAllText(rutaFormulario);
 
             Assert.IsTrue(contenidoFormulario.Contains("table-responsive"), "El formulario debe incluir contenedor responsive table-responsive.");
-            Assert.IsTrue(contenidoFormulario.Contains("tablaEstacionesInspeccion"), "El formulario debe incluir tablaEstacionesInspeccion.");
-            Assert.IsTrue(contenidoFormulario.Contains("btnAgregarEstacion"), "El formulario debe incluir botón interactivo btnAgregarEstacion.");
-            Assert.IsTrue(contenidoFormulario.Contains("btnEliminarEstacion"), "El formulario debe incluir botón interactivo btnEliminarEstacion.");
-
-            var rutaDetalle = ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml");
-            var contenidoDetalle = File.ReadAllText(rutaDetalle);
-
-            Assert.IsTrue(contenidoDetalle.Contains("AC-02 Multi-Estación"), "El Detalle debe incluir badge o indicador AC-02 Multi-Estación.");
-            Assert.IsTrue(contenidoDetalle.Contains("Estaciones y Fechas de Inspección Independientes"), "El Detalle debe incluir la sección de estaciones independientes.");
+            Assert.IsFalse(contenidoFormulario.Contains("tablaEstacionesInspeccion"), "No debe duplicar estaciones en Punto 3.");
+            Assert.IsFalse(contenidoFormulario.Contains("btnAgregarEstacion"));
+            Assert.IsTrue(contenidoFormulario.Contains("data-inspection-stations"));
+            Assert.IsTrue(contenidoFormulario.Contains("inspection-date-control"));
+            var detalle = File.ReadAllText(ResolverRuta(@"CapaPresentacion\Views\SolicitudAOCR\Detalle.cshtml"));
+            Assert.IsTrue(detalle.Contains("@est.RangoFechasTexto"));
         }
 
         [TestMethod]

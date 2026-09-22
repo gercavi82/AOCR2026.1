@@ -29,13 +29,13 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>09/22/2026 14:17:23</publishTime>
+      <publishTime>09/22/2026 15:03:02</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>09/22/2026 14:17:23</publishTime>
+      <publishTime>09/22/2026 15:03:02</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
       <publishTime>09/22/2026 14:17:22</publishTime>
@@ -44,19 +44,19 @@
       <publishTime>09/22/2026 14:17:22</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>09/22/2026 14:17:24</publishTime>
+      <publishTime>09/22/2026 15:03:03</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>09/22/2026 14:17:24</publishTime>
+      <publishTime>09/22/2026 15:03:03</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>09/22/2026 14:17:26</publishTime>
+      <publishTime>09/22/2026 15:03:47</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>09/22/2026 14:17:26</publishTime>
+      <publishTime>09/22/2026 15:03:47</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>09/16/2026 10:51:43</publishTime>
@@ -993,6 +993,9 @@
     </File>
     <File Include="Content/aocr-informe-tecnico.css">
       <publishTime>07/02/2026 14:48:45</publishTime>
+    </File>
+    <File Include="Content/aocr-inspection-dates-inline.css">
+      <publishTime>09/22/2026 14:16:54</publishTime>
     </File>
     <File Include="Content/aocr-institucional.css">
       <publishTime>09/08/2026 10:58:27</publishTime>
@@ -7849,6 +7852,12 @@
     <File Include="Scripts/aocr-informe-tecnico-modal.js">
       <publishTime>09/07/2026 14:13:56</publishTime>
     </File>
+    <File Include="Scripts/aocr-inspection-dates-form-integration.js">
+      <publishTime>09/22/2026 14:58:29</publishTime>
+    </File>
+    <File Include="Scripts/aocr-inspection-dates-inline.js">
+      <publishTime>09/22/2026 15:02:58</publishTime>
+    </File>
     <File Include="Scripts/aocr-lv-eae-flujo-automatico.js">
       <publishTime>09/15/2026 09:12:39</publishTime>
     </File>
@@ -8303,7 +8312,7 @@
       <publishTime>07/22/2026 20:36:35</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Nueva.cshtml">
-      <publishTime>08/27/2026 15:37:24</publishTime>
+      <publishTime>09/22/2026 15:10:07</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Obligatoria.cshtml">
       <publishTime>08/27/2026 15:26:51</publishTime>
@@ -8312,10 +8321,10 @@
       <publishTime>07/22/2026 12:34:20</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/SolicitudInspeccionesPdf.cshtml">
-      <publishTime>07/21/2026 16:03:16</publishTime>
+      <publishTime>09/22/2026 15:02:16</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/_PanelSolicitudInspeccionesExt.cshtml">
-      <publishTime>07/22/2026 11:49:47</publishTime>
+      <publishTime>09/22/2026 15:10:07</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacionDashboard/Index.cshtml">
       <publishTime>07/24/2026 14:34:06</publishTime>
@@ -8492,7 +8501,7 @@
       <publishTime>07/14/2026 10:05:30</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Detalle.cshtml">
-      <publishTime>09/03/2026 11:33:43</publishTime>
+      <publishTime>09/22/2026 15:10:07</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/FormularioEmisionAOCR.cshtml">
       <publishTime>06/05/2026 12:50:52</publishTime>
@@ -8531,7 +8540,7 @@
       <publishTime>05/20/2026 20:44:20</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml">
-      <publishTime>09/22/2026 14:16:54</publishTime>
+      <publishTime>09/22/2026 15:10:07</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR_REVISION.md">
       <publishTime>01/19/2026 11:29:45</publishTime>
@@ -8588,7 +8597,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>09/22/2026 14:18:24</publishTime>
+      <publishTime>09/22/2026 15:16:13</publishTime>
     </File>
   </ItemGroup>
 </Project>

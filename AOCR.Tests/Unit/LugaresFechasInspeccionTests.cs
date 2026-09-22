@@ -59,11 +59,21 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void RangoHistorico_SeConservaParaLecturaPeroRequiereFechaUnicaAlEditar()
+        public void RangoPorLugar_SeConservaParaLecturaYEdicion()
         {
             var historico = new SolicitudEstacionInspeccionItemVM { EstacionCodigo = "UIO", FechaInicio = "2026-09-22", FechaFin = "2026-09-25" }.ToEntity(150, 95);
             Assert.AreEqual("22/09/2026 al 25/09/2026", historico.RangoFechasTexto);
-            Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { historico }, "QUITO", null));
+            Assert.IsNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { historico }, "QUITO", null));
+        }
+
+        [TestMethod]
+        public void RangoIncompletoOInvertido_SeRechaza()
+        {
+            foreach (var fin in new[] { "", "2026-09-21" })
+            {
+                var lugar = new SolicitudEstacionInspeccionItemVM { EstacionCodigo = "GYE", FechaInicio = "2026-09-22", FechaFin = fin }.ToEntity(150, 95);
+                Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { lugar }, "GUAYAQUIL", null));
+            }
         }
 
         [TestMethod]

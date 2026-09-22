@@ -59,14 +59,14 @@ namespace AOCR.Tests.Integration
                     Estaciones = new List<SolicitudEstacionInspeccion>
                     {
                         new SolicitudEstacionInspeccion { EstacionCodigo = "UIO", EstacionNombre = "Quito (UIO)", FechaInicio = new DateTime(2026,9,22), FechaFin = new DateTime(2026,9,22) },
-                        new SolicitudEstacionInspeccion { EstacionCodigo = "GYE", EstacionNombre = "Guayaquil (GYE)", FechaInicio = new DateTime(2026,9,26), FechaFin = new DateTime(2026,9,26) },
+                        new SolicitudEstacionInspeccion { EstacionCodigo = "GYE", EstacionNombre = "Guayaquil (GYE)", FechaInicio = new DateTime(2026,9,26), FechaFin = new DateTime(2026,9,29) },
                         new SolicitudEstacionInspeccion { EstacionCodigo = "OTROS", EstacionNombre = "Localidad <script>prueba</script>", FechaInicio = new DateTime(2026,9,28), FechaFin = new DateTime(2026,9,28) }
                     }
                 };
                 page.Execute();
                 var body = page.Output.ToString();
                 StringAssert.Contains(body, "<td>Quito (UIO)</td><td>22/09/2026</td>");
-                StringAssert.Contains(body, "<td>Guayaquil (GYE)</td><td>26/09/2026</td>");
+                StringAssert.Contains(body, "<td>Guayaquil (GYE)</td><td>26/09/2026 al 29/09/2026</td>");
                 Assert.IsFalse(body.Contains("<script>"));
                 page.Output.Clear(); page.Sections["PdfHead"]();
                 var output = Path.Combine(root, "TestResults", "lugares-fechas");

@@ -1929,7 +1929,9 @@ namespace CapaPresentacion.Controllers
                     {
                         id = idFinal,
                         seccion = seccion,
-                        solicitud = ConstruirSnapshotSolicitudGuardada(persistida, seccion)
+                        solicitud = ConstruirSnapshotSolicitudGuardada(persistida, seccion),
+                        estaciones = string.Equals(seccion, "operaciones", StringComparison.OrdinalIgnoreCase)
+                            ? new SolicitudEstacionDAO().ListarPorSolicitud(idFinal) : null
                     }
                 });
             }

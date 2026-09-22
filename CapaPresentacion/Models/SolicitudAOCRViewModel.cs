@@ -71,11 +71,11 @@ namespace CapaPresentacion.Models
                 System.Globalization.DateTimeStyles.None, out inicio);
             DateTime.TryParseExact(unica ? FechaInspeccion : FechaFin, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
                 System.Globalization.DateTimeStyles.None, out fin);
-            if (!unica && string.IsNullOrWhiteSpace(FechaFin)) fin = inicio;
+
             return new SolicitudEstacionInspeccion
             {
                 Id = Id, SolicitudId = solicitudId, EstacionCodigo = EstacionCodigo, EstacionNombre = EstacionNombre,
-                FechaInicio = inicio, FechaFin = fin, Version = Version, Estado = Estado ?? "SOLICITADA",
+                FechaInicio = inicio, FechaFin = fin, Version = Version, Estado = Estado,
                 InspectorId = InspectorId, InspectorNombre = InspectorNombre, InspeccionId = InspeccionId,
                 Observacion = Observacion, CreadoPor = usuarioId, ActualizadoPor = usuarioId
             };
