@@ -2208,6 +2208,7 @@ namespace CapaPresentacion.Controllers
             };
 
             var rutasFisicasCreadas = new List<string>();
+            var etapaGuardado = "DATOS_GENERALES";
             try
             {
                 using (var scope = new TransactionScope(TransactionScopeOption.Required, opciones, TransactionScopeAsyncFlowOption.Enabled))
@@ -2235,12 +2236,14 @@ namespace CapaPresentacion.Controllers
                         .ToList();
 
                     System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Guardando {aeronaves.Count} aeronaves");
+                    etapaGuardado = "AERONAVES";
                     _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
 
                     // AC-02: Guardar estaciones con fechas de inspección independientes
                     var estacionesMapeadas = MapearEstacionesDesdeViewModel(vm.Estaciones, idFinal, usuarioId);
                     if (estacionesMapeadas.Any())
                     {
+                        etapaGuardado = "ESTACIONES";
                         var resEst = _solicitudEstacionService.GuardarEstaciones(idFinal, estacionesMapeadas, usuarioId);
                         if (!resEst.Exitoso)
                         {
@@ -2250,15 +2253,18 @@ namespace CapaPresentacion.Controllers
 
                     if (Request?.Files != null && Request.Files.Count > 0)
                     {
+                        etapaGuardado = "DOCUMENTOS_REQUEST";
                         ProcesarArchivosRequest(Request.Files, idFinal, vm.DocumentosCarga, usuarioCorreo, rutasFisicasCreadas);
                     }
 
                     if (vm.ArchivosSubidos != null && vm.ArchivosSubidos.Count() > 0)
                     {
+                        etapaGuardado = "DOCUMENTOS_ADJUNTOS";
                         System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Procesando {vm.ArchivosSubidos.Count()} documentos");
                         ProcesarArchivos(vm.ArchivosSubidos, idFinal, rutasFisicasCreadas);
                     }
 
+                    etapaGuardado = "VALIDAR_INSPECCION_FIRMADA";
                     var estadoFormularioNormalizado = EstadoSolicitud.Normalizar(vm.Solicitud != null ? vm.Solicitud.Estado : null);
                     var debeValidarSolicitudInspeccionFirmada = !string.Equals(estadoFormularioNormalizado, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase);
                     var mensajeSolicitudInspeccionPendiente = debeValidarSolicitudInspeccionFirmada
@@ -2271,6 +2277,7 @@ namespace CapaPresentacion.Controllers
 
                     if (bloquearModuloRtAlFinalizar)
                     {
+                        etapaGuardado = "FINALIZAR_RT";
                         string mensajeBloqueoRt;
                         if (!_solicitudAocrService.FinalizarSolicitudRt(idFinal, usuarioId, usuarioId.ToString(), out mensajeBloqueoRt))
                         {
@@ -2278,12 +2285,22 @@ namespace CapaPresentacion.Controllers
                         }
                     }
 
+                    etapaGuardado = "CONFIRMAR_TRANSACCION";
                     scope.Complete();
-                    return idFinal;
                 }
+                CapaDatos.Services.LoggingServiceFactory.Create().LogInfo(
+                    "[SOLICITUD_AOCR][GUARDADO_CONFIRMADO] SolicitudId=" + vm.Solicitud.CodigoSolicitud);
+                return vm.Solicitud.CodigoSolicitud;
             }
-            catch
+            catch (Exception ex)
             {
+                CapaDatos.Services.LoggingServiceFactory.Create().LogError(
+                    new InvalidOperationException("Guardado AOCR revertido. Etapa=" + etapaGuardado, ex),
+                    new CapaDatos.Services.LogContext
+                    {
+                        ErrorCode = "AOCR_GUARDADO_REVERTIDO",
+                        CodigoSolicitud = vm.Solicitud.CodigoSolicitud.ToString()
+                    });
                 LimpiarArchivosGuardados(rutasFisicasCreadas);
                 throw;
             }

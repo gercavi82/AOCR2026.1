@@ -456,48 +456,16 @@ namespace CapaPresentacion.Controllers
                     correoEnviado = false;
                 }
 
-                // 7. Notificar al Director que hay una solicitud RT pendiente de aceptación
+                // El usuario ya quedo pendiente aunque la sincronizacion del expediente RT falle.
+                // Avisar a Coordinacion por ambos canales; los errores quedan en el log.
                 try
                 {
-                    var destinatarioDireccion = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(CorreoInstitucionalService.DireccionJefatura);
-                    var asuntoDirector = "Solicitud de RT pendiente de aceptación - Sistema AOCR";
-                    var cuerpoDirector = EmailTemplateRenderer.Render(new EmailTemplateModel
-                    {
-                        Titulo = "Solicitud de RT pendiente de aceptación",
-                        NombreDestinatario = "Director/a",
-                        MensajePrincipal = "Se ha registrado una nueva solicitud de designación como Responsable Técnico (RT) en el Sistema AOCR y requiere su aceptación.",
-                        Resumen = new List<EmailFieldItem>
-                        {
-                            new EmailFieldItem("Nombre", string.Format("{0} {1}", nombres, apellidos).Trim()),
-                            new EmailFieldItem("Identificación", identificacionFinal),
-                            new EmailFieldItem("Correo del solicitante", correo),
-                            new EmailFieldItem("Estado", "Pendiente de aceptación")
-                        },
-                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Revisar designaciones RT' para asignar un Inspector y continuar la revisión.",
-                        TextoCierre = "Este es un correo automático del Sistema AOCR."
-                    });
-
-                    if (destinatarioDireccion != null)
-                    {
-                        var servicioCorreoDirector = new EnviarCorreo();
-                        foreach (var correoDestino in destinatarioDireccion.ObtenerTodosLosCorreos().Distinct(StringComparer.OrdinalIgnoreCase))
-                        {
-                            servicioCorreoDirector.enviaMensajeCorreo(correoDestino, asuntoDirector, cuerpoDirector);
-                        }
-                    }
-                    else
-                    {
-                        LogBL.RegistrarInfo(
-                            "No se encontró correo institucional activo para DIRECCION_JEFATURA. Revise Administración > Configuración de correos institucionales.",
-                            "UsuarioController");
-                    }
+                    new RegistroRtNotificacionService().NotificarRegistroPendiente(
+                        usuarioId, nombreCompletoUsuario, Url.Action("RevisarDesignaciones", "Usuario"));
                 }
-                catch (Exception exCorreoDirector)
+                catch (Exception exNotificacion)
                 {
-                    LogBL.RegistrarError(
-                        "[Usuario/Crear] No se pudo enviar correo de notificación al Director.",
-                        exCorreoDirector.ToString(),
-                        "UsuarioController");
+                    LogBL.RegistrarError("Error notificando registro RT a Coordinacion.", exNotificacion.ToString(), "UsuarioController");
                 }
 
                 var mensajeFinal = (validacionCorreo != null && validacionCorreo.EsReutilizable)

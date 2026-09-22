@@ -97,26 +97,34 @@ namespace CapaDatos.DAOs
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
                 conn.Open();
-                using (var tx = conn.BeginTransaction())
+                return EjecutarGuardadoTransaccional(conn,
+                    tx => GuardarEstacionesTransaccional(solicitudId, estaciones, usuarioId, conn, tx));
+            }
+        }
+
+        private static bool EjecutarGuardadoTransaccional(IDbConnection conn, Func<IDbTransaction, bool> guardar)
+        {
+            // Npgsql ya se enlista al abrir la conexion dentro del TransactionScope del formulario.
+            // No iniciar una segunda transaccion local; el formulario confirma o revierte el conjunto.
+            if (System.Transactions.Transaction.Current != null)
+            {
+                return guardar(null);
+            }
+
+            // El endpoint independiente de estaciones conserva su propia transaccion.
+            using (var tx = conn.BeginTransaction())
+            {
+                try
                 {
-                    try
-                    {
-                        var resultado = GuardarEstacionesTransaccional(solicitudId, estaciones, usuarioId, conn, tx);
-                        if (resultado)
-                        {
-                            tx.Commit();
-                        }
-                        else
-                        {
-                            tx.Rollback();
-                        }
-                        return resultado;
-                    }
-                    catch
-                    {
-                        tx.Rollback();
-                        throw;
-                    }
+                    var resultado = guardar(tx);
+                    if (resultado) tx.Commit();
+                    else tx.Rollback();
+                    return resultado;
+                }
+                catch
+                {
+                    tx.Rollback();
+                    throw;
                 }
             }
         }

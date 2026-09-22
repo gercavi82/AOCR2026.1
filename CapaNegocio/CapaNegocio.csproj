@@ -233,6 +233,7 @@
     <Compile Include="Services\FinancieroService.cs" />
     <Compile Include="Services\FacturacionAS400Service.cs" />
     <Compile Include="Services\RTService.cs" />
+    <Compile Include="Services\RegistroRtNotificacionService.cs" />
     <Compile Include="Services\RtDesignacionFlujoService.cs" />
     <Compile Include="Services\SolicitudEstacionService.cs" />
     <Compile Include="Services\DircavBandejaService.cs" />

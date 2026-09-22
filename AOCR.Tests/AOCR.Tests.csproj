@@ -38,6 +38,7 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml" />
     <Reference Include="Npgsql, Version=4.1.13.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
       <HintPath>..\packages\Npgsql.4.1.13\lib\net461\Npgsql.dll</HintPath>
@@ -145,6 +146,8 @@
     <Compile Include="Unit\Gate7ADepuracionSubsanacionTests.cs" />
     <Compile Include="Unit\DocumentoSeguroServiceTests.cs" />
     <Compile Include="Unit\Gate8NotificacionesAuditoriaTests.cs" />
+    <Compile Include="Unit\RegistroRtNotificacionServiceTests.cs" />
+    <Compile Include="Unit\SolicitudEstacionTransaccionTests.cs" />
     <Compile Include="Integration\SubsanacionDocumentalFlujoIntegracionTests.cs" />
     <Compile Include="Unit\UsuarioContextoServiceTests.cs" />
     <Compile Include="Unit\Fr3ConfigurationTests.cs" />

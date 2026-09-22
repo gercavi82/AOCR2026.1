@@ -4,6 +4,8 @@ using System.Configuration;
 using System.Data.Odbc;
 using System.Globalization;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using CapaDatos.Infrastructure;
 using CapaDatos.Models;
 using CapaDatos.Services;
@@ -417,10 +419,13 @@ namespace CapaDatos.DAOs
                 return false;
             }
 
+            var etapa = "ABRIR_CONEXION";
+            var tabla = _tablaUsuario;
             try
             {
                 ExecuteWithConnection(conn =>
                 {
+                    etapa = "CONSULTAR_COLUMNAS";
                     var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
                     if (columnasUsuario.Count == 0)
                     {
@@ -431,8 +436,10 @@ namespace CapaDatos.DAOs
                     var hora = DateTime.Now.ToString("HHmmss", CultureInfo.InvariantCulture);
 
                     var valoresUsuario = ConstruirValoresUsuario(record, fecha, hora);
-                    Upsert(conn, _schema, _tablaUsuario, "USUCOD", valoresUsuario, columnasUsuario);
+                    Upsert(conn, _schema, _tablaUsuario, "USUCOD", valoresUsuario, columnasUsuario, valor => etapa = valor);
 
+                    tabla = _tablaAdicional;
+                    etapa = "CONSULTAR_COLUMNAS";
                     var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
                     if (columnasAdicional.Count > 0)
                     {
@@ -443,7 +450,7 @@ namespace CapaDatos.DAOs
 
                         if (!string.IsNullOrWhiteSpace(pkAdicional))
                         {
-                            Upsert(conn, _schema, _tablaAdicional, pkAdicional, valoresAdicional, columnasAdicional);
+                            Upsert(conn, _schema, _tablaAdicional, pkAdicional, valoresAdicional, columnasAdicional, valor => etapa = valor);
                         }
                     }
                 });
@@ -452,8 +459,52 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
+                RegistrarErrorAs400(ex, etapa, _schema, tabla, record);
                 error = ex.Message;
                 return false;
+            }
+        }
+
+        private static void RegistrarErrorAs400(Exception exception, string etapa, string schema, string tabla, UsuarioAs400Record record = null)
+        {
+            // No registrar SQL, parametros, cadenas de conexion ni el objeto del formulario.
+            // El driver puede repetir valores en su mensaje: ocultarlos antes de persistirlo.
+            try
+            {
+                var valoresPrivados = record == null ? new string[0] : new[]
+                {
+                    record.ClaveHash, record.CodigoUsuario, record.Nombres, record.Apellidos,
+                    record.Identificacion, record.NumeroRuc, record.Correo, record.CorreoAdicional,
+                    record.Telefono1, record.Telefono2, record.NombreCorto, record.Cargo
+                };
+                Func<string, string> limpiar = texto =>
+                {
+                    var resultado = texto ?? string.Empty;
+                    foreach (var valor in valoresPrivados.Where(v => !string.IsNullOrWhiteSpace(v)).OrderByDescending(v => v.Length))
+                    {
+                        resultado = Regex.Replace(resultado, Regex.Escape(valor.Trim()), "[OCULTO]", RegexOptions.IgnoreCase);
+                    }
+                    resultado = Regex.Replace(resultado, @"\b(PWD|PASSWORD|UID|USER\s*ID)\s*=\s*(\{[^}]*\}|[^;\r\n]*)", "$1=[OCULTO]", RegexOptions.IgnoreCase);
+                    return resultado.Replace('\r', ' ').Replace('\n', ' ');
+                };
+                var detalle = new StringBuilder();
+                detalle.AppendFormat("[AOCR][AS400][REGISTRO_ERROR] Etapa={0}; Tabla={1}.{2}", etapa, schema, tabla);
+                for (var actual = exception; actual != null; actual = actual.InnerException)
+                {
+                    detalle.AppendFormat(" | Tipo={0}; Mensaje={1}; StackTrace={2}", actual.GetType().FullName, limpiar(actual.Message), limpiar(actual.StackTrace));
+                    var odbc = actual as OdbcException;
+                    if (odbc == null) continue;
+                    foreach (OdbcError item in odbc.Errors)
+                    {
+                        detalle.AppendFormat(" | SQLState={0}; NativeError={1}; MensajeODBC={2}", item.SQLState, item.NativeError, limpiar(item.Message));
+                    }
+                }
+                LoggingServiceFactory.Create().LogError(detalle.ToString(), new LogContext { ErrorCode = "AS400_REGISTRO" });
+            }
+            catch
+            {
+                // Una falla del logger nunca debe reemplazar el error original del registro.
+                System.Diagnostics.Trace.WriteLine("[AOCR][AS400][REGISTRO_ERROR] No se pudo persistir el diagnostico.");
             }
         }
 
@@ -528,7 +579,8 @@ namespace CapaDatos.DAOs
             string table,
             string pkColumn,
             Dictionary<string, object> valores,
-            HashSet<string> columnasDisponibles)
+            HashSet<string> columnasDisponibles,
+            Action<string> registrarEtapa)
         {
             if (!columnasDisponibles.Contains(pkColumn))
             {
@@ -546,6 +598,7 @@ namespace CapaDatos.DAOs
                 valores[pkColumn] = valores.ContainsKey(pkColumn) ? valores[pkColumn] : SafeString(null);
             }
 
+            registrarEtapa("CONSULTAR_EXISTENCIA");
             var existe = ExisteRegistro(conn, schema, table, pkColumn, valores[pkColumn]);
 
             if (existe)
@@ -559,6 +612,7 @@ namespace CapaDatos.DAOs
                 var placeholders = string.Join(", ", columnas.Select(_ => "?"));
                 var sqlInsert = $"INSERT INTO {schema}.{table} ({colsInsert}) VALUES ({placeholders})";
 
+                registrarEtapa("INSERTAR");
                 using (var cmd = new OdbcCommand(sqlInsert, conn))
                 {
                     foreach (var col in columnas)
@@ -739,6 +793,7 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
+                RegistrarErrorAs400(ex, "CONSULTAR_COLUMNAS", schema, table);
                 System.Diagnostics.Debug.WriteLine(
                     $"[AOCR][AS400][Usuario] GetColumnas: schema={schema}, table={table}, error={ex.GetType().FullName}, msg={ex.Message}. Se devuelve lista vacía.");
                 return new HashSet<string>(StringComparer.OrdinalIgnoreCase);

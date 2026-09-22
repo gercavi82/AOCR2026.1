@@ -296,6 +296,16 @@ namespace CapaPresentacion.Controllers
             try
             {
                 _service.EnviarSolicitud(solicitudId, usuarioId);
+                try
+                {
+                    var usuarioRt = UsuarioDAO.ObtenerPorId(usuarioId);
+                    new RegistroRtNotificacionService().NotificarRegistroPendiente(
+                        usuarioId, usuarioRt?.NombreCompleto, Url.Action("RevisarDesignaciones", "Usuario"));
+                }
+                catch (Exception exNotificacion)
+                {
+                    LogBL.RegistrarError("Error notificando envio RT a Coordinacion.", exNotificacion.ToString(), "RTController");
+                }
                 TempData["Ok"] = "Solicitud enviada. En proceso de validación y aprobación por Coordinador.";
             }
             catch (Exception ex)

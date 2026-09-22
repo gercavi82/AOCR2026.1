@@ -556,6 +556,7 @@
     <Content Include="Content\css\modules\aocr-direction-pending-reports.css" />
     <Content Include="Content\css\modules\aocr-coordination-dashboard.css" />
     <Content Include="Content\css\modules\aocr-kanban.css" />
+    <Content Include="error_global.txt" />
     <Content Include="Scripts\modules\aocr-test-mail.js" />
     <Content Include="Scripts\modules\aocr-direction-pending-reports.js" />
     <Content Include="Scripts\modules\aocr-coordination-dashboard.js" />
@@ -2862,6 +2863,9 @@
     <Content Include="Content\documents\pagos\pago_4_20260128094248498.pdf" />
     <Content Include="Content\documents\pagos\pago_4_20260128102444522.pdf" />
     <Content Include="connectionStrings.config" />
+    <Content Include="appSettings.secrets.config" />
+    <Content Include="appSettings.secrets.config.example" />
+    <Content Include="connectionStrings.config.example" />
     <None Include="Scripts\jquery-3.6.4.intellisense.js" />
     <Content Include="Scripts\jquery-3.6.4.js" />
     <Content Include="Scripts\jquery-3.6.4.min.js" />
