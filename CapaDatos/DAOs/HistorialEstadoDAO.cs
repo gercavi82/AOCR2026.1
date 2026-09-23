@@ -427,32 +427,8 @@ namespace CapaDatos.DAOs
                 using (var cn = CrearConexion())
                 {
                     cn.Open();
-                    var schema = ResolverSchema(cn);
-
-                    var sql = $@"
-                        INSERT INTO {schema.Tabla}
-                        ({schema.CodigoSolicitud}, {schema.EstadoAnterior}, {schema.EstadoNuevo}, {schema.CodigoUsuario}, {schema.Observaciones}, {schema.FechaCambio})
-                        VALUES
-                        (@sol, @ant, @nuevo, @user, @obs, @fecha)
-                        RETURNING {schema.CodigoHistorial};";
-
-                    using (var cmd = new NpgsqlCommand(sql, cn))
-                    {
-                        cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
-                        cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                        cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
-
-                        var result = cmd.ExecuteScalar();
-                        if (result == null || result == DBNull.Value)
-                        {
-                            return null;
-                        }
-
-                        return Convert.ToInt32(result);
-                    }
+                    return RegistrarCambioYObtenerCodigo(cn, codigoSolicitud, estadoAnterior,
+                        estadoNuevo, codigoUsuario, observaciones);
                 }
             }
             catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
@@ -463,6 +439,32 @@ namespace CapaDatos.DAOs
         }
 
         // =========================================================
+        // Registrar en la conexión del llamador conserva su transacción y evita
+        // abrir un segundo participante PostgreSQL dentro de TransactionScope.
+        public int? RegistrarCambioYObtenerCodigo(
+            NpgsqlConnection cn, int codigoSolicitud, string estadoAnterior,
+            string estadoNuevo, int codigoUsuario, string observaciones)
+        {
+            if (cn == null) throw new ArgumentNullException(nameof(cn));
+            var schema = ResolverSchema(cn);
+            var sql = $@"
+                INSERT INTO {schema.Tabla}
+                ({schema.CodigoSolicitud}, {schema.EstadoAnterior}, {schema.EstadoNuevo}, {schema.CodigoUsuario}, {schema.Observaciones}, {schema.FechaCambio})
+                VALUES (@sol, @ant, @nuevo, @user, @obs, @fecha)
+                RETURNING {schema.CodigoHistorial};";
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
+                cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+                var result = cmd.ExecuteScalar();
+                return result == null || result == DBNull.Value ? (int?)null : Convert.ToInt32(result);
+            }
+        }
+
         // 7) Insertar (modelo completo)
         // =========================================================
         public bool Insertar(HistorialEstado modelo)

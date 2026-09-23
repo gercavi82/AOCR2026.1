@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>C:\proyectos\AOCR\public\public1</_PublishTargetUrl>
-    <History>True|2026-09-23T14:17:23.4813248Z||;True|2026-09-22T11:09:58.5747687-05:00||;True|2026-09-22T09:34:27.4236530-05:00||;True|2026-09-16T10:53:34.4104332-05:00||;True|2026-09-16T10:45:43.1516616-05:00||;True|2026-09-15T16:35:26.3836592-05:00||;True|2026-09-08T14:35:08.6057354-05:00||;True|2026-09-08T12:08:54.1391322-05:00||;True|2026-09-08T11:25:58.3268114-05:00||;</History>
+    <History>True|2026-09-23T20:41:34.6169007Z||;True|2026-09-23T09:17:23.4813248-05:00||;True|2026-09-22T11:09:58.5747687-05:00||;True|2026-09-22T09:34:27.4236530-05:00||;True|2026-09-16T10:53:34.4104332-05:00||;True|2026-09-16T10:45:43.1516616-05:00||;True|2026-09-15T16:35:26.3836592-05:00||;True|2026-09-08T14:35:08.6057354-05:00||;True|2026-09-08T12:08:54.1391322-05:00||;True|2026-09-08T11:25:58.3268114-05:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
   <ItemGroup>
@@ -29,13 +29,13 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>09/23/2026 09:16:06</publishTime>
+      <publishTime>09/23/2026 15:40:18</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>09/23/2026 09:16:06</publishTime>
+      <publishTime>09/23/2026 15:40:18</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
       <publishTime>09/22/2026 14:17:22</publishTime>
@@ -44,19 +44,19 @@
       <publishTime>09/22/2026 14:17:22</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>09/23/2026 09:16:07</publishTime>
+      <publishTime>09/23/2026 15:40:20</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>09/23/2026 09:16:07</publishTime>
+      <publishTime>09/23/2026 15:40:20</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>09/23/2026 09:16:09</publishTime>
+      <publishTime>09/23/2026 15:40:22</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>09/23/2026 09:16:09</publishTime>
+      <publishTime>09/23/2026 15:40:22</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>09/16/2026 10:51:43</publishTime>
@@ -8597,7 +8597,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>09/23/2026 09:17:09</publishTime>
+      <publishTime>09/23/2026 15:41:13</publishTime>
     </File>
   </ItemGroup>
 </Project>

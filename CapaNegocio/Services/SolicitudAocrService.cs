@@ -17,6 +17,17 @@ namespace CapaNegocio.Services
         private readonly OrdenRecaudacionService _ordenService;
         private readonly OrdenRecaudacionDAO _ordenDao;
 
+        public static bool RequiereEnvioInicialCoordinacion(string estado)
+        {
+            // Conservar el estado original: Normalizar agrupa carga y revisión documental.
+            var original = (estado ?? string.Empty).Trim().Replace(' ', '_').ToUpperInvariant();
+            return string.Equals(EstadoSolicitud.Normalizar(estado), EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase)
+                || original == "SOLICITUD_AOCR_HABILITADA"
+                || original == "PENDIENTE_CARGA_DOCUMENTAL_RT"
+                || original == "PENDIENTE_REVISION_DOCUMENTAL"
+                || original == "DOCUMENTACION_PENDIENTE";
+        }
+
         public SolicitudAocrService()
             : this(
                 new SecureConfigurationService().GetConnectionString("PostgreSQL")
@@ -234,7 +245,8 @@ namespace CapaNegocio.Services
 
                     try
                     {
-                        new HistorialEstadoDAO().RegistrarCambio(
+                        new HistorialEstadoDAO().RegistrarCambioYObtenerCodigo(
+                            cn,
                             codigoSolicitud,
                             estadoActual,
                             estadoActual,

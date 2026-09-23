@@ -121,6 +121,7 @@
     <Compile Include="Unit\OrdenInspeccionViaticosReglasTests.cs" />
     <Compile Include="Unit\OrdenViaticosDetalleContractTests.cs" />
     <Compile Include="Unit\SolicitudAocrOtrosMulticargaTests.cs" />
+    <Compile Include="Unit\SolicitudRtEnvioCoordinacionTests.cs" />
     <Compile Include="Unit\RevisionDocumentalCoordinadorFlowTests.cs" />
     <Compile Include="Unit\BreadcrumbContrastTests.cs" />
     <Compile Include="Unit\GateDNoConformidadTests.cs" />

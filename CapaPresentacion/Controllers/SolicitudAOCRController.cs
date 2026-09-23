@@ -1343,8 +1343,6 @@ namespace CapaPresentacion.Controllers
                 SolicitudAOCR actual = null;
                 var esNuevaSolicitud = vm.Solicitud.CodigoSolicitud <= 0;
                 var solicitudPerteneceUsuarioActual = vm.Solicitud.CodigoSolicitud <= 0;
-                var estadoActualNormalizado = string.Empty;
-                var esBorradorLegacy = false;
                 if (vm.Solicitud.CodigoSolicitud <= 0)
                 {
                     vm.Solicitud.CodigoUsuario = usuarioId;
@@ -1384,15 +1382,11 @@ namespace CapaPresentacion.Controllers
 
                     vm.Solicitud.CodigoUsuario = actual.CodigoUsuario;
                     solicitudPerteneceUsuarioActual = actual.CodigoUsuario == usuarioId;
-                    estadoActualNormalizado = EstadoSolicitud.Normalizar(actual.Estado ?? string.Empty);
-                    esBorradorLegacy = string.Equals((actual.Estado ?? string.Empty).Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase);
                     vm.Solicitud.Estado = actual.Estado;
                 }
 
                 var requiereEnvioCoordinador = esNuevaSolicitud
-                    || string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(estadoActualNormalizado, EstadoSolicitud.SolicitudCreada, StringComparison.OrdinalIgnoreCase)
-                    || esBorradorLegacy;
+                    || SolicitudAocrService.RequiereEnvioInicialCoordinacion(actual.Estado);
 
                 var documentosFaltantes = ObtenerDocumentosObligatoriosFaltantes(
                     actual != null ? (int?)actual.CodigoSolicitud : null,
@@ -1454,6 +1448,7 @@ namespace CapaPresentacion.Controllers
                         vm,
                         usuarioId,
                         usuarioCorreo,
+                        requiereEnvioCoordinador,
                         requiereEnvioCoordinador && !EsAdmin() && UsuarioActualEsRt());
                 }
                 catch (ApplicationException exApp)
@@ -1473,18 +1468,6 @@ namespace CapaPresentacion.Controllers
                 }
 
                 MarcarSubsanadaDespuesDeGuardar(actual, idFinal, usuarioId);
-
-                if (requiereEnvioCoordinador)
-                {
-                    try
-                    {
-                        _solicitudDAO.MarcarPendienteAsignacionCoordinacion(idFinal, usuarioCorreo);
-                    }
-                    catch (Exception exPendienteAsignacion)
-                    {
-                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] No se pudo marcar pendiente_asignacion_inspector: " + exPendienteAsignacion.Message);
-                    }
-                }
 
                 if (!esNuevaSolicitud && requiereEnvioCoordinador)
                 {
@@ -2011,7 +1994,7 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo, bool bloquearModuloRtAlFinalizar)
+        private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo, bool requiereEnvioCoordinador, bool bloquearModuloRtAlFinalizar)
         {
             var opciones = new TransactionOptions
             {
@@ -2076,6 +2059,12 @@ namespace CapaPresentacion.Controllers
                     if (!string.IsNullOrWhiteSpace(mensajeSolicitudInspeccionPendiente))
                     {
                         throw new ApplicationException(mensajeSolicitudInspeccionPendiente);
+                    }
+
+                    if (requiereEnvioCoordinador)
+                    {
+                        etapaGuardado = "ENVIAR_COORDINACION";
+                        _solicitudDAO.MarcarPendienteAsignacionCoordinacion(idFinal, usuarioCorreo);
                     }
 
                     if (bloquearModuloRtAlFinalizar)
