@@ -120,10 +120,12 @@ namespace CapaDatos.DAOs
         {
             const string sqlSolicitud = @"
                 INSERT INTO django_aocr_registro_rt
-                    (usuario_rt_id, compania, email, nombre, identificacion, estado,
-                     declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
+                    (usuario_rt_id, compania, email, nombre, identificacion, nombre_eae,
+                     formulario_designacion_nombre_original, formulario_designacion_hash, aceptacion_hash,
+                     estado, declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
                 VALUES
-                    (@usuarioId, @RazonSocial, @EmailContacto, @RazonSocial, @Ruc,
+                    (@usuarioId, @RazonSocial, @EmailContacto, @RazonSocial, @Ruc, @RazonSocial,
+                     '', '', '',
                      'BORRADOR', FALSE, @texto, NOW(), NOW())
                 RETURNING id;";
 
@@ -155,9 +157,13 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 INSERT INTO django_aocr_registro_rt
-                    (usuario_rt_id, compania, estado, declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
+                    (usuario_rt_id, compania, email, nombre, identificacion, nombre_eae,
+                     formulario_designacion_nombre_original, formulario_designacion_hash, aceptacion_hash,
+                     estado, declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
                 VALUES
-                    (@usuarioId, '', 'BORRADOR', FALSE, @texto, NOW(), NOW())
+                    (@usuarioId, '', '', '', '', '',
+                     '', '', '',
+                     'BORRADOR', FALSE, @texto, NOW(), NOW())
                 RETURNING id;";
 
             using (var cn = CrearConexion())
@@ -225,10 +231,13 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 INSERT INTO django_aocr_registro_rt
-                    (usuario_rt_id, compania, email, nombre, identificacion, estado,
-                     declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
+                    (usuario_rt_id, compania, email, nombre, identificacion, nombre_eae,
+                     formulario_designacion_nombre_original, formulario_designacion_hash, aceptacion_hash,
+                     estado, declaracion_aceptada, observacion_actual, creado_en, actualizado_en)
                 VALUES
-                    (@usuarioId, @compania, @email, @nombre, @identificacion, 'EN_REVISION_COORDINADOR', TRUE,
+                    (@usuarioId, @compania, @email, @nombre, @identificacion, @compania,
+                     '', '', '',
+                     'EN_REVISION_COORDINADOR', TRUE,
                      'Expediente generado automaticamente para designacion RT legacy pendiente de asignacion de inspector.',
                      NOW(), NOW())
                 RETURNING id;";

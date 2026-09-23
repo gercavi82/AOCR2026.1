@@ -468,6 +468,28 @@ namespace CapaPresentacion.Controllers
                     LogBL.RegistrarError("Error notificando registro RT a Coordinacion.", exNotificacion.ToString(), "UsuarioController");
                 }
 
+                // Notificar en el buzón interno del usuario RT que su designación está pendiente de aceptación
+                try
+                {
+                    NotificacionDAO.Insertar(new Notificacion
+                    {
+                        CodigoUsuario = usuarioId,
+                        Titulo = "Designación RT pendiente de aceptación",
+                        Mensaje = "Su solicitud de designación RT ha sido registrada y está pendiente de aceptación por parte de la DGAC.",
+                        Tipo = "INFO",
+                        Url = "/aocr/RT/Designacion",
+                        Modulo = "RT",
+                        EntidadId = usuarioId,
+                        TipoEntidad = "USUARIO_RT",
+                        FechaCreacion = DateTime.Now,
+                        Leida = false
+                    });
+                }
+                catch (Exception exNotifRt)
+                {
+                    LogBL.RegistrarError("Error guardando notificación en buzón para usuario RT.", exNotifRt.ToString(), "UsuarioController");
+                }
+
                 var mensajeFinal = (validacionCorreo != null && validacionCorreo.EsReutilizable)
                     ? "Postulación actualizada y reenviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada."
                     : "Solicitud de registro enviada correctamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aceptada.";

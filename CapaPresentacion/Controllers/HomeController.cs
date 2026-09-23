@@ -44,11 +44,12 @@ namespace CapaPresentacion.Controllers
                 && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
             var esFinancieroRol = RoleGroupingHelper.IsFinanciero(rolActual)
                 && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
-            var esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+            var esCoordinadorRol = RoleGroupingHelper.IsCoordinacion(rolActual);
+            var esLegalRol = esCoordinadorRol
                 && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
             var esDireccionRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual);
             var puedeAdministracion = esAdministrador;
-            var puedeAprobarUsuarios = esAdministrador || esLegalRol || esDireccionRol;
+            var puedeAprobarUsuarios = esAdministrador || esCoordinadorRol || esLegalRol || esDireccionRol;
             var rolVisible = RoleGroupingHelper.ToDisplayName(rolActual);
 
             ViewBag.Usuario = Session["NombreUsuario"];
@@ -73,16 +74,26 @@ namespace CapaPresentacion.Controllers
                 // Permisos de visibilidad de módulos
                 MostrarModuloOperador = esSolicitanteRol || esAdministrador,
                 MostrarModuloFinanciero = esAdministrador || esFinancieroRol,
-                MostrarModuloCertificacion = esAdministrador || esLegalRol || esDireccionRol,
+                MostrarModuloCertificacion = esAdministrador || esCoordinadorRol || esLegalRol || esDireccionRol,
                 MostrarModuloInspector = esAdministrador || esTecnicaRol || esDireccionRol,
                 MostrarDashboardOrdenes = true,
                 MostrarDashboardFinanciero = esAdministrador || esFinancieroRol,
                 MostrarDashboardInspector = esAdministrador || esTecnicaRol || esDireccionRol,
-                MostrarDashboardGerencial = esAdministrador || esDireccionRol || esLegalRol,
+                MostrarDashboardGerencial = esAdministrador || esDireccionRol || esLegalRol || esCoordinadorRol,
                 MostrarDashboardAdministracion = puedeAdministracion,
                 MostrarSyncRt = esAdministrador,
                 MostrarAprobacionRt = puedeAprobarUsuarios
             };
+
+            AplicarResumenOperativo(
+                model,
+                esAdministrador,
+                esSolicitanteRol,
+                esTecnicaRol,
+                esFinancieroRol,
+                esLegalRol,
+                esDireccionRol,
+                esCoordinadorRol);
 
             if (esSolicitanteRol)
             {
@@ -106,14 +117,15 @@ namespace CapaPresentacion.Controllers
             bool esTecnicaRol,
             bool esFinancieroRol,
             bool esLegalRol,
-            bool esDireccionRol)
+            bool esDireccionRol,
+            bool esCoordinadorRol = false)
         {
             var idUsuario = ObtenerIdUsuario();
             model.NotificacionesNuevas = idUsuario > 0 ? NotificacionBL.ContarNoLeidas(idUsuario) : 0;
 
             try
             {
-                if (esAdministrador || esDireccionRol || esLegalRol)
+                if (esAdministrador || esDireccionRol || esLegalRol || esCoordinadorRol)
                 {
                     AplicarResumenInstitucional(model);
                     return;

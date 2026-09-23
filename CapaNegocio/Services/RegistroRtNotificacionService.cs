@@ -62,9 +62,9 @@ namespace CapaNegocio.Services
                 catch (Exception ex) { _logger.LogError(ex, contexto); }
             }
 
-            const string titulo = "Nuevo RT pendiente de revisión";
+            const string titulo = "Nuevo RT pendiente de aprobación";
             var mensaje = "El RT " + (nombreRt ?? string.Empty).Trim()
-                + " ha presentado su designación y está pendiente de revisión por Coordinación.";
+                + " ha presentado su designación y está pendiente de aceptación y aprobación por Coordinación.";
             var internas = 0;
             foreach (var coordinador in coordinadores.Values)
             {
@@ -86,11 +86,12 @@ namespace CapaNegocio.Services
             try { institucionales = _correosInstitucionales()?.ToList(); }
             catch (Exception ex) { _logger.LogError(ex, contexto); }
             var correos = (institucionales ?? Enumerable.Empty<string>())
-                .Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim())
+                .Where(c => !string.IsNullOrWhiteSpace(c) && !c.Trim().Equals("coordinador.aocr@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (correos.Count == 0)
             {
-                _logger.LogWarning("Sin correo institucional COORDINADOR_AOCR; se usaran los correos de los coordinadores activos.", contexto);
+                _logger.LogWarning("Sin correo institucional COORDINADOR_AOCR válido; se usaran los correos de los coordinadores activos.", contexto);
                 correos = coordinadores.Values.Select(u => u.Email)
                     .Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -106,7 +107,7 @@ namespace CapaNegocio.Services
                     {
                         Para = correo, ParaNombre = "Coordinador/a AOCR", Asunto = titulo + " - Sistema AOCR",
                         Cuerpo = "<p>Estimado/a Coordinador/a:</p><p>" + HttpUtility.HtmlEncode(mensaje)
-                            + "</p><p>Ingrese al Sistema AOCR, sección Revisar designaciones RT, para revisar la solicitud y continuar el proceso de aprobación.</p>",
+                            + "</p><p>Ingrese al Sistema AOCR, sección Gestión de Usuarios RT / Revisar designaciones, para revisar la solicitud y continuar el proceso de aprobación.</p>",
                         EsHtml = true, MaxIntentos = 3, TipoNotificacion = "RT_REGISTRO_PENDIENTE",
                         EventKey = "RT_REGISTRO:" + usuarioRtId + ":" + evento + ":" + correo.ToLowerInvariant(),
                         Remitente = AocrEmailService.CorreoNoReply, AliasRemitente = "DGAC - Sistema AOCR"

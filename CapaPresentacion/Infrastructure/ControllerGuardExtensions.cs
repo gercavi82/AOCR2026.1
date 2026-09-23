@@ -211,6 +211,24 @@ namespace CapaPresentacion.Infrastructure
             session["Rol"] = ResolveSelectedRole(rolesUnificados, session["Rol"] as string, selectedRoleHint);
             session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             session["LastActivity"] = DateTime.Now;
+            int existingUserId;
+            if (!TryGetUserId(session, out existingUserId) || existingUserId <= 0)
+            {
+                try
+                {
+                    var u = UsuarioDAO.ObtenerPorNombreUsuario(login);
+                    if (u != null && u.Id > 0)
+                    {
+                        session["UserId"] = u.Id;
+                        session["IdUsuario"] = u.Id;
+                        if (!string.IsNullOrWhiteSpace(u.Email))
+                        {
+                            session["Correo"] = u.Email.Trim();
+                        }
+                    }
+                }
+                catch { }
+            }
 
             LogRolActivo(
                 "RESTAURADO_USUARIO_INSTITUCIONAL",

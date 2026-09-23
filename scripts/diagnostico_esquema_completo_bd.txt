@@ -25,8 +25,8 @@ codigorol | descripcion | activo | fecha_registro | usuariocreado | fechacreado 
 22 | CoordinadorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 23 | DirectorFinanciero | True | 7/2/2026 13:06:59 | SYSTEM | 7/2/2026 13:06:59 |  |  | 
 25 | CoordinadorInspecciones | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 |  |  | 
-26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 15/9/2026 18:39:40 | 
-27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 15/9/2026 18:39:40 | 
+26 | DIRDAC | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 23/9/2026 20:18:08 | 
+27 | DIRCAV | True | 17/8/2026 20:31:26 |  | 17/8/2026 20:31:26 | SYSTEM_MIGRACION_CANONICA | 23/9/2026 20:18:08 | 
 28 | COORDINADOR | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 29 | RT | True | 3/9/2026 16:50:49 | SYSTEM_MIGRACION_CANONICA | 3/9/2026 16:50:49 |  |  | 
 
@@ -39,6 +39,9 @@ id: 80 | user: 1709318354 | nombre: GALVEZ VERA SANDRA DEL CARMEN | email: sandr
 id: 81 | user: 1709778946 | nombre: GUIJARRO CADENA JOSE FERNANDO | email: jose.guijarro@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
 id: 82 | user: 1707980049 | nombre: MOLINA VILLAFUERTE CESAR IVAN | email: ivan.molina@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
 id: 91 | user: 0201172293 | nombre: GALLO GARCIA WILLMAN EDGAR | email: edgar.gallo@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 92 | user: 1709061814 | nombre: AVILA ZARATE EDISON JAVIER | email: edison.avila@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 93 | user: 0201377850 | nombre: ALEGRIA CHICO SANTIAGO REMIGIO | email: santiago.alegria@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
+id: 94 | user: 1712241874 | nombre: VALLEJOS ESPINOSA SILVIA VICTORIA | email: silvia.vallejos@aviacioncivil.gob.ec | u.rol: Inspector | codigorol: 5 | desc: Inspector | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
 id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordinacion.operaciones@aviacioncivil.gob.ec | u.rol: CoordinadorInspecciones | codigorol: 7 | desc: CoordinacionLegal | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 14 | desc: Operador | ur_activo: True
@@ -48,8 +51,8 @@ id: 90 | user: GEN_COORDINACION | nombre: Coordinacion Generico | email: coordin
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 17 | desc: Direccion | ur_activo: False
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 18 | desc: Tecnico | ur_activo: True
 id: 45 | user: GACAJAS | nombre: GERMAN ALBERTO CAJAS VITERI | email: mancho2002@hotmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
-id: 88 | user: IMOLINA | nombre: IVAN MOLINA VILLAFUERTE | email: ivanmolinav@hotmail.es | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
-id: 89 | user: EGALLO | nombre: EDGAR GALLO | email: edgar_gallo_g@yahoo.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 95 | user: JFGUIJARRO | nombre: JOSE FRANCISCO GUIJARRO GUERRERO | email: camila.bienes@gmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
+id: 96 | user: NPAZMINO | nombre: NICOLE PAZMIÑO | email: sandry440@hotmail.com | u.rol: Solicitante | codigorol: 19 | desc: Solicitante | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 20 | desc: Recepcion | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 21 | desc: CoordinadorLegal | ur_activo: True
 id: 6 | user: USU_ADMIN | nombre: German Cajas | email: gercavi82@gmail.com | u.rol: Administrador | codigorol: 22 | desc: CoordinadorFinanciero | ur_activo: True
@@ -790,10 +793,4 @@ TABLA: vw_subsanaciones_pendientes
   [usuario] UNIQUE: usuario_codigousuario_key (codigousuario)
 
 --- 9. ESTADOS DISTINTOS EN AOCR_TBSOLICITUD ---
-  Estado: 'En Revision' -> 12 registros
-  Estado: 'En Inspeccion' -> 3 registros
-  Estado: 'AOCR En Elaboracion' -> 1 registros
-  Estado: 'Pendiente' -> 1 registros
-  Estado: 'Pendiente Asignacion RT' -> 1 registros
-  Estado: 'SOLICITUD_AOCR_HABILITADA' -> 1 registros
-  Estado: 'Subsanada' -> 1 registros
+  Estado: 'SOLICITUD_AOCR_HABILITADA' -> 2 registros

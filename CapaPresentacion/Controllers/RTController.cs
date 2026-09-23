@@ -306,6 +306,26 @@ namespace CapaPresentacion.Controllers
                 {
                     LogBL.RegistrarError("Error notificando envio RT a Coordinacion.", exNotificacion.ToString(), "RTController");
                 }
+                try
+                {
+                    NotificacionDAO.Insertar(new Notificacion
+                    {
+                        CodigoUsuario = usuarioId,
+                        Titulo = "Designación RT pendiente de aceptación",
+                        Mensaje = "Su solicitud de designación RT ha sido enviada y se encuentra pendiente de aceptación y aprobación por Coordinación.",
+                        Tipo = "INFO",
+                        Url = Url.Action("Designacion", "RT", new { solicitudId }),
+                        Modulo = "RT",
+                        EntidadId = usuarioId,
+                        TipoEntidad = "USUARIO_RT",
+                        FechaCreacion = DateTime.Now,
+                        Leida = false
+                    });
+                }
+                catch (Exception exNotifRt)
+                {
+                    LogBL.RegistrarError("Error guardando aviso de envío en buzón para RT.", exNotifRt.ToString(), "RTController");
+                }
                 TempData["Ok"] = "Solicitud enviada. En proceso de validación y aprobación por Coordinador.";
             }
             catch (Exception ex)
