@@ -22,6 +22,8 @@ namespace CapaDatos.Infrastructure
 
         private const int DefaultCommandTimeout = 30; // segundos
         private const int DefaultConnectionTimeout = 15; // segundos
+        private const int MaxRetryAttempts = 3; // reintentos para errores transitorios
+        private const int InitialRetryDelayMs = 500; // delay inicial exponencial (500ms, 1s, 2s)
 
         #endregion
 
@@ -52,57 +54,163 @@ namespace CapaDatos.Infrastructure
         }
 
         /// <summary>
-        /// Ejecuta una acción con conexión manejada automáticamente
+        /// Ejecuta una acción con conexión manejada automáticamente, con reintentos para errores transitorios.
         /// </summary>
         protected T ExecuteWithConnection<T>(Func<NpgsqlConnection, T> action)
         {
-            using (var connection = CreateConnection())
+            int attempt = 0;
+            int delayMs = InitialRetryDelayMs;
+
+            while (attempt < MaxRetryAttempts)
             {
                 try
                 {
-                    connection.Open();
-                    return action(connection);
+                    using (var connection = CreateConnection())
+                    {
+                        connection.Open();
+                        return action(connection);
+                    }
+                }
+                catch (System.Net.Sockets.SocketException) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Error de socket, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2; // backoff exponencial
+                    continue;
+                }
+                catch (System.IO.IOException _) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Error de red o timeout, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2; // backoff exponencial
+                    continue;
+                }
+                catch (TimeoutException _) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Timeout en conexión, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2; // backoff exponencial
+                    continue;
+                }
+                catch (NpgsqlException ex) when (attempt < MaxRetryAttempts - 1 && 
+                    (ex.InnerException is System.TimeoutException || 
+                     ex.InnerException is System.Net.Sockets.SocketException))
+                {
+                    // ⚠️ TRANSITORIO: Conexión rechazada temporalmente, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2; // backoff exponencial
+                    continue;
+                }
+                catch (NpgsqlException ex) when (attempt >= MaxRetryAttempts - 1)
+                {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error PostgreSQL
+                    throw WrapDatabaseException(ex);
                 }
                 catch (NpgsqlException ex)
                 {
+                    // ❌ ERROR PERMANENTE: Error PostgreSQL que no es transitorio (sintaxis, permisos, etc.)
                     throw WrapDatabaseException(ex);
                 }
-                catch (System.IO.IOException ex)
+                catch (System.IO.IOException ex) when (attempt >= MaxRetryAttempts - 1)
                 {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error de red
                     throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
                 }
-                catch (System.Net.Sockets.SocketException ex)
+                catch (System.Net.Sockets.SocketException ex) when (attempt >= MaxRetryAttempts - 1)
                 {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error de socket
                     throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
                 }
             }
+
+            // Si llegamos aquí, agotamos los reintentos
+            throw new DataAccessException(
+                "No se pudo conectar a la base de datos tras " + MaxRetryAttempts + " intentos. Contacte al administrador.",
+                "CONNECTION_TIMEOUT");
         }
 
         /// <summary>
-        /// Ejecuta una acción con conexión (sin retorno)
+        /// Ejecuta una acción con conexión (sin retorno), con reintentos para errores transitorios.
         /// </summary>
         protected void ExecuteWithConnection(Action<NpgsqlConnection> action)
         {
-            using (var connection = CreateConnection())
+            int attempt = 0;
+            int delayMs = InitialRetryDelayMs;
+
+            while (attempt < MaxRetryAttempts)
             {
                 try
                 {
-                    connection.Open();
-                    action(connection);
+                    using (var connection = CreateConnection())
+                    {
+                        connection.Open();
+                        action(connection);
+                        return;
+                    }
+                }
+                catch (System.Net.Sockets.SocketException _) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Error de socket, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;
+                    continue;
+                }
+                catch (System.IO.IOException _) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Error de red o timeout, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;
+                    continue;
+                }
+                catch (TimeoutException _) when (attempt < MaxRetryAttempts - 1)
+                {
+                    // ⚠️ TRANSITORIO: Timeout en conexión, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;
+                    continue;
+                }
+                catch (NpgsqlException ex) when (attempt < MaxRetryAttempts - 1 && 
+                    (ex.InnerException is System.TimeoutException || 
+                     ex.InnerException is System.Net.Sockets.SocketException))
+                {
+                    // ⚠️ TRANSITORIO: Conexión rechazada temporalmente, reintentar
+                    attempt++;
+                    System.Threading.Thread.Sleep(delayMs);
+                    delayMs *= 2;
+                    continue;
+                }
+                catch (NpgsqlException ex) when (attempt >= MaxRetryAttempts - 1)
+                {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error PostgreSQL
+                    throw WrapDatabaseException(ex);
                 }
                 catch (NpgsqlException ex)
                 {
+                    // ❌ ERROR PERMANENTE: Error PostgreSQL que no es transitorio (sintaxis, permisos, etc.)
                     throw WrapDatabaseException(ex);
                 }
-                catch (System.IO.IOException ex)
+                catch (System.IO.IOException ex) when (attempt >= MaxRetryAttempts - 1)
                 {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error de red
                     throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
                 }
-                catch (System.Net.Sockets.SocketException ex)
+                catch (System.Net.Sockets.SocketException ex) when (attempt >= MaxRetryAttempts - 1)
                 {
+                    // ❌ ERROR PERMANENTE: Agotados reintentos tras error de socket
                     throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
                 }
             }
+
+            throw new DataAccessException(
+                "No se pudo conectar a la base de datos tras " + MaxRetryAttempts + " intentos. Contacte al administrador.",
+                "CONNECTION_TIMEOUT");
         }
 
         /// <summary>
