@@ -465,6 +465,58 @@ namespace CapaPresentacion.Controllers
                     return JsonRevisionError(400, "La solicitud no tiene un inspector asignado para finalizar la revision.", solicitud.CodigoSolicitud, "Inspector no asignado");
                 }
 
+                if (devueltos > 0)
+                {
+                    var resumen = ConstruirResumenRevisionDocumental(documentosCierre, revisionesResumen, true);
+                    var cierre = _revisionDocumentalService.CrearDecisionCierreFinal(true, resumen);
+                    if (!_solicitudDao.CambiarEstado(solicitud.CodigoSolicitud, cierre.EstadoDestino,
+                        usuarioId, cierre.ObservacionCierre))
+                    {
+                        return JsonRevisionError(500, "No se pudo devolver la solicitud al RT para subsanación.",
+                            solicitud.CodigoSolicitud, "Fallo cambio estado observado");
+                    }
+
+                    var items = documentosCierre
+                        .Where(d => DocumentoSubsanacionService.RequiereSubsanacion(d, revisionesResumen))
+                        .Select(d => new DocumentoDevueltoNotificacionItem
+                        {
+                            CodigoDocumento = d.CodigoDocumento,
+                            Etiqueta = ObtenerEtiquetaDocumento(d),
+                            Observacion = ObtenerObservacionRevisionDocumental(d, revisionesResumen)
+                        }).ToList();
+                    var urlSubsanar = Url.Action("Subsanar", "SolicitudAOCR",
+                        new { id = solicitud.CodigoSolicitud }, Request.Url.Scheme);
+                    var aviso = "";
+                    try
+                    {
+                        var correo = new DocumentoSubsanacionService().EncolarCorreoDocumentosDevueltosInspector(
+                            solicitud, items, solicitud.TecnicoResponsableNombre, urlSubsanar, null);
+                        if (!correo.Exitoso || Convert.ToInt32(correo.Datos ?? 0) == 0)
+                            aviso = " No se generó un nuevo correo; revise la cola de notificaciones.";
+                    }
+                    catch (Exception ex)
+                    {
+                        aviso = " La devolución quedó registrada, pero no se pudo completar la notificación al RT.";
+                        LogBL.RegistrarError("[REV_DOC][NOTIFICACION_RT_ERROR] SolicitudId=" + solicitud.CodigoSolicitud,
+                            ex.ToString(), "RevisionDocumentalController");
+                    }
+
+                    if (!NotificacionBL.EnviarNotificacion(solicitud.CodigoUsuario,
+                        "Documentos devueltos para subsanación", resumen,
+                        "DOCUMENTOS_DEVUELTOS_INSPECTOR", urlSubsanar,
+                        "SolicitudAOCR", solicitud.CodigoSolicitud, "SolicitudAOCR"))
+                        aviso += " No se pudo registrar el aviso en la bandeja del RT.";
+
+                    return JsonRevisionOk("Revisión finalizada con documentos devueltos al RT para subsanación." + aviso,
+                        new
+                        {
+                            aceptados, devueltos, pendientes,
+                            siguienteEstado = cierre.EstadoDestino,
+                            redirectUrl = Url.Action("Lista", "Documento", new { solicitudId = solicitud.CodigoSolicitud,
+                                modo = "revision", origen = "revision-documental" })
+                        });
+                }
+
                 var finalizacion = _coordinadorRevisionService.FinalizarRevisionDocumentalInspector(
                     solicitud.CodigoSolicitud,
                     inspeccionAsignada.CodigoInspector.Value,

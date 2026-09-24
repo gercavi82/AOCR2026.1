@@ -104,5 +104,25 @@ namespace AOCR.Tests.Unit
             Assert.AreEqual(EstadoDocumentoInstitucional.DevueltoInspector, EstadoDocumentoInstitucional.Normalizar("DEVUELTO"));
             Assert.AreEqual(EstadoDocumentoInstitucional.VersionAnterior, EstadoDocumentoInstitucional.Normalizar("VERSION_ANTERIOR"));
         }
+
+        [TestMethod]
+        public void CierreConRechazos_HabilitaSubsanacionRtSoloDeDocumentosDevueltos()
+        {
+            var revision = new RevisionDocumentalService(new FakeUsuarioAS400DAO(), new FakeEmpresaAS400DAO());
+            var cierre = revision.CrearDecisionCierreFinal(true, "AOC incorrecto; solicitud sin firma.");
+            Assert.AreEqual(EstadoSolicitud.Observada, cierre.EstadoDestino);
+            Assert.IsTrue(cierre.RequiereNotificarObservaciones);
+            var decisiones = new Dictionary<int, Tuple<string, string>>
+            {
+                { 45, Tuple.Create("DEVUELTO", "AOC incorrecto") },
+                { 46, Tuple.Create("ACEPTADO", "") }
+            };
+            Assert.IsTrue(_service.PuedeRtSubsanarDocumento(new Documento
+                { CodigoDocumento = 45, Estado = EstadoDocumentoInstitucional.DevueltoInspector },
+                decisiones, cierre.EstadoDestino, true));
+            Assert.IsFalse(_service.PuedeRtSubsanarDocumento(new Documento
+                { CodigoDocumento = 46, Estado = EstadoDocumentoInstitucional.Aceptado },
+                decisiones, cierre.EstadoDestino, true));
+        }
     }
 }

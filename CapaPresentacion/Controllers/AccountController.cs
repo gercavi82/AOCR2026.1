@@ -2034,7 +2034,10 @@ namespace CapaPresentacion.Controllers
             Session["TieneOrdenPendienteProceso"] = estadoFlujo.TieneOrdenVigente && !estadoFlujo.PagoAprobado;
             Session["TieneOrdenPendienteComprobante"] = estadoFlujo.TieneOrdenVigente && !estadoFlujo.TieneComprobante;
 
-            var urlDestinoAplicacion = ResolverUrlAplicacion(estadoFlujo.UrlDestino);
+            // El pago aprobado no implica que el formulario siga editable: el RT
+            // puede haber finalizado el envío. El inicio ofrece las acciones de la
+            // etapa actual sin redirigir automáticamente a un formulario bloqueado.
+            var urlDestinoAplicacion = ResolverUrlAplicacion("/Dashboard/Index");
 
             _logger.LogInfo(string.Format(
                 "[AUTH][LOGIN_REDIRECT] UsuarioId={0}; Compania={1}; Destino={2}; Paso={3}",
