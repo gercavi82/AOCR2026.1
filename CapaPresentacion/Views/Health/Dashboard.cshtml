@@ -1,10 +1,16 @@
-@inherits System.Web.Mvc.WebViewPage
+﻿@inherits System.Web.Mvc.WebViewPage
 @{
     ViewBag.Title = "Health Dashboard";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid">
+<style>
+.aocr-health-dashboard .card-header .btn-outline-light { color:#163c59!important; background:#fff!important; border-color:#8ca7bc!important; }
+.aocr-health-dashboard .card-body { background:#fff; color:#163c59; }
+.aocr-health-dashboard .card-body .table td { color:#163c59; }
+.aocr-health-dashboard .card-body .text-danger { color:#a51d2b!important; }
+</style>
+<div class="container-fluid aocr-health-dashboard">
     <div class="row">
         <div class="col-12">
             <h1 class="mt-4"><i class="fas fa-heartbeat text-danger"></i> Health Dashboard</h1>
@@ -210,6 +216,12 @@
         status.textContent = text;
     }
 
+    function escapeHealthText(value) {
+        var element = document.createElement('span');
+        element.textContent = value == null ? '' : String(value);
+        return element.innerHTML;
+    }
+
     function refreshAs400() {
         document.getElementById('as400Details').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>';
         $.getJSON('@Url.Action("As400", "Health")', function (data) {
@@ -217,7 +229,7 @@
             setCardStatus('cardAs400', 'as400Status', data.status === 'healthy' ? 'Saludable' : (data.status === 'degraded' ? 'Degradado' : 'No disponible'), statusColor);
 
             var html = '<table class="table table-sm table-bordered mb-0">';
-            html += '<tr><td class="fw-bold" width="40%">Estado</td><td>' + (data.status_badge || data.status) + '</td></tr>';
+            html += '<tr><td class="fw-bold" width="40%">Estado</td><td>' + (data.status === 'healthy' ? 'Saludable' : (data.status === 'degraded' ? 'Degradado' : 'No disponible')) + '</td></tr>';
             html += '<tr><td class="fw-bold">Servidor</td><td>' + (data.server || 'N/A') + '</td></tr>';
             html += '<tr><td class="fw-bold">Base de Datos</td><td>' + (data.database || 'N/A') + '</td></tr>';
             html += '<tr><td class="fw-bold">Facturación Habilitada</td><td>' + (data.facturacion_enabled ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>') + '</td></tr>';
@@ -227,13 +239,13 @@
                 html += '<tr><td class="fw-bold">Conexión</td><td>' + (data.connection.success ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">Error: ' + (data.connection.error || '') + '</span>') + '</td></tr>';
             }
             if (data.circuit_breaker) {
-                html += '<tr><td class="fw-bold">Circuit Breaker</td><td>' + (data.circuit_breaker.state_badge || data.circuit_breaker.state) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Circuit Breaker</td><td>' + escapeHealthText(data.circuit_breaker.state) + '</td></tr>';
             }
             if (data.tables && data.tables.length > 0) {
                 html += '<tr><td class="fw-bold">Tablas FR3</td><td>';
                 data.tables.forEach(function (t) {
-                    var icon = t.Accessible ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>';
-                    html += icon + ' ' + t.TableName + '&nbsp;&nbsp;';
+                    var icon = (t.Exists && !t.Error) ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>';
+                    html += '<div>' + icon + ' ' + escapeHealthText(t.TableName) + (t.Error ? ' <span class="text-danger">' + escapeHealthText(t.Error) + '</span>' : (!t.Exists ? ' <span class="text-danger">No encontrada en el esquema configurado</span>' : '')) + '</div>';
                 });
                 html += '</td></tr>';
             }
