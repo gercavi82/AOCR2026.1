@@ -4087,6 +4087,17 @@ namespace CapaPresentacion.Controllers
                 validacionCierre.TieneDocumentosDevueltos,
                 ConstruirResumenRevisionDocumental(documentosRevision, revisiones, true));
 
+            if (!validacionCierre.TieneDocumentosDevueltos)
+            {
+                var errorFechas = SolicitudEstacionService.ValidarPlanificacionAcordada(new SolicitudEstacionDAO().ListarPorSolicitud(id));
+                if (errorFechas != null)
+                {
+                    TempData["NotificacionTipo"] = "warning";
+                    TempData["NotificacionMensaje"] = errorFechas;
+                    return RedirectToAction("Detalle", new { id });
+                }
+            }
+
             string mensajeCambio;
             if (!CambiarEstadoConReglasAocr(id, decisionCierre.EstadoDestino, decisionCierre.ObservacionCierre, out mensajeCambio))
             {
@@ -4897,6 +4908,12 @@ namespace CapaPresentacion.Controllers
                 .OrderByDescending(nc => nc.Version).ThenByDescending(nc => nc.CodigoNoConformidad)
                 .FirstOrDefault();
             var estadoNcSubsanable = ncActual != null && EsEstadoNcHabilitadoParaCargaIndividual(ncActual.Estado);
+            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: codigoSolicitud).Any())
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La orden fue devuelta a Financiero. Espere la corrección y nueva validación antes de enviar la documentación.";
+                return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+            }
             if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase) && !estadoNcSubsanable)
             {
                 TempData["NotificacionTipo"] = "warning";
@@ -5630,6 +5647,20 @@ namespace CapaPresentacion.Controllers
                     ", UsuarioFirmante=" + usuarioFirmante);
             }
 
+            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: id).Any())
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La orden está pendiente de corrección y nueva validación financiera.";
+                return RedirectToAction("Detalle", new { id });
+            }
+            var estacionesParaFirma = new SolicitudEstacionDAO().ListarPorSolicitud(id);
+            var errorFechasFirma = estacionesParaFirma.Any() ? SolicitudEstacionService.ValidarPlanificacionAcordada(estacionesParaFirma) : null;
+            if (errorFechasFirma != null)
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = errorFechasFirma;
+                return RedirectToAction("Detalle", new { id });
+            }
             var firmaPlan = _revisionDocumentalService.PrepararFirmaAceptacionDocumental(
                 estadoActual,
                 documentosRevision,

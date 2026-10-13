@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -1730,6 +1730,17 @@ namespace CapaPresentacion.Controllers
                     "Tecnico",
                     "EvaluadorTecnico"),
                 new PerfilGenericoUsuarioConfig(
+                    "dircav", "DIRCAV / DCAV",
+                    "Dirección de certificaciones y revisión de expedientes.",
+                    "GEN_DIRCAV", "DIRCAV", "Generico", "gen.dircav@aocr.test",
+                    RoleGroupingHelper.Dircav, false,
+                    "DIRCAV", "DCAV", "DIRECTOR_CERTIFICACIONES_DCAV", "DIRECTORCERTIFICACIONESDCAV"),
+                new PerfilGenericoUsuarioConfig(
+                    "dirdac", "DIRDAC",
+                    "Revisión de informes y firma de certificados AOCR.",
+                    "GEN_DIRDAC", "DIRDAC", "Generico", "gen.dirdac@aocr.test",
+                    RoleGroupingHelper.Dirdac, false, "DIRDAC"),
+                new PerfilGenericoUsuarioConfig(
                     "direccion",
                     "Dirección / Jefatura",
                     "Cuenta genérica para validaciones directivas y jefatura técnica.",
@@ -1741,7 +1752,6 @@ namespace CapaPresentacion.Controllers
                     false,
                     "Direccion",
                     "JefaturaTecnica",
-                    "DIRDAC",
                     "DirectorGeneral"),
                 new PerfilGenericoUsuarioConfig(
                     "financiero",

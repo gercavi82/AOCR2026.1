@@ -378,6 +378,7 @@ namespace CapaNegocio.Services
                     COALESCE(s.notificado_rt_modulo_habilitado, FALSE) AS notificado_rt_modulo_habilitado,
                     COALESCE(s.notificado_coordinador_pago_aprobado, FALSE) AS notificado_coordinador_pago_aprobado,
                     " + selectCodigoTecnico + @",
+                    " + SelectSolicitudColumn(columnasSolicitud, "tipo_solicitud", "tipo_solicitud", "integer") + @",
                     CASE
                         WHEN " + exprCodigoTecnico + @" > 0
                              OR EXISTS (
@@ -429,6 +430,7 @@ namespace CapaNegocio.Services
                     COALESCE(s.notificado_rt_modulo_habilitado, FALSE) AS notificado_rt_modulo_habilitado,
                     COALESCE(s.notificado_coordinador_pago_aprobado, FALSE) AS notificado_coordinador_pago_aprobado,
                     " + selectCodigoTecnico + @",
+                    " + SelectSolicitudColumn(columnasSolicitud, "tipo_solicitud", "tipo_solicitud", "integer") + @",
                     CASE
                         WHEN " + exprCodigoTecnico + @" > 0
                              OR EXISTS (
@@ -471,6 +473,7 @@ namespace CapaNegocio.Services
                         NumeroOrden = GetString(rd, "numero_orden"),
                         EstadoOrden = GetString(rd, "estado_orden"),
                         CodigoSolicitud = GetInt(rd, "codigo_solicitud"),
+                        TipoSolicitud = GetNullableInt(rd, "tipo_solicitud"),
                         NumeroSolicitud = GetString(rd, "numero_solicitud"),
                         EstadoSolicitud = GetString(rd, "estado_solicitud"),
                         CodigoUsuarioRt = GetInt(rd, "codigo_usuario"),
@@ -1021,7 +1024,12 @@ namespace CapaNegocio.Services
                     Pair("Valor aprobado", ctx.TotalOrden > 0m ? ctx.TotalOrden.ToString("C2", new System.Globalization.CultureInfo("es-EC")) : "N/D"),
                     Pair("Aprobado por", string.IsNullOrWhiteSpace(usuarioFinanciero) ? "Financiero AOCR" : usuarioFinanciero)
                 },
-                "A partir de este momento, se encuentra habilitada la Solicitud AOCR para la compañía " + Html(ctx.NombreOperadora) + ". Debe ingresar al Sistema AOCR para continuar con el proceso y cargar la documentación correspondiente. La Orden de Recaudación aprobada quedará cerrada para este proceso y no podrá ser modificada ni reutilizada mientras el trámite AOCR se encuentre activo.");
+                "A partir de este momento, se encuentra habilitada la Solicitud " + TextoTipoSolicitud(ctx.TipoSolicitud) + " AOCR para la compañía " + Html(ctx.NombreOperadora) + ". Debe ingresar al Sistema AOCR para continuar con el proceso y cargar la documentación correspondiente. La Orden de Recaudación aprobada quedará cerrada para este proceso y no podrá ser modificada ni reutilizada mientras el trámite AOCR se encuentre activo.");
+        }
+
+        public static string TextoTipoSolicitud(int? tipoSolicitud)
+        {
+            return tipoSolicitud == 3 ? "modificación" : tipoSolicitud == 2 ? "renovación" : "emisión";
         }
 
         private static string PlantillaInstitucional(string saludo, string mensaje, IEnumerable<KeyValuePair<string, string>> datos, string accion)
@@ -1141,6 +1149,7 @@ namespace CapaNegocio.Services
 
         private class PagoAprobadoContext
         {
+            public int? TipoSolicitud { get; set; }
             public int OrdenId { get; set; }
             public string NumeroOrden { get; set; }
             public string EstadoOrden { get; set; }

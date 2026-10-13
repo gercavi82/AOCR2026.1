@@ -256,6 +256,12 @@ namespace CapaNegocio.Services
                 return Error("La observacion general no puede contener HTML ni superar 2000 caracteres.");
             }
 
+            var errorFechas = SolicitudEstacionService.ValidarPlanificacionAcordada(
+                new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId));
+            if (errorFechas != null) return Error(errorFechas);
+            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: solicitudId).Count > 0)
+                return Error("La orden está devuelta a Financiero. Espere la corrección y nueva validación antes de finalizar la aceptación.");
+
             var registro = _dao.RegistrarFinalizacionInspector(solicitudId, inspectorId, observacion);
             Trace.TraceInformation(
                 "[REV_DOC][OBSERVACION_GENERAL] SolicitudId={0}; TieneObservacion={1};",
@@ -317,6 +323,10 @@ namespace CapaNegocio.Services
         {
             var texto = NormalizarObservacion(observacion);
             if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
+            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: solicitudId).Count > 0)
+                return Error("La orden está pendiente de corrección y nueva validación financiera.");
+            var errorPlanificacion = SolicitudEstacionService.ValidarPlanificacionAcordada(new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId));
+            if (errorPlanificacion != null) return Error(errorPlanificacion);
 
             var actual = _dao.ObtenerPorSolicitud(solicitudId);
             if (actual == null || actual.DocumentoOficioId.GetValueOrDefault() <= 0)

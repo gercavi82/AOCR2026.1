@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\MSTest.TestAdapter.2.2.10\build\net46\MSTest.TestAdapter.props" Condition="Exists('..\packages\MSTest.TestAdapter.2.2.10\build\net46\MSTest.TestAdapter.props')" />
   <Import Project="..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props" Condition="Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" />
@@ -3003,6 +3003,7 @@
     <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Direccion\ConfiguracionSistema.cshtml" />
     <Content Include="Views\Financiero\Index.cshtml" />
+    <Content Include="Views\Financiero\CorregirOrden.cshtml" />
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
@@ -3130,6 +3131,9 @@
     <Content Include="Scripts\aocr-firma-institucional.js" />
     <Content Include="Scripts\firma-aocr.js" />
     <Content Include="Content\css\admin-users-compact.css" />
+    <Content Include="Content\css\admin-user-create.css" />
+    <Content Include="Content\css\sync-admin.css" />
+    <Content Include="Content\css\parametro-admin.css" />
     <Content Include="Content\css\aocr-contrast-fix.css" />
     <Content Include="Content\css\dashboard.css" />
     <Content Include="Content\css\dgac-theme.css" />

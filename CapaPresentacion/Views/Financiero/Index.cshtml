@@ -670,6 +670,16 @@
 </style>
 
 <div class="fin-dashboard">
+    @if (TempData["Success"] != null) { <div class="alert alert-success">@TempData["Success"]</div> }
+    @if (ViewBag.CorreccionesFinancieras != null)
+    {
+        foreach (var correccion in (IEnumerable<CapaDatos.Models.CorreccionFinancieraOrden>)ViewBag.CorreccionesFinancieras)
+        {
+            <div class="alert alert-warning">Orden #@correccion.OrdenId devuelta por Inspector: @correccion.Motivo
+                <a class="btn btn-sm btn-primary" href="@Url.Action("CorregirOrden", new { id = correccion.OrdenId })">Corregir y volver a validar</a>
+            </div>
+        }
+    }
     <div class="fin-dashboard-header">
         <span class="fin-dashboard-badge"><i class="fas fa-chart-line"></i> Gestión financiera</span>
         <h2 class="fin-dashboard-title">Dashboard Financiero</h2>

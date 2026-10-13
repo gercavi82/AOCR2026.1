@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<List<Parametro>>
+﻿@inherits System.Web.Mvc.WebViewPage<List<Parametro>>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Linq
@@ -29,7 +29,8 @@
         .ToList();
 }
 
-<div class="container-fluid">
+<link rel="stylesheet" href="@Url.Content("~/Content/css/parametro-admin.css?v=20261013")" />
+<div class="container-fluid aocr-parametro-admin">
     <div class="row mb-3">
         <div class="col-md-8">
             <h2>Gestion de Parametros del Sistema</h2>

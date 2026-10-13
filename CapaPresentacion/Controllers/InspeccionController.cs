@@ -846,6 +846,10 @@ namespace CapaPresentacion.Controllers
             }
 
             _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=" + codigoInspeccion);
+            ViewBag.OrdenesParaCorreccion = solicitudDetalle != null
+                ? new OrdenRecaudacionDAO().ListarPorUsuarioModel(solicitudDetalle.CodigoUsuario, null)
+                    .Where(o => o.CodigoSolicitud == inspeccion.CodigoSolicitud.ToString()).ToList()
+                : new List<CapaDatos.Models.OrdenRecaudacionModel>();
 
             try
             {
@@ -4847,8 +4851,36 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅✅✅ PLANIFICACIÓN (GET ÚNICO)
         // ============================================================
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverOrdenAFinanciero(int id, int ordenId, string motivo)
+        {
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null) return HttpNotFound();
+            if (!PuedeAccederInspeccion(inspeccion)) return new HttpStatusCodeResult(403);
+            try
+            {
+                new OrdenRecaudacionDAO().DevolverOrdenAFinanciero(ordenId, inspeccion.CodigoSolicitud, ObtenerCodigoUsuario(), motivo);
+                try
+                {
+                    var solicitud = new SolicitudAOCRDAO().ObtenerPorId(inspeccion.CodigoSolicitud);
+                    new SolicitudAocrCorreoService().NotificarEvento(solicitud, "ORDEN_DEVUELTA_FINANCIERO", motivo);
+                    foreach (var usuario in (UsuarioDAO.ListarPorRol("Financiero") ?? new List<Usuario>())
+                        .Concat(UsuarioDAO.ListarPorRol("CoordinadorFinanciero") ?? new List<Usuario>())
+                        .Where(u => u != null && u.Activo).GroupBy(u => u.Id).Select(g => g.First()))
+                        NotificacionBL.EnviarNotificacion(usuario.Id, "Orden devuelta para corrección financiera", motivo, "INFO",
+                            Url.Action("CorregirOrden", "Financiero", new { id = ordenId }), "AOCR", inspeccion.CodigoSolicitud, "SOLICITUD_AOCR");
+                }
+                catch (Exception exNotificacion) { _logger.LogWarning("Orden devuelta, notificación financiera pendiente: " + exNotificacion.Message); }
+                TempData["Success"] = "Orden devuelta a Financiero. El expediente queda pendiente de corrección y nueva validación.";
+            }
+            catch (Exception ex) { TempData["Error"] = ex.Message; }
+            return RedirectToAction("Detalle", new { id });
+        }
+
         [HttpGet]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         public ActionResult Planificacion(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -4877,7 +4909,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ PLANIFICACIÓN (POST ÚNICO)
         // ============================================================
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_GRUPO + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Planificacion(
             int codigoInspeccion,
@@ -4929,69 +4961,70 @@ namespace CapaPresentacion.Controllers
             inspeccion.UpdatedAt = DateTime.Now;
             inspeccion.UpdatedBy = usuarioId;
 
-            // ✅ Actualizar con updatedBy
-            bool ok = _inspeccionBL.Actualizar(inspeccion, usuarioId);
-
-            // AC-02: Actualizar fechas y estado individual para cada estación de la solicitud
-            if (estaciones != null && estaciones.Any() && inspeccion.CodigoSolicitud > 0)
+            // La planificación y sus fechas se confirman o revierten juntas.
+            try
             {
-                try
+                using (var scope = new TransactionScope(TransactionScopeOption.Required))
                 {
                     var estacionService = new CapaNegocio.Services.SolicitudEstacionService();
-                    var existentes = estacionService.ObtenerEstacionesPorSolicitud(inspeccion.CodigoSolicitud, null, new[] { inspeccion });
+                    var solicitud = new SolicitudAOCRDAO().ObtenerPorId(inspeccion.CodigoSolicitud);
+                    var existentes = estacionService.ObtenerEstacionesPorSolicitud(inspeccion.CodigoSolicitud, solicitud, new[] { inspeccion });
                     var mapaExistentes = existentes.ToDictionary(e => (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase);
-
-                    var listaActualizada = new List<SolicitudEstacionInspeccion>();
-                    foreach (var item in estaciones)
+                    var recibidas = (estaciones ?? new List<SolicitudEstacionInspeccionItemVM>()).Where(e => e != null).ToList();
+                    if (!ModelState.IsValid || fechaInspeccion == default(DateTime)
+                        || recibidas.Count != existentes.Count
+                        || recibidas.Select(e => (e.EstacionCodigo ?? "").Trim().ToUpperInvariant()).Distinct().Count() != recibidas.Count
+                        || recibidas.Any(e => !mapaExistentes.ContainsKey((e.EstacionCodigo ?? "").Trim().ToUpperInvariant())))
                     {
-                        if (string.IsNullOrWhiteSpace(item.EstacionCodigo)) continue;
-                        var codigoNorm = item.EstacionCodigo.Trim().ToUpperInvariant();
-                        DateTime dtIni, dtFin;
-                        bool hasIni = DateTime.TryParse(item.FechaInicio, out dtIni);
-                        bool hasFin = DateTime.TryParse(item.FechaFin, out dtFin);
-
-                        SolicitudEstacionInspeccion estObj;
-                        if (mapaExistentes.TryGetValue(codigoNorm, out estObj))
-                        {
-                            if (hasIni) estObj.FechaInicio = dtIni.Date;
-                            if (hasFin) estObj.FechaFin = dtFin.Date;
-                            else if (hasIni) estObj.FechaFin = dtIni.Date;
-                            if (!string.IsNullOrWhiteSpace(item.Observacion)) estObj.Observacion = item.Observacion;
-                            listaActualizada.Add(estObj);
-                        }
-                        else
-                        {
-                            listaActualizada.Add(new SolicitudEstacionInspeccion
-                            {
-                                SolicitudId = inspeccion.CodigoSolicitud,
-                                EstacionCodigo = codigoNorm,
-                                EstacionNombre = !string.IsNullOrWhiteSpace(item.EstacionNombre) ? item.EstacionNombre.Trim() : codigoNorm,
-                                FechaInicio = hasIni ? dtIni.Date : fechaInspeccion.Date,
-                                FechaFin = hasFin ? dtFin.Date : (hasIni ? dtIni.Date : fechaInspeccion.Date),
-                                Estado = "SOLICITADA",
-                                Observacion = item.Observacion
-                            });
-                        }
+                        TempData["Error"] = "Debe planificar todas las estaciones solicitadas, sin duplicarlas ni agregar lugares ajenos a la solicitud.";
+                        return RedirectToAction("Planificacion", new { id = codigoInspeccion });
                     }
 
+                    var listaActualizada = new List<SolicitudEstacionInspeccion>();
+                    foreach (var item in recibidas)
+                    {
+                        var codigoNorm = item.EstacionCodigo.Trim().ToUpperInvariant();
+                        var fechas = item.ToEntity(inspeccion.CodigoSolicitud, usuarioId);
+                        var estObj = mapaExistentes[codigoNorm];
+                        estObj.FechaInicio = fechas.FechaInicio;
+                        estObj.FechaFin = fechas.FechaFin;
+                        estObj.FechaInspeccion = null;
+                        estObj.Version = item.Version;
+                        estObj.InspectorId = inspeccion.CodigoInspector;
+                        estObj.InspeccionId = codigoInspeccion;
+                        estObj.Estado = "PROGRAMADA";
+                        listaActualizada.Add(estObj);
+                    }
+                    var validacion = estacionService.ValidarEstaciones(listaActualizada, inspeccion.CodigoSolicitud);
+                    if (!validacion.EsValido || listaActualizada.Any(e => e.FechaFin == default(DateTime)))
+                    {
+                        TempData["Error"] = string.Join(" ", validacion.Errores) + " Complete las fechas de inicio y fin de cada estación.";
+                        return RedirectToAction("Planificacion", new { id = codigoInspeccion });
+                    }
                     if (listaActualizada.Any())
                     {
                         var resEst = estacionService.GuardarEstaciones(inspeccion.CodigoSolicitud, listaActualizada, usuarioId);
                         if (!resEst.Exitoso)
                         {
                             _logger.LogWarning($"[Planificacion] Error guardando fechas de estaciones AC-02: {resEst.Mensaje}");
+                            TempData["Error"] = resEst.Mensaje;
+                            return RedirectToAction("Planificacion", new { id = codigoInspeccion });
                         }
                     }
+                    if (!_inspeccionBL.Actualizar(inspeccion, usuarioId))
+                    {
+                        TempData["Error"] = "No se pudo guardar la planificación. Las fechas no se confirmaron.";
+                        return RedirectToAction("Planificacion", new { id = codigoInspeccion });
+                    }
+                    scope.Complete();
                 }
-                catch (Exception exEst)
-                {
-                    _logger.LogWarning($"[Planificacion] Excepción al actualizar estaciones AC-02: {exEst.Message}");
-                }
+                TempData["Success"] = "Planificación y fechas por estación guardadas correctamente.";
             }
-
-            TempData[ok ? "Success" : "Error"] = ok
-                ? "Planificación guardada correctamente."
-                : "Error al guardar la planificación.";
+            catch (Exception exEst)
+            {
+                _logger.LogWarning($"[Planificacion] Error al guardar planificación: {exEst.Message}");
+                TempData["Error"] = "No se pudo guardar la planificación y sus fechas. Intente nuevamente.";
+            }
 
             return RedirectToAction("Detalle", new { id = codigoInspeccion });
         }

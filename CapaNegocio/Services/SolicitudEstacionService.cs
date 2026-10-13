@@ -13,7 +13,7 @@ namespace CapaNegocio.Services
     /// </summary>
     public class SolicitudEstacionService
     {
-        public static string ValidarFechasPorLugar(IEnumerable<SolicitudEstacionInspeccion> estaciones, string lugares, string otraLocalidad)
+        public static string ValidarFechasPorLugar(IEnumerable<SolicitudEstacionInspeccion> estaciones, string lugares, string otraLocalidad, bool requiereFechas = true)
         {
             var seleccionados = (lugares ?? string.Empty).Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(SolicitudEstacionDAO.NormalizarCodigoEstacion).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -27,12 +27,42 @@ namespace CapaNegocio.Services
             {
                 var codigo = SolicitudEstacionDAO.NormalizarCodigoEstacion(est.EstacionCodigo);
                 if (!seleccionados.Contains(codigo)) return "Se recibió una fecha para un lugar de inspección no seleccionado.";
-                if (est.FechaInicio == default(DateTime) || est.FechaFin == default(DateTime) || est.FechaFin.Date < est.FechaInicio.Date)
+                if (requiereFechas && (est.FechaInicio == default(DateTime) || est.FechaFin == default(DateTime) || est.FechaFin.Date < est.FechaInicio.Date))
                     return "Seleccione un rango de fechas válido para " + (est.EstacionNombre ?? codigo) + ".";
                 est.EstacionCodigo = codigo;
                 est.EstacionNombre = codigo == "OTROS" ? otraLocalidad.Trim() : SolicitudEstacionDAO.NormalizarNombreEstacion(codigo, codigo);
             }
             return null;
+        }
+
+        public static string ValidarPlanificacionAcordada(IEnumerable<SolicitudEstacionInspeccion> estaciones)
+        {
+            var lista = (estaciones ?? Enumerable.Empty<SolicitudEstacionInspeccion>()).Where(e => e != null).ToList();
+            if (!lista.Any() || lista.Any(e => e.FechaInicio == default(DateTime)
+                || e.FechaFin == default(DateTime) || e.FechaFin.Date < e.FechaInicio.Date))
+                return "Antes de aceptar la solicitud, coordine por email con el RT y guarde las fechas de todas las estaciones en Planificación de inspección.";
+            return null;
+        }
+
+        // El RT solicita lugares; las fechas se acuerdan y guardan desde Planificación.
+        public ResultadoOperacionEstaciones GuardarLugaresSolicitados(int solicitudId,
+            IEnumerable<SolicitudEstacionInspeccion> estaciones, int? usuarioId)
+        {
+            var existentes = _estacionDAO.ListarPorSolicitud(solicitudId);
+            var lista = (estaciones ?? Enumerable.Empty<SolicitudEstacionInspeccion>()).Where(e => e != null).ToList();
+            foreach (var est in lista)
+            {
+                var anterior = existentes.FirstOrDefault(e => string.Equals(e.EstacionCodigo, est.EstacionCodigo, StringComparison.OrdinalIgnoreCase));
+                est.FechaInicio = anterior != null ? anterior.FechaInicio : default(DateTime);
+                est.FechaFin = anterior != null ? anterior.FechaFin : default(DateTime);
+                est.FechaInspeccion = null;
+                est.Estado = anterior != null ? anterior.Estado : "PENDIENTE_PLANIFICACION";
+                est.InspectorId = anterior != null ? anterior.InspectorId : null;
+                est.InspectorNombre = anterior != null ? anterior.InspectorNombre : null;
+                est.InspeccionId = anterior != null ? anterior.InspeccionId : null;
+                est.Observacion = anterior != null ? anterior.Observacion : null;
+            }
+            return GuardarEstaciones(solicitudId, lista, usuarioId, requiereFechas: false);
         }
 
         private readonly SolicitudEstacionDAO _estacionDAO;
@@ -85,7 +115,7 @@ namespace CapaNegocio.Services
         /// </summary>
         public ValidacionEstacionesResultado ValidarEstaciones(
             IEnumerable<SolicitudEstacionInspeccion> estaciones,
-            int? solicitudId = null)
+            int? solicitudId = null, bool requiereFechas = true)
         {
             var resultado = new ValidacionEstacionesResultado { EsValido = true };
             if (estaciones == null) return resultado;
@@ -123,7 +153,7 @@ namespace CapaNegocio.Services
                 }
 
                 // 3. Fecha inicial obligatoria
-                if (est.FechaInicio == default(DateTime))
+                if (requiereFechas && est.FechaInicio == default(DateTime))
                 {
                     resultado.EsValido = false;
                     resultado.Errores.Add(string.Format("La estación '{0}' requiere una fecha inicial de inspección obligatoria.", est.EstacionNombre ?? codigoNorm));
@@ -191,7 +221,7 @@ namespace CapaNegocio.Services
             IEnumerable<SolicitudEstacionInspeccion> estaciones,
             int? usuarioId,
             IDbConnection conn = null,
-            IDbTransaction tx = null)
+            IDbTransaction tx = null, bool requiereFechas = true)
         {
             var res = new ResultadoOperacionEstaciones { SolicitudId = solicitudId };
 
@@ -203,7 +233,7 @@ namespace CapaNegocio.Services
                 return res;
             }
 
-            var validacion = ValidarEstaciones(estaciones, solicitudId);
+            var validacion = ValidarEstaciones(estaciones, solicitudId, requiereFechas);
             if (!validacion.EsValido)
             {
                 res.Exitoso = false;

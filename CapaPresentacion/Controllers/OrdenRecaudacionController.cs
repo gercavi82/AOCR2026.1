@@ -738,7 +738,7 @@ namespace CapaPresentacion.Controllers
                 if (requiereSolicitudInspeccion)
                 {
                     var errorFechas = SolicitudEstacionService.ValidarFechasPorLugar(estacionesInspeccion,
-                        model.LugarInspeccion, model.ProvinciaInspeccion);
+                        model.LugarInspeccion, model.ProvinciaInspeccion, requiereFechas: false);
                     if (errorFechas != null)
                     {
                         ModelState.AddModelError("Estaciones", errorFechas);
@@ -746,7 +746,7 @@ namespace CapaPresentacion.Controllers
                         return View(model);
                     }
                     model.AeropuertosSolicitados = string.Join(", ", estacionesInspeccion.Select(e => e.EstacionNombre));
-                    model.FechasInspeccion = string.Join("; ", estacionesInspeccion.Select(e => e.EstacionNombre + ": " + e.RangoFechasTexto));
+                    model.FechasInspeccion = "Por coordinar con el Inspector";
                 }
 
                 // Calcular totales
@@ -898,7 +898,7 @@ namespace CapaPresentacion.Controllers
 
                     if (requiereSolicitudInspeccion)
                     {
-                        var guardadoLugares = new SolicitudEstacionService().GuardarEstaciones(codigoSolicitud.Value, estacionesInspeccion, idUsuario);
+                        var guardadoLugares = new SolicitudEstacionService().GuardarLugaresSolicitados(codigoSolicitud.Value, estacionesInspeccion, idUsuario);
                         if (!guardadoLugares.Exitoso)
                         {
                             TempData["Error"] = guardadoLugares.Mensaje;
@@ -3225,6 +3225,13 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var factura = _dao.ObtenerFacturaPagoPorOrden(id);
+                var rectificacion = _dao.ListarCorreccionesFinancieras(id, soloPendientes: false).FirstOrDefault();
+                if (rectificacion != null && rectificacion.Estado == "VALIDADA" && !string.IsNullOrWhiteSpace(rectificacion.FacturaRectificadaRuta))
+                {
+                    var rutaRectificada = ResolverRutaArchivoRegistrado(rectificacion.FacturaRectificadaRuta);
+                    if (!string.IsNullOrWhiteSpace(rutaRectificada) && System.IO.File.Exists(rutaRectificada))
+                        return File(rutaRectificada, "application/pdf", "Factura_Rectificada_" + id + ".pdf");
+                }
                 if (factura == null || string.IsNullOrWhiteSpace(factura.FilePath))
                 {
                     TempData["Error"] = "La factura aún no está disponible para descarga.";
@@ -3965,10 +3972,65 @@ namespace CapaPresentacion.Controllers
             return nombresLimpios + " " + apellidosLimpios;
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Solicitante,RepresentanteTecnico,Operador,Administrador")]
+        public ActionResult RegenerarDocumentoDevuelto(int documentoId)
+        {
+            var usuarioId = GetUserId();
+            var documento = new DocumentoDAO().ObtenerPorId(documentoId);
+            if (documento == null) return HttpNotFound();
+            var solicitud = new SolicitudAOCRDAO().ObtenerPorId(documento.CodigoSolicitud);
+            if (solicitud == null || solicitud.CodigoUsuario != usuarioId)
+                return new HttpStatusCodeResult(403, "Solo el RT propietario puede regenerar el documento devuelto.");
+            if (_dao.ListarCorreccionesFinancieras(solicitudId: solicitud.CodigoSolicitud).Any())
+                return new HttpStatusCodeResult(409, "Espere la corrección y nueva validación por Financiero antes de regenerar el documento.");
+            var revisiones = new RevisionDocumentalDAO().ObtenerUltimasRevisionesPorSolicitud(solicitud.CodigoSolicitud);
+            if (!new DocumentoSubsanacionService().PuedeRtSubsanarDocumento(documento, revisiones, EstadoSolicitud.Normalizar(solicitud.Estado), true))
+                return new HttpStatusCodeResult(403, "El documento no está habilitado para subsanación.");
+            var tipo = RevisionDocumentalDisplayHelper.GetCanonicalDocumentType(documento.TipoDocumento);
+            if (tipo != TipoSolicitudInspeccionFirmada && tipo != "ORDEN_RECAUDACION")
+                return new HttpStatusCodeResult(400, "Este documento debe corregirse y adjuntarse desde subsanación.");
+
+            // Resolver la orden por el vínculo del documento; no asumir la última si hay varias.
+            var ordenes = _dao.ListarPorUsuarioModel(usuarioId, null)
+                .Where(o => ObtenerCodigoSolicitudOrden(o) == solicitud.CodigoSolicitud).ToList();
+            var vinculo = System.Text.RegularExpressions.Regex.Match(documento.Observaciones ?? "", @"(?:^|;\s*)OrdenId=(\d+)(?:;|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            int ordenId;
+            var tieneVinculo = vinculo.Success && int.TryParse(vinculo.Groups[1].Value, out ordenId);
+            var orden = tieneVinculo ? ordenes.SingleOrDefault(o => o.Id == int.Parse(vinculo.Groups[1].Value))
+                : ordenes.Count == 1 ? ordenes[0] : null;
+            if (orden == null) return new HttpStatusCodeResult(409, "No se pudo identificar de forma única la orden asociada al documento.");
+            CompletarDatosOrdenParaVista(orden);
+            string mensajeAcceso;
+            if (!ValidarAccesoOrdenRecaudacionDesdeBd(orden, usuarioId, false, out mensajeAcceso))
+                return new HttpStatusCodeResult(403, mensajeAcceso);
+            byte[] bytes;
+            string nombre;
+            if (tipo == TipoSolicitudInspeccionFirmada)
+            {
+                int paginas;
+                bytes = BuildSolicitudInspeccionPdfBytes(orden, ObtenerAeropuertosSolicitudInspeccion(orden, documento), null, out nombre, out paginas);
+            }
+            else
+            {
+                var pdf = new PartialViewAsPdf("OrdenRecaudacionPDF", BuildOrdenRecaudacionPdfModel(orden))
+                {
+                    PageSize = Rotativa.Options.Size.A4,
+                    PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
+                    CustomSwitches = PdfBrandingHelper.BuildStandardRotativaSwitches(Server, "RegenerarDocumentoDevuelto")
+                };
+                bytes = pdf.BuildFile(ControllerContext);
+                nombre = ConstruirNombrePdfOrdenRecaudacion(orden);
+            }
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            // La nueva versión se registra cuando el RT adjunta el documento corregido/firmado.
+            return File(bytes, "application/pdf", nombre);
+        }
+
         private byte[] BuildSolicitudInspeccionPdfBytes(OrdenRecaudacionModel orden, string aeropuertosSolicitados, string fechasInspeccion, out string nombreArchivo, out int paginasGeneradas)
         {
             var aeropuertos = string.IsNullOrWhiteSpace(aeropuertosSolicitados) ? "No aplica" : aeropuertosSolicitados.Trim();
-            var fechas = string.IsNullOrWhiteSpace(fechasInspeccion) ? "No aplica" : fechasInspeccion.Trim();
+            var fechas = "Por coordinar con el Inspector";
             var pdfModel = BuildSolicitudInspeccionPdfModel(orden, aeropuertos, fechas);
             nombreArchivo = ConstruirNombrePdfSolicitudInspeccion(orden);
 

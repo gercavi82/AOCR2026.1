@@ -1,4 +1,5 @@
 using System;
+using CapaDatos.DAOs;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -53,6 +54,9 @@ namespace CapaNegocio.Services
                 }
 
                 var destinatarios = ResolverDestinatarios(solicitud, plantilla, emailDestino, nombreDestino);
+                if (string.Equals(evento, "SOLICITUD_COMPLETADA", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(evento, "PENDIENTE_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+                    NotificarCoordinacionInterna(solicitud, plantilla, evento);
                 if (destinatarios.Count == 0)
                 {
                     return ResultadoOperacion.Ok(null, "Evento de solicitud sin destinatarios resolubles.");
@@ -391,10 +395,49 @@ namespace CapaNegocio.Services
                 : "SOLICITUD_" + eventoNormalizado;
         }
 
+        private void NotificarCoordinacionInterna(SolicitudAOCR solicitud, PlantillaSolicitudCorreo plantilla, string evento)
+        {
+            try
+            {
+                var tipo = evento.ToUpperInvariant() + "_COORDINACION";
+                var usuarios = new[] { "CoordinadorInspecciones", "Coordinador", "Coordinacion", "JefaturaTecnica" }
+                    .SelectMany(rol => UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
+                    .Where(u => u != null && u.Activo).GroupBy(u => u.Id).Select(g => g.First());
+                foreach (var usuario in usuarios)
+                {
+                    if (NotificacionDAO.ObtenerPorTipo(usuario.Id, tipo).Any(n => n.EntidadId == solicitud.CodigoSolicitud)) continue;
+                    NotificacionDAO.Insertar(new Notificacion
+                    {
+                        CodigoUsuario = usuario.Id, Titulo = plantilla.Titulo, Mensaje = plantilla.Mensaje,
+                        Tipo = tipo, Modulo = "AOCR", EntidadId = solicitud.CodigoSolicitud,
+                        TipoEntidad = "SOLICITUD_AOCR", FechaCreacion = DateTime.Now,
+                        Url = System.Web.VirtualPathUtility.ToAbsolute("~/SolicitudAOCR/Detalle/" + solicitud.CodigoSolicitud)
+                    });
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning("No se pudo registrar el aviso documental a Coordinación: " + ex.Message); }
+        }
+
         private static PlantillaSolicitudCorreo ConstruirPlantilla(SolicitudAOCR solicitud, string evento)
         {
             switch ((evento ?? string.Empty).Trim().ToUpperInvariant())
             {
+                case "ORDEN_DEVUELTA_FINANCIERO":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Orden devuelta a Financiero #" + solicitud.CodigoSolicitud,
+                        Titulo = "Corrección financiera pendiente",
+                        Mensaje = "El Inspector devolvió la orden por conceptos o valores faltantes. Financiero debe corregirla y volver a validarla antes de continuar con el expediente.",
+                        GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoFinanciero, NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico }
+                    };
+                case "CORRECCION_FINANCIERA_VALIDADA":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Corrección financiera validada #" + solicitud.CodigoSolicitud,
+                        Titulo = "Orden corregida y validada",
+                        Mensaje = "Financiero corrigió y volvió a validar la orden. La orden y factura rectificadas están disponibles y el expediente puede continuar.",
+                        GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoInspectorAsignado, NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico, NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion }
+                    };
                 case "AOCR_APROBADO_DIRECCION":
                     return new PlantillaSolicitudCorreo
                     {
@@ -462,7 +505,8 @@ namespace CapaNegocio.Services
                         Mensaje = "El Inspector asignado ha completado la revisión documental de la solicitud AOCR #" + solicitud.CodigoSolicitud + ". El expediente se encuentra en la bandeja de Coordinación para su verificación y remisión a DIRCAV.",
                         GruposDestinatarios = new[]
                         {
-                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico
                         }
                     };
 
@@ -475,7 +519,8 @@ namespace CapaNegocio.Services
                         Mensaje = "La Coordinación ha devuelto la revisión documental de la solicitud AOCR #" + solicitud.CodigoSolicitud + " con observaciones que deben ser subsanadas por el Inspector asignado.",
                         GruposDestinatarios = new[]
                         {
-                            NotificacionDestinatarioPolicyService.GrupoInspectorAsignado
+                            NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico
                         }
                     };
 
@@ -488,6 +533,7 @@ namespace CapaNegocio.Services
                         Mensaje = "La Coordinación ha verificado la revisión documental y remitido oficialmente el expediente de la solicitud AOCR #" + solicitud.CodigoSolicitud + " a la Dirección de Certificación Aeronáutica (DIRCAV).",
                         GruposDestinatarios = new[]
                         {
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
                             NotificacionDestinatarioPolicyService.GrupoDireccionFinal,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
                         }
@@ -606,7 +652,7 @@ namespace CapaNegocio.Services
                         Asunto = "AOCR - Pago aprobado, solicitud habilitada #" + solicitud.CodigoSolicitud,
                         Titulo = "Solicitud AOCR habilitada",
                         Mensaje = "El pago de la orden de recaudación fue aprobado por Financiero. " +
-                                  "La solicitud AOCR ya se encuentra disponible para que complete el formulario y adjunte la documentación requerida.",
+                                  "A partir de este momento, se encuentra habilitada la Solicitud " + AocrPostPagoWorkflowService.TextoTipoSolicitud(solicitud.TipoSolicitud) + " AOCR para que complete el formulario y adjunte la documentación requerida.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,

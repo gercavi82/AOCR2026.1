@@ -655,6 +655,9 @@ namespace CapaPresentacion.Controllers
                 ? solicitud.TecnicoResponsableNombre
                 : inspeccion.InspectorPrincipalNombre;
             ViewBag.AceptacionObservacion = registro.ObservacionInspector;
+            var estacionesAcordadas = new SolicitudEstacionDAO().ListarPorSolicitud(solicitud.CodigoSolicitud);
+            solicitud.Estaciones = estacionesAcordadas;
+            ViewBag.AceptacionEstacionesConFechas = estacionesAcordadas;
             ViewBag.AceptacionEstaciones = new[] { solicitud.AeropuertosEcuador, solicitud.AeropuertosEcuadorOtros, solicitud.Provincia }
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .SelectMany(x => x.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries))

@@ -1,0 +1,87 @@
+<div id="rt-design-proposal">
+  <style>
+    #rt-design-proposal { color-scheme:light dark; --rt-bg:light-dark(#f4f7fb,#141c29); --rt-panel:light-dark(#ffffff,#1c2838); --rt-text:light-dark(#17314e,#e7edf6); --rt-muted:light-dark(#56677b,#aabbcf); --rt-line:light-dark(#dce5ef,#34465d); --rt-blue:light-dark(#0c467d,#96caff); --rt-soft:light-dark(#eaf3fc,#213c58); --rt-ok:light-dark(#14654e,#98e1c6); font:14px/1.45 system-ui,sans-serif; color:var(--rt-text); }
+    #rt-design-proposal * { box-sizing:border-box; }
+    #rt-design-proposal .rt-stage { min-height:670px; background:var(--rt-bg); padding:20px; }
+    #rt-design-proposal .rt-top { display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--rt-line); }
+    #rt-design-proposal .rt-brand { background:var(--rt-blue); color:light-dark(#fff,#152331); padding:8px 12px; border-radius:8px; font-weight:600; }
+    #rt-design-proposal .rt-top small { color:var(--rt-muted); }
+    #rt-design-proposal h2 { margin:18px 0 4px; font-size:22px; font-weight:600; }
+    #rt-design-proposal .rt-summary { display:flex; flex-wrap:wrap; gap:18px; color:var(--rt-muted); margin:0 0 18px; }
+    #rt-design-proposal .rt-summary strong { color:var(--rt-text); }
+    #rt-design-proposal .rt-tools { display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; margin-bottom:16px; align-items:end; }
+    #rt-design-proposal label { display:grid; gap:4px; font-size:12px; color:var(--rt-muted); }
+    #rt-design-proposal input,#rt-design-proposal select { width:100%; min-width:0; background:var(--rt-panel); color:var(--rt-text); border:1px solid var(--rt-line); border-radius:7px; padding:9px 10px; font:inherit; font-size:14px; }
+    #rt-design-proposal button { font:inherit; font-size:12px; border:1px solid var(--rt-line); background:var(--rt-panel); color:var(--rt-blue); padding:8px 10px; border-radius:6px; }
+    #rt-design-proposal .rt-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    #rt-design-proposal .rt-person { background:var(--rt-panel); border:1px solid var(--rt-line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:12px; min-width:0; }
+    #rt-design-proposal .rt-identity { display:flex; gap:10px; align-items:center; min-width:0; }
+    #rt-design-proposal .rt-avatar { width:34px; height:34px; flex-shrink:0; display:grid; place-items:center; border-radius:50%; background:var(--rt-soft); color:var(--rt-blue); font-weight:600; }
+    #rt-design-proposal .rt-name { font-weight:600; font-size:14px; }
+    #rt-design-proposal .rt-code { color:var(--rt-muted); font-size:12px; }
+    #rt-design-proposal .rt-email { font-size:12px; color:var(--rt-muted); overflow-wrap:anywhere; }
+    #rt-design-proposal .rt-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    #rt-design-proposal .rt-status { font-size:11px; font-weight:600; padding:3px 7px; border-radius:5px; background:var(--rt-soft); color:var(--rt-blue); }
+    #rt-design-proposal .rt-active { color:var(--rt-ok); font-size:12px; }
+    #rt-design-proposal .rt-buttons { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:auto; }
+    #rt-design-proposal .rt-primary { background:var(--rt-blue); color:light-dark(#fff,#152331); border-color:var(--rt-blue); }
+    #rt-design-proposal .rt-bottom { display:flex; justify-content:space-between; gap:12px; color:var(--rt-muted); font-size:12px; margin-top:16px; }
+    #rt-design-proposal .rt-list { background:var(--rt-panel); border:1px solid var(--rt-line); border-radius:8px; }
+    #rt-design-proposal .rt-list-head,#rt-design-proposal .rt-list-row { display:grid; grid-template-columns:2fr 1fr 1fr 1.4fr; gap:12px; align-items:center; padding:14px; }
+    #rt-design-proposal .rt-list-head { color:var(--rt-muted); font-size:12px; background:var(--rt-soft); }
+    #rt-design-proposal .rt-list-row + .rt-list-row { border-top:1px solid var(--rt-line); }
+    #rt-design-proposal .rt-list-row .rt-buttons { margin:0; }
+    #rt-design-proposal .rt-selected { border-color:var(--rt-blue); }
+    #rt-design-proposal .rt-feedback { margin-top:12px; color:var(--rt-blue); min-height:20px; font-size:12px; }
+    @media(max-width:800px) { #rt-design-proposal .rt-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } #rt-design-proposal .rt-tools { grid-template-columns:1fr 1fr; } #rt-design-proposal .rt-stage { min-height:950px; } }
+    @media(max-width:520px) { #rt-design-proposal .rt-stage { padding:12px; min-height:1720px; } #rt-design-proposal .rt-grid { grid-template-columns:1fr; } #rt-design-proposal .rt-tools { grid-template-columns:1fr; } #rt-design-proposal .rt-list-head { display:none; } #rt-design-proposal .rt-list-row { grid-template-columns:1fr 1fr; } #rt-design-proposal .rt-list-row .rt-identity { grid-column:1/-1; } #rt-design-proposal .rt-list-row .rt-buttons { grid-column:1/-1; } }
+  </style>
+  <div class="viz-carousel" aria-label="Propuestas de Gestión de Usuarios RT" data-previous-label="Anterior" data-next-label="Siguiente">
+    <section class="rt-stage" data-variant="Tarjetas simétricas" aria-label="Usuarios RT en tarjetas">
+      <div class="rt-top"><span class="rt-brand">AOCR</span><span>Administración / Usuarios RT<br><small>Vista previa · datos de ejemplo</small></span></div>
+      <h2>Gestión de Usuarios RT</h2>
+      <div class="rt-summary"><span><strong>6</strong> usuarios</span><span><strong>6</strong> activos</span><span><strong>2</strong> en revisión</span><span><strong>3</strong> sin documento</span></div>
+      <div class="rt-tools"><label>Buscar usuario<input type="search" placeholder="Nombre, código o correo" data-search></label><label>Estado RT<select data-status><option value="">Todos</option><option>Finalizado</option><option>En revisión</option></select></label><label>Documento<select data-document><option value="">Todos</option><option value="yes">Con documento</option><option value="no">Sin documento</option></select></label><button type="button" data-reset>Limpiar</button></div>
+      <div class="rt-grid" data-records></div>
+      <div class="rt-bottom"><span data-count></span><span>1 de 1</span></div><div class="rt-feedback" aria-live="polite"></div>
+    </section>
+    <section class="rt-stage" data-variant="Lista compacta" aria-label="Usuarios RT en lista" hidden>
+      <div class="rt-top"><span class="rt-brand">AOCR</span><span>Administración / Usuarios RT<br><small>Vista previa · datos de ejemplo</small></span></div>
+      <h2>Gestión de Usuarios RT</h2>
+      <div class="rt-summary"><span><strong>6</strong> usuarios</span><span><strong>6</strong> activos</span><span><strong>2</strong> en revisión</span><span><strong>3</strong> sin documento</span></div>
+      <div class="rt-tools"><label>Buscar usuario<input type="search" placeholder="Nombre, código o correo" data-search></label><label>Estado RT<select data-status><option value="">Todos</option><option>Finalizado</option><option>En revisión</option></select></label><label>Documento<select data-document><option value="">Todos</option><option value="yes">Con documento</option><option value="no">Sin documento</option></select></label><button type="button" data-reset>Limpiar</button></div>
+      <div class="rt-list"><div class="rt-list-head"><span>Usuario y contacto</span><span>Compañía</span><span>Estado</span><span>Documentos / Gestión</span></div><div data-records></div></div>
+      <div class="rt-bottom"><span data-count></span><span>1 de 1</span></div><div class="rt-feedback" aria-live="polite"></div>
+    </section>
+  </div>
+  <script>
+  (() => {
+    const root=document.getElementById('rt-design-proposal');
+    const users=[
+      {name:'Nicole Pérez',code:'RT-001',email:'nicole@example.test',company:'LPE',status:'Finalizado',doc:true},
+      {name:'José Francisco',code:'RT-002',email:'jose@example.test',company:'QTR',status:'Finalizado',doc:true},
+      {name:'Silvia Vallejos',code:'RT-003',email:'silvia@example.test',company:'Sin empresa',status:'En revisión',doc:false},
+      {name:'Santiago Alegría',code:'RT-004',email:'santiago@example.test',company:'Sin empresa',status:'Finalizado',doc:false},
+      {name:'Edinson Ávila',code:'RT-005',email:'edinson@example.test',company:'Sin empresa',status:'En revisión',doc:true},
+      {name:'Willman Gallo',code:'RT-006',email:'willman@example.test',company:'Sin empresa',status:'Finalizado',doc:false}
+    ];
+    root.querySelectorAll('.rt-stage').forEach((stage,index)=>{
+      const search=stage.querySelector('[data-search]'),status=stage.querySelector('[data-status]'),doc=stage.querySelector('[data-document]');
+      function render(){
+        const term=search.value.toLowerCase().trim();
+        const visible=users.filter(u=>(u.name+' '+u.code+' '+u.email).toLowerCase().includes(term)&&(!status.value||u.status===status.value)&&(!doc.value||(doc.value==='yes')===u.doc));
+        stage.querySelector('[data-records]').innerHTML=visible.map(u=>{
+          const identity='<div class="rt-identity"><span class="rt-avatar">'+u.name.split(' ').map(n=>n[0]).slice(0,2).join('')+'</span><div><div class="rt-name">'+u.name+'</div><div class="rt-code">'+u.code+'</div>'+(index?'<div class="rt-email">'+u.email+'</div>':'')+'</div></div>';
+          const buttons='<div class="rt-buttons"><button type="button" data-action="document" data-name="'+u.name+'" '+(!u.doc?'disabled':'')+'>'+ (u.doc?'Ver PDF':'Sin PDF')+'</button><button class="rt-primary" type="button" data-action="manage" data-name="'+u.name+'">Gestionar</button></div>';
+          return index?'<article class="rt-list-row">'+identity+'<span>'+u.company+'</span><span class="rt-status">'+u.status+'</span>'+buttons+'</article>':'<article class="rt-person">'+identity+'<div class="rt-email">'+u.email+'</div><div class="rt-meta"><span>'+u.company+'</span><span class="rt-active">Activo</span></div><div><span class="rt-status">'+u.status+'</span></div>'+buttons+'</article>';
+        }).join('');
+        stage.querySelector('[data-count]').textContent=visible.length+' de '+users.length+' usuarios';
+      }
+      search.addEventListener('input',render);status.addEventListener('change',render);doc.addEventListener('change',render);
+      stage.querySelector('[data-reset]').addEventListener('click',()=>{search.value='';status.value='';doc.value='';render();});
+      stage.addEventListener('click',e=>{const button=e.target.closest('[data-action]');if(!button)return;stage.querySelector('.rt-feedback').textContent=(button.dataset.action==='manage'?'Gestión de ':'Vista de documento de ')+button.dataset.name+' · vista previa';});
+      render();
+    });
+  })();
+  </script>
+</div>

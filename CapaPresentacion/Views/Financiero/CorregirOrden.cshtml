@@ -1,0 +1,75 @@
+@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+@using System.Linq
+@using System.Collections.Generic
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Corrección financiera";
+    var correccion = (CapaDatos.Models.CorreccionFinancieraOrden)ViewBag.Correccion;
+    var conceptos = (IEnumerable<CapaDatos.Models.ConceptoModel>)ViewBag.Conceptos;
+    var detalles = ((IEnumerable<CapaDatos.Entidades.DetalleOrden>)ViewBag.DetallesCorreccion).ToList();
+}
+<h3>Corrección de orden @Model.NumeroOrden</h3>
+<div class="alert alert-warning">Motivo del Inspector: @correccion.Motivo</div>
+@if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert alert-success">@TempData["Success"]</div> }
+<p>Revise los valores requeridos por la normativa. El expediente continuará después de guardar y validar la corrección. El historial conserva la orden anterior.</p>
+@using (Html.BeginForm("GuardarCorreccionOrden", "Financiero", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <input type="hidden" name="correccionId" value="@correccion.Id" />
+    <div class="table-responsive"><table class="table table-bordered">
+        <thead><tr><th>Concepto</th><th>Cantidad</th><th>Valor unitario</th><th>% administrativo</th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < detalles.Count; i++)
+        {
+            var d = detalles[i];
+            <tr><td>@d.ConceptoNombre<input type="hidden" name="detalles[@i].Id" value="@d.Id" /><input type="hidden" name="detalles[@i].ConceptoId" value="@d.ConceptoId" /></td>
+                <td><input class="form-control" type="number" name="detalles[@i].Cantidad" value="@d.Cantidad" min="1" max="10000" required /></td>
+                <td><input class="form-control" type="number" name="detalles[@i].ValorUnitario" value="@d.ValorUnitario.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01" min="0" max="1000000" required /></td>
+                <td><input class="form-control" type="number" name="detalles[@i].PorcentajeAdmin" value="@d.PorcentajeAdmin.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01" min="0" max="100" required /></td></tr>
+        }
+        <tr><td><select class="form-control" name="conceptoAdicional" id="conceptoAdicional"><option value="">Agregar concepto faltante (opcional)</option>
+            @foreach (var c in conceptos.Where(c => c.Activo)) { <option value="@c.Id" data-valor="@c.ValorBase.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-admin="@c.PorcentajeAdmin.ToString(System.Globalization.CultureInfo.InvariantCulture)">@c.Nombre</option> }
+        </select><input type="hidden" id="conceptoNuevoId" /></td>
+            <td><input class="form-control" id="cantidadNueva" type="number" min="1" max="10000" value="1" /></td>
+            <td><input class="form-control" id="valorNuevo" type="number" step="0.01" min="0" max="1000000" /></td>
+            <td><input class="form-control" id="adminNuevo" type="number" step="0.01" min="0" max="100" /></td></tr>
+        </tbody>
+    </table></div>
+    <label for="observacion">Justificación de la corrección</label><textarea class="form-control mb-3" id="observacion" name="observacion" maxlength="2000" required></textarea>
+    <button class="btn btn-primary" type="submit">Guardar corrección</button>
+}
+<hr />
+<p>Total actual: <strong>@Model.Total.ToString("0.00")</strong>. Estado: @correccion.Estado</p>
+@if (correccion.Estado == "CORREGIDA")
+{
+    using (Html.BeginForm("ValidarCorreccionOrden", "Financiero", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <input type="hidden" name="correccionId" value="@correccion.Id" />
+        <input type="hidden" name="totalEsperado" value="@Model.Total.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+        <label for="montoVerificado">Monto de pago verificado</label><input class="form-control mb-2" id="montoVerificado" name="montoVerificado" type="number" step="0.01" min="0" required />
+        <label for="referencia">Referencia de la validación y regularización de la factura</label><input class="form-control mb-2" id="referencia" name="referencia" maxlength="500" required />
+        <label for="facturaRectificada">Factura rectificada</label><input class="form-control mb-3" id="facturaRectificada" name="facturaRectificada" type="file" accept=".pdf" required />
+        <label for="comprobanteRectificado">Comprobante de pago verificado / regularización</label><input class="form-control mb-3" id="comprobanteRectificado" name="comprobanteRectificado" type="file" accept=".pdf" required />
+        <button class="btn btn-success" type="submit">Validar corrección y habilitar continuación</button>
+    }
+}
+<a class="btn btn-outline-secondary mt-3" href="@Url.Action("Index")">Volver a Financiero</a>
+<script>
+document.getElementById('conceptoAdicional').addEventListener('change', function () {
+    var option = this.options[this.selectedIndex], selected = !!this.value, index = @detalles.Count;
+    [['conceptoNuevoId', 'ConceptoId'], ['cantidadNueva', 'Cantidad'], ['valorNuevo', 'ValorUnitario'], ['adminNuevo', 'PorcentajeAdmin']].forEach(function (pair) {
+        var input = document.getElementById(pair[0]);
+        if (selected) input.name = 'detalles[' + index + '].' + pair[1]; else input.removeAttribute('name');
+        input.required = selected;
+    });
+    document.getElementById('conceptoNuevoId').value = this.value;
+    document.getElementById('valorNuevo').value = option.getAttribute('data-valor') || '';
+    document.getElementById('adminNuevo').value = option.getAttribute('data-admin') || '';
+});
+</script>

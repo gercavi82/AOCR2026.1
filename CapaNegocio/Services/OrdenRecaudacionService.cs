@@ -1,6 +1,8 @@
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
@@ -10,6 +12,31 @@ namespace CapaNegocio.Services
 {
     public class OrdenRecaudacionService
     {
+        public static string PrepararCorreccionFinanciera(IList<CapaDatos.Entidades.DetalleOrden> detalles,
+            IEnumerable<CapaDatos.Models.ConceptoModel> conceptos, string observacion)
+        {
+            if (string.IsNullOrWhiteSpace(observacion) || observacion.Length > 2000)
+                return "Indique la justificación de la corrección (máximo 2000 caracteres).";
+            if (detalles == null || detalles.Count == 0 || detalles.Count > 200)
+                return "La orden debe contener entre 1 y 200 conceptos.";
+            var catalogo = conceptos.ToDictionary(c => c.Id);
+            foreach (var d in detalles)
+            {
+                if (d == null || d.Id < 0 || !d.ConceptoId.HasValue || !catalogo.ContainsKey(d.ConceptoId.Value)
+                    || d.Cantidad <= 0 || d.Cantidad > 10000 || d.ValorUnitario < 0 || d.ValorUnitario > 1000000
+                    || d.PorcentajeAdmin < 0 || d.PorcentajeAdmin > 100)
+                    return "Revise los conceptos, cantidades, valores unitarios y porcentajes administrativos.";
+                var concepto = catalogo[d.ConceptoId.Value];
+                if (d.Id == 0 && !concepto.Activo) return "No se pueden agregar conceptos inactivos.";
+                d.ConceptoCodigo = concepto.Codigo;
+                d.ConceptoNombre = concepto.Nombre;
+                d.Subtotal = Math.Round(d.Cantidad * d.ValorUnitario, 2, MidpointRounding.AwayFromZero);
+                d.Admin = Math.Round(d.Subtotal * d.PorcentajeAdmin / 100m, 2, MidpointRounding.AwayFromZero);
+                d.TotalLinea = d.Subtotal + d.Admin;
+            }
+            if (detalles.Sum(d => d.TotalLinea) <= 0) return "El total de la orden corregida debe ser mayor que cero.";
+            return null;
+        }
         private readonly string _connectionString;
         private readonly ILoggingService _logger;
         private readonly OrdenRecaudacionDAO _ordenDao;

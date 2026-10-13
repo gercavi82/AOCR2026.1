@@ -6,6 +6,16 @@ using CapaDatos.Constants;
 
 namespace CapaDatos.Models
 {
+    public class CorreccionFinancieraOrden
+    {
+        public long Id { get; set; }
+        public int OrdenId { get; set; }
+        public int SolicitudId { get; set; }
+        public string Estado { get; set; }
+        public string Motivo { get; set; }
+        public string EstadoOriginal { get; set; }
+        public string FacturaRectificadaRuta { get; set; }
+    }
     public class OrdenRecaudacionModel
     {
         public int Id { get; set; }

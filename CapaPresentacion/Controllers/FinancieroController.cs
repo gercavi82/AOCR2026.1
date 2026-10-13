@@ -42,6 +42,7 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult ConstruirDashboardFinanciero(string estado)
         {
+            ViewBag.CorreccionesFinancieras = _ordenDAO.ListarCorreccionesFinancieras();
             var estadoFiltro = NormalizarFiltroDashboard(estado);
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
             var contextos = ConstruirContextosFinancieros(ordenesEnt)
@@ -104,6 +105,7 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarOrden", CodigoOrdenParameter = "id")]
         public ActionResult AprobarOrden(int id)
         {
+            if (_ordenDAO.ListarCorreccionesFinancieras(id).Any()) return RedirectToAction("CorregirOrden", new { id });
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
@@ -164,6 +166,7 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarPago", CodigoOrdenParameter = "id")]
         public ActionResult AprobarPago(int id, int? pagoId)
         {
+            if (_ordenDAO.ListarCorreccionesFinancieras(id).Any()) return RedirectToAction("CorregirOrden", new { id });
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
@@ -222,6 +225,8 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("FIN_APROBAR_PAGO")]
         public ActionResult AprobarPagoConFactura(AprobarPagoConFacturaVM model, HttpPostedFileBase facturaFile)
         {
+            if (model != null && _ordenDAO.ListarCorreccionesFinancieras(model.OrdenId).Any())
+                return JsonErrorLogged("La orden fue devuelta por Inspector. Use Corregir y volver a validar en la bandeja financiera.");
             CapaNegocio.LogBL.RegistrarInfo(
                 string.Format("Solicitud AprobarPagoConFactura recibida. OrdenId={0}, PagoId={1}",
                     model != null ? model.OrdenId.ToString() : "null",
@@ -453,6 +458,8 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarYEnviarAS400", CodigoOrdenParameter = "ordenId")]
         public ActionResult AprobarYEnviarAS400(int ordenId)
         {
+            if (ordenId > 0 && _ordenDAO.ListarCorreccionesFinancieras(ordenId).Any())
+                return JsonErrorLogged("Debe corregir y validar la devolución del Inspector antes de continuar.");
             if (ordenId <= 0)
             {
                 var rawOrdenId = (Request["ordenId"] ?? Request["id"] ?? string.Empty).Trim();
@@ -664,6 +671,7 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "Financiero", Accion = "RechazarOrden", CodigoOrdenParameter = "id")]
         public ActionResult RechazarOrden(int id, string motivo)
         {
+            if (_ordenDAO.ListarCorreccionesFinancieras(id).Any()) return RedirectToAction("CorregirOrden", new { id });
             if (string.IsNullOrWhiteSpace(motivo))
             {
                 TempData["Error"] = "Debe ingresar un motivo de rechazo.";
@@ -821,6 +829,89 @@ namespace CapaPresentacion.Controllers
         }
 
         // Compat: redirige la ruta /Financiero/DetalleOrden/{id} a la vista oficial de detalles
+        [HttpGet]
+        [RequirePermission("FIN_VER_PAGOS")]
+        public ActionResult CorregirOrden(int id)
+        {
+            var orden = _ordenDAO.ObtenerOrdenPorIdModel(id);
+            if (orden == null) return HttpNotFound();
+            var correccion = _ordenDAO.ListarCorreccionesFinancieras(id).FirstOrDefault();
+            if (correccion == null) return new HttpStatusCodeResult(409, "No existe devolución financiera pendiente.");
+            ViewBag.Correccion = correccion;
+            ViewBag.Conceptos = new ConceptoDAO().ObtenerConceptos(false);
+            ViewBag.DetallesCorreccion = _ordenDAO.ObtenerDetallesPorOrdenId(id);
+            return View("CorregirOrden", orden);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("FIN_APROBAR_PAGO")]
+        public ActionResult GuardarCorreccionOrden(int id, long correccionId, List<CapaDatos.Entidades.DetalleOrden> detalles, string observacion)
+        {
+            var originales = _ordenDAO.ObtenerDetallesPorOrdenId(id);
+            if (!ModelState.IsValid || detalles == null || detalles.Any(d => d == null
+                || (d.Id > 0 && !originales.Any(o => o.Id == d.Id && o.ConceptoId == d.ConceptoId))))
+            {
+                TempData["Error"] = "Los datos enviados no corresponden a las líneas originales de la orden.";
+                return RedirectToAction("CorregirOrden", new { id });
+            }
+            var error = OrdenRecaudacionService.PrepararCorreccionFinanciera(detalles, new ConceptoDAO().ObtenerConceptos(false), observacion);
+            if (error != null) TempData["Error"] = error;
+            else
+            {
+                try
+                {
+                    _ordenDAO.GuardarCorreccionFinanciera(id, correccionId, detalles, ObtenerUsuarioIdActual(), observacion);
+                    TempData["Success"] = "Conceptos y valores corregidos. La orden permanece pendiente de validación financiera.";
+                }
+                catch (Exception ex) { TempData["Error"] = ex.Message; }
+            }
+            return RedirectToAction("CorregirOrden", new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("FIN_APROBAR_PAGO")]
+        public ActionResult ValidarCorreccionOrden(int id, long correccionId, decimal totalEsperado, decimal montoVerificado, string referencia, HttpPostedFileBase facturaRectificada, HttpPostedFileBase comprobanteRectificado)
+        {
+            try
+            {
+                string error;
+                if (!ModelState.IsValid || !FileStorageHelper.ValidatePdf(facturaRectificada, out error) || !FileStorageHelper.ValidatePdf(comprobanteRectificado, out error))
+                {
+                    TempData["Error"] = "Adjunte la factura rectificada y el comprobante verificado en PDF, e indique un monto válido.";
+                    return RedirectToAction("CorregirOrden", new { id });
+                }
+                var ruta = FileStorageHelper.SavePdf(facturaRectificada, "AOCR/CorreccionesFinancieras/" + id);
+                var comprobanteRuta = FileStorageHelper.SavePdf(comprobanteRectificado, "AOCR/CorreccionesFinancieras/" + id);
+                _ordenDAO.ValidarCorreccionFinanciera(id, correccionId, totalEsperado, ObtenerUsuarioIdActual(), montoVerificado, referencia, ruta, comprobanteRuta);
+                try
+                {
+                    var orden = _ordenDAO.ObtenerOrdenPorIdModel(id);
+                    int solicitudId;
+                    if (orden != null && int.TryParse(orden.CodigoSolicitud, out solicitudId))
+                    {
+                        var solicitud = new SolicitudAOCRDAO().ObtenerPorId(solicitudId);
+                        new SolicitudAocrCorreoService().NotificarEvento(solicitud, "CORRECCION_FINANCIERA_VALIDADA", referencia);
+                        if (solicitud != null) CapaNegocio.NotificacionBL.EnviarNotificacion(solicitud.CodigoUsuario, "Orden corregida y validada por Financiero",
+                            "Puede descargar la orden y factura rectificadas para continuar con el expediente.", "INFO",
+                            Url.Action("Detalles", "OrdenRecaudacion", new { id }), "AOCR", solicitudId, "SOLICITUD_AOCR");
+                    }
+                }
+                catch (Exception exNotificacion)
+                {
+                    CapaNegocio.LogBL.RegistrarError("Corrección validada, notificación pendiente", exNotificacion.ToString(), "FinancieroController");
+                }
+                TempData["Success"] = "Corrección validada. El expediente puede continuar y la factura rectificada está disponible.";
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("CorregirOrden", new { id });
+            }
+        }
+
         [HttpGet]
         public ActionResult DetalleOrden(int id)
         {

@@ -361,6 +361,48 @@ namespace CapaPresentacion.Controllers
                     : "Constancia_RT_" + (usuario.CodigoUsuario ?? usuarioId.ToString()) + ".txt");
         }
 
+        [HttpPost]
+        [Authorize(Roles = ROL_RT + "," + ROL_RT_ALIAS + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult GenerarSolicitudAceptacion(SolicitudAceptacionRtVM vm)
+        {
+            var usuarioId = ObtenerUsuarioId();
+            var solicitud = _service.GetSolicitudByUsuario(usuarioId);
+            if (solicitud == null || solicitud.Id != vm.SolicitudId) return HttpNotFound();
+            if (!_service.EsEstadoEditable(solicitud.Estado))
+                return new HttpStatusCodeResult(403, "La solicitud ya no admite modificaciones.");
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Complete el nombre, cargo del Gerente de Operaciones y lugar de emisión (máximo 150, 100 y 100 caracteres).";
+                return RedirectToAction("Designacion", new { solicitudId = vm.SolicitudId });
+            }
+            var compania = _service.GetCompaniaById(solicitud.CompaniaId);
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            using (var ms = new MemoryStream())
+            {
+                var doc = new Document(PageSize.A4, 40f, 40f, 120f, 80f);
+                var writer = PdfWriter.GetInstance(doc, ms);
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(Server, "RT.SolicitudAceptacion");
+                doc.Open();
+                var font = FontFactory.GetFont(FontFactory.HELVETICA, 11);
+                doc.Add(new Paragraph("Solicitud de aceptación de Representante Técnico", FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14)) { SpacingAfter = 20f });
+                doc.Add(new Paragraph(vm.LugarEmision.Trim() + ", " + DateTime.Now.ToString("dd/MM/yyyy"), font) { SpacingAfter = 15f });
+                doc.Add(new Paragraph("Dirección General de Aviación Civil del Ecuador", font));
+                doc.Add(new Paragraph("Por medio de la presente, en calidad de " + vm.CargoGerente.Trim() + " de " + (compania?.RazonSocial ?? "")
+                    + ", solicito la aceptación de " + (usuario?.NombreCompleto ?? usuario?.NombreUsuario ?? "")
+                    + " como Representante Técnico de nuestra compañía ante la DGAC del Ecuador.", font) { SpacingBefore = 15f, SpacingAfter = 15f });
+                doc.Add(new Paragraph("El Representante Técnico mantendrá la comunicación con la DGAC para gestionar los trámites de emisión, renovación o modificación del AOCR y supervisará la asistencia técnica en tierra en las estaciones de Ecuador.", font));
+                doc.Add(new Paragraph("Atentamente,", font) { SpacingBefore = 30f });
+                doc.Add(new Paragraph("_______________________________", font) { SpacingBefore = 30f });
+                doc.Add(new Paragraph(vm.NombreGerente.Trim(), font));
+                doc.Add(new Paragraph(vm.CargoGerente.Trim(), font));
+                doc.Add(new Paragraph(compania?.RazonSocial ?? "", font));
+                doc.Close();
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                return File(ms.ToArray(), "application/pdf", "Solicitud_Aceptacion_RT_" + solicitud.Id + ".pdf");
+            }
+        }
+
         private static byte[] GenerarDeclaracionPdf(DeclaracionPdfVM vm)
         {
             using (var ms = new MemoryStream())

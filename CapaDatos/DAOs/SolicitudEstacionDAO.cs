@@ -198,10 +198,10 @@ namespace CapaDatos.DAOs
                     ? codigoNorm
                     : est.EstacionNombre.Trim();
 
-                DateTime fInicio = est.FechaInicio != default(DateTime) ? est.FechaInicio.Date : DateTime.Today;
-                DateTime fFin = est.FechaFin != default(DateTime) ? est.FechaFin.Date : fInicio;
+                DateTime? fInicio = est.FechaInicio != default(DateTime) ? (DateTime?)est.FechaInicio.Date : null;
+                DateTime? fFin = est.FechaFin != default(DateTime) ? (DateTime?)est.FechaFin.Date : fInicio;
 
-                if (fFin < fInicio)
+                if (fFin.HasValue && fInicio.HasValue && fFin < fInicio)
                 {
                     fFin = fInicio;
                 }

@@ -1166,17 +1166,8 @@
                                         return false;
                                     }
 
-                                    var fechas = ($('#FechasInspeccion').val() || '').trim();
+                                    var fechas = 'Por coordinar con el Inspector';
                                     $('#FechasInspeccion').val(fechas);
-                                    if (!fechas) {
-                                        $('#mensajeSolicitudInspeccion')
-                                            .removeClass('d-none')
-                                            .text('Debe ingresar las fechas estimadas de inspección.');
-                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
-                                        restaurarBotonGenerarSolicitudInspeccion();
-                                        e.preventDefault();
-                                        return false;
-                                    }
                                 }
 
                                 $('#Orden_RucCedula').val(limpiarSoloDigitos($('#Orden_RucCedula').val(), 13));
@@ -1197,14 +1188,8 @@
                                     return;
                                 }
 
-                                var fechas = ($('#FechasInspeccion').val() || '').trim();
+                                var fechas = 'Por coordinar con el Inspector';
                                 $('#FechasInspeccion').val(fechas);
-                                if (!fechas) {
-                                    $('#mensajeSolicitudInspeccion')
-                                        .removeClass('d-none')
-                                        .text('Debe ingresar las fechas estimadas de inspección.');
-                                    return;
-                                }
 
                                 function solicitarConfirmacionGeneracion(onConfirm) {
                                     if (window.AOCR && typeof window.AOCR.confirmarGeneracionSolicitudInspeccion === 'function') {

@@ -109,6 +109,9 @@ namespace CapaNegocio.Services
             { "OrdenRecaudacion/SubirComprobante", new[] { "Solicitante", "Administrador" } },
             { "OrdenRecaudacion/Descargar", new[] { "Solicitante", "Financiero", "Coordinacion", "DIRCAV", "DIRDAC", "DireccionJefaturaTecnica", "Administrador" } },
             { "Financiero/Index", new[] { "Financiero", "Administrador" } },
+            { "Financiero/CorregirOrden", new[] { "Financiero", "Administrador" } },
+            { "Financiero/GuardarCorreccionOrden", new[] { "Financiero", "Administrador" } },
+            { "Financiero/ValidarCorreccionOrden", new[] { "Financiero", "Administrador" } },
             { "Financiero/AprobarOrden", new[] { "Financiero" } },
             { "Financiero/AprobarPago", new[] { "Financiero" } },
             { "Financiero/RechazarOrden", new[] { "Financiero" } },
@@ -616,6 +619,16 @@ namespace CapaNegocio.Services
                         motivo = "No tiene una inspección asignada para confirmar la revisión documental.";
                         return false;
                     }
+                }
+
+                var accionesAvance = new[] { "ConfirmarRevisionDocumentalInspector", "GuardarListaVerificacionOperacionalEae",
+                    "FirmarListaVerificacionOperacionalEae", "GuardarInformeTecnico", "GenerarInformeTecnico",
+                    "FirmarInformeInspector", "AprobarDecisionFinalDireccion", "FirmarDireccion", "FirmarInformeDirdac" };
+                if (codigoInspeccion.GetValueOrDefault() > 0 && accionesAvance.Contains(accion, Comparer)
+                    && _ordenDao.ListarCorreccionesFinancieras(solicitudId: ObtenerCodigoSolicitudInspeccion(codigoInspeccion.Value)).Count > 0)
+                {
+                    motivo = "La orden fue devuelta a Financiero y está pendiente de corrección y nueva validación.";
+                    return false;
                 }
 
                 if (Comparer.Equals(accion, "FirmarListaVerificacionOperacionalEae"))

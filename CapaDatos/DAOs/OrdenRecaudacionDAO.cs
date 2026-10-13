@@ -46,6 +46,119 @@ namespace CapaDatos.DAOs
 
         #region Metodos de Lectura
 
+        public List<CorreccionFinancieraOrden> ListarCorreccionesFinancieras(int? ordenId = null, int? solicitudId = null, bool soloPendientes = true)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                if (cn.ExecuteScalar<string>("SELECT to_regclass('public.aocr_or_correccion_financiera')::text") == null)
+                    return new List<CorreccionFinancieraOrden>();
+                return cn.Query<CorreccionFinancieraOrden>(@"SELECT id AS Id, orden_id AS OrdenId,
+                    solicitud_id AS SolicitudId, estado AS Estado, motivo AS Motivo,
+                    estado_original AS EstadoOriginal, factura_rectificada_ruta AS FacturaRectificadaRuta
+                    FROM public.aocr_or_correccion_financiera
+                    WHERE (@ordenId IS NULL OR orden_id = @ordenId)
+                      AND (@solicitudId IS NULL OR solicitud_id = @solicitudId)
+                      AND (NOT @soloPendientes OR estado <> 'VALIDADA') ORDER BY id DESC",
+                    new { ordenId, solicitudId, soloPendientes }).ToList();
+            }
+        }
+
+        public void DevolverOrdenAFinanciero(int ordenId, int solicitudId, int inspectorId, string motivo)
+        {
+            if (string.IsNullOrWhiteSpace(motivo) || motivo.Trim().Length > 2000)
+                throw new InvalidOperationException("Indique el motivo de devolución (máximo 2000 caracteres).");
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    var orden = cn.QuerySingleOrDefault<OrdenRecaudacion>("SELECT * FROM public.aocr_or_orden WHERE id = @ordenId FOR UPDATE", new { ordenId }, tx);
+                    // La comparación SQL usa el vínculo real; no el identificador enviado desde el navegador.
+                    if (orden == null || cn.ExecuteScalar<int>("SELECT COUNT(*) FROM public.aocr_or_orden WHERE id = @ordenId AND codigo_solicitud::text = @solicitudId::text", new { ordenId, solicitudId }, tx) != 1)
+                        throw new InvalidOperationException("La orden no pertenece a esta solicitud.");
+                    var estado = EstadoOrden.NormalizarEstado(orden.Estado);
+                    if (estado != EstadoOrden.Pagada && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada)
+                        throw new InvalidOperationException("Solo se pueden devolver por esta vía órdenes previamente pagadas o facturadas.");
+                    if (cn.ExecuteScalar<int>("SELECT COUNT(*) FROM public.aocr_or_correccion_financiera WHERE orden_id = @ordenId AND estado <> 'VALIDADA'", new { ordenId }, tx) > 0)
+                        throw new InvalidOperationException("La orden ya está pendiente de corrección financiera.");
+                    cn.Execute(@"INSERT INTO public.aocr_or_correccion_financiera
+                        (orden_id, solicitud_id, estado_original, motivo, solicitado_por, orden_anterior, detalles_anteriores)
+                        SELECT o.id, @solicitudId, o.estado, @motivo, @inspectorId, to_jsonb(o),
+                            COALESCE((SELECT jsonb_agg(to_jsonb(d)) FROM public.aocr_or_orden_detalle d WHERE d.orden_id = o.id), '[]'::jsonb)
+                        FROM public.aocr_or_orden o WHERE o.id = @ordenId;
+                        UPDATE public.aocr_or_orden SET estado = @estado WHERE id = @ordenId;",
+                        new { ordenId, solicitudId, inspectorId, motivo = motivo.Trim(), estado = EstadoOrden.EnRevisionFinanciera }, tx);
+                    tx.Commit();
+                }
+            }
+        }
+
+        public void GuardarCorreccionFinanciera(int ordenId, long correccionEsperadaId, IEnumerable<DetalleOrdenEnt> detalles, int financieroId, string observacion)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    cn.ExecuteScalar<int>("SELECT id FROM public.aocr_or_orden WHERE id = @ordenId FOR UPDATE", new { ordenId }, tx);
+                    var correccionId = cn.ExecuteScalar<long?>("SELECT id FROM public.aocr_or_correccion_financiera WHERE orden_id = @ordenId AND id = @correccionEsperadaId AND estado <> 'VALIDADA' FOR UPDATE", new { ordenId, correccionEsperadaId }, tx);
+                    if (!correccionId.HasValue) throw new InvalidOperationException("La orden no tiene una devolución financiera pendiente.");
+                    var lista = detalles.ToList();
+                    var idsExistentes = cn.Query<int>("SELECT id FROM public.aocr_or_orden_detalle WHERE orden_id = @ordenId", new { ordenId }, tx).ToList();
+                    if (lista.Where(d => d.Id > 0).Select(d => d.Id).Distinct().Count() != idsExistentes.Count
+                        || lista.Count(d => d.Id > 0) != idsExistentes.Count
+                        || idsExistentes.Any(id => !lista.Any(d => d.Id == id))
+                        || lista.Any(d => d.Id > 0 && !idsExistentes.Contains(d.Id)))
+                        throw new InvalidOperationException("La corrección debe conservar todas las líneas originales de la orden.");
+                    foreach (var d in lista)
+                    {
+                        if (d.Id > 0)
+                        {
+                            cn.Execute(@"UPDATE public.aocr_or_orden_detalle SET cantidad = @Cantidad,
+                                valor_unitario = @ValorUnitario, porcentaje_admin = @PorcentajeAdmin, subtotal = @Subtotal,
+                                admin = @Admin, total_linea = @TotalLinea WHERE id = @Id AND orden_id = @ordenId",
+                                new { ordenId, d.Id, d.Cantidad, d.ValorUnitario, d.PorcentajeAdmin, d.Subtotal, d.Admin, d.TotalLinea }, tx);
+                            continue;
+                        }
+                        cn.Execute(@"INSERT INTO public.aocr_or_orden_detalle
+                            (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea, estado, lugar_inspeccion, provincia_inspeccion)
+                            VALUES (@ordenId, @ConceptoId, @ConceptoCodigo, @ConceptoNombre, @Descripcion, @Cantidad, @ValorUnitario, @PorcentajeAdmin, @Subtotal, @Admin, @TotalLinea, 'PENDIENTE', @LugarInspeccion, @ProvinciaInspeccion)",
+                            new { ordenId, d.ConceptoId, d.ConceptoCodigo, d.ConceptoNombre, d.Descripcion, d.Cantidad, d.ValorUnitario, d.PorcentajeAdmin, d.Subtotal, d.Admin, d.TotalLinea, d.LugarInspeccion, d.ProvinciaInspeccion }, tx);
+                    }
+                    cn.Execute(@"UPDATE public.aocr_or_orden SET subtotal = @subtotal, admin = @admin, total = @total WHERE id = @ordenId;
+                        UPDATE public.aocr_or_correccion_financiera SET estado = 'CORREGIDA', corregido_por = @financieroId,
+                            corregido_en = CURRENT_TIMESTAMP, observacion_financiera = @observacion WHERE id = @correccionId",
+                        new { ordenId, financieroId, correccionId, observacion, subtotal = lista.Sum(d => d.Subtotal), admin = lista.Sum(d => d.Admin), total = lista.Sum(d => d.TotalLinea) }, tx);
+                    tx.Commit();
+                }
+            }
+        }
+
+        public void ValidarCorreccionFinanciera(int ordenId, long correccionEsperadaId, decimal totalEsperado, int financieroId, decimal montoVerificado, string referencia, string facturaRuta, string comprobanteRuta)
+        {
+            if (string.IsNullOrWhiteSpace(referencia) || referencia.Length > 500 || string.IsNullOrWhiteSpace(facturaRuta) || string.IsNullOrWhiteSpace(comprobanteRuta))
+                throw new InvalidOperationException("Adjunte la factura rectificada e indique la referencia de validación.");
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    var total = cn.ExecuteScalar<decimal>("SELECT total FROM public.aocr_or_orden WHERE id = @ordenId FOR UPDATE", new { ordenId }, tx);
+                    if (total != totalEsperado) throw new InvalidOperationException("Los valores cambiaron desde que abrió la pantalla. Recargue y revise la corrección antes de validarla.");
+                    if (montoVerificado < total) throw new InvalidOperationException("El monto de pago verificado no cubre la orden corregida.");
+                    var estadoOriginal = cn.ExecuteScalar<string>("SELECT estado_original FROM public.aocr_or_correccion_financiera WHERE orden_id = @ordenId AND id = @correccionEsperadaId AND estado = 'CORREGIDA' FOR UPDATE", new { ordenId, correccionEsperadaId }, tx);
+                    if (estadoOriginal == null) throw new InvalidOperationException("Primero guarde la corrección de conceptos y valores.");
+                    cn.Execute(@"UPDATE public.aocr_or_correccion_financiera SET estado = 'VALIDADA', validado_por = @financieroId,
+                        validado_en = CURRENT_TIMESTAMP, referencia_validacion = @referencia, monto_verificado = @montoVerificado,
+                        factura_rectificada_ruta = @facturaRuta, comprobante_rectificado_ruta = @comprobanteRuta WHERE orden_id = @ordenId AND id = @correccionEsperadaId AND estado = 'CORREGIDA';
+                        UPDATE public.aocr_or_orden SET estado = @estadoOriginal WHERE id = @ordenId",
+                        new { ordenId, correccionEsperadaId, financieroId, referencia, montoVerificado, facturaRuta, comprobanteRuta, estadoOriginal }, tx);
+                    tx.Commit();
+                }
+            }
+        }
+
         /// <summary>
         /// Obtiene todas las Ordenes de recaudaciÃ³n
         /// </summary>

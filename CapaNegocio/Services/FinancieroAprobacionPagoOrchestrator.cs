@@ -86,6 +86,23 @@ namespace CapaNegocio.Services
                         }
 
                         result.NumeroOrden = orden.NumeroOrden;
+                        using (var schema = new NpgsqlCommand("SELECT to_regclass('public.aocr_or_correccion_financiera')::text", cn, tx))
+                        {
+                            var tabla = schema.ExecuteScalar();
+                            if (tabla != null && tabla != DBNull.Value)
+                            {
+                                using (var pendiente = new NpgsqlCommand("SELECT COUNT(*) FROM public.aocr_or_correccion_financiera WHERE orden_id = @id AND estado <> 'VALIDADA'", cn, tx))
+                                {
+                                    pendiente.Parameters.AddWithValue("id", ordenId);
+                                    if (Convert.ToInt64(pendiente.ExecuteScalar()) > 0)
+                                    {
+                                        result.Error = "La orden tiene una devolución del Inspector pendiente de corrección y nueva validación financiera.";
+                                        tx.Rollback();
+                                        return result;
+                                    }
+                                }
+                            }
+                        }
 
                         if (OrdenRecaudacionOperativaHelper.EsOrdenCerradaPostAprobacionFinanciera(orden.Estado))
                         {

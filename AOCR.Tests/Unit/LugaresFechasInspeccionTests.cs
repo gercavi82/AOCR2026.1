@@ -38,6 +38,57 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
+        public void Rt_SolicitaLugaresSinFechas_InspectorDebePlanificarlos()
+        {
+            var lugares = new[] { Lugar("UIO", ""), Lugar("GYE", "") };
+            Assert.IsNull(SolicitudEstacionService.ValidarFechasPorLugar(lugares, "QUITO,GUAYAQUIL", null, false));
+            Assert.AreEqual(default(DateTime), lugares[0].FechaInicio);
+            Assert.IsNotNull(SolicitudEstacionService.ValidarPlanificacionAcordada(lugares));
+            lugares[0].FechaInicio = lugares[0].FechaFin = new DateTime(2026, 10, 20);
+            Assert.IsNotNull(SolicitudEstacionService.ValidarPlanificacionAcordada(lugares));
+            lugares[1].FechaInicio = lugares[1].FechaFin = new DateTime(2026, 10, 23);
+            Assert.IsNull(SolicitudEstacionService.ValidarPlanificacionAcordada(lugares));
+            lugares[1].FechaFin = new DateTime(2026, 10, 22);
+            Assert.IsNotNull(SolicitudEstacionService.ValidarPlanificacionAcordada(lugares));
+        }
+
+        [TestMethod]
+        public void Rt_SinFechas_NoPuedeOmitirDuplicarOAgregarLugares()
+        {
+            Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { Lugar("UIO", "") }, "QUITO,GUAYAQUIL", null, false));
+            Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { Lugar("UIO", ""), Lugar("UIO", "") }, "QUITO,GUAYAQUIL", null, false));
+            Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { Lugar("GYE", "") }, "QUITO", null, false));
+            Assert.IsNotNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { Lugar("OTROS", "") }, "OTRA_PROVINCIA", "", false));
+            Assert.IsNull(SolicitudEstacionService.ValidarFechasPorLugar(new[] { Lugar("OTROS", "") }, "OTRA_PROVINCIA", "Portoviejo", false));
+        }
+
+        [DataTestMethod]
+        [DataRow(1, "emisión")]
+        [DataRow(2, "renovación")]
+        [DataRow(3, "modificación")]
+        public void CorreoPago_IdentificaTipoSolicitud(int tipo, string esperado)
+        {
+            Assert.AreEqual(esperado, AocrPostPagoWorkflowService.TextoTipoSolicitud(tipo));
+        }
+
+        [TestMethod]
+        public void CorreccionFinanciera_RecalculaTotalesSinConfiarEnValoresEnviados()
+        {
+            var conceptos = new[] { new CapaDatos.Models.ConceptoModel { Id = 7, Codigo = "INSPECCION_EXT", Nombre = "Inspección", Activo = true } };
+            var detalle = new CapaDatos.Entidades.DetalleOrden { ConceptoId = 7, Cantidad = 3, ValorUnitario = 10.55m, PorcentajeAdmin = 10m, TotalLinea = 999m, ConceptoCodigo = "FALSO" };
+            Assert.IsNull(OrdenRecaudacionService.PrepararCorreccionFinanciera(new[] { detalle }, conceptos, "Faltaban conceptos"));
+            Assert.AreEqual(31.65m, detalle.Subtotal);
+            Assert.AreEqual(3.17m, detalle.Admin);
+            Assert.AreEqual(34.82m, detalle.TotalLinea);
+            Assert.AreEqual("INSPECCION_EXT", detalle.ConceptoCodigo);
+            detalle.Cantidad = -1;
+            Assert.IsNotNull(OrdenRecaudacionService.PrepararCorreccionFinanciera(new[] { detalle }, conceptos, "Motivo"));
+            detalle.Cantidad = 1;
+            detalle.ConceptoId = 99;
+            Assert.IsNotNull(OrdenRecaudacionService.PrepararCorreccionFinanciera(new[] { detalle }, conceptos, "Motivo"));
+        }
+
+        [TestMethod]
         public void FechasIndependientes_SeMapeanAlModeloPersistidoSinRangoGeneral()
         {
             var quito = Lugar("UIO", "2026-09-22");
