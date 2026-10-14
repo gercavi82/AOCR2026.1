@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Notificacion>>
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Notificacion>>
 @using System.Linq
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -9,80 +9,50 @@
 
 @section styles {
     <style>
-        .notificacion-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #ddd;
-            background-color: #f9f9f9;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .notificacion-item:hover {
-            background-color: #f0f0f0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .notificacion-item.no-leida {
-            background-color: #e8f4fd;
-            border-left-color: #007bff;
-        }
-
-        .notificacion-item.leida {
-            opacity: 0.7;
-        }
-
-        .notificacion-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .notificacion-titulo {
-            font-weight: bold;
-            font-size: 14px;
-            margin: 0;
-        }
-
-        .notificacion-fecha {
-            font-size: 11px;
-            color: #999;
-        }
-
-        .notificacion-mensaje {
-            font-size: 13px;
-            color: #555;
-            margin: 5px 0;
-        }
-
-        .notificacion-acciones {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-
-        .notificacion-icono {
-            font-size: 24px;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-
-        .badge-tipo {
-            font-size: 10px;
-            padding: 3px 8px;
-            margin-left: 5px;
+        .aocr-notifications { width:100%; margin:0; padding:16px 0; color:#163c59; }
+        body.aocr-body .aocr-notifications .content-header { padding:0 0 18px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+        body.aocr-body .aocr-notifications .content-header h1 { font-size:28px; margin:0; color:#073b63!important; -webkit-text-fill-color:#073b63!important; }
+        body.aocr-body .aocr-notifications .notifications-subtitle { display:block; margin:6px 0 0; font-size:14px; color:#425a70!important; -webkit-text-fill-color:#425a70!important; }
+        .aocr-notifications .content { padding:0; }
+        .aocr-notifications .box { background:#fff; border:1px solid #b8ccdd; border-radius:10px; overflow:hidden; }
+        .aocr-notifications .box-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 16px; background:#e7eff6; border-bottom:1px solid #c6d5e1; }
+        body.aocr-body .aocr-notifications .box-title { margin:0; font-size:18px; color:#073b63!important; -webkit-text-fill-color:#073b63!important; }
+        .aocr-notifications .box-tools { display:flex; gap:8px; flex-wrap:wrap; }
+        .aocr-notifications .box-body { padding:14px; }
+        .aocr-notifications .notificacion-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; padding:16px; margin-bottom:10px; border:1px solid #c6d5e1; border-left:4px solid #849caf; border-radius:8px; background:#f7f9fc; cursor:pointer; }
+        .aocr-notifications .notificacion-item:last-child { margin-bottom:0; }
+        .aocr-notifications .notificacion-item.no-leida { background:#edf5ff; border-left-color:#0752a0; }
+        .aocr-notifications .notificacion-item:hover { border-color:#0752a0; }
+        .aocr-notifications .notificacion-item.leida { opacity:1; }
+        .aocr-notifications .notificacion-header { grid-column:1; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        body.aocr-body .aocr-notifications .notificacion-titulo { font-size:15px; font-weight:700; color:#123c60!important; -webkit-text-fill-color:#123c60!important; overflow-wrap:anywhere; }
+        body.aocr-body .aocr-notifications .notificacion-fecha { font-size:12px; color:#425a70!important; -webkit-text-fill-color:#425a70!important; white-space:nowrap; }
+        body.aocr-body .aocr-notifications .notificacion-mensaje { grid-column:1; font-size:14px; line-height:1.5; margin:0; color:#344b60!important; -webkit-text-fill-color:#344b60!important; overflow-wrap:anywhere; }
+        .aocr-notifications .notificacion-acciones { grid-column:2; grid-row:1 / span 2; align-self:center; }
+        body.aocr-body .aocr-notifications .notificacion-icono { margin-right:8px; color:#0752a0!important; -webkit-text-fill-color:#0752a0!important; }
+        body.aocr-body .aocr-notifications .badge-tipo { display:inline-block; margin-left:8px; padding:4px 7px; font-size:11px; background:#d5e7fa!important; color:#164d80!important; -webkit-text-fill-color:#164d80!important; }
+        body.aocr-body .aocr-notifications .btn, body.aocr-body .aocr-notifications .btn i { color:#fff!important; -webkit-text-fill-color:#fff!important; }
+        .aocr-notifications .btn-primary { background:#0752a0!important; }
+        .aocr-notifications .btn-success { background:#087647!important; }
+        .aocr-notifications .btn-danger { background:#b42337!important; }
+        body.aocr-body .aocr-notifications .alert-info, body.aocr-body .aocr-notifications .alert-info p, body.aocr-body .aocr-notifications .alert-info h4 { background:#edf5ff; color:#163c59!important; -webkit-text-fill-color:#163c59!important; }
+        @@media(max-width:600px) {
+            .aocr-notifications .notificacion-item { grid-template-columns:1fr; }
+            .aocr-notifications .notificacion-acciones { grid-column:1; grid-row:auto; justify-self:end; }
+            .aocr-notifications .box-tools { width:100%; }
+            .aocr-notifications .box-tools .btn { flex:1; }
         }
     </style>
 }
 
-<div class="content-wrapper">
+<div class="aocr-notifications">
     <section class="content-header">
+        <div>
         <h1>
             <i class="fa fa-bell"></i> Mis Notificaciones
-            <small>Centro de notificaciones del sistema</small>
         </h1>
+        <p class="notifications-subtitle">Centro de notificaciones del sistema</p>
+        </div>
         <ol class="aocr-breadcrumb breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
             <li class="breadcrumb-item active">Notificaciones</li>
@@ -144,7 +114,7 @@
                                         {
                                             <div class="notificacion-acciones">
                                                 <button type="button" class="btn btn-xs btn-primary btnMarcarLeida" data-id="@notif.CodigoNotificacion" title="Marcar como leída">
-                                                    <i class="fa fa-check"></i>
+                                                    <i class="fa fa-check" aria-hidden="true"></i> Marcar leída
                                                 </button>
                                             </div>
                                         }
@@ -244,3 +214,4 @@
         });
     </script>
 }
+
