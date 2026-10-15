@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════════════
    ADMIN USERS COMPACT — Gestión institucional de usuarios y roles
    Estilos compactos y profesionales para la pantalla de administración.
    ═══════════════════════════════════════════════════════════════ */
@@ -1036,3 +1036,61 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Users list: grouped information and actions sized to the available content. */
+.admin-users-shell #tablaUsuarios { width:100%; min-width:1000px; table-layout:fixed; }
+#tablaUsuarios th:nth-child(1) { width:25%; }
+#tablaUsuarios th:nth-child(2) { width:24%; }
+#tablaUsuarios th:nth-child(3) { width:14%; }
+#tablaUsuarios th:nth-child(4) { width:14%; }
+#tablaUsuarios th:nth-child(5) { width:23%; text-align:center!important; }
+#tablaUsuarios td { padding:14px 12px; vertical-align:middle; white-space:normal; overflow-wrap:anywhere; }
+#tablaUsuarios .auc-user-cell { gap:10px; }
+#tablaUsuarios .auc-user-cell > div:last-child { min-width:0; }
+#tablaUsuarios .auc-user-avatar { flex-shrink:0; width:36px; height:36px; }
+#tablaUsuarios .auc-user-name { color:#123c60; font-size:13px; line-height:1.5; white-space:normal; }
+#tablaUsuarios .auc-user-code,#tablaUsuarios .auc-last-access { color:#425a70; font-size:12px; margin-top:5px; }
+#tablaUsuarios .auc-profile-role { margin-top:6px; }
+#tablaUsuarios .auc-chip { white-space:normal; line-height:1.4; }
+#tablaUsuarios .auc-actions { display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; width:100%; max-width:330px; margin:auto; }
+#tablaUsuarios .auc-actions form { display:block!important; width:100%!important; margin:0!important; min-width:0; }
+#tablaUsuarios .auc-action-btn { display:flex; align-items:center; justify-content:center; gap:4px; width:100%!important; height:auto; min-height:32px; padding:5px 3px; font-size:11px; white-space:normal; border-radius:5px; color:#16456d; background:#fff; }
+#tablaUsuarios .auc-action-btn i,#tablaUsuarios .auc-action-btn span { color:inherit!important; -webkit-text-fill-color:currentColor!important; }
+#tablaUsuarios .auc-action-btn--info { color:#09677d; }
+#tablaUsuarios .auc-action-btn--danger { color:#a51d2b; }
+#tablaUsuarios .auc-action-btn--warn { color:#815300; }
+.admin-users-shell .admin-users-table-card .admin-kpi-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.admin-users-shell .admin-users-filters { display:grid; grid-template-columns:minmax(180px,2fr) repeat(3,minmax(100px,1fr)) auto auto; gap:10px; align-items:end; }
+@media(max-width:1000px) { .admin-users-shell .admin-users-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .admin-users-shell .admin-users-table-card .admin-kpi-grid,.admin-users-shell .admin-users-filters { grid-template-columns:1fr; } }
+
+#usuariosTarjetas .auc-user-cell { gap:10px; }
+#usuariosTarjetas .auc-user-cell > div:last-child { min-width:0; }
+#usuariosTarjetas .auc-user-avatar { flex-shrink:0; width:36px; height:36px; }
+#usuariosTarjetas .auc-user-name { color:#123c60; font-size:13px; line-height:1.5; white-space:normal; }
+#usuariosTarjetas .auc-user-code,#usuariosTarjetas .auc-last-access { color:#425a70; font-size:12px; margin-top:5px; }
+#usuariosTarjetas .auc-profile-role { margin-top:6px; }
+#usuariosTarjetas .auc-chip { white-space:normal; line-height:1.4; }
+#usuariosTarjetas .auc-actions { display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; width:100%; max-width:330px; margin:auto; }
+#usuariosTarjetas .auc-actions form { display:block!important; width:100%!important; margin:0!important; min-width:0; }
+#usuariosTarjetas .auc-action-btn { display:flex; align-items:center; justify-content:center; gap:4px; width:100%!important; height:auto; min-height:32px; padding:5px 3px; font-size:11px; white-space:normal; border-radius:5px; color:#16456d; background:#fff; }
+#usuariosTarjetas .auc-action-btn i,#usuariosTarjetas .auc-action-btn span { color:inherit!important; -webkit-text-fill-color:currentColor!important; }
+#usuariosTarjetas .auc-action-btn--info { color:#09677d; }
+#usuariosTarjetas .auc-action-btn--danger { color:#a51d2b; }
+#usuariosTarjetas .auc-action-btn--warn { color:#815300; }
+
+.auc-user-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; width:100%; }
+.auc-user-card { display:flex; flex-direction:column; min-width:0; padding:18px; border:1px solid #b8ccdd; border-radius:12px; background:#fff; color:#163c59; box-shadow:0 3px 10px #1236530c; }
+.auc-user-card:hover { border-color:#7199bd; }
+.auc-card-identity { min-height:66px; margin-bottom:12px; }
+.auc-card-email { overflow-wrap:anywhere; font-size:13px; min-height:64px; padding:12px 0; border-top:1px solid #e1e9f1; }
+.auc-card-label { display:block; color:#425a70; font-size:11px; font-weight:600; margin-bottom:7px; }
+.auc-card-profile { min-height:90px; padding:12px 0; border-top:1px solid #e1e9f1; }
+.auc-card-access { min-height:85px; padding:12px 0; border-top:1px solid #e1e9f1; }
+.auc-card-actions { padding-top:12px; border-top:1px solid #e1e9f1; margin-top:auto; }
+#usuariosTarjetas .auc-actions { max-width:none; min-height:106px; align-content:start; }
+#usuariosTarjetas .auc-user-name { font-size:14px; font-weight:700; }
+#usuariosTarjetas .auc-user-cell { display:flex; align-items:center; }
+.auc-cards-empty { grid-column:1/-1; }
+@container admin-users (max-width:1150px) { .auc-user-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@container admin-users (max-width:650px) { .auc-user-grid { grid-template-columns:1fr; } }

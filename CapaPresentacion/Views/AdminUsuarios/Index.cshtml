@@ -1,4 +1,4 @@
-@model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
+﻿@model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
 @using CapaPresentacion.Helpers
 @using System.Collections.Generic
 @using System.Linq
@@ -417,22 +417,8 @@
                 </div>
             }
 
-            @* ── Table ── *@
-            <div style="overflow-x:auto;">
-                <table class="admin-users-table" id="tablaUsuarios">
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Nombre</th>
-                            <th>Correo</th>
-                            <th>Tipo</th>
-                            <th>Rol principal</th>
-                            <th>Estado</th>
-                            <th>Último acceso</th>
-                            <th style="text-align:right;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div id="usuariosTarjetas" class="auc-user-grid" role="list">
+
                         @if (Model.Usuarios != null && Model.Usuarios.Any())
                         {
                             foreach (var item in Model.Usuarios)
@@ -440,45 +426,41 @@
                                 var chipTipo = item.TipoUsuario == "Interno" ? "auc-chip--interno" : (item.TipoUsuario == "Externo" ? "auc-chip--externo" : "auc-chip--sinrol");
                                 var familiaPrincipal = ObtenerFamiliaDesdeRol(item.RolesTexto ?? item.RolFallback ?? "");
                                 var esRolRt = string.Equals(familiaPrincipal, "Solicitante / RT", StringComparison.OrdinalIgnoreCase);
-                                <tr>
-                                    <td>
+                                <article class="auc-user-card" role="listitem">
+                                    <div class="auc-card-identity">
                                         <div class="auc-user-cell">
                                             <div class="auc-user-avatar">@ObtenerIniciales(item.NombreUsuario, item.ApellidoUsuario)</div>
                                             <div>
-                                                <div class="auc-user-name">@item.CodigoUsuario</div>
+                                                <div class="auc-user-name">@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())</div>
+                                                <div class="auc-user-code">@item.CodigoUsuario</div>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td>@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())</td>
-                                    <td style="font-size:12px;color:#475569;">@item.Correo</td>
-                                    <td>
+                                    </div>
+                                    <div class="auc-card-email"><span class="auc-card-label">Correo</span>@item.Correo</div>
+                                    <div class="auc-card-profile"><span class="auc-card-label">Perfil y rol</span>
                                         <span class="auc-chip @chipTipo">
                                             @if (item.TipoUsuario == "Interno") { <i class="fas fa-building"></i> }
                                             else if (item.TipoUsuario == "Externo") { <i class="fas fa-globe"></i> }
                                             @item.TipoUsuario
                                         </span>
-                                    </td>
-                                    <td>
-                                        <span class="auc-chip @ObtenerClaseChip(familiaPrincipal)"><i class="@ObtenerIconoPerfil(familiaPrincipal)"></i>@familiaPrincipal</span>
-                                    </td>
-                                    <td>
+                                        <div class="auc-profile-role"><span class="auc-chip @ObtenerClaseChip(familiaPrincipal)"><i class="@ObtenerIconoPerfil(familiaPrincipal)"></i>@familiaPrincipal</span></div>
+                                    </div>
+                                    <div class="auc-card-access"><span class="auc-card-label">Estado y acceso</span>
                                         <span class="auc-status @(item.Activo ? "auc-status--active" : "auc-status--inactive")">
                                             @(item.Activo ? "Activo" : "Inactivo")
                                         </span>
-                                    </td>
-                                    <td style="white-space:nowrap;font-size:12px;">
-                                        @(item.UltimoLogin.HasValue ? item.UltimoLogin.Value.ToString("dd/MM/yyyy HH:mm") : "-")
-                                    </td>
-                                    <td>
+                                        <div class="auc-last-access">@(item.UltimoLogin.HasValue ? item.UltimoLogin.Value.ToString("dd/MM/yyyy HH:mm") : "Sin acceso registrado")</div>
+                                    </div>
+                                    <div class="auc-card-actions"><span class="auc-card-label">Acciones</span>
                                         <div class="auc-actions">
                                             <a class="auc-action-btn" href="@Url.Action("Edit", "AdminUsuarios", new { id = item.IdUsuario })" title="Editar">
-                                                <i class="fas fa-pen"></i>
+                                                <i class="fas fa-pen" aria-hidden="true"></i><span>Editar</span>
                                             </a>
                                             <a class="auc-action-btn auc-action-btn--info" href="@Url.Action("Roles", "AdminUsuarios", new { id = item.IdUsuario })" title="Asignar roles">
-                                                <i class="fas fa-user-shield"></i>
+                                                <i class="fas fa-user-shield" aria-hidden="true"></i><span>Roles</span>
                                             </a>
                                             <a class="auc-action-btn auc-action-btn--danger" href="@Url.Action("TransferirEliminar", "AdminUsuarios", new { id = item.IdUsuario })" title="Transferir / desactivar">
-                                                <i class="fas fa-user-times"></i>
+                                                <i class="fas fa-user-times" aria-hidden="true"></i><span>Transferir</span>
                                             </a>
 
                                             @if (esRolRt)
@@ -492,7 +474,7 @@
                                                             class="auc-action-btn auc-action-btn--info"
                                                             title="Aceptar designación RT"
                                                             onclick="return confirm('Se activará el RT y se enviará correo con usuario y clave temporal. ¿Desea continuar?');">
-                                                        <i class="fas fa-user-check"></i>
+                                                        <i class="fas fa-user-check" aria-hidden="true"></i><span>Aceptar RT</span>
                                                     </button>
                                                 }
 
@@ -504,7 +486,7 @@
                                                         data-usuario-id="@item.IdUsuario"
                                                         data-usuario-codigo="@item.CodigoUsuario"
                                                         data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())">
-                                                    <i class="fas fa-user-minus"></i>
+                                                    <i class="fas fa-user-minus" aria-hidden="true"></i><span>Rechazar RT</span>
                                                 </button>
                                             }
 
@@ -513,7 +495,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@item.IdUsuario" />
                                                 <button type="submit" class="auc-action-btn auc-action-btn--info" title="Reenviar credenciales">
-                                                    <i class="fas fa-envelope"></i>
+                                                    <i class="fas fa-envelope" aria-hidden="true"></i><span>Reenviar</span>
                                                 </button>
                                             }
 
@@ -522,7 +504,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@item.IdUsuario" />
                                                 <button type="submit" class="auc-action-btn auc-action-btn--warn" title="Generar clave temporal">
-                                                    <i class="fas fa-key"></i>
+                                                    <i class="fas fa-key" aria-hidden="true"></i><span>Clave</span>
                                                 </button>
                                             }
 
@@ -532,7 +514,7 @@
                                                 <input type="hidden" name="id" value="@item.IdUsuario" />
                                                 <input type="hidden" name="activo" value="@(item.Activo ? "false" : "true")" />
                                                 <button type="submit" class="auc-action-btn @(item.Activo ? "auc-action-btn--danger" : "")" title="@(item.Activo ? "Desactivar" : "Activar")">
-                                                    <i class="fas @(item.Activo ? "fa-user-slash" : "fa-user-check")"></i>
+                                                    <i class="fas @(item.Activo ? "fa-user-slash" : "fa-user-check")" aria-hidden="true"></i><span>@(item.Activo ? "Inactivar" : "Activar")</span>
                                                 </button>
                                             }
 
@@ -545,26 +527,22 @@
                                                     data-usuario-codigo="@item.CodigoUsuario"
                                                     data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())"
                                                     data-usuario-tipo="@item.TipoUsuario">
-                                                <i class="fas fa-trash-alt"></i>
+                                                <i class="fas fa-trash-alt" aria-hidden="true"></i><span>Eliminar</span>
                                             </button>
                                         </div>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </article>
                             }
                         }
                         else
                         {
-                            <tr>
-                                <td colspan="8">
+                            <div class="auc-cards-empty">
                                     <div class="admin-empty-state">
                                         <i class="fas fa-search"></i>
                                         No hay usuarios para los filtros seleccionados.
                                     </div>
-                                </td>
-                            </tr>
+                            </div>
                         }
-                    </tbody>
-                </table>
             </div>
 
             @* ── Pagination ── *@
@@ -685,13 +663,13 @@
     <script src="@Url.Content("~/Scripts/admin-usuarios.js")?v=@DateTime.Now.Ticks"></script>
     <script>
     (function () {
-        /* ── Client-side pagination (8 rows per page) ── */
-        var PAGE_SIZE = 8;
-        var tbody = document.querySelector('#tablaUsuarios tbody');
+        /* ── Client-side pagination (6 cards per page) ── */
+        var PAGE_SIZE = 6;
+        var tbody = document.getElementById('usuariosTarjetas');
         var paginationContainer = document.getElementById('paginacionUsuarios');
         if (tbody && paginationContainer) {
-            var allRows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-            var totalRows = allRows.filter(function (r) { return !r.querySelector('td[colspan]'); }).length;
+            var allRows = Array.prototype.slice.call(tbody.querySelectorAll('.auc-user-card'));
+            var totalRows = allRows.filter(function (r) { return !r.classList.contains('auc-cards-empty'); }).length;
             var totalPages = Math.ceil(totalRows / PAGE_SIZE);
             var currentPage = 1;
 
@@ -702,7 +680,7 @@
                 var visibleCount = 0;
 
                 allRows.forEach(function (row) {
-                    var isEmpty = row.querySelector('td[colspan]');
+                    var isEmpty = row.classList.contains('auc-cards-empty');
                     if (isEmpty) {
                         row.style.display = totalRows === 0 ? '' : 'none';
                         return;
@@ -715,6 +693,10 @@
                     visibleCount++;
                 });
 
+                var info = document.querySelector('.admin-pagination-info');
+                if (info) {
+                    info.textContent = totalRows ? 'Mostrando ' + (start + 1) + ' a ' + Math.min(end, totalRows) + ' de ' + totalRows + ' usuarios' : 'Sin usuarios para mostrar';
+                }
                 renderPagination();
             }
 
