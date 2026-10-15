@@ -1945,6 +1945,11 @@
         @if (puedeRevisarDocumentos && !string.IsNullOrWhiteSpace(urlGuardarRevisionDocumental))
         {
             <div class="p-3 border-top bg-light aocr-review-footer">
+                @if (codigoInspeccion.HasValue)
+                {
+                    <p>Antes de finalizar la aceptación, coordine por email con el RT las fechas de cada estación.</p>
+                    <a class="btn btn-outline-primary mb-3" href="@Url.Action("Planificacion", "Inspeccion", new { id = codigoInspeccion.Value })">Registrar fechas acordadas por estación</a>
+                }
                 <div class="mb-3">
                     <label for="ObservacionRevisionDocumental" class="form-label fw-bold">Observaci&oacute;n general de la revisi&oacute;n documental</label>
                     <textarea id="ObservacionRevisionDocumental"

@@ -173,7 +173,7 @@
         : (EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(estadoActualNormalizado)
             ? "El trámite se encuentra en etapa de verificación por Dirección / Jefatura. Aún no existen acciones disponibles para el Inspector."
             : "No existen acciones operativas disponibles para el Inspector en la etapa actual del trámite.");
-    var puedePlanificar = esAdministrador || usuarioTieneRol("CoordinadorInspecciones");
+    var puedePlanificar = esAdministrador || esInspector || usuarioTieneRol("CoordinadorInspecciones");
     var puedeSubirInforme = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
     var puedeSolicitarViaticos = ((esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos)
         || (!esInspector && !esAdministrador && puedeGestionarCoordinacion);
@@ -4019,6 +4019,25 @@
                     <i class="fas fa-calendar-alt"></i>
                     Planificar inspección
                 </a>
+            }
+            @if ((esInspector || esAdministrador) && ViewBag.OrdenesParaCorreccion != null)
+            {
+                using (Html.BeginForm("DevolverOrdenAFinanciero", "Inspeccion", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
+                    <label for="ordenCorreccion">Orden con valores pendientes de corrección</label>
+                    <select class="form-control" id="ordenCorreccion" name="ordenId" required>
+                        <option value="">Seleccione la orden</option>
+                        @foreach (var orden in (IEnumerable<CapaDatos.Models.OrdenRecaudacionModel>)ViewBag.OrdenesParaCorreccion)
+                        {
+                            <option value="@orden.Id">@orden.NumeroOrden - @orden.Estado</option>
+                        }
+                    </select>
+                    <label for="motivoCorreccion">Valores o conceptos faltantes según la normativa</label>
+                    <textarea class="form-control mb-2" id="motivoCorreccion" name="motivo" maxlength="2000" required></textarea>
+                    <button type="submit" class="btn btn-outline-danger">Devolver orden a Financiero</button>
+                }
             }
 
             @if (mostrarAccionesCierreDetalle && puedeCerrar)

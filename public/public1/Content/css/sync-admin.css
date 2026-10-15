@@ -1,0 +1,33 @@
+﻿/* Legacy panel classes need explicit surfaces under the AOCR layout. */
+.aocr-sync-admin { color:#163c59; }
+.aocr-sync-admin h2 { color:#073b63; }
+.aocr-sync-admin .panel { background:#fff; border:1px solid #b8ccdd; border-radius:8px; margin-bottom:18px; overflow:hidden; }
+.aocr-sync-admin .panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:12px 16px; background:#0c456e!important; color:#fff!important; }
+.aocr-sync-admin .panel-heading b,.aocr-sync-admin .panel-heading small { color:#fff!important; }
+.aocr-sync-admin .panel-body { padding:16px; color:#163c59; overflow-x:auto; }
+.aocr-sync-admin .text-muted { color:#425a70!important; }
+.aocr-sync-admin .text-danger { color:#a51d2b!important; }
+.aocr-sync-admin .table { color:#163c59!important; background:#fff; margin-bottom:0; }
+.aocr-sync-admin .table td,.aocr-sync-admin .table th { border-color:#c6d5e1; overflow-wrap:anywhere; }
+.aocr-sync-admin .table tbody td,.aocr-sync-admin .table tbody th { background:#fff; color:#163c59; }
+.aocr-sync-admin .table thead th { background:#e7eff6!important; color:#073b63!important; }
+.aocr-sync-admin .table tr.danger td { background:#fff0f1; }
+.aocr-sync-admin .table tr.warning td { background:#fff7e5; }
+.aocr-sync-admin code { color:#8d2147; background:#f9edf2; padding:2px 4px; border-radius:3px; }
+.aocr-sync-admin .label { display:inline-block; padding:3px 7px; border-radius:4px; font-size:12px; font-weight:600; }
+.aocr-sync-admin .label-success { background:#d8f3e6; color:#08613b; }
+.aocr-sync-admin .label-warning { background:#ffedbe; color:#704500; }
+.aocr-sync-admin .label-info { background:#dcecff; color:#164d80; }
+.aocr-sync-admin .label-danger { background:#ffe0e4; color:#9b182a; }
+.aocr-sync-admin .label-default { background:#e7edf3; color:#344b5f; }
+.aocr-sync-admin .btn-default { background:#fff!important; color:#234d6e!important; border:1px solid #8ca7bc; }
+.aocr-sync-admin .btn-primary { background:#0752a0!important; color:#fff!important; }
+.aocr-sync-admin .btn-success { background:#087647!important; color:#fff!important; }
+.aocr-sync-admin .btn-info { background:#09677d!important; color:#fff!important; }
+.aocr-sync-admin .btn-warning { background:#ffe09b!important; color:#513600!important; }
+.aocr-sync-admin .form-control { background:#fff!important; color:#163c59!important; border:1px solid #8ca7bc; }
+.aocr-sync-admin .form-control::placeholder { color:#526a7e; opacity:1; }
+.aocr-sync-admin .input-group { display:flex; flex-wrap:wrap; gap:8px; }
+.aocr-sync-admin .input-group .form-control { flex:1 1 180px; min-width:0; }
+.aocr-sync-admin .panel-body small.text-muted { display:block; margin-top:8px; }
+.aocr-sync-admin .panel-heading .pull-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }

@@ -34,6 +34,22 @@
     .rt-badge-ops { background: #dbeafe; color: #1d4ed8; font-weight: 600; border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.82rem; }
     .rt-badge-air { background: #dcfce7; color: #166534; font-weight: 600; border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.82rem; }
     .rt-table thead th { border-bottom-width: 1px; color: #4a5d75; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .rt-table-scroll { width: 100%; max-width: 100%; overflow-x: auto; }
+    #tablaRT { width: 100%; min-width: 1080px; table-layout: fixed; }
+    #tablaRT thead th { white-space: normal; overflow-wrap: anywhere; }
+    #tablaRT tbody td { white-space: normal; overflow-wrap: anywhere; }
+    #tablaRT th:nth-child(1) { width: 25%; }
+    #tablaRT th:nth-child(2) { width: 10%; }
+    #tablaRT th:nth-child(3) { width: 25%; }
+    #tablaRT th:nth-child(4) { width: 7%; }
+    #tablaRT th:nth-child(5) { width: 9%; }
+    #tablaRT th:nth-child(6) { width: 24%; }
+    #tablaRT tbody td { padding: 0.75rem; }
+    #tablaRT .rt-inspector-name { display: block; font-weight: 600; line-height: 1.4; }
+    #tablaRT .rt-inspector-id, #tablaRT .rt-profile-role { display: block; margin-top: 0.35rem; font-size: 0.78rem; color: #526479; }
+    #tablaRT .rt-row-actions { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; align-items: stretch; }
+    #tablaRT .rt-row-actions form { display: block !important; width: 100% !important; min-width: 0; margin: 0 !important; }
+    #tablaRT .rt-row-actions .btn { display: inline-flex !important; align-items: center; justify-content: center; gap: 0.25rem; width: 100%; min-width: 0; min-height: 32px; margin: 0 !important; padding: 0.35rem 0.4rem; font-size: 0.75rem; white-space: normal; line-height: 1.2; }
 </style>
 
 <div class="container-fluid rt-list-shell">
@@ -105,14 +121,12 @@
         <div class="card-body p-4">
             @if (lista.Any())
             {
-                <div class="table-responsive">
+                <div class="table-responsive rt-table-scroll" tabindex="0" role="region" aria-label="Tabla de inspectores, desplazable horizontalmente">
                     <table class="table table-hover align-middle mb-0 rt-table" id="tablaRT">
                         <thead class="table-light">
                             <tr>
-                                <th>Cedula</th>
-                                <th>Nombre Completo</th>
-                                <th>Tipo</th>
-                                <th>Rol interno</th>
+                                <th>Inspector</th>
+                                <th>Perfil</th>
                                 <th>Correo institucional</th>
                                 <th>Estado</th>
                                 <th>Registrado</th>
@@ -125,10 +139,14 @@
                                 var tipoBadge = (rt.Tipo ?? "").Equals("AIR", StringComparison.OrdinalIgnoreCase)
                                     ? "rt-badge-air" : "rt-badge-ops";
                                 <tr>
-                                    <td class="fw-semibold">@Html.Encode(rt.CodigoUsuario)</td>
-                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.NombreCompleto) ? "-" : rt.NombreCompleto)</td>
-                                    <td><span class="@tipoBadge">@Html.Encode(string.IsNullOrWhiteSpace(rt.Tipo) ? "-" : rt.Tipo)</span></td>
-                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.RolInterno) ? "-" : rt.RolInterno)</td>
+                                    <td>
+                                        <span class="rt-inspector-name">@Html.Encode(string.IsNullOrWhiteSpace(rt.NombreCompleto) ? "-" : rt.NombreCompleto)</span>
+                                        <span class="rt-inspector-id">Cédula: @Html.Encode(rt.CodigoUsuario)</span>
+                                    </td>
+                                    <td>
+                                        <span class="@tipoBadge">@Html.Encode(string.IsNullOrWhiteSpace(rt.Tipo) ? "-" : rt.Tipo)</span>
+                                        <span class="rt-profile-role">@Html.Encode(string.IsNullOrWhiteSpace(rt.RolInterno) ? "-" : rt.RolInterno)</span>
+                                    </td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.CorreoInstitucional) ? "-" : rt.CorreoInstitucional)</td>
                                     <td>
                                         <span class="badge @(rt.Activo ? "bg-success" : "bg-secondary")">
@@ -136,7 +154,8 @@
                                         </span>
                                     </td>
                                     <td class="text-muted small">@rt.CreatedAt.ToString("yyyy-MM-dd")</td>
-                                    <td class="text-nowrap">
+                                    <td>
+                                        <div class="rt-row-actions">
                                         @using (Html.BeginForm("ReenviarNotificacionUsuarioInternoRT", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block" }))
                                         {
                                             @Html.AntiForgeryToken()
@@ -185,6 +204,7 @@
                                                 </button>
                                             }
                                         }
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -210,7 +230,10 @@
             if ($.fn.DataTable && $('#tablaRT').length) {
                 $('#tablaRT').DataTable({
                     pageLength: 5,
-                    order: [[1, 'asc']]
+                    autoWidth: false,
+                    responsive: false,
+                    columnDefs: [{ targets: 5, orderable: false, searchable: false }],
+                    order: [[0, 'asc']]
                 });
             }
         });

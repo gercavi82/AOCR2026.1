@@ -170,21 +170,7 @@
                 <h2><i class="fas fa-list" style="margin-right:8px;color:#1d65d8;"></i>Lista de Usuarios RT</h2>
             </div>
 
-            <div style="overflow-x:auto;">
-                <table class="rt-table" id="tablaUsuariosRT">
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Correo</th>
-                            <th style="text-align:center; width:80px;">Empresa</th>
-                            <th style="text-align:center; width:110px;">Compañías RT</th>
-                            <th>Estado RT</th>
-                            <th style="text-align:center; width:95px;">Estado cuenta</th>
-                            <th>Documento</th>
-                            <th style="text-align:right; width:140px; min-width:140px; white-space:nowrap; padding-right:12px;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div class="rt-users-grid" id="rtUsuariosGrid" role="list" aria-label="Usuarios RT">
                         @foreach (var u in Model)
                         {
                             var estadoRt = (u.EstadoDesignacionRT ?? "pendiente").Trim().ToLowerInvariant();
@@ -219,43 +205,37 @@
                             if (string.IsNullOrWhiteSpace(ini) && !string.IsNullOrWhiteSpace(u.CodigoUsuario)) { ini = u.CodigoUsuario.Trim().Substring(0, Math.Min(2, u.CodigoUsuario.Trim().Length)); }
                             ini = ini.ToUpperInvariant();
 
-                            <tr data-estado-rt="@estadoExpedienteRt"
+                            <article class="rt-user-card" role="listitem" data-estado-rt="@estadoExpedienteRt"
                                 data-estado-cuenta="@(u.Activo ? "ACTIVO" : "INACTIVO")"
                                 data-empresa="@(u.EmpresaCodigo ?? "")"
                                 data-documento="@(!string.IsNullOrWhiteSpace(u.RutaDocumentoLegal) ? "CON_DOCUMENTO" : "SIN_DOCUMENTO")"
                                 data-fecha="@(u.FechaCreacion.HasValue ? u.FechaCreacion.Value.ToString("yyyy-MM-dd") : "")"
                                 data-buscar="@(string.Format("{0} {1} {2} {3} {4} {5}", u.NombreCompleto, u.NombreUsuario, u.CodigoUsuario, u.Ruc, u.Email, u.EmpresaCodigo).ToLowerInvariant())">
-                                <td>
+                                <div class="rt-card-identity">
                                     <div class="rt-user-cell">
                                         <div class="rt-user-avatar">@ini</div>
                                         <div>
                                             <div class="rt-user-name">@Html.Encode(u.NombreCompleto)</div>
                                             <div class="rt-user-code">@Html.Encode(u.CodigoUsuario)</div>
+                                            <div class="rt-user-email">@Html.Encode(u.Email)</div>
                                         </div>
                                     </div>
-                                </td>
-                                <td style="font-size:12px;color:#475569;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@Html.Encode(u.Email)">
-                                    @Html.Encode(u.Email)
-                                </td>
-                                <td style="text-align:center;">
-                                    <span class="rt-badge rt-badge--review">@Html.Encode(u.EmpresaCodigo)</span>
-                                </td>
-                                <td style="text-align:center;">
+                                </div>
+                                <div class="rt-card-company">
+                                    <span class="rt-company-code">@(string.IsNullOrWhiteSpace(u.EmpresaCodigo) ? "Sin empresa" : u.EmpresaCodigo)</span>
                                     <a class="rt-manage-btn"
                                        href="@Url.Action("GestionarCompaniasRT", "Usuario", new { id = u.Id })"
                                        title="Gestionar compañías asignadas">
                                         <i class="fas fa-building"></i> Gestionar
                                     </a>
-                                </td>
-                                <td>
-                                    <span class="@claseEstadoRt">@Html.Encode(estadoExpedienteRt.Replace("_", " "))</span>
-                                    <span class="rt-legacy-text">Legacy: @Html.Encode(estadoRt.ToUpperInvariant())</span>
+                                </div>
+                                <div class="rt-card-status">
+                                    <span class="@claseEstadoRt" title="Designación: @estadoRt">@Html.Encode(estadoExpedienteRt.Replace("_", " "))</span>
                                     @if (!string.IsNullOrWhiteSpace(observacionRt))
                                     {
                                         <span class="rt-obs-text" title="@Html.Encode(observacionRt)">Obs.: @Html.Encode(observacionRt)</span>
                                     }
-                                </td>
-                                <td style="text-align:center;">
+                                    <div class="rt-account-status">Cuenta:
                                     @if (u.Activo)
                                     {
                                         <span class="rt-badge rt-badge--active">ACTIVO</span>
@@ -264,8 +244,9 @@
                                     {
                                         <span class="rt-badge rt-badge--inactive">INACTIVO</span>
                                     }
-                                </td>
-                                <td>
+                                    </div>
+                                </div>
+                                <div class="rt-card-documents">
                                     @if (!string.IsNullOrWhiteSpace(u.RutaDocumentoLegal))
                                     {
                                         <a class="rt-doc-btn rt-doc-btn--pdf" href="@Url.Action("DescargarDesignacionRT", "Usuario", new { id = u.Id })" title="Descargar designación PDF">
@@ -282,8 +263,8 @@
                                     {
                                         <span class="rt-doc-none">Sin documento</span>
                                     }
-                                </td>
-                                <td style="text-align:right; white-space:nowrap; vertical-align:middle; padding-right:12px;">
+                                </div>
+                                <div class="rt-card-actions">
                                     <div class="rt-actions">
                                         @if (enRevision)
                                         {
@@ -298,7 +279,7 @@
                                                     data-usuario-nombre="@Html.Encode(u.NombreCompleto)"
                                                     data-usuario-empresa="@Html.Encode(u.EmpresaCodigo)"
                                                     data-usuario-estado="@Html.Encode(estadoExpedienteRt.Replace("_", " "))">
-                                                <i class="fas fa-check"></i>
+                                                <i class="fas fa-check"></i> Aprobar
                                             </button>
                                             }
 
@@ -312,7 +293,7 @@
                                                     data-usuario-id="@u.Id"
                                                     data-usuario-nombre="@Html.Encode(u.NombreCompleto)"
                                                     data-usuario-empresa="@Html.Encode(u.EmpresaCodigo)">
-                                                <i class="fas fa-undo"></i>
+                                                <i class="fas fa-undo"></i> Devolver
                                             </button>
                                             }
                                         }
@@ -324,7 +305,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@u.Id" />
                                                 <button type="submit" class="rt-action-btn rt-action-btn--muted" title="Inactivar usuario">
-                                                    <i class="fas fa-user-slash"></i>
+                                                    <i class="fas fa-user-slash"></i> Inactivar
                                                 </button>
                                             }
                                         }
@@ -335,7 +316,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@u.Id" />
                                                 <button type="submit" class="rt-action-btn rt-action-btn--activate" title="Activar usuario">
-                                                    <i class="fas fa-user-check"></i>
+                                                    <i class="fas fa-user-check"></i> Activar
                                                 </button>
                                             }
                                         }
@@ -351,20 +332,19 @@
                                                     data-usuario-id="@u.Id"
                                                     data-usuario-nombre="@Html.Encode(u.NombreCompleto)"
                                                     data-puede-eliminar="@(puedeEliminar ? "true" : "false")">
-                                                <i class="fas fa-trash-alt"></i>
+                                                <i class="fas fa-trash-alt"></i> Eliminar
                                             </button>
                                         }
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </article>
                         }
-                    </tbody>
-                </table>
             </div>
 
+            <p id="rtSinResultados" class="rt-empty-results" hidden role="status">No se encontraron usuarios con estos filtros.</p>
             <div class="rt-pagination">
                 <div class="rt-pagination-info">
-                    Mostrando <strong id="rtPaginaInfo">0</strong> de <strong>@totalRt</strong> usuarios
+                    Mostrando <strong id="rtPaginaInfo">0</strong> usuarios
                 </div>
                 <div class="rt-pagination-nav" id="rtPaginacion"></div>
             </div>
@@ -527,11 +507,11 @@
         if (!moduleRoot) return;
 
         /* ── Pagination (10 per page) ── */
-        var PAGE_SIZE = 10;
-        var tbody = document.querySelector('#tablaUsuariosRT tbody');
+        var PAGE_SIZE = 6;
+        var usersGrid = moduleRoot.querySelector('#rtUsuariosGrid');
         var paginationContainer = document.getElementById('rtPaginacion');
         var infoEl = document.getElementById('rtPaginaInfo');
-        var allRows = tbody ? Array.prototype.slice.call(tbody.querySelectorAll('tr')) : [];
+        var allRows = usersGrid ? Array.prototype.slice.call(usersGrid.querySelectorAll('.rt-user-card')) : [];
         var filteredRows = allRows.slice();
         var currentPage = 1;
 
@@ -554,6 +534,8 @@
                     : (start + 1) + '–' + Math.min(end, filteredRows.length) + ' de ' + filteredRows.length;
             }
 
+            var emptyResults = moduleRoot.querySelector('#rtSinResultados');
+            if (emptyResults) emptyResults.hidden = filteredRows.length > 0;
             renderPagination(totalPages);
         }
 

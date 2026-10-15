@@ -1,0 +1,60 @@
+﻿/* Scoped to Create; shared edit form retains its existing presentation. */
+.auc-create-page { width:100%; max-width:none!important; margin:0!important; padding:0; color:#123653; }
+.auc-create-page .auc-create-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:12px 0 16px; }
+.auc-create-page h2 { margin:4px 0; font-size:28px; font-weight:700; color:#073b63; }
+.auc-create-page .auc-create-eyebrow { color:#425a70; font-size:12px; font-weight:700; }
+.auc-create-page .auc-create-heading p { margin:0; color:#425a70; }
+.auc-create-page .auc-generic-section { margin-bottom:16px; }
+.auc-create-page .card { background:#fff!important; border:1px solid #b8ccdd!important; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px #12365312; margin-bottom:0!important; }
+.auc-create-page .card-header { background:#0c456e!important; color:#fff!important; border:0; padding:12px 16px; }
+.auc-create-page .card-header strong { color:#fff!important; }
+.auc-create-page .card-body { padding:16px; }
+.auc-create-page .text-muted,.auc-create-page .form-text { color:#425a70!important; }
+.auc-create-page .auc-generic-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0; }
+.auc-create-page .auc-generic-grid > div { padding:0; margin:0!important; max-width:none; width:auto; min-width:0; }
+.auc-create-page .auc-generic-grid form { width:100%; margin:0; }
+.auc-create-page .auc-generic-grid .border { border:1px solid #b8ccdd!important; background:#f3f7fb; border-radius:8px!important; padding:14px!important; }
+.auc-create-page .auc-generic-grid strong { color:#073b63; font-size:14px; }
+.auc-create-page .btn-outline-primary { color:#0752a0!important; background:#fff!important; border:1px solid #0752a0!important; }
+.auc-create-page .btn-outline-primary:hover { color:#fff!important; background:#0752a0!important; }
+.auc-create-page .btn-outline-secondary { color:#344b5f!important; background:#fff!important; border:1px solid #627a8e!important; }
+.auc-create-page .btn-success { color:#fff!important; background:#087647!important; border:1px solid #087647!important; }
+.auc-create-page .btn { min-height:36px; font-weight:600; }
+.auc-create-page .auc-create-note { padding:10px 14px; margin:0 0 16px; color:#163c5a; background:#e7f1fa; border:1px solid #a8c9e5; border-radius:8px; font-size:13px; }
+.auc-create-page .auc-create-form { display:flex; flex-direction:column; gap:0; width:100%; background:#fff; border:1px solid #b8ccdd; border-radius:10px; overflow:hidden; }
+.auc-create-page .auc-create-form > .card { border:0!important; border-bottom:1px solid #cbd9e5!important; border-radius:0; box-shadow:none; }
+.auc-create-page .auc-create-form .card-header { background:#e7eff6!important; color:#073b63!important; padding:10px 16px; }
+.auc-create-page .auc-create-form .card-header strong { color:#073b63!important; }
+.auc-create-page .auc-section-data { order:1; }
+.auc-create-page .auc-section-roles { order:2; }
+.auc-create-page .auc-section-credentials { order:3; }
+.auc-create-page .auc-section-companies { order:4; }
+.auc-create-page .auc-section-data .row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 16px; margin:0; }
+.auc-create-page .auc-section-data .row > div { width:auto; max-width:none; padding:0; min-width:0; }
+.auc-create-page .auc-section-data .col-md-6 { grid-column:span 2; }
+.auc-create-page label { color:#163c5a; }
+.auc-create-page .form-label { font-size:13px; font-weight:600; margin-bottom:6px; }
+.auc-create-page .form-control { width:100%; min-height:40px; color:#123653!important; background:#fff!important; border:1px solid #8ca7bc!important; border-radius:6px; }
+.auc-create-page .form-control:focus { border-color:#0752a0!important; box-shadow:0 0 0 3px #0752a025; }
+.auc-create-page .auc-section-roles .row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0; }
+.auc-create-page .auc-section-roles .row > div { width:auto; max-width:none; padding:0; margin:0!important; }
+.auc-create-page .auc-section-roles .form-check { display:flex; align-items:center; gap:10px; min-height:44px; padding:10px 12px; background:#f3f7fb; border:1px solid #b8ccdd; border-radius:6px; }
+.auc-create-page .auc-section-roles .form-check-input { position:static; margin:0; flex-shrink:0; }
+.auc-create-page .auc-section-roles .form-check:has(:checked) { background:#dcecff; border-color:#0752a0; }
+.auc-create-page .auc-section-roles label { margin:0; cursor:pointer; font-size:13px; overflow-wrap:anywhere; }
+.auc-create-page input[type=checkbox] { accent-color:#0752a0; }
+.auc-create-page #CompaniasSeleccionadas { width:100%; height:180px; border:1px solid #8ca7bc; background:#fff; color:#123653; border-radius:6px; padding:8px; }
+.auc-create-page .auc-section-companies .d-flex { gap:8px; }
+.auc-create-page .auc-section-credentials .form-check { margin-bottom:8px!important; }
+.auc-create-page .auc-create-footer { order:5; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; background:#e7eff6; }
+.auc-create-page .auc-create-footer > span { color:#344b5f; font-size:13px; }
+.auc-create-page .auc-create-buttons { display:flex; gap:8px; }
+.auc-create-page .validation-summary-valid { display:none; }
+.auc-create-page .validation-summary-errors { order:0; margin:12px; }
+@media(max-width:1100px) { .auc-create-page .auc-generic-grid,.auc-create-page .auc-section-roles .row { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) {
+ .auc-create-page .auc-create-heading,.auc-create-page .auc-create-footer { flex-direction:column; align-items:flex-start; }
+ .auc-create-page .auc-generic-grid,.auc-create-page .auc-section-data .row,.auc-create-page .auc-section-roles .row { grid-template-columns:1fr; }
+ .auc-create-page .auc-section-data .col-md-6 { grid-column:auto; }
+ .auc-create-page .auc-create-buttons { width:100%; } .auc-create-page .auc-create-buttons .btn { flex:1; }
+}

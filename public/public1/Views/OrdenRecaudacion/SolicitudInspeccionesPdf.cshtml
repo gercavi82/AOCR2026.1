@@ -146,10 +146,10 @@
     </tr>
     @if (Model.Estaciones != null && Model.Estaciones.Count > 0)
     {
-        <tr><th>Aeropuerto / Lugar</th><th>Fecha requerida</th></tr>
+        <tr><th>Aeropuerto / Lugar</th><th>Planificación</th></tr>
         foreach (var lugar in Model.Estaciones)
         {
-            <tr><td>@lugar.EstacionNombre</td><td>@lugar.RangoFechasTexto</td></tr>
+            <tr><td>@lugar.EstacionNombre</td><td>Por coordinar con el Inspector</td></tr>
         }
     }
     else
@@ -159,8 +159,8 @@
         <td>@valorPdf(Model.AeropuertosSolicitados)</td>
     </tr>
     <tr>
-        <td class="pdf-label">Fechas estimadas de inspección</td>
-        <td>@valorPdf(Model.FechasInspeccion)</td>
+        <td class="pdf-label">Planificación de inspección</td>
+        <td>Por coordinar con el Inspector</td>
     </tr>
     }
 

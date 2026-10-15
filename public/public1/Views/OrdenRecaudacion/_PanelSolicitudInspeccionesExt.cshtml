@@ -31,8 +31,9 @@
 
                     <input type="hidden" id="AeropuertosSolicitados" name="AeropuertosSolicitados" value="@Model.AeropuertosSolicitados" />
                     <input type="hidden" id="FechasInspeccion" name="FechasInspeccion" value="@Model.FechasInspeccion" />
+                    <p class="alert alert-info">El Sr. Inspector a cargo del trámite, revisará la solicitud y previo a su aceptación, coordinará con el RT por email, las fechas de las inspecciones en cada estación.</p>
                     <table class="table table-sm" id="inspection-place-preview">
-                        <thead><tr><th>Aeropuerto / Lugar</th><th>Fecha requerida</th></tr></thead>
+                        <thead><tr><th>Aeropuerto / Lugar</th><th>Planificación</th></tr></thead>
                         <tbody>
                         @foreach (var lugar in Model.Estaciones)
                         {
@@ -183,7 +184,7 @@
 
                 $('#btnGenerarSolicitudInspeccionOrden').off('click.aocrGenerar').on('click.aocrGenerar', function () {
                     var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim().toUpperCase();
-                    var fechas = ($('#FechasInspeccion').val() || '').trim();
+                    var fechas = 'Por coordinar con el Inspector';
                     $('#AeropuertosSolicitados').val(aeropuertos);
                     $('#FechasInspeccion').val(fechas);
                     
@@ -192,14 +193,6 @@
                             window.AOCR.notify('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.', 'error');
                         } else {
                             alert('Debe ingresar los aeropuertos solicitados para generar la Solicitud de Inspecciones.');
-                        }
-                        return;
-                    }
-                    if (!fechas) {
-                        if (window.AOCR && typeof window.AOCR.notify === 'function') {
-                            window.AOCR.notify('Debe ingresar las fechas estimadas de inspección.', 'error');
-                        } else {
-                            alert('Debe ingresar las fechas estimadas de inspección.');
                         }
                         return;
                     }

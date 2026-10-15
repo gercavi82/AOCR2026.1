@@ -21,6 +21,8 @@
 }
 
 <h2><i class="glyphicon glyphicon-calendar"></i> Planificación de Inspección en Campo</h2>
+<p class="alert alert-info">Coordine por email con el RT las fechas de cada estación antes de aceptar la solicitud. Estas fechas se incluirán en el documento de designación.</p>
+@if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
 <hr />
 
 <div class="panel panel-info">
@@ -80,6 +82,7 @@
                             <tr>
                                 <td>
                                     <input type="hidden" name="estaciones[@i].Id" value="@est.Id" />
+                                    <input type="hidden" name="estaciones[@i].Version" value="@est.Version" />
                                     <input type="hidden" name="estaciones[@i].EstacionCodigo" value="@est.EstacionCodigo" />
                                     <input type="hidden" name="estaciones[@i].EstacionNombre" value="@est.EstacionNombre" />
                                     <input type="hidden" name="estaciones[@i].Estado" value="@est.Estado" />

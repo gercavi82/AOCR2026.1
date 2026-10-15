@@ -329,6 +329,7 @@
 </style>
 
 <div id="formularioEmisionAOCR" class="container-fluid py-4 aocr-wizard">
+    <h4>Solicitud @(tipoSolicitudActual == 3 ? "modificación" : tipoSolicitudActual == 2 ? "renovación" : "emisión") AOCR</h4>
     <div id="aocr-formulario-emision-config" class="d-none"
          data-url-guardar-progreso="@Url.Action("GuardarProgreso", "SolicitudAOCR")"
          data-url-guardar-flota="@Url.Action("GuardarFlota", "SolicitudAOCR")"
@@ -1051,7 +1052,7 @@
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                     <button class="btn btn-primary btn-lg shadow" type="button" onclick="guardarFormulario()">
-                        <i class="fas fa-save"></i> Guardar Solicitud
+                        <i class="fas fa-paper-plane"></i> Guardar y enviar solicitud
                     </button>
                 </div>
             </div>

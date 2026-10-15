@@ -240,10 +240,13 @@
     text-align: center;
     white-space: nowrap;
 }
-.rp-matrix-table thead th:first-child { text-align: left; width: 220px; }
-.rp-matrix-table thead th:nth-child(2) { text-align: left; width: 200px; }
-.rp-matrix-table thead th:nth-child(3) { text-align: left; width: auto; }
-.rp-matrix-table thead th.rp-action-col { width: 72px; }
+.rp-matrix-table thead th:first-child { text-align: left; width: 320px; }
+.rp-matrix-table thead th.rp-action-col { width: 80px; padding-inline: 6px; }
+.rp-matrix-table .rp-td-perm { overflow-wrap: anywhere; }
+.rp-permission-description { margin-top: 4px; font-weight: 400; font-size: 12px; line-height: 1.5; color: #5c7188; }
+.rp-not-applicable { color: #a1adba; font-size: 16px; }
+.rp-matrix-table .rp-switch { margin: 0; vertical-align: middle; }
+.rp-module-header { flex-wrap: wrap; }
 
 .rp-matrix-table thead tr.rp-action-sub th {
     padding: 4px 12px 8px;
@@ -536,7 +539,7 @@
         font-size: 11px;
     }
     .rp-matrix-table thead th.rp-action-col {
-        width: 50px;
+        width: 80px;
         padding: 10px 4px;
     }
     .rp-footer-actions {

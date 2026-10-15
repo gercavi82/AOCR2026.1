@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
@@ -6,17 +6,23 @@
     ViewBag.Title = "Administracion - Crear usuario";
 }
 
-<h2>Crear usuario</h2>
-<p class="text-muted">Registre un usuario AOCR y asigne sus roles iniciales.</p>
+<link rel="stylesheet" href="@Url.Content("~/Content/css/admin-user-create.css?v=20261013b")" />
+<div class="auc-create-page">
+<header class="auc-create-heading">
+    <div><span class="auc-create-eyebrow">ADMINISTRACION / USUARIOS</span><h2>Crear usuario</h2>
+    <p>Complete los datos, asigne los roles y configure el acceso.</p></div>
+    <a class="btn btn-outline-secondary" href="@Url.Action("Index", "AdminUsuarios")">Volver a usuarios</a>
+</header>
 
+<section class="auc-generic-section" aria-label="Usuarios genericos por perfil">
 <div class="card mb-3 border-primary">
     <div class="card-header bg-white">
         <strong>Usuarios genéricos por perfil</strong>
     </div>
     <div class="card-body">
         <p class="text-muted mb-3">Prepare cuentas genéricas para iniciar sesión por perfil. Si la cuenta ya existe, el sistema la reactiva, reasigna su rol base y genera una nueva contraseña temporal.</p>
-        <div class="row">
-            <div class="col-md-4 mb-3">
+        <div class="row auc-generic-grid">
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -29,7 +35,7 @@
                     </div>
                 }
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -42,7 +48,7 @@
                     </div>
                 }
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -55,7 +61,33 @@
                     </div>
                 }
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 col-xl-3 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "dircav")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>DIRCAV / DCAV</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_DIRCAV</span>
+                        <span class="text-muted small mb-3">Dirección de certificaciones y revisión de expedientes.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-6 col-xl-3 mb-3">
+                @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("perfil", "dirdac")
+                    <div class="border rounded h-100 p-3 d-flex flex-column">
+                        <strong>DIRDAC</strong>
+                        <span class="text-muted small mt-2">Usuario sugerido: GEN_DIRDAC</span>
+                        <span class="text-muted small mb-3">Revisión de informes y firma de certificados AOCR.</span>
+                        <button type="submit" class="btn btn-outline-primary mt-auto">Preparar usuario</button>
+                    </div>
+                }
+            </div>
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -68,7 +100,7 @@
                     </div>
                 }
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -81,7 +113,7 @@
                     </div>
                 }
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-6 col-xl-3 mb-3">
                 @using (Html.BeginForm("PrepararUsuarioGenerico", "AdminUsuarios", FormMethod.Post, new { @class = "h-100" }))
                 {
                     @Html.AntiForgeryToken()
@@ -98,23 +130,25 @@
     </div>
 </div>
 
-<div class="alert alert-info">
+</section>
+<div class="alert alert-info auc-create-note">
     El usuario se guarda localmente en AOCR aunque no tenga vinculacion con fuentes externas o catalogos institucionales.
 </div>
 
-@using (Html.BeginForm("Create", "AdminUsuarios", FormMethod.Post, new { autocomplete = "off" }))
+@using (Html.BeginForm("Create", "AdminUsuarios", FormMethod.Post, new { autocomplete = "off", @class = "auc-create-form" }))
 {
     @Html.AntiForgeryToken()
     @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
 
     @Html.Partial("_UserForm", Model, new ViewDataDictionary { { "EsEdicion", false } })
 
-    <div class="d-flex justify-content-end mt-3">
+    <div class="auc-create-footer"><span>Revise los roles antes de guardar el usuario.</span><div class="auc-create-buttons">
         <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Cancelar</a>
         <button type="submit" class="btn btn-success">Guardar usuario</button>
-    </div>
+    </div></div>
 }
 
+</div>
 @section Scripts {
     <script src="@Url.Content("~/Scripts/admin-usuarios.js")"></script>
 }

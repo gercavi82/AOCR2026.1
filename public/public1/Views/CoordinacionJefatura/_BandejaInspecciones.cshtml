@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<System.Collections.Generic.List<CapaPresentacion.Models.CoordinacionJefaturaInspeccionSeguimientoItemViewModel>>
+﻿@inherits System.Web.Mvc.WebViewPage<System.Collections.Generic.List<CapaPresentacion.Models.CoordinacionJefaturaInspeccionSeguimientoItemViewModel>>
 @using System
 @using System.Linq
 @using System.Web.Mvc
@@ -56,12 +56,38 @@ else
         </button>
     </div>
 
+<style>
+#tblInspeccionesSeguimiento { width:100%!important; min-width:1150px; table-layout:fixed; }
+#tblInspeccionesSeguimiento th:nth-child(1) { width:25%!important; }
+#tblInspeccionesSeguimiento th:nth-child(2) { width:18%!important; }
+#tblInspeccionesSeguimiento th:nth-child(3) { width:15%!important; }
+#tblInspeccionesSeguimiento th:nth-child(4) { width:20%!important; }
+#tblInspeccionesSeguimiento th:nth-child(5) { width:22%!important; text-align:center!important; }
+#tblInspeccionesSeguimiento td:last-child { text-align:center!important; }
+#tblInspeccionesSeguimiento .rv-row-actions, #tblInspeccionesSeguimiento .rv-row-actions * { box-sizing:border-box; }
+#tblInspeccionesSeguimiento .rv-row-actions { max-width:280px; margin-inline:auto!important; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn { flex:none!important; -webkit-text-fill-color:currentColor!important; }
+#tblInspeccionesSeguimiento .rv-reference { margin-top:10px; padding-top:8px; border-top:1px solid #dce6ef; font-size:13px; }
+#tblInspeccionesSeguimiento .rv-reference-label { font-size:11px; color:#425a70; display:block; margin-bottom:3px; }
+#tblInspeccionesSeguimiento tbody tr:hover td { background:#f3f7fb; }
+#tblInspeccionesSeguimiento td { padding:14px 12px!important; vertical-align:middle; white-space:normal!important; overflow-wrap:anywhere; color:#163c59; }
+#tblInspeccionesSeguimiento td .text-muted { color:#425a70!important; -webkit-text-fill-color:#425a70!important; }
+#tblInspeccionesSeguimiento .rv-context { display:block; max-height:none; -webkit-line-clamp:unset; overflow:visible; color:#344b60; line-height:1.5; }
+#tblInspeccionesSeguimiento .rv-row-actions { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; width:100%; margin:0; }
+#tblInspeccionesSeguimiento .rv-row-actions form { display:block!important; width:100%!important; max-width:none!important; margin:0!important; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn { display:flex!important; align-items:center; justify-content:center; gap:5px; width:100%!important; min-width:0; min-height:34px; margin:0!important; border-radius:6px!important; padding:6px!important; font-size:12px; white-space:normal; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn i { color:inherit!important; -webkit-text-fill-color:currentColor!important; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn-outline-info { color:#09677d!important; background:#fff; border-color:#09677d; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn-outline-primary { color:#0752a0!important; background:#fff; border-color:#0752a0; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn-outline-success { color:#087647!important; background:#fff; border-color:#087647; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn-outline-danger { color:#b42337!important; background:#fff; border-color:#b42337; }
+#tblInspeccionesSeguimiento .rv-row-actions .btn-outline-dark { color:#344b5f!important; background:#fff; border-color:#344b5f; }
+</style>
     <div class="table-responsive aocr-table-wrap">
         <table id="tblInspeccionesSeguimiento" class="table aocr-table aocr-datatable align-middle mb-0" style="width:100%">
             <thead>
                 <tr>
-                    <th style="width:14%">Inspección</th>
-                    <th style="width:18%">Solicitud / compañía</th>
+                    <th>Inspección / solicitud</th>
                     <th style="width:14%">Etapa</th>
                     <th style="width:12%">Inspector</th>
                     <th style="width:22%">Contexto</th>
@@ -81,10 +107,11 @@ else
                         <td>
                             <div class="fw-semibold text-primary">@item.NumeroInspeccion</div>
                             <small class="text-muted">Código @inspeccion.CodigoInspeccion</small>
-                        </td>
-                        <td>
-                            <div class="fw-semibold">@item.NumeroSolicitud</div>
-                            <small class="text-muted">@item.OperadorNombre</small>
+                            <div class="rv-reference">
+                                <span class="rv-reference-label">Solicitud / compañía</span>
+                                <div class="fw-semibold">@item.NumeroSolicitud</div>
+                                <small class="text-muted">@item.OperadorNombre</small>
+                            </div>
                         </td>
                         <td>
                             @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })
@@ -121,7 +148,7 @@ else
                                         @Html.Hidden("id", inspeccion.CodigoInspeccion)
                                         @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.ACEPTADA)
                                         @Html.Hidden("returnUrl", returnUrlRevision)
-                                        <button type="submit" class="btn btn-outline-success" title="Aceptar"><i class="fas fa-check"></i></button>
+                                        <button type="submit" class="btn btn-outline-success" title="Aceptar"><i class="fas fa-check" aria-hidden="true"></i> Aceptar</button>
                                     }
                                 }
                                 @if (puedeDecidirRevision && item.PuedeObservar)
@@ -132,7 +159,7 @@ else
                                         @Html.Hidden("id", inspeccion.CodigoInspeccion)
                                         @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.OBSERVADA)
                                         @Html.Hidden("returnUrl", returnUrlRevision)
-                                        <button type="submit" class="btn btn-outline-danger" title="Observar"><i class="fas fa-circle-exclamation"></i></button>
+                                        <button type="submit" class="btn btn-outline-danger" title="Observar"><i class="fas fa-circle-exclamation" aria-hidden="true"></i> Observar</button>
                                     }
                                 }
                                 @if (puedeDecidirRevision && item.PuedeCerrar)
@@ -143,7 +170,7 @@ else
                                         @Html.Hidden("id", inspeccion.CodigoInspeccion)
                                         @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.CERRADA)
                                         @Html.Hidden("returnUrl", returnUrlRevision)
-                                        <button type="submit" class="btn btn-outline-dark" title="Cerrar"><i class="fas fa-xmark"></i></button>
+                                        <button type="submit" class="btn btn-outline-dark" title="Cerrar"><i class="fas fa-xmark" aria-hidden="true"></i> Cerrar</button>
                                     }
                                 }
                                 <button type="button" class="btn btn-outline-info rv-quick-view"
@@ -160,11 +187,11 @@ else
                                         data-insp-mensaje="@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(item.MensajeOperativo)"
                                         data-insp-resumen="@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(item.ResumenAcciones)"
                                         data-insp-detalle-url="@urlDetalle">
-                                    <i class="fas fa-bolt"></i>
+                                    <i class="fas fa-bolt" aria-hidden="true"></i> Vista rápida
                                 </button>
                                 @if (puedeVerDetalleInspeccion)
                                 {
-                                    <a class="btn btn-outline-primary" title="Ver detalle" href="@urlDetalle"><i class="fas fa-eye"></i></a>
+                                    <a class="btn btn-outline-primary" title="Ver detalle" href="@urlDetalle"><i class="fas fa-eye" aria-hidden="true"></i> Detalle</a>
                                 }
                             </div>
                             @if (!hayAccionesFila && !puedeVerDetalleInspeccion)

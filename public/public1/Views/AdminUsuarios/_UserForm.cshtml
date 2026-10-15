@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioFormViewModel>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
@@ -16,7 +16,7 @@
 
 @Html.HiddenFor(m => m.IdUsuario)
 
-<div class="card mb-3">
+<div class="card mb-3 auc-section-data">
     <div class="card-header">
         <strong>Datos de usuario</strong>
     </div>
@@ -59,7 +59,7 @@
     </div>
 </div>
 
-<div class="card mb-3">
+<div class="card mb-3 auc-section-companies">
     <div class="card-header">
         <strong>Companias RT</strong>
     </div>
@@ -89,7 +89,7 @@
 
 @if (!esEdicion)
 {
-    <div class="card mb-3">
+    <div class="card mb-3 auc-section-credentials">
         <div class="card-header">
             <strong>Credenciales</strong>
         </div>
@@ -108,7 +108,7 @@
     </div>
 }
 
-<div class="card mb-3">
+<div class="card mb-3 auc-section-roles">
     <div class="card-header">
         <strong>Roles y permisos</strong>
     </div>

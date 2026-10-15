@@ -219,6 +219,12 @@
                             }
 
                             <div class="doc-actions-inline mb-2">
+                                @if (RevisionDocumentalDisplayHelper.GetCanonicalDocumentType(doc.TipoDocumento) == "SOLICITUD_INSPECCIONES_FIRMADA"
+                                    || RevisionDocumentalDisplayHelper.GetCanonicalDocumentType(doc.TipoDocumento) == "ORDEN_RECAUDACION")
+                                {
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("RegenerarDocumentoDevuelto", "OrdenRecaudacion", new { documentoId = doc.CodigoDocumento })">Regenerar documento para corrección</a>
+                                    <small class="d-block text-muted">Descargue el documento actualizado, fírmelo cuando corresponda y adjúntelo aquí. El archivo anterior se conservará en el historial.</small>
+                                }
                                 <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
                                    class="btn btn-sm btn-outline-secondary">
                                     <i class="fas fa-eye"></i> Ver anterior
@@ -274,7 +280,7 @@
                     @if (documentosPendientesSubsanacion.Any())
                     {
                         <button type="submit" class="btn btn-success btn-lg" id="btnReenviar">
-                            <i class="fas fa-paper-plane me-2"></i>Enviar subsanación al Inspector
+                            <i class="fas fa-paper-plane me-2"></i>Enviar actualización de documentación devuelta
                         </button>
                     }
                 </div>

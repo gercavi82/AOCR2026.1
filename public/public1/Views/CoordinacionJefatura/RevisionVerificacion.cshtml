@@ -372,6 +372,7 @@
                     var $t = $(this);
                     if ($.fn.DataTable.isDataTable($t)) { return; }
                     $t.DataTable({
+                        autoWidth: $t.attr("id") !== "tblInspeccionesSeguimiento",
                         order: [],
                         pageLength: 5,
                         lengthChange: false,

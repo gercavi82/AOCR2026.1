@@ -17,6 +17,21 @@
             <h4 class="mb-0">Designación RT Firmada</h4>
         </div>
         <div class="card-body">
+            @if (!bloqueado)
+            {
+                <h5>Solicitud de aceptación del RT</h5>
+                <p>Ingrese los datos del Gerente de Operaciones, descargue la solicitud para su firma y adjunte el PDF firmado.</p>
+                using (Html.BeginForm("GenerarSolicitudAceptacion", "RT", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SolicitudId" value="@Model.SolicitudId" />
+                    <div class="form-group"><label for="NombreGerente">Nombre del Gerente de Operaciones</label><input class="form-control" id="NombreGerente" name="NombreGerente" maxlength="150" required /></div>
+                    <div class="form-group"><label for="CargoGerente">Cargo</label><input class="form-control" id="CargoGerente" name="CargoGerente" value="Gerente de Operaciones" maxlength="100" required /></div>
+                    <div class="form-group"><label for="LugarEmision">Lugar de emisión</label><input class="form-control" id="LugarEmision" name="LugarEmision" maxlength="100" required /></div>
+                    <button type="submit" class="btn btn-outline-primary">Descargar solicitud para firma</button>
+                }
+                <hr />
+            }
             @if (TempData["Ok"] != null)
             {
                 <div class="alert alert-success">@TempData["Ok"]</div>
@@ -65,7 +80,7 @@
                 @Html.HiddenFor(m => m.Estado)
 
                 <div class="mb-3">
-                    <label class="form-label">PDF de declaración firmada</label>
+                    <label class="form-label">Solicitud de aceptación / designación del RT firmada</label>
                     if (bloqueado)
                     {
                         @Html.TextBoxFor(m => m.ArchivoPdf, new { type = "file", @class = "form-control", accept = ".pdf", disabled = "disabled" })

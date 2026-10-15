@@ -8,7 +8,7 @@
     var acciones = Model.AccionesDisponibles;
 }
 
-<link rel="stylesheet" href="@Url.Content("~/Content/css/role-permissions.css")" />
+<link rel="stylesheet" href="@CapaPresentacion.Helpers.AssetVersionHelper.VersionedContent(Url, "~/Content/css/role-permissions.css")" />
 
 <div class="permissions-role-page">
 <div class="rp-page-header">
@@ -116,12 +116,17 @@
 
             @if (Model.ModulosAgrupados != null && Model.ModulosAgrupados.Any())
             {
-                <table class="rp-matrix-table" id="rp-matrix">
+                <table class="rp-matrix-table" id="rp-matrix" style="min-width: @(320 + 80 * acciones.Length)px;">
+                    <colgroup>
+                        <col style="width:320px;" />
+                        @foreach (var accion in acciones)
+                        {
+                            <col style="width:80px;" />
+                        }
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th>MODULO</th>
                             <th>PERMISO</th>
-                            <th>DESCRIPCION</th>
                             @foreach (var accion in acciones)
                             {
                                 <th class="rp-action-col">@accion</th>
@@ -140,7 +145,7 @@
                             var hiddenClass = isFirst ? "" : "hidden";
 
                             <tr class="rp-module-row" data-module="@collapseId">
-                                <td colspan="@(3 + acciones.Length)">
+                                <td colspan="@(1 + acciones.Length)">
                                      <div class="rp-module-header @collapsedClass" role="button" tabindex="0"
                                           aria-expanded="@(isFirst ? "true" : "false")"
                                           onclick="rpToggleModule('@collapseId', this);"
@@ -162,9 +167,10 @@
                             {
                                 var marcado = Model.PermisosSeleccionados.Contains(permiso.IdPermiso);
                                 <tr class="rp-perm-row @hiddenClass" data-module="@collapseId" data-nombre="@((permiso.Nombre ?? string.Empty).ToLowerInvariant()) @((permiso.Codigo ?? string.Empty).ToLowerInvariant()) @((permiso.Modulo ?? string.Empty).ToLowerInvariant()) @((permiso.TipoAccion ?? string.Empty).ToLowerInvariant()) @((permiso.Descripcion ?? string.Empty).ToLowerInvariant())">
-                                    <td></td>
-                                    <td class="rp-td-perm">@permiso.Nombre</td>
-                                    <td class="rp-td-desc">@permiso.Descripcion</td>
+                                    <td class="rp-td-perm">
+                                        <div>@permiso.Nombre</div>
+                                        <div class="rp-permission-description">@permiso.Descripcion</div>
+                                    </td>
                                     @foreach (var accion in acciones)
                                     {
                                         var esAccionActual = string.Equals(permiso.TipoAccion, accion, StringComparison.OrdinalIgnoreCase);
@@ -189,14 +195,7 @@
                                             }
                                             else
                                             {
-                                                <label class="rp-switch">
-                                                    <input type="checkbox"
-                                                           disabled
-                                                           role="switch"
-                                                           aria-checked="false"
-                                                           aria-label="Permiso no aplicable" />
-                                                    <span class="rp-slider"></span>
-                                                </label>
+                                                <span class="rp-not-applicable" aria-label="Acción no aplicable">—</span>
                                             }
                                         </td>
                                     }
