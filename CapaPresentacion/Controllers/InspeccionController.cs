@@ -4913,9 +4913,9 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Planificacion(
             int codigoInspeccion,
-            DateTime fechaInspeccion,
-            TimeSpan horaInicio,
-            int duracionEstimada,
+            DateTime? fechaInspeccion,
+            TimeSpan? horaInicio,
+            int? duracionEstimada,
             string ubicacion,
             string latitud,
             string longitud,
@@ -4940,20 +4940,24 @@ namespace CapaPresentacion.Controllers
             if (!PuedeAccederInspeccion(inspeccion))
                 return new HttpStatusCodeResult(403, "No autorizado para planificar esta inspección.");
 
-            inspeccion.FechaProgramada = fechaInspeccion;
-            inspeccion.HoraProgramada = horaInicio;
-            inspeccion.DuracionEstimada = duracionEstimada;
+            inspeccion.FechaProgramada = fechaInspeccion ?? inspeccion.FechaProgramada;
+            inspeccion.HoraProgramada = horaInicio ?? inspeccion.HoraProgramada;
+            inspeccion.DuracionEstimada = duracionEstimada ?? inspeccion.DuracionEstimada;
 
-            inspeccion.Lugar = ubicacion;
-            inspeccion.Latitud = latitud;
-            inspeccion.Longitud = longitud;
+            if (ubicacion != null) inspeccion.Lugar = ubicacion;
+            if (latitud != null) inspeccion.Latitud = latitud;
+            if (longitud != null) inspeccion.Longitud = longitud;
 
-            inspeccion.Tipo = tipoInspeccion;
+            if (tipoInspeccion != null) inspeccion.Tipo = tipoInspeccion;
             inspeccion.ObservacionesGenerales = observaciones;
-            inspeccion.HallazgosPrincipales = alcance;
+            if (alcance != null) inspeccion.HallazgosPrincipales = alcance;
 
-            inspeccion.Comentarios =
-                $"Contacto: {contactoSitio} - Tel: {telefonoContacto}. Equipos: {equiposNecesarios}";
+            if (!string.IsNullOrWhiteSpace(contactoSitio) || !string.IsNullOrWhiteSpace(telefonoContacto))
+            {
+                var contactoActualizado = $"Contacto de planificacion: {contactoSitio} - Tel: {telefonoContacto}.";
+                if ((inspeccion.Comentarios ?? string.Empty).IndexOf(contactoActualizado, StringComparison.Ordinal) < 0)
+                    inspeccion.Comentarios = ((inspeccion.Comentarios ?? string.Empty) + "\n" + contactoActualizado).Trim();
+            }
 
             inspeccion.Estado = EstadosInspeccion.VERIFICACION_SOLICITUD;
 
@@ -4971,7 +4975,7 @@ namespace CapaPresentacion.Controllers
                     var existentes = estacionService.ObtenerEstacionesPorSolicitud(inspeccion.CodigoSolicitud, solicitud, new[] { inspeccion });
                     var mapaExistentes = existentes.ToDictionary(e => (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase);
                     var recibidas = (estaciones ?? new List<SolicitudEstacionInspeccionItemVM>()).Where(e => e != null).ToList();
-                    if (!ModelState.IsValid || fechaInspeccion == default(DateTime)
+                    if (!ModelState.IsValid
                         || recibidas.Count != existentes.Count
                         || recibidas.Select(e => (e.EstacionCodigo ?? "").Trim().ToUpperInvariant()).Distinct().Count() != recibidas.Count
                         || recibidas.Any(e => !mapaExistentes.ContainsKey((e.EstacionCodigo ?? "").Trim().ToUpperInvariant())))
@@ -5003,6 +5007,7 @@ namespace CapaPresentacion.Controllers
                     }
                     if (listaActualizada.Any())
                     {
+                        inspeccion.FechaProgramada = listaActualizada.Min(e => e.FechaInicio);
                         var resEst = estacionService.GuardarEstaciones(inspeccion.CodigoSolicitud, listaActualizada, usuarioId);
                         if (!resEst.Exitoso)
                         {

@@ -38,7 +38,7 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void Coordinador_PuedeObservarMantenerOReasignarConAuditoria()
+        public void Coordinador_ObservaORemiteADcavSinFirmarNiReasignar()
         {
             var controller = Read("CapaPresentacion/Controllers/SolicitudAOCRController.cs");
             var view = Read("CapaPresentacion/Views/SolicitudAOCR/Detalle.cshtml");
@@ -46,9 +46,8 @@ namespace AOCR.Tests.Unit
 
             StringAssert.Contains(controller, "decisionCoordinador = \"ACEPTAR\"");
             StringAssert.Contains(controller, "_revisionDocumentalCoordinadorService.Observar");
-            StringAssert.Contains(controller, "_revisionDocumentalCoordinadorService.Aceptar");
-            StringAssert.Contains(view, "value=\"MANTENER\"");
-            StringAssert.Contains(view, "value=\"REASIGNAR\"");
+            StringAssert.Contains(controller, "_revisionDocumentalCoordinadorService.RemitirADircav");
+            Assert.IsFalse(view.Contains("value=\"REASIGNAR\""), "La designacion corresponde a DCAV.");
             StringAssert.Contains(view, "value=\"OBSERVAR\"");
             StringAssert.Contains(dao, "aocr_inspector_reasignacion_historial");
             StringAssert.Contains(dao, "estado_documental='ACEPTADA'");

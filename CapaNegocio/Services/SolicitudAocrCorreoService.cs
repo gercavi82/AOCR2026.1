@@ -85,7 +85,8 @@ namespace CapaNegocio.Services
                         Para = destinatario.Email,
                         ParaNombre = destinatario.Nombre,
                         Asunto = plantilla.Asunto,
-                        Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, solicitud, observacion),
+                        Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, solicitud,
+                            string.Equals(evento, "INSPECTOR_ASIGNADO", StringComparison.OrdinalIgnoreCase) ? LimpiarObservacionAsignacion(observacion) : observacion),
                         Estado = "PENDIENTE",
                         SolicitudId = solicitud.CodigoSolicitud,
                         TipoNotificacion = tipoNotificacion,
@@ -485,6 +486,7 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "AOCR - Inspector asignado a solicitud " + numeroSolicitud,
                         Titulo = "Inspector asignado",
+                        EstadoVisible = "En revision",
                         Mensaje = "Por medio del presente, se informa que ha sido asignado/a como Inspector a la solicitud " + numeroSolicitud + ".",
                         GruposDestinatarios = new[]
                         {
@@ -603,10 +605,11 @@ namespace CapaNegocio.Services
                 case "INSPECCION_HABILITADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Revisión documental aprobada #" + solicitud.CodigoSolicitud,
-                        Titulo = "Revisión documental aprobada",
+                        Asunto = "AOCR - Revisión documental completada #" + solicitud.CodigoSolicitud,
+                        Titulo = "Revisión documental completada",
+                        EstadoVisible = "Para revision de la Coordinacion",
                         Mensaje = "La revisión documental de la solicitud AOCR fue completada satisfactoriamente. " +
-                                  "Todos los documentos han sido aprobados y se habilitó la ejecución de la inspección técnica.",
+                                  "La documentacion requerida fue revisada por el Inspector y el tramite sera atendido por la Coordinacion antes de la aceptacion formal de DCAV.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
@@ -696,6 +699,14 @@ namespace CapaNegocio.Services
             }
         }
 
+        private static string LimpiarObservacionAsignacion(string observacion)
+        {
+            if (string.IsNullOrWhiteSpace(observacion)) return null;
+            var indice = observacion.IndexOf(" Observacion:", StringComparison.OrdinalIgnoreCase);
+            if (indice < 0) indice = observacion.IndexOf(" Observación:", StringComparison.OrdinalIgnoreCase);
+            return indice >= 0 ? observacion.Substring(0, indice).Trim() : observacion;
+        }
+
         private static string ConstruirCuerpoHtml(string nombreDestino, PlantillaSolicitudCorreo plantilla, SolicitudAOCR solicitud, string observacion)
         {
             var operador = string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? (solicitud.RazonSocial ?? "Operador") : solicitud.NombreOperador;
@@ -711,7 +722,7 @@ namespace CapaNegocio.Services
                     new EmailFieldItem("Solicitud AOCR", "#" + solicitud.CodigoSolicitud),
                     new EmailFieldItem("Numero de solicitud", numeroSolicitud),
                     new EmailFieldItem("Operador", operador),
-                    new EmailFieldItem("Estado actual", solicitud.Estado ?? "PENDIENTE")
+                    new EmailFieldItem("Estado actual", plantilla.EstadoVisible ?? solicitud.Estado ?? "PENDIENTE")
                 },
                 Observaciones = observacion,
                 TextoCierre = "Puede revisar el expediente desde el sistema AOCR en el detalle de la solicitud correspondiente.",
@@ -735,6 +746,7 @@ namespace CapaNegocio.Services
 
         private sealed class PlantillaSolicitudCorreo
         {
+            public string EstadoVisible { get; set; }
             public string Asunto { get; set; }
             public string Titulo { get; set; }
             public string Mensaje { get; set; }

@@ -28,6 +28,8 @@ namespace CapaDatos.Models
         public const string FinalizadaInspector = "REVISION_DOCUMENTAL_FINALIZADA_INSPECTOR";
         public const string PendienteCoordinador = "PENDIENTE_REVISION_COORDINADOR";
         public const string ObservadaCoordinador = "OBSERVADA_POR_COORDINADOR";
+        public const string PendienteDcav = "PENDIENTE_ACEPTACION_DCAV";
+        public const string AceptadaDcav = "ACEPTADA_POR_DCAV";
         public const string AceptadaCoordinador = "ACEPTADA_POR_COORDINADOR";
     }
 

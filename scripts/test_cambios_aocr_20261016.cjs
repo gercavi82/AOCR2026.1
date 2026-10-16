@@ -1,0 +1,14 @@
+﻿const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const source=fs.readFileSync('CapaPresentacion/Views/OrdenRecaudacion/Nueva.cshtml','utf8');
+const start=source.indexOf('function sincronizarLugaresYAeropuertos()');
+const end=source.indexOf('function actualizarTotales()',start);
+let locations=['QUITO','GUAYAQUIL'], renders=0;
+const detalles=[{ConceptoCodigo:'INSPECCION_EXT',Cantidad:1,ValorUnitario:500,PorcentajeAdmin:8,Subtotal:500},{ConceptoCodigo:'EMISION',Cantidad:1,Subtotal:3300}];
+const stub={length:1,val(){return this;},each(){return this;},first(){return this;},closest(){return this;},find(){return this;},text(){return 'Estacion';}};
+const context={detalles,$:()=>stub,obtenerLugaresSeleccionados:()=>locations,renderTabla:()=>renders++,actualizarTotales:()=>{}};
+vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+context.sincronizarLugaresYAeropuertos();assert.equal(detalles[0].Cantidad,2);assert.equal(detalles[0].TotalLinea,1080);assert.equal(detalles.length,2);assert.equal(detalles[1].Subtotal,3300);
+context.sincronizarLugaresYAeropuertos();assert.equal(renders,1);
+locations=['QUITO','GUAYAQUIL','MANTA'];context.sincronizarLugaresYAeropuertos();assert.equal(detalles[0].Cantidad,3);assert.equal(detalles[0].TotalLinea,1620);
+locations=[];context.sincronizarLugaresYAeropuertos();assert.equal(detalles[0].Cantidad,0);assert.equal(detalles[0].TotalLinea,0);
+console.log('OK: cantidad automatica, recargo, cero estaciones, sin duplicados y actualizacion estable.');

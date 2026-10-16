@@ -5628,153 +5628,14 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalle", new { id });
                 }
             }
-            var revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
-            var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
-            var documentosAutocompletados = flujoCoordinador == null
-                ? RegistrarAceptacionesPendientesParaRevisionFinal(
-                    id,
-                    documentosRevision,
-                    revisiones,
-                    usuarioFirmante,
-                    usuarioRegistroFirmante)
-                : 0;
-            if (documentosAutocompletados > 0)
-            {
-                revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
-                _logger.LogInfo(
-                    "[FirmarAceptacionDocumental] Revisiones faltantes autocompletadas. SolicitudId=" + id +
-                    ", DocumentosAutocompletados=" + documentosAutocompletados +
-                    ", UsuarioFirmante=" + usuarioFirmante);
-            }
+            if (!string.Equals(opcionInspector ?? "MANTENER", "MANTENER", StringComparison.OrdinalIgnoreCase)
+                || inspectorNuevoId.HasValue)
+                return new HttpStatusCodeResult(400, "La designacion o reasignacion formal corresponde exclusivamente a DCAV.");
 
-            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: id).Any())
-            {
-                TempData["NotificacionTipo"] = "warning";
-                TempData["NotificacionMensaje"] = "La orden está pendiente de corrección y nueva validación financiera.";
-                return RedirectToAction("Detalle", new { id });
-            }
-            var estacionesParaFirma = new SolicitudEstacionDAO().ListarPorSolicitud(id);
-            var errorFechasFirma = estacionesParaFirma.Any() ? SolicitudEstacionService.ValidarPlanificacionAcordada(estacionesParaFirma) : null;
-            if (errorFechasFirma != null)
-            {
-                TempData["NotificacionTipo"] = "warning";
-                TempData["NotificacionMensaje"] = errorFechasFirma;
-                return RedirectToAction("Detalle", new { id });
-            }
-            var firmaPlan = _revisionDocumentalService.PrepararFirmaAceptacionDocumental(
-                estadoActual,
-                documentosRevision,
-                revisiones,
-                observacion,
-                solicitud.TipoSolicitud,
-                flujoCoordinador != null && flujoCoordinador.InspectorOriginalId.GetValueOrDefault() > 0);
-            var documentosAceptados = documentosRevision.Count(d => d != null && d.CodigoDocumento > 0 && ObtenerDecisionRevisionDocumentalLog(d, revisiones) == "ACEPTADO");
-            _logger.LogInfo(
-                "[FirmarAceptacionDocumental] Validacion. SolicitudId=" + id +
-                ", TotalDocumentosRevision=" + documentosRevision.Count +
-                ", DocumentosAceptados=" + documentosAceptados +
-                ", EsValido=" + firmaPlan.EsValido +
-                ", EstadoDestino=" + (firmaPlan.EstadoDestino ?? string.Empty) +
-                ", Mensaje=" + (firmaPlan.Mensaje ?? string.Empty));
-            if (!firmaPlan.EsValido)
-            {
-                _logger.LogWarning("[FirmarAceptacionDocumental] Firma rechazada por validacion. SolicitudId=" + id + ", Motivo=" + (firmaPlan.Mensaje ?? string.Empty));
-                TempData["NotificacionTipo"] = "warning";
-                TempData["NotificacionMensaje"] = firmaPlan.Mensaje;
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            string mensajeCambio;
-            if (!CambiarEstadoConReglasAocr(id, firmaPlan.EstadoDestino, firmaPlan.ObservacionEstado, out mensajeCambio))
-            {
-                _logger.LogWarning(
-                    "[FirmarAceptacionDocumental] Cambio de estado fallido. SolicitudId=" + id +
-                    ", EstadoAnterior=" + estadoActual +
-                    ", EstadoDestino=" + (firmaPlan.EstadoDestino ?? string.Empty) +
-                    ", UsuarioFirmante=" + usuarioFirmante +
-                    ", Mensaje=" + (mensajeCambio ?? string.Empty));
-                TempData["NotificacionTipo"] = "error";
-                TempData["NotificacionMensaje"] = mensajeCambio;
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            if (flujoCoordinador != null)
-            {
-                var asignarNuevo = string.Equals((opcionInspector ?? string.Empty).Trim(), "REASIGNAR", StringComparison.OrdinalIgnoreCase);
-                var inspectorConfirmadoId = asignarNuevo
-                    ? inspectorNuevoId.GetValueOrDefault()
-                    : flujoCoordinador.InspectorOriginalId.GetValueOrDefault();
-                var aceptada = _revisionDocumentalCoordinadorService.Aceptar(id, usuarioFirmante, inspectorConfirmadoId, observacion);
-                if (!aceptada.Ok)
-                {
-                    _solicitudDAO.CambiarEstado(id, EstadoSolicitud.AceptacionDocumental, usuarioFirmante, "Se revirtio el avance porque no fue posible confirmar al inspector: " + aceptada.Mensaje);
-                    TempData["NotificacionTipo"] = "error";
-                    TempData["NotificacionMensaje"] = aceptada.Mensaje + " LV e Informe Tecnico permanecen bloqueados.";
-                    return RedirectToAction("Detalle", new { id });
-                }
-
-                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
-                    id,
-                    flujoCoordinador.DocumentoOficioId,
-                    asignarNuevo ? "INSPECTOR_REASIGNADO" : "INSPECTOR_CONFIRMADO",
-                    aceptada.Mensaje,
-                    usuarioFirmante,
-                    usuarioRegistroFirmante);
-                var oficio = flujoCoordinador.DocumentoOficioId.HasValue
-                    ? _documentoDAO.ObtenerPorId(flujoCoordinador.DocumentoOficioId.Value)
-                    : null;
-                if (oficio != null)
-                {
-                    oficio.Estado = EstadoDocumentoInstitucional.Aceptado;
-                    oficio.Validado = true;
-                    oficio.FechaValidacion = DateTime.Now;
-                    oficio.ValidadoPor = usuarioRegistroFirmante;
-                    oficio.Observaciones = "Oficio aceptado por Coordinacion. " + (observacion ?? string.Empty).Trim();
-                    _documentoDAO.Actualizar(oficio);
-                    try
-                    {
-                        ActualizarPdfOficioAceptado(solicitud, oficio, aceptada.Registro, usuarioRegistroFirmante, observacion);
-                    }
-                    catch (Exception exPdf)
-                    {
-                        _logger.LogWarning("[REV_DOC][OFICIO_ACTUALIZAR_WARNING] SolicitudId=" + id + "; Error=" + exPdf.Message);
-                    }
-                }
-                _logger.LogInfo("[NOTIF][REV_DOC_ACEPTADA_RT_INSPECTOR] SolicitudId=" + id + ";");
-            }
-
-            var solicitudPostCambio = _solicitudDAO.ObtenerPorId(id);
-            var estadoNuevoPersistido = solicitudPostCambio != null ? EstadoSolicitud.Normalizar(solicitudPostCambio.Estado) : string.Empty;
-            _logger.LogInfo(
-                "[FirmarAceptacionDocumental] Commit OK. SolicitudId=" + id +
-                ", NumeroSolicitud=" + numeroSolicitud +
-                ", EstadoAnterior=" + estadoActual +
-                ", EstadoNuevoSolicitado=" + (firmaPlan.EstadoDestino ?? string.Empty) +
-                ", EstadoNuevoPersistido=" + estadoNuevoPersistido +
-                ", UsuarioFirmante=" + usuarioFirmante +
-                ", Observacion=" + (firmaPlan.ObservacionEstado ?? string.Empty));
-
-            try
-            {
-                var solicitudActualizada = solicitudPostCambio ?? solicitud;
-                var inspeccionNotificacion = (_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>())
-                    .OrderByDescending(i => i.CodigoInspeccion)
-                    .FirstOrDefault();
-                _solicitudAocrCorreoService.NotificarAceptacionInspeccion(
-                    solicitudActualizada,
-                    inspeccionNotificacion,
-                    "REVISION_COORDINACION_" + id);
-            }
-            catch (Exception exCorreo)
-            {
-                _logger.LogWarning("[FirmarAceptacionDocumental] Error notificando revision final de Coordinacion. SolicitudId=" + id + ", Error=" + exCorreo.Message);
-                System.Diagnostics.Debug.WriteLine("[FirmarAceptacionDocumental] Error notificando revisión final de Coordinación: " + exCorreo.Message);
-            }
-
-            TempData["NotificacionTipo"] = "success";
-            TempData["NotificacionMensaje"] = string.Equals(firmaPlan.EstadoDestino, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
-                ? "La aceptación documental fue firmada. La solicitud quedó pendiente de asignación de inspector en la bandeja de coordinación."
-                : "La aceptación documental fue firmada por coordinación. Continúe el flujo institucional según el tipo de trámite.";
+            var resultadoRemision = _revisionDocumentalCoordinadorService.RemitirADircav(
+                id, usuarioFirmante, observacion, usuarioRegistroFirmante);
+            TempData["NotificacionTipo"] = resultadoRemision.Ok ? "success" : "warning";
+            TempData["NotificacionMensaje"] = resultadoRemision.Mensaje;
             return RedirectToAction("Detalle", new { id });
         }
 
@@ -6115,6 +5976,8 @@ namespace CapaPresentacion.Controllers
             var permisosRolActivo = SidebarPermissionHelper.Resolve(
                 Session != null ? Session["Rol"] as string ?? string.Empty : string.Empty,
                 Session != null ? Session["RolesRaw"] ?? Session["Roles"] : null);
+            if (!permisosRolActivo.EsInspectorRol)
+                return new HttpStatusCodeResult(403, "Solo el Inspector puede generar el AOCR.");
             if (permisosRolActivo.EsInspectorRol
                 || permisosRolActivo.EsCoordinadorRol
                 || permisosRolActivo.EsDirdacRol

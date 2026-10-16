@@ -768,6 +768,17 @@
                     $aeropuertos.val(nombres.join(', '));
                 }
 
+                var cambioCantidad = false;
+                detalles.forEach(function (d) {
+                    if ((d.ConceptoCodigo || '').toUpperCase() !== 'INSPECCION_EXT') return;
+                    if (d.Cantidad === lugares.length) return;
+                    d.Cantidad = lugares.length;
+                    d.Subtotal = d.Cantidad * d.ValorUnitario;
+                    d.Admin = d.Subtotal * d.PorcentajeAdmin / 100;
+                    d.TotalLinea = d.Subtotal + d.Admin;
+                    cambioCantidad = true;
+                });
+                if (cambioCantidad) { renderTabla(); actualizarTotales(); }
                 return lugares;
             }
 
@@ -826,7 +837,7 @@
                         + '<tr data-index="' + AOCR.escapeHtml(String(i)) + '"' + (esObligatorio || esViatico ? ' class="detalle-obligatorio"' : '') + '>'
                         + '<td>' + AOCR.escapeHtml(String(d.ConceptoCodigo)) + '</td>'
                         + '<td>' + nombreHtml + '</td>'
-                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + (esViatico ? ' readonly aria-label="Cantidad del concepto de viáticos"' : '') + '></td>'
+                        + '<td><input type="number" class="form-control form-control-sm cantidad-detalle" data-index="' + AOCR.escapeHtml(String(i)) + '" value="' + AOCR.escapeHtml(String(d.Cantidad)) + '" min="1" step="1"' + (esObligatorio ? ' data-obligatorio="1"' : '') + (esViatico || d.ConceptoCodigo === 'INSPECCION_EXT' ? ' readonly aria-label="Cantidad del concepto de viáticos"' : '') + '></td>'
                         + celdaNumeroDias
                         + '<td class="text-end">$' + AOCR.escapeHtml(d.ValorUnitario.toFixed(2)) + '</td>'
                         + '<td class="text-end">' + AOCR.escapeHtml(d.PorcentajeAdmin.toFixed(2)) + '%</td>'

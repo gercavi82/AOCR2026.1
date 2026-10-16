@@ -2857,6 +2857,12 @@
                     }).length;
 
                     if (window.__finalizarRevisionDocumentalActual === true) {
+                        if (cantidadDevueltos === 0 && !window.confirm('Al finalizar la revision documental y confirmar las fechas de inspeccion, el tramite sera remitido automaticamente a Coordinacion. Desea continuar?')) {
+                            window.__guardandoRevisionDocumental = false;
+                            window.__finalizarRevisionDocumentalActual = false;
+                            btnGuardarRevision.disabled = false;
+                            return false;
+                        }
                         var observacionGeneral = observacionGeneralRevision ? (observacionGeneralRevision.value || '').trim() : '';
                         if (observacionGeneral.length > 2000 || /[<>]/.test(observacionGeneral)) {
                             showAlert('warning', 'La observacion general no puede contener HTML ni superar 2000 caracteres.');

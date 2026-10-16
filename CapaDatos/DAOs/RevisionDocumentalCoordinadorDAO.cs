@@ -60,13 +60,13 @@ VALUES
 ON CONFLICT (solicitud_id) DO UPDATE SET
     inspector_original_id = COALESCE(aocr_revision_documental_coordinador.inspector_original_id, EXCLUDED.inspector_original_id),
     estado = CASE
-        WHEN aocr_revision_documental_coordinador.estado = 'ACEPTADA_POR_COORDINADOR'
+        WHEN aocr_revision_documental_coordinador.estado IN ('ACEPTADA_POR_COORDINADOR', 'ACEPTADA_POR_DCAV')
             THEN aocr_revision_documental_coordinador.estado
         ELSE 'PENDIENTE_REVISION_COORDINADOR'
     END,
     observacion_inspector = EXCLUDED.observacion_inspector,
     fecha_finalizacion_inspector = CASE
-        WHEN aocr_revision_documental_coordinador.estado = 'ACEPTADA_POR_COORDINADOR'
+        WHEN aocr_revision_documental_coordinador.estado IN ('ACEPTADA_POR_COORDINADOR', 'ACEPTADA_POR_DCAV')
             THEN aocr_revision_documental_coordinador.fecha_finalizacion_inspector
         ELSE NOW()
     END,
@@ -145,7 +145,7 @@ SET estado=@estado,
     fecha_habilitacion_informe=CASE WHEN @aceptada THEN NOW() ELSE NULL END,
     fecha_actualizacion=NOW()
 WHERE solicitud_id=@solicitud_id AND activo=TRUE
-  AND estado <> 'ACEPTADA_POR_COORDINADOR';", cn, tx))
+  AND estado NOT IN ('ACEPTADA_POR_COORDINADOR', 'ACEPTADA_POR_DCAV');", cn, tx))
                     {
                         cmd.Parameters.AddWithValue("@solicitud_id", solicitudId);
                         cmd.Parameters.AddWithValue("@coordinador_id", coordinadorId);

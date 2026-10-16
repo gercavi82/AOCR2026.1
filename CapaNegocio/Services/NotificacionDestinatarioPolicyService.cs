@@ -137,6 +137,14 @@ namespace CapaNegocio.Services
                         AgregarCorreo(destinatarios, orden.Correo, orden.NombreContribuyente ?? orden.Compania);
                         break;
 
+                    case GrupoRepresentanteTecnico:
+                        if (orden.CodigoSolicitud.GetValueOrDefault() > 0)
+                        {
+                            var solicitudRt = new SolicitudAOCRDAO().ObtenerPorId(orden.CodigoSolicitud.Value);
+                            if (solicitudRt != null) AgregarUsuarioActivo(destinatarios, solicitudRt.CodigoUsuario);
+                        }
+                        break;
+
                     case GrupoFinanciero:
                         AgregarUsuariosPorRol(destinatarios,
                             "Financiero",

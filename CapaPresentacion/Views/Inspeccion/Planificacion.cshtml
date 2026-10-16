@@ -116,95 +116,6 @@
 
         <div class="panel-body">
             <div class="form-group">
-                <label class="col-md-3 control-label">Fecha de Inspección *</label>
-                <div class="col-md-9">
-                    <input type="date" name="fechaInspeccion"
-                           class="form-control"
-                           min="@DateTime.Now.ToString("yyyy-MM-dd")"
-                           value="@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "")"
-                           required />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Hora de Inicio *</label>
-                <div class="col-md-9">
-                    <input type="time" name="horaInicio"
-                           class="form-control"
-                           value="@(Model.HoraProgramada.HasValue ? Model.HoraProgramada.Value.ToString(@"hh\:mm") : "")"
-                           required />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Duración Estimada (horas) *</label>
-                <div class="col-md-9">
-                    <input type="number" name="duracionEstimada"
-                           class="form-control"
-                           min="1" max="24"
-                           value="@(Model.DuracionEstimada.HasValue ? Model.DuracionEstimada.Value.ToString() : "4")"
-                           required />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Ubicación *</label>
-                <div class="col-md-9">
-                    <input type="text" name="ubicacion"
-                           class="form-control"
-                           placeholder="Dirección completa del lugar de inspección"
-                           value="@(Model.Lugar ?? "")"
-                           required />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Coordenadas GPS</label>
-                <div class="col-md-9">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <input type="text" name="latitud" class="form-control" placeholder="Latitud"
-                                   value="@(Model.Latitud ?? "")" />
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="longitud" class="form-control" placeholder="Longitud"
-                                   value="@(Model.Longitud ?? "")" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Tipo de Inspección *</label>
-                <div class="col-md-9">
-                    <select name="tipoInspeccion" class="form-control" required>
-                        <option value="">Seleccione...</option>
-                        <option value="Inicial" @(Model.Tipo == "Inicial" ? "selected" : "")>Inicial</option>
-                        <option value="Renovacion" @(Model.Tipo == "Renovacion" ? "selected" : "")>Renovación</option>
-                        <option value="Seguimiento" @(Model.Tipo == "Seguimiento" ? "selected" : "")>Seguimiento</option>
-                        <option value="Extraordinaria" @(Model.Tipo == "Extraordinaria" ? "selected" : "")>Extraordinaria</option>
-                    </select>
-                </div>
-            </div>
-
-            @* En tu Controller tú haces: inspeccion.HallazgosPrincipales = alcance *@
-            <div class="form-group">
-                <label class="col-md-3 control-label">Alcance de la Inspección *</label>
-                <div class="col-md-9">
-                    <textarea name="alcance" class="form-control" rows="4"
-                              placeholder="Describa el alcance y objetivos de la inspección..." required>@(Model.HallazgosPrincipales ?? "")</textarea>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="col-md-3 control-label">Equipos/Herramientas Necesarias</label>
-                <div class="col-md-9">
-                    <textarea name="equiposNecesarios" class="form-control" rows="3"
-                              placeholder="Liste los equipos y herramientas necesarias..."></textarea>
-                </div>
-            </div>
-
-            <div class="form-group">
                 <label class="col-md-3 control-label">Contacto en Sitio</label>
                 <div class="col-md-9">
                     <input type="text" name="contactoSitio" class="form-control" placeholder="Nombre del contacto" />
@@ -259,6 +170,9 @@
                         return false;
                     }
                 });
+                if (valido && !window.confirm('Al guardar las fechas acordadas, si la revision documental esta completada, el tramite continuara automaticamente hacia Coordinacion. Desea guardar?')) {
+                    e.preventDefault(); return false;
+                }
                 if (!valido) {
                     e.preventDefault();
                     alert(mensaje);

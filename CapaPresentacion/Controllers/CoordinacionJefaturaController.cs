@@ -2557,7 +2557,7 @@ namespace CapaPresentacion.Controllers
                 FirmaDigitalCargada = false
             };
 
-            model.PuedeGenerarAocr = informeAprobado && !aocrRutaDisponible && UsuarioActualPuedeFirmarDocumentoValidacionAocr();
+            model.PuedeGenerarAocr = false; // La generacion corresponde exclusivamente al Inspector.
             model.PuedeVerAocr = aocrRutaDisponible;
             model.PuedeDescargarAocr = aocrRutaDisponible;
             model.PuedeFirmarAocr = aocrRutaDisponible && puedeFirmar && !aocrFirmada;

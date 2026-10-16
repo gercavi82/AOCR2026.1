@@ -671,6 +671,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                             Estado = "PENDIENTE"
                         };
                         bool duplicate;
+                        if (!string.IsNullOrWhiteSpace(emailItem.Para))
                         new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
 
                         tx.Commit();
@@ -1116,6 +1117,15 @@ UPDATE public.aocr_tbdesignacion_inspector
         /// Actualiza aocr_tbdesignacion_inspector, aocr_tbsolicitud (DESIGNACION_FIRMADA_DIRCAV),
         /// genera historial documental, registra auditoría institucional y encola notificación outbox al Inspector.
         /// </summary>
+        private static string ObtenerCorreoInspectorDesignado(NpgsqlConnection cn, NpgsqlTransaction tx, int inspectorId)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT correo FROM public.usuario WHERE idusuario=@id", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", inspectorId);
+                return Convert.ToString(cmd.ExecuteScalar());
+            }
+        }
+
         public DircavTransaccionResultado EjecutarFirmaDesignacionTransaccional(DircavFirmarDesignacionParams p, NpgsqlTransaction externalTx = null)
         {
             if (p == null || p.SolicitudId <= 0)
@@ -1298,6 +1308,24 @@ WHERE solicitud_id = @solicitud_id
                         cmdEst.ExecuteNonQuery();
                     }
 
+                    // Only the signed DCAV designation unlocks the assigned inspector's operational phase.
+                    using (var existeRevision = new NpgsqlCommand("SELECT to_regclass('public.aocr_revision_documental_coordinador') IS NOT NULL", cn, tx))
+                    {
+                        if (Convert.ToBoolean(existeRevision.ExecuteScalar()))
+                        {
+                            using (var habilitar = new NpgsqlCommand(@"
+UPDATE public.aocr_revision_documental_coordinador
+SET estado='ACEPTADA_POR_DCAV', inspector_confirmado_id=@inspector,
+    fecha_habilitacion_lv=NOW(), fecha_habilitacion_informe=NOW(), fecha_actualizacion=NOW()
+WHERE solicitud_id=@solicitud AND activo=TRUE AND estado='PENDIENTE_ACEPTACION_DCAV';", cn, tx))
+                            {
+                                habilitar.Parameters.AddWithValue("@inspector", desigVigente.InspectorId);
+                                habilitar.Parameters.AddWithValue("@solicitud", p.SolicitudId);
+                                habilitar.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
                     // 7. Inserción en historial documental
                     var hashCorto = !string.IsNullOrEmpty(p.HashDocumento) && p.HashDocumento.Length > 16
                         ? p.HashDocumento.Substring(0, 16) + "..."
@@ -1332,7 +1360,7 @@ VALUES
                     // 9. Encolar notificación en email_queue (outbox post-commit)
                     var emailItem = new CapaDatos.Services.EmailQueueItem
                     {
-                        Para = "inspector@dgac.gob.ec",
+                        Para = ObtenerCorreoInspectorDesignado(cn, tx, desigVigente.InspectorId),
                         ParaNombre = desigVigente.InspectorNombre ?? "Inspector Asignado",
                         Asunto = "AOCR - Oficio de Designación Firmado Digitalmente #" + p.SolicitudId,
                         Cuerpo = string.Format("Se ha firmado digitalmente el oficio de designación (Versión {0}) para la solicitud #{1} por parte de la Autoridad DIRCAV.", desigVigente.Version, p.SolicitudId),

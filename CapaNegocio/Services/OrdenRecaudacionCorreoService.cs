@@ -137,6 +137,8 @@ namespace CapaNegocio.Services
                 case "ORDEN_CREADA":
                 case "ORDEN_GENERADA_RT":
                     return string.Format(CultureInfo.InvariantCulture, "ORDEN_GENERADA_RT_{0}", ordenId);
+                case "COMPROBANTE_CARGADO_RT":
+                    return "COMPROBANTE_CARGADO_RT_" + ordenId + "_" + (eventKeySuffix ?? "0") + "_" + (correoDestino ?? string.Empty).Trim().ToUpperInvariant();
                 case "COMPROBANTE_CARGADO_FINANCIERO":
                     return string.Format(
                         CultureInfo.InvariantCulture,
@@ -181,6 +183,14 @@ namespace CapaNegocio.Services
                         Titulo = "Orden de recaudación generada",
                         Mensaje = "Su Orden de Recaudación ha sido generada correctamente. Descargue el documento y cargue el comprobante de depósito o transferencia para que el área Financiera pueda realizar la revisión correspondiente.",
                         GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante }
+                    };
+                case "COMPROBANTE_CARGADO_RT":
+                    return new PlantillaOrdenCorreo
+                    {
+                        Asunto = "AOCR - Comprobante de pago recibido - " + (orden.NumeroOrden ?? ("#" + orden.Id)),
+                        Titulo = "Comprobante de pago recibido",
+                        Mensaje = "Su comprobante de pago fue registrado y enviado al area Financiera para su revision. Este mensaje confirma la recepcion; no constituye una aprobacion del pago.",
+                        GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante, NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico }
                     };
                 case "COMPROBANTE_CARGADO_FINANCIERO":
                     return new PlantillaOrdenCorreo

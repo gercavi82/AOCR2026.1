@@ -749,6 +749,16 @@ namespace CapaPresentacion.Controllers
                     model.FechasInspeccion = "Por coordinar con el Inspector";
                 }
 
+                if (requiereSolicitudInspeccion)
+                {
+                    foreach (var detalleInspeccion in detalles.Where(d =>
+                        string.Equals(_conceptoDao.ObtenerPorId(d.ConceptoId)?.Codigo, CodigoConceptoInspeccionExt, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        detalleInspeccion.Cantidad = estacionesInspeccion.Count;
+                        detalleInspeccion.Subtotal = detalleInspeccion.Cantidad * detalleInspeccion.PrecioUnitario;
+                    }
+                }
+
                 // Calcular totales
                 decimal subtotal = 0m, admin = 0m;
                 foreach (var det in detalles)
@@ -2512,6 +2522,12 @@ namespace CapaPresentacion.Controllers
                         nombreAdjunto,
                         "Sistema AOCR - Dirección General de Aviación Civil",
                         comprobanteId);
+
+                    var resultadoCorreoRt = _ordenCorreoService.NotificarEvento(
+                        ordenEntidad, "COMPROBANTE_CARGADO_RT", null, null,
+                        null, null, null, comprobanteId);
+                    if (!resultadoCorreoRt.Exitoso)
+                        CapaNegocio.LogBL.RegistrarInfo("No se pudo encolar la confirmacion de comprobante al RT: " + resultadoCorreoRt.Mensaje, "OrdenRecaudacionController");
 
                     if (!resultadoCorreoPago.Exitoso)
                     {

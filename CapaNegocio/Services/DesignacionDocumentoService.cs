@@ -204,7 +204,7 @@ namespace CapaNegocio.Services
                     PaddingBottom = 6f
                 };
                 celdaTitulo.AddElement(new Paragraph("DIRECCIÓN DE CERTIFICACIÓN AERONÁUTICA", fuenteSubtitulo));
-                celdaTitulo.AddElement(new Paragraph("OFICIO OFICIAL DE DESIGNACIÓN DE INSPECTORES", fuenteTitulo));
+                celdaTitulo.AddElement(new Paragraph("ACEPTACION DE DOCUMENTACION REQUERIDA POR LA NORMATIVA, Y DESIGNACION DE SR. INSPECTOR PARA REALIZAR LAS INSPECCIONES SOLICITADAS", fuenteTitulo));
                 celdaTitulo.AddElement(new Paragraph("Vigilancia de Explotadores de Servicios Aéreos Extranjeros (RDAC 129)", fuentePequena));
                 tablaEncabezado.AddCell(celdaTitulo);
 
@@ -300,6 +300,8 @@ namespace CapaNegocio.Services
                 parrafoAlcance.Add(new Chunk("Alcance y Mandato Técnico: ", fuenteNegrita));
                 parrafoAlcance.Add(new Chunk("En cumplimiento con la Regulación Técnica de Aviación Civil RDAC Parte 129, el equipo inspector designado queda legalmente facultado para ejecutar la verificación documental, operativa y de instalaciones en las estaciones y fechas arriba indicadas, debiendo emitir la correspondiente Lista de Verificación (LV) y el Informe Técnico motivado.", fuenteNormal));
                 doc.Add(parrafoAlcance);
+                doc.Add(new Paragraph("Esta Direccion informa que la documentacion requerida por la normativa ha sido verificada y aceptada para continuar con las inspecciones solicitadas. Para dicho efecto se designa al Inspector indicado en este oficio.", fuenteNormal));
+                doc.Add(new Paragraph("Los traslados aereos y terrestres deberan ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados.", fuenteNormal));
                 doc.Add(new Paragraph(" ", fuentePequena));
 
                 // 6. Bloque de Firma Institucional DIRCAV

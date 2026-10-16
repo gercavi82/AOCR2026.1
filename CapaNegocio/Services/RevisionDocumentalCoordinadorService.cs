@@ -179,7 +179,18 @@ namespace CapaNegocio.Services
                 };
             }
 
-            var texto = NormalizarObservacion(observacion) ?? "Remitido formalmente a DIRCAV por Coordinacion.";
+            if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: solicitudId).Count > 0)
+                return Error("La orden requiere correccion y nueva validacion financiera antes de remitir a DCAV.");
+            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId);
+            if (estaciones.Count > 0)
+            {
+                var errorFechas = SolicitudEstacionService.ValidarPlanificacionAcordada(estaciones);
+                if (errorFechas != null) return Error(errorFechas);
+            }
+
+            var texto = NormalizarObservacion(observacion);
+            if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
+            if (string.IsNullOrWhiteSpace(texto)) texto = "Remitido formalmente a DIRCAV por Coordinacion.";
             var login = string.IsNullOrWhiteSpace(usuarioLogin) ? "coordinador" : usuarioLogin;
             var eventKey = "AOCR_REV_DOC_REMIT_DIRCAV_" + solicitudId + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
 
@@ -189,7 +200,7 @@ namespace CapaNegocio.Services
                 CoordinadorId = coordinadorId,
                 Accion = "COORDINADOR_REMITIR_DIRCAV",
                 EstadoSolicitudDestino = AocrEstadosProceso.PendienteDircav,
-                EstadoRevisionDestino = EstadoRevisionDocumentalCoordinador.AceptadaCoordinador,
+                EstadoRevisionDestino = EstadoRevisionDocumentalCoordinador.PendienteDcav,
                 Observacion = texto,
                 UsuarioLogin = login,
                 EventKey = eventKey,
@@ -255,6 +266,12 @@ namespace CapaNegocio.Services
             {
                 return Error("La observacion general no puede contener HTML ni superar 2000 caracteres.");
             }
+
+            var revisionExistente = _dao.ObtenerPorSolicitud(solicitudId);
+            if (revisionExistente != null
+                && (string.Equals(revisionExistente.Estado, EstadoRevisionDocumentalCoordinador.PendienteDcav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(revisionExistente.Estado, EstadoRevisionDocumentalCoordinador.AceptadaDcav, StringComparison.OrdinalIgnoreCase)))
+                return Error("La revision ya fue remitida a DCAV; no se puede volver a finalizar ni reemplazar su aceptacion.");
 
             var errorFechas = SolicitudEstacionService.ValidarPlanificacionAcordada(
                 new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId));
@@ -385,7 +402,8 @@ namespace CapaNegocio.Services
         {
             var registro = _dao.ObtenerPorSolicitud(solicitudId);
             return registro != null
-                && string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaCoordinador, StringComparison.OrdinalIgnoreCase)
+                && (string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaCoordinador, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaDcav, StringComparison.OrdinalIgnoreCase))
                 && registro.DocumentoOficioId.GetValueOrDefault() > 0
                 && registro.InspectorConfirmadoId.GetValueOrDefault() == inspectorId
                 && registro.FechaHabilitacionLv.HasValue

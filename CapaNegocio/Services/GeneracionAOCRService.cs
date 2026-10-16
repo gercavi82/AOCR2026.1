@@ -736,33 +736,8 @@ namespace CapaNegocio.Services
 
         private static bool UsuarioPuedeGenerarAocr(int codigoUsuario, IEnumerable<string> rolesUsuario)
         {
-            if (rolesUsuario == null)
-            {
-                return true;
-            }
-
-            var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var rol in rolesUsuario)
-            {
-                if (!string.IsNullOrWhiteSpace(rol))
-                {
-                    roles.Add(rol.Trim());
-                }
-            }
-
-            if (codigoUsuario <= 0 || roles.Count == 0)
-            {
-                return false;
-            }
-
-            return roles.Contains("Administrador")
-                || roles.Contains("DIRDAC")
-                || roles.Contains("Direccion")
-                || roles.Contains("Director")
-                || roles.Contains("DirectorGeneral")
-                || roles.Contains("JefaturaTecnica")
-                || roles.Contains("Jefe")
-                || roles.Contains("DireccionJefaturaTecnica");
+            if (codigoUsuario <= 0 || rolesUsuario == null) return false;
+            return rolesUsuario.Any(rol => string.Equals((rol ?? string.Empty).Trim(), "Inspector", StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>

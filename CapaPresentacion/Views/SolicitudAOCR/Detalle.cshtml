@@ -1616,7 +1616,7 @@
             </div>
 
             @{
-                var puedeGenerarAocr = !procesoCerradoOperativamente && (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
+                var puedeGenerarAocr = permisosRolActivo.EsInspectorRol && !procesoCerradoOperativamente && (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
                 var motivoAocr = ViewBag.MotivoGenerarAOCR as string;
                 var aocrYaGenerado = (ViewBag.AocrYaGenerado != null) && (bool)ViewBag.AocrYaGenerado;
                 var documentoAocr = ViewBag.DocumentoAOCRGenerado as CapaModelo.Documento;
@@ -1992,7 +1992,7 @@
                     <i class="fas fa-file-signature"></i>
                     <span>Revision final de Coordinacion</span>
                 </div>
-                <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. Coordinación registra la revisión final del expediente; la firma final institucional se gestiona posteriormente con DIRDAC/DCAV cuando corresponda.</p>
+                <p class="text-muted mb-3">El inspector ya acepto la documentacion requerida por la normativa y la solicitud de inspeccion. Coordinacion registra la revision final del expediente y, de ser el caso, enviara el tramite a DCAV para su aceptacion formal.</p>
                 @if (revisionPendienteCoordinador)
                 {
                     <div class="alert alert-info d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
@@ -2012,36 +2012,6 @@
                 <form id="frmRevisionFinalCoordinacion" method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    @if (revisionPendienteCoordinador)
-                    {
-                        <div class="row g-3 mb-3">
-                            <div class="col-lg-5">
-                                <label class="form-label fw-semibold">Inspector para continuar el tr&aacute;mite</label>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="opcionInspector" id="inspectorMantener" value="MANTENER" checked />
-                                    <label class="form-check-label" for="inspectorMantener">Mantener inspector actual: @inspectorAsignadoDetalle</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="opcionInspector" id="inspectorReasignar" value="REASIGNAR" />
-                                    <label class="form-check-label" for="inspectorReasignar">Asignar nuevo inspector</label>
-                                </div>
-                            </div>
-                            <div class="col-lg-7">
-                                <label class="form-label fw-semibold" for="inspectorNuevoId">Nuevo inspector activo</label>
-                                <select class="form-select" id="inspectorNuevoId" name="inspectorNuevoId" disabled="disabled" aria-disabled="true">
-                                    <option value="">-- Seleccione &uacute;nicamente si reasigna --</option>
-                                    @foreach (var inspector in inspectoresRevisionCoordinador.Where(x => x != null && x.Activo))
-                                    {
-                                        var inspectorId = inspector.UsuarioId.GetValueOrDefault() > 0 ? inspector.UsuarioId.Value : inspector.TecnicoId.GetValueOrDefault();
-                                        if (inspectorId > 0)
-                                        {
-                                            <option value="@inspectorId">@inspector.NombreVisual (@inspector.UsuarioLogin)</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                        </div>
-                    }
                     <div class="row g-3 align-items-end">
                         <div class="col-md-8">
                             <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de revision final</label>
@@ -2050,7 +2020,7 @@
                         <div class="col-md-4 d-flex flex-column gap-2 justify-content-end">
                             <button type="submit" name="decisionCoordinador" value="ACEPTAR" class="btn btn-success aocr-action-btn w-100">
                                 <i class="fas fa-pen-nib"></i>
-                                @(revisionPendienteCoordinador ? "Aceptar y habilitar LV / Informe" : "Registrar revision final")
+                                Revisar y remitir a DCAV
                             </button>
                             @if (revisionPendienteCoordinador)
                             {
@@ -2084,7 +2054,7 @@
                         <i class="fas fa-file-pdf"></i>
                         <span>Revision final registrada</span>
                     </div>
-                    <p class="text-muted mb-0">La aceptación documental firmada por coordinación ya está disponible para descarga.</p>
+                    <p class="text-muted mb-0">La constancia historica de revision documental esta disponible para consulta. La aceptacion formal de los tramites nuevos corresponde a DCAV.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })" class="btn btn-outline-secondary aocr-action-btn" target="_blank">
