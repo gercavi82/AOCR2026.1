@@ -53,6 +53,7 @@ namespace CapaPresentacion.Filters
             try
             {
                 var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs", "UnhandledExceptions.log");
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(logPath));
                 var entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {controllerName}/{actionName}\n{exception}\n\n";
                 System.IO.File.AppendAllText(logPath, entry);
             }

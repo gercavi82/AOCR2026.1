@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Web;
@@ -603,6 +603,23 @@ namespace CapaPresentacion
         protected void Application_Error(object sender, EventArgs e)
         {
             Exception ex = Server.GetLastError();
+            if (ex != null)
+            {
+                try
+                {
+                    PerfLogger.LogError(ex, new CapaDatos.Services.LogContext
+                    {
+                        ErrorCode = "APPLICATION_UNHANDLED_ERROR",
+                        Controller = "Application",
+                        Action = "Application_Error"
+                    });
+                }
+                catch
+                {
+                    // Keep the independent file fallback available if the logger fails.
+                }
+            }
+
             var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error_global.txt");
             
             try
