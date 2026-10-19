@@ -22,7 +22,7 @@ try {
     $ref.Load("$taskRoot/AOCR.Tests/bin/Debug/AOCR.Tests.dll.config")
     [void]$cfg.DocumentElement.AppendChild($cfg.ImportNode($ref.configuration.runtime,$true))
     $cfg.Save("$exe.config")
-    & $exe "$taskRoot/scripts/sql/20260722_revision_documental_coordinador.sql"
+    & $exe "$taskRoot/scripts/sql/20260722_revision_documental_coordinador.sql" "$taskRoot/scripts/sql/20261019_estados_revision_dcav.sql"
     if ($LASTEXITCODE -ne 0) { throw 'Pruebas fallidas' }
 } finally {
     if ($started) { & "$pg/pg_ctl.exe" -D "$taskDir/pgdata" -m fast -w stop }

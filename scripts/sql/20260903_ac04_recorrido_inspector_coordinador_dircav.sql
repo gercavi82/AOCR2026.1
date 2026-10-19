@@ -88,7 +88,9 @@ BEGIN
                 'DEVUELTO_INSPECTOR',
                 'PENDIENTE_DIRCAV',
                 'OBSERVADA_POR_COORDINADOR',
-                'ACEPTADA_POR_COORDINADOR'
+                'ACEPTADA_POR_COORDINADOR',
+                'PENDIENTE_ACEPTACION_DCAV',
+                'ACEPTADA_POR_DCAV'
             ));
     END IF;
 END $$;

@@ -19,6 +19,10 @@ class RemisionDcavTest {
  INSERT INTO aocr_tbsolicitud VALUES(7,'Aceptacion Documental',now(),'test'),(8,'Aceptacion Documental',now(),'test');");
  var dao=new RevisionDocumentalCoordinadorDAO();
  Func<int,TransicionCoordinadorParams> parametros=id=>new TransicionCoordinadorParams{SolicitudId=id,CoordinadorId=90,InspectorOriginalId=79,Accion="COORDINADOR_REMITIR_DIRCAV",EstadoSolicitudDestino="PENDIENTE_DIRCAV",EstadoRevisionDestino="PENDIENTE_ACEPTACION_DCAV",UsuarioLogin="test",Observacion="Prueba"};
+ sql("ALTER TABLE aocr_revision_documental_coordinador ADD CONSTRAINT chk_aocr_revdoc_coord_estado CHECK(estado IN ('PENDIENTE_COORDINADOR','PENDIENTE_DIRCAV','ACEPTADA_POR_COORDINADOR'));");
+ Check(!dao.EjecutarTransicionCoordinadorTransaccional(parametros(7)).Exitoso,"Reproduce restriccion antigua que bloquea DCAV");
+ sql(File.ReadAllText(args[1]));
+ sql(File.ReadAllText(args[1]));
  var r=dao.EjecutarTransicionCoordinadorTransaccional(parametros(7));Check(r.Exitoso,r.Mensaje);
  Check(r.Registro!=null&&r.Registro.InspectorOriginalId==79,"Crea control de coordinacion legado");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=7"))=="PENDIENTE_DIRCAV","Remite sin columna version");
@@ -34,6 +38,8 @@ class RemisionDcavTest {
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,version) VALUES(9,'Aceptacion Documental',1);");
  var next=parametros(9);next.ExpectedVersion=1;Check(dao.EjecutarTransicionCoordinadorTransaccional(next).Exitoso,"Compatible con version y auditoria texto");
  Check(Convert.ToInt32(scalar("SELECT version FROM aocr_tbsolicitud WHERE codigo_solicitud=9"))==2,"Version incrementada");
+ sql("UPDATE aocr_revision_documental_coordinador SET estado='ACEPTADA_POR_DCAV' WHERE solicitud_id=9;");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=9"))=="ACEPTADA_POR_DCAV","Restriccion permite firma DCAV despues de remision");
  }
  }
 }

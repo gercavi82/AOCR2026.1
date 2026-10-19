@@ -37,4 +37,12 @@ La remision ahora detecta las columnas disponibles, tipa los valores de auditori
 
 Validacion: `scripts/test_remision_dcav.ps1` ejecuta 11 comprobaciones sobre PostgreSQL temporal local (puerto 55440), sin correos ni cambios en expedientes reales. Cubre esquema sin version y con auditoria JSONB, control faltante, envio repetido, rollback y esquema con version/auditoria de texto.
 
-Publicar las DLL de Datos, Modelo, Negocio y Presentacion junto con la vista de detalle y los recursos. Luego, el coordinador debe volver a remitir AOCR003 desde la pantalla. No se ha avanzado manualmente el estado del expediente en la base real.
+Publicar las DLL de Datos, Modelo, Negocio y Presentacion junto con la vista de detalle y los recursos. Antes de volver a remitir, ejecutar `scripts/sql/20261019_estados_revision_dcav.sql` en la base usada por el sitio publicado. Luego, el coordinador debe volver a remitir AOCR003 desde la pantalla. No se ha avanzado manualmente el estado del expediente en la base real.
+
+### Restriccion de estados pendiente en servidor
+
+El log del 19/10 a las 16:05:58 confirma que la correccion publicada se ejecuta, pero devuelve PostgreSQL 23514: `chk_aocr_revdoc_coord_estado` rechaza `PENDIENTE_ACEPTACION_DCAV`. La transaccion se revierte y AOCR003 sigue en Aceptacion Documental; por eso no llega a la bandeja DCAV.
+
+La migracion `20261019_estados_revision_dcav.sql` conserva la condicion existente y admite adicionalmente `PENDIENTE_ACEPTACION_DCAV` y `ACEPTADA_POR_DCAV`. Es repetible y no modifica estados de expedientes ni elimina la validacion. Se actualiza tambien el script base de septiembre para instalaciones nuevas.
+
+Validacion ampliada: 13 comprobaciones correctas en PostgreSQL temporal, incluida reproduccion del rechazo con el CHECK antiguo, doble ejecucion de la migracion, remision y estado posterior de firma DCAV. El script aun debe aplicarse en la base del servidor; estas pruebas no la modifican.
