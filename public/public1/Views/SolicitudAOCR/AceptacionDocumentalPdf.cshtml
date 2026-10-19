@@ -54,7 +54,7 @@
         <div class="estado-borrador">DOCUMENTO PENDIENTE DE REVISION Y FIRMA DE COORDINACION</div>
     }
 
-    <div class="oficio-asunto"><strong>Asunto:</strong> Aceptacion de revision documental y designacion de inspector para tramite AOCR.</div>
+    <div class="oficio-asunto"><strong>Asunto:</strong> Aceptacion de documentacion requerida por la normativa, y designacion de Sr. Inspector para realizar las inspecciones solicitadas.</div>
 
     <div class="oficio-destinatario">
         <strong>Se&ntilde;or(a)</strong><br />
@@ -66,8 +66,8 @@
     <p>De mi consideracion:</p>
     <p>
         En referencia a la solicitud <strong>@numeroSolicitud</strong>, presentada por el Operador Aereo Extranjero
-        <strong>@(string.IsNullOrWhiteSpace(operador) ? "no registrado" : operador)</strong>, esta Coordinacion informa que la documentacion
-        adjunta para el proceso de Autorizacion y Reconocimiento de Operador Extranjero (AOCR) ha sido debidamente verificada.
+        <strong>@(string.IsNullOrWhiteSpace(operador) ? "no registrado" : operador)</strong>, se informa que la documentacion
+        adjunta para el proceso de Reconocimiento de Certificado de Explotador de Servicios Aereos (AOCR) ha sido debidamente verificada.
     </p>
 
     @if (aceptada)
@@ -139,7 +139,7 @@
         <p>Las fechas y estaciones seran registradas conforme la planificacion aprobada.</p>
     }
 
-    <p>Los gastos de traslado aereo y terrestre, asi como los viaticos del inspector cuando correspondan, se gestionaran mediante las ordenes de recaudacion y comprobantes vigentes asociados al tramite.</p>
+    <p>Los traslados aereos y terrestres deberan ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados.</p>
 
     @if (!string.IsNullOrWhiteSpace(observacion))
     {
@@ -151,7 +151,7 @@
         <p>Atentamente,</p>
         <div class="firma-espacio"></div>
         <strong>@firmante</strong>
-        <span>Coordinacion de Operaciones / AOCR<br />Direccion General de Aviacion Civil</span>
+        <span>@(aceptada ? "Firmante registrado en el expediente historico" : "Inspector - revision documental preliminar")<br />Direccion General de Aviacion Civil</span>
     </div>
 
     <div class="referencia"><strong>Referencia:</strong> Solicitud @numeroSolicitud. Documento generado con trazabilidad en el Sistema AOCR.</div>

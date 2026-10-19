@@ -91,7 +91,8 @@ namespace CapaPresentacion
             container.RegisterType<DircavDesignacionService>(new HierarchicalLifetimeManager());
             container.RegisterType<DircavBandejaService>(new HierarchicalLifetimeManager());
             container.RegisterType<DesignacionDocumentoService>(new HierarchicalLifetimeManager());
-            container.RegisterType<Controllers.DircavController>(new HierarchicalLifetimeManager(), new InjectionConstructor());
+            // MVC ejecuta cada controlador una sola vez; nunca compartirlo entre solicitudes.
+            container.RegisterType<Controllers.DircavController>(new TransientLifetimeManager(), new InjectionConstructor());
 
             DependencyResolver.SetResolver(new UnityDependencyResolver(container));
         }

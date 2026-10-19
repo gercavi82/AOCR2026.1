@@ -404,6 +404,9 @@
     <Content Include="Content\aocr-firma-aocr.css" />
     <Content Include="Content\firma-aocr.css" />
     <Content Include="Content\aocr-sidebar.css" />
+    <Content Include="Content\aocr-shell.css" />
+    <Content Include="Content\aocr-cumulative-file-upload.css" />
+    <Content Include="Scripts\aocr-cumulative-file-upload.js" />
     <Content Include="Content\aocr-modals.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
     <Content Include="Content\pdf-eae-oficial.css" />
