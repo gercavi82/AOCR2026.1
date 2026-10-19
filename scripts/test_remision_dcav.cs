@@ -15,7 +15,7 @@ class RemisionDcavTest {
  sql(File.ReadAllText(args[0]));
  sql(@"CREATE TABLE aocr_tbsolicitud(codigo_solicitud integer primary key,estado text,updated_at timestamp,updated_by text);
  CREATE TABLE aocr_tbhistorial_documental(codigo_solicitud integer,codigo_documento integer,evento text,detalle text,codigo_usuario integer,fecha_evento timestamp,created_at timestamp,created_by text);
- CREATE TABLE aocr_tbauditoria(entidad text,accion text CHECK(accion <> 'FALLAR'),usuario text,fecha timestamp,datos_nuevos jsonb);
+ CREATE TABLE aocr_tbauditoria(codigo_auditoria serial primary key,tabla_afectada varchar(100) NOT NULL,registro_id integer,accion varchar(50) NOT NULL CHECK(accion <> 'FALLAR'),usuario varchar(100) NOT NULL,fecha_accion timestamp default now(),fecha_hora timestamp default now(),ip_address varchar(50),datos_anteriores jsonb,datos_nuevos jsonb,descripcion text,detalle text,modulo varchar(100),resultado varchar(20),mensaje_error text,usuario_id integer,fecha timestamp,entidad varchar(100));
  INSERT INTO aocr_tbsolicitud VALUES(7,'Aceptacion Documental',now(),'test'),(8,'Aceptacion Documental',now(),'test');");
  var dao=new RevisionDocumentalCoordinadorDAO();
  Func<int,TransicionCoordinadorParams> parametros=id=>new TransicionCoordinadorParams{SolicitudId=id,CoordinadorId=90,InspectorOriginalId=79,Accion="COORDINADOR_REMITIR_DIRCAV",EstadoSolicitudDestino="PENDIENTE_DIRCAV",EstadoRevisionDestino="PENDIENTE_ACEPTACION_DCAV",UsuarioLogin="test",Observacion="Prueba"};
@@ -27,12 +27,15 @@ class RemisionDcavTest {
  Check(r.Registro!=null&&r.Registro.InspectorOriginalId==79,"Crea control de coordinacion legado");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=7"))=="PENDIENTE_DIRCAV","Remite sin columna version");
  Check(Convert.ToString(scalar("SELECT datos_nuevos->>'EstadoAnterior' FROM aocr_tbauditoria LIMIT 1"))=="Aceptacion Documental","Auditoria JSONB conserva estado anterior");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbauditoria WHERE tabla_afectada='aocr_tbsolicitud' AND registro_id=7 AND usuario_id=90 AND datos_anteriores->>'Estado'='Aceptacion Documental' AND fecha_accion IS NOT NULL AND fecha_hora IS NOT NULL"))==1,"Auditoria completa con esquema del servidor");
  Check(!dao.EjecutarTransicionCoordinadorTransaccional(parametros(7)).Exitoso,"Segundo clic rechazado");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbauditoria"))==1,"Sin duplicar auditoria");
  var fail=parametros(8);fail.Accion="FALLAR";Check(!dao.EjecutarTransicionCoordinadorTransaccional(fail).Exitoso,"Fallo de auditoria revierte transaccion");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=8"))=="Aceptacion Documental","Rollback conserva solicitud");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_revision_documental_coordinador WHERE solicitud_id=8"))==0,"Rollback elimina registro parcial");
  sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN version integer default 1;
+ ALTER TABLE aocr_tbauditoria DROP COLUMN tabla_afectada;
+ ALTER TABLE aocr_tbauditoria DROP COLUMN datos_anteriores;
  ALTER TABLE aocr_tbauditoria ADD COLUMN datos_previos text;
  ALTER TABLE aocr_tbauditoria ALTER COLUMN datos_nuevos TYPE text USING datos_nuevos::text;
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,version) VALUES(9,'Aceptacion Documental',1);");

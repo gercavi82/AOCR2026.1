@@ -398,17 +398,33 @@ VALUES
                         }
 
                         var columnasAuditoria = ObtenerColumnas(cn, tx, "aocr_tbauditoria");
-                        var tieneDatosPrevios = columnasAuditoria.Contains("datos_previos");
+                        var columnaPrevia = columnasAuditoria.Contains("datos_anteriores") ? "datos_anteriores"
+                            : columnasAuditoria.Contains("datos_previos") ? "datos_previos" : null;
+                        var camposAuditoria = new System.Collections.Generic.List<string> { "accion", "usuario", "datos_nuevos" };
+                        var valoresAuditoria = new System.Collections.Generic.List<string> { "@accion", "@usuario", "@datos_nuevos" };
+                        foreach (var campo in new[] { "tabla_afectada", "registro_id", "usuario_id", "entidad", "fecha", "fecha_accion", "fecha_hora" })
+                        {
+                            if (!columnasAuditoria.Contains(campo)) continue;
+                            camposAuditoria.Add(campo);
+                            valoresAuditoria.Add(campo.StartsWith("fecha") ? "NOW()" : "@" + campo);
+                        }
+                        if (columnaPrevia != null)
+                        {
+                            camposAuditoria.Add(columnaPrevia);
+                            valoresAuditoria.Add("@" + columnaPrevia);
+                        }
                         using (var cmd = new NpgsqlCommand(
-                            "INSERT INTO public.aocr_tbauditoria (entidad, accion, usuario, fecha, "
-                            + (tieneDatosPrevios ? "datos_previos, " : string.Empty) + "datos_nuevos) "
-                            + "VALUES ('SOLICITUD', @accion, @usuario, NOW(), "
-                            + (tieneDatosPrevios ? "@datos_previos, " : string.Empty) + "@datos_nuevos);", cn, tx))
+                            "INSERT INTO public.aocr_tbauditoria (" + string.Join(", ", camposAuditoria)
+                            + ") VALUES (" + string.Join(", ", valoresAuditoria) + ");", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@accion", p.Accion ?? p.EstadoSolicitudDestino);
                             cmd.Parameters.AddWithValue("@usuario", p.UsuarioLogin ?? "coordinador");
-                            if (tieneDatosPrevios)
-                                AgregarDatosAuditoria(cmd, cn, tx, "datos_previos", new { Estado = estadoActual, Version = versionActual });
+                            if (columnasAuditoria.Contains("tabla_afectada")) cmd.Parameters.AddWithValue("@tabla_afectada", "aocr_tbsolicitud");
+                            if (columnasAuditoria.Contains("registro_id")) cmd.Parameters.AddWithValue("@registro_id", p.SolicitudId);
+                            if (columnasAuditoria.Contains("usuario_id")) cmd.Parameters.AddWithValue("@usuario_id", p.CoordinadorId);
+                            if (columnasAuditoria.Contains("entidad")) cmd.Parameters.AddWithValue("@entidad", "SOLICITUD");
+                            if (columnaPrevia != null)
+                                AgregarDatosAuditoria(cmd, cn, tx, columnaPrevia, new { Estado = estadoActual, Version = versionActual });
                             AgregarDatosAuditoria(cmd, cn, tx, "datos_nuevos", new { EstadoAnterior = estadoActual, Estado = p.EstadoSolicitudDestino, Observacion = p.Observacion });
                             cmd.ExecuteNonQuery();
                         }

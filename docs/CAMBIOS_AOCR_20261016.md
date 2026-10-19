@@ -46,3 +46,11 @@ El log del 19/10 a las 16:05:58 confirma que la correccion publicada se ejecuta,
 La migracion `20261019_estados_revision_dcav.sql` conserva la condicion existente y admite adicionalmente `PENDIENTE_ACEPTACION_DCAV` y `ACEPTADA_POR_DCAV`. Es repetible y no modifica estados de expedientes ni elimina la validacion. Se actualiza tambien el script base de septiembre para instalaciones nuevas.
 
 Validacion ampliada: 13 comprobaciones correctas en PostgreSQL temporal, incluida reproduccion del rechazo con el CHECK antiguo, doble ejecucion de la migracion, remision y estado posterior de firma DCAV. El script aun debe aplicarse en la base del servidor; estas pruebas no la modifican.
+
+### Auditoria de remision - intento 16:49
+
+El ultimo intento supera el CHECK, pero PostgreSQL rechaza el INSERT de auditoria por `tabla_afectada` nula (23502). Se revisaron todas las columnas de la tabla mediante consulta de metadatos: ademas de la estructura anterior, tiene `tabla_afectada` obligatoria, `registro_id`, `usuario_id`, `datos_anteriores` JSONB y fechas de auditoria.
+
+El DAO ahora completa tabla afectada, identificador de solicitud, usuario y fechas disponibles, y utiliza `datos_anteriores` o `datos_previos` segun el esquema. No se relajan restricciones ni se omite la auditoria. Se compilaron Datos y Presentacion y pasaron 14 comprobaciones con una tabla temporal que reproduce las columnas y nulabilidad del servidor, mas compatibilidad con el esquema anterior y rollback.
+
+Publicar el nuevo `CapaDatos.dll` compilado en esta correccion y volver a remitir desde Coordinacion. La prueba no cambia AOCR003 ni publica archivos en el servidor. No requiere otro script SQL para este fallo.
