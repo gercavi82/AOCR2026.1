@@ -53,10 +53,10 @@
       <publishTime>10/19/2026 07:56:09</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>10/19/2026 07:56:11</publishTime>
+      <publishTime>10/19/2026 08:09:07</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>10/19/2026 07:56:11</publishTime>
+      <publishTime>10/19/2026 08:09:07</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>09/16/2026 10:51:43</publishTime>
@@ -979,6 +979,9 @@
     <File Include="Content/aocr-contrast.css">
       <publishTime>09/08/2026 10:58:41</publishTime>
     </File>
+    <File Include="Content/aocr-cumulative-file-upload.css">
+      <publishTime>09/22/2026 12:07:09</publishTime>
+    </File>
     <File Include="Content/aocr-datatables.css">
       <publishTime>09/08/2026 10:06:54</publishTime>
     </File>
@@ -1017,6 +1020,9 @@
     </File>
     <File Include="Content/aocr-responsive.css">
       <publishTime>08/27/2026 15:45:49</publishTime>
+    </File>
+    <File Include="Content/aocr-shell.css">
+      <publishTime>09/08/2026 09:33:59</publishTime>
     </File>
     <File Include="Content/aocr-sidebar.css">
       <publishTime>09/08/2026 09:35:39</publishTime>
@@ -7849,6 +7855,9 @@
     <File Include="Scripts/aocr-config.js">
       <publishTime>02/18/2026 15:34:15</publishTime>
     </File>
+    <File Include="Scripts/aocr-cumulative-file-upload.js">
+      <publishTime>09/22/2026 12:07:09</publishTime>
+    </File>
     <File Include="Scripts/aocr-datatables.js">
       <publishTime>04/27/2026 08:41:24</publishTime>
     </File>
@@ -8609,7 +8618,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>10/19/2026 07:57:12</publishTime>
+      <publishTime>10/19/2026 08:10:09</publishTime>
     </File>
   </ItemGroup>
 </Project>
