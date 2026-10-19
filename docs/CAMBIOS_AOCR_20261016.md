@@ -27,3 +27,14 @@ Implementados a partir de `cambios AOCR.pdf`. No se publicaron archivos ni se mo
 3. En un entorno de pruebas, ejecutar un tramite completo: seleccionar dos estaciones, comprobar cantidad e importe, cargar comprobante, planificar fechas, finalizar revision, remitir desde Coordinacion, aceptar/designar y firmar con un certificado DCAV valido, comprobar desbloqueo del inspector y generacion AOCR.
 4. Confirmar entrega real de los correos en RT e Inspector. La aceptacion SMTP no acredita entrega en bandeja.
 5. Los expedientes aceptados antes de este cambio conservan su historial. Cualquier regularizacion retroactiva requiere una decision especifica, sin reemplazar silenciosamente documentos firmados.
+
+
+## Correccion de remision DCAV - 19/10/2026
+
+Se detecto que la base publicada no tiene `aocr_tbsolicitud.version` ni `aocr_tbauditoria.datos_previos`, y almacena `datos_nuevos` como JSONB. La transaccion anterior suponia otra estructura y se revertia; ademas, AOCR003 no tenia fila de control de Coordinacion.
+
+La remision ahora detecta las columnas disponibles, tipa los valores de auditoria como JSON/JSONB o texto segun corresponda y crea el control faltante dentro de la misma transaccion. Conserva el bloqueo de solicitud y rechaza un segundo envio. La pantalla muestra el resultado y el log registra `[COORD][REMITIR_DCAV_RESULTADO]`. Se incluye tambien el CSS de detalle que faltaba en la publicacion.
+
+Validacion: `scripts/test_remision_dcav.ps1` ejecuta 11 comprobaciones sobre PostgreSQL temporal local (puerto 55440), sin correos ni cambios en expedientes reales. Cubre esquema sin version y con auditoria JSONB, control faltante, envio repetido, rollback y esquema con version/auditoria de texto.
+
+Publicar las DLL de Datos, Modelo, Negocio y Presentacion junto con la vista de detalle y los recursos. Luego, el coordinador debe volver a remitir AOCR003 desde la pantalla. No se ha avanzado manualmente el estado del expediente en la base real.

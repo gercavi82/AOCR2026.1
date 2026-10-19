@@ -35,6 +35,7 @@ namespace CapaDatos.Models
 
     public sealed class TransicionCoordinadorParams
     {
+        public int? InspectorOriginalId { get; set; }
         public int SolicitudId { get; set; }
         public int CoordinadorId { get; set; }
         public string Accion { get; set; }

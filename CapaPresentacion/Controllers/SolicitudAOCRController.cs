@@ -5634,6 +5634,7 @@ namespace CapaPresentacion.Controllers
 
             var resultadoRemision = _revisionDocumentalCoordinadorService.RemitirADircav(
                 id, usuarioFirmante, observacion, usuarioRegistroFirmante);
+            _logger.LogInfo("[COORD][REMITIR_DCAV_RESULTADO] SolicitudId=" + id + "; Ok=" + resultadoRemision.Ok + "; Mensaje=" + resultadoRemision.Mensaje);
             TempData["NotificacionTipo"] = resultadoRemision.Ok ? "success" : "warning";
             TempData["NotificacionMensaje"] = resultadoRemision.Mensaje;
             return RedirectToAction("Detalle", new { id });

@@ -197,6 +197,7 @@ namespace CapaNegocio.Services
             var resDao = _dao.EjecutarTransicionCoordinadorTransaccional(new TransicionCoordinadorParams
             {
                 SolicitudId = solicitudId,
+                InspectorOriginalId = solicitud.CodigoTecnico,
                 CoordinadorId = coordinadorId,
                 Accion = "COORDINADOR_REMITIR_DIRCAV",
                 EstadoSolicitudDestino = AocrEstadosProceso.PendienteDircav,
@@ -404,7 +405,8 @@ namespace CapaNegocio.Services
             return registro != null
                 && (string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaCoordinador, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaDcav, StringComparison.OrdinalIgnoreCase))
-                && registro.DocumentoOficioId.GetValueOrDefault() > 0
+                && (registro.DocumentoOficioId.GetValueOrDefault() > 0
+                    || string.Equals(registro.Estado, EstadoRevisionDocumentalCoordinador.AceptadaDcav, StringComparison.OrdinalIgnoreCase))
                 && registro.InspectorConfirmadoId.GetValueOrDefault() == inspectorId
                 && registro.FechaHabilitacionLv.HasValue
                 && registro.FechaHabilitacionInforme.HasValue;

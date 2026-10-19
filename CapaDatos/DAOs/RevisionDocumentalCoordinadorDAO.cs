@@ -281,7 +281,9 @@ WHERE solicitud_id=@solicitud_id AND @inspector_id IS NOT NULL
                         // 1. Bloqueo pesimista y verificación de estado/versión
                         string estadoActual = null;
                         int versionActual = 1;
-                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE(version, 1) FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
+                        var columnasSolicitud = ObtenerColumnas(cn, tx, "aocr_tbsolicitud");
+                        var tieneVersion = columnasSolicitud.Contains("version");
+                        using (var cmd = new NpgsqlCommand("SELECT estado, " + (tieneVersion ? "COALESCE(version, 1)" : "1") + " FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
                             using (var rd = cmd.ExecuteReader())
@@ -331,7 +333,7 @@ WHERE solicitud_id=@solicitud_id AND @inspector_id IS NOT NULL
                         using (var cmd = new NpgsqlCommand(@"
 UPDATE public.aocr_tbsolicitud
 SET estado=@estado,
-    version=COALESCE(version, 1) + 1,
+    " + (tieneVersion ? "version=COALESCE(version, 1) + 1," : string.Empty) + @"
     updated_at=NOW(),
     updated_by=@updated_by
 WHERE codigo_solicitud=@solicitud_id;", cn, tx))
@@ -342,20 +344,23 @@ WHERE codigo_solicitud=@solicitud_id;", cn, tx))
                             cmd.ExecuteNonQuery();
                         }
 
-                        // 3. Actualizar registro de control documental del coordinador (sin alterar contenido técnico)
+                        // Legacy requests may not yet have a coordinator control row.
                         using (var cmd = new NpgsqlCommand(@"
-UPDATE public.aocr_revision_documental_coordinador
-SET estado=@estado,
-    coordinador_id=@coordinador_id,
-    observacion_coordinador=@observacion,
-    fecha_decision_coordinador=NOW(),
-    fecha_actualizacion=NOW()
-WHERE solicitud_id=@solicitud_id AND activo=TRUE;", cn, tx))
+INSERT INTO public.aocr_revision_documental_coordinador
+(solicitud_id, inspector_original_id, estado, coordinador_id, observacion_coordinador,
+ fecha_decision_coordinador, fecha_creacion, fecha_actualizacion, activo)
+VALUES (@solicitud_id, @inspector_id, @estado, @coordinador_id, @observacion, NOW(), NOW(), NOW(), TRUE)
+ON CONFLICT (solicitud_id) DO UPDATE SET
+ estado=EXCLUDED.estado, coordinador_id=EXCLUDED.coordinador_id,
+ inspector_original_id=COALESCE(aocr_revision_documental_coordinador.inspector_original_id, EXCLUDED.inspector_original_id),
+ observacion_coordinador=EXCLUDED.observacion_coordinador,
+ fecha_decision_coordinador=NOW(), fecha_actualizacion=NOW(), activo=TRUE;", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
+                            cmd.Parameters.Add("@inspector_id", NpgsqlDbType.Integer).Value = (object)p.InspectorOriginalId ?? DBNull.Value;
                             cmd.Parameters.AddWithValue("@estado", p.EstadoRevisionDestino);
                             cmd.Parameters.AddWithValue("@coordinador_id", p.CoordinadorId);
-                            cmd.Parameters.AddWithValue("@observacion", (object)(p.Observacion ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@observacion", p.Observacion ?? string.Empty);
                             cmd.ExecuteNonQuery();
                         }
 
@@ -392,31 +397,19 @@ VALUES
                             cmd.ExecuteNonQuery();
                         }
 
-                        // 5. Inserción de auditoría única
-                        using (var cmd = new NpgsqlCommand(@"
-INSERT INTO public.aocr_tbauditoria
-(
-    entidad,
-    accion,
-    usuario,
-    fecha,
-    datos_previos,
-    datos_nuevos
-)
-VALUES
-(
-    'SOLICITUD',
-    @accion,
-    @usuario,
-    NOW(),
-    @datos_previos,
-    @datos_nuevos
-);", cn, tx))
+                        var columnasAuditoria = ObtenerColumnas(cn, tx, "aocr_tbauditoria");
+                        var tieneDatosPrevios = columnasAuditoria.Contains("datos_previos");
+                        using (var cmd = new NpgsqlCommand(
+                            "INSERT INTO public.aocr_tbauditoria (entidad, accion, usuario, fecha, "
+                            + (tieneDatosPrevios ? "datos_previos, " : string.Empty) + "datos_nuevos) "
+                            + "VALUES ('SOLICITUD', @accion, @usuario, NOW(), "
+                            + (tieneDatosPrevios ? "@datos_previos, " : string.Empty) + "@datos_nuevos);", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@accion", p.Accion ?? p.EstadoSolicitudDestino);
-                            cmd.Parameters.AddWithValue("@usuario", (object)(p.UsuarioLogin ?? "coordinador"));
-                            cmd.Parameters.AddWithValue("@datos_previos", "Estado=" + estadoActual + "; Version=" + versionActual);
-                            cmd.Parameters.AddWithValue("@datos_nuevos", "Estado=" + p.EstadoSolicitudDestino + "; Observacion=" + (p.Observacion ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@usuario", p.UsuarioLogin ?? "coordinador");
+                            if (tieneDatosPrevios)
+                                AgregarDatosAuditoria(cmd, cn, tx, "datos_previos", new { Estado = estadoActual, Version = versionActual });
+                            AgregarDatosAuditoria(cmd, cn, tx, "datos_nuevos", new { EstadoAnterior = estadoActual, Estado = p.EstadoSolicitudDestino, Observacion = p.Observacion });
                             cmd.ExecuteNonQuery();
                         }
 
@@ -489,6 +482,18 @@ FROM public.aocr_revision_documental_coordinador";
                 FechaActualizacion = rd.GetDateTime(15),
                 Activo = rd.GetBoolean(16)
             };
+        }
+
+        private static void AgregarDatosAuditoria(NpgsqlCommand cmd, NpgsqlConnection cn, NpgsqlTransaction tx, string columna, object datos)
+        {
+            string tipo;
+            using (var meta = new NpgsqlCommand("SELECT udt_name FROM information_schema.columns WHERE table_schema='public' AND table_name='aocr_tbauditoria' AND column_name=@columna", cn, tx))
+            {
+                meta.Parameters.AddWithValue("@columna", columna);
+                tipo = Convert.ToString(meta.ExecuteScalar());
+            }
+            var valor = Newtonsoft.Json.JsonConvert.SerializeObject(datos);
+            cmd.Parameters.Add("@" + columna, tipo == "jsonb" ? NpgsqlDbType.Jsonb : (tipo == "json" ? NpgsqlDbType.Json : NpgsqlDbType.Text)).Value = valor;
         }
 
         private static HashSet<string> ObtenerColumnas(NpgsqlConnection cn, NpgsqlTransaction tx, string tabla)

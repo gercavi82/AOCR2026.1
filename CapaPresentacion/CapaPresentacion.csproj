@@ -405,6 +405,7 @@
     <Content Include="Content\firma-aocr.css" />
     <Content Include="Content\aocr-sidebar.css" />
     <Content Include="Content\aocr-shell.css" />
+    <Content Include="Content\pages\aocr-solicitud-detalle.css" />
     <Content Include="Content\aocr-cumulative-file-upload.css" />
     <Content Include="Scripts\aocr-cumulative-file-upload.js" />
     <Content Include="Content\aocr-modals.css" />

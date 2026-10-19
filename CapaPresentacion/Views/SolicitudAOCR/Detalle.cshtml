@@ -1984,6 +1984,13 @@
         </div>
     }
 
+    @if (TempData["NotificacionMensaje"] != null)
+    {
+        <div class="alert @(Convert.ToString(TempData["NotificacionTipo"]) == "success" ? "alert-success" : "alert-warning")" role="alert">
+            @TempData["NotificacionMensaje"]
+        </div>
+    }
+
     @if (puedeFirmarAceptacionDocumental)
     {
         <div class="card aocr-detail-card aocr-review-card success mb-4" id="revisionFinalCoordinacionCard">
@@ -2719,7 +2726,7 @@
                         : "";
                     var mensaje = decision === "OBSERVAR"
                         ? "La revision sera devuelta al Inspector. Desea continuar?"
-                        : "Se aceptara la revision y se habilitaran LV e Informe Tecnico. Desea continuar?";
+                        : "Se remitira el expediente a DCAV para su aceptacion y designacion formal. LV e Informe Tecnico seguiran bloqueados hasta la firma de DCAV. Desea continuar?";
 
                     if (!window.confirm(mensaje)) {
                         event.preventDefault();
