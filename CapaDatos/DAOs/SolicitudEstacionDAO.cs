@@ -309,10 +309,12 @@ namespace CapaDatos.DAOs
                     string.Join(", ", listaEntrante.Select(e => string.Format("{0} ({1:yyyy-MM-dd} al {2:yyyy-MM-dd})",
                         e.EstacionCodigo, e.FechaInicio, e.FechaFin))));
 
-                conn.Execute(@"
-                    INSERT INTO public.aocr_tbauditoria (modulo, accion, usuario_id, detalle, fecha)
-                    VALUES ('SOLICITUD_AOCR', 'ACTUALIZAR_ESTACIONES_INSPECCION', @usuarioId, @detalle, NOW());",
-                    new { usuarioId, detalle }, tx);
+                AuditoriaDAO.RegistrarEnTransaccion((NpgsqlConnection)conn, (NpgsqlTransaction)tx, new Auditoria
+                {
+                    Entidad = "SOLICITUD_AOCR", Accion = "ACTUALIZAR_ESTACIONES_INSPECCION",
+                    Usuario = usuarioId.HasValue ? usuarioId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "sistema",
+                    DatosNuevos = detalle
+                }, solicitudId, usuarioId);
             }
 
             return true;

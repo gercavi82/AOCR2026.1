@@ -128,3 +128,11 @@ Tras 42 comprobaciones locales correctas, se ejecuto la migracion en `172.20.16.
 El log de las 14:05:39 confirma rol activo COORDINADOR, pero el filtro AocrAuthorizationService rechaza DEVUELTO_COORDINADOR antes de ejecutar FirmarAceptacionDocumental. Se agregaron los estados DEVUELTO_COORDINADOR y PENDIENTE_COORDINADOR al control contextual de esa accion, alineandolo con el DAO y el servicio ya corregidos. No se cambiaron roles autorizados ni se habilitaron expedientes cerrados.
 
 Prueba de regresion correcta con DAO simulado: acepta ambos estados para Coordinacion, rechaza Finalizado y rechaza Solicitante. Compilacion Debug/Release correcta y carpeta local public/public1/bin actualizada. Publicar las DLL actualizadas (en particular CapaNegocio.dll) y reintentar Revisar y remitir a DCAV desde Coordinacion. No requiere otra migracion ni modificacion manual del estado.
+
+### Designacion formal despues de la aceptacion - intento 14:46
+
+El log identifica tecnico_responsable_id ausente en aocr_tbsolicitud. Se verificaron todos los campos de asignacion: existe codigo_tecnico y los datos de inspector principal/apoyo; no existe el identificador redundante. La transaccion siempre guarda codigo_tecnico y solo actualiza tecnico_responsable_id en esquemas donde esa columna ya exista. No requiere agregar otra columna.
+
+La prueba completa de designacion con estacion detecto ademas una insercion de auditoria en SolicitudEstacionDAO que omitia usuario y tabla_afectada obligatorios. Se reemplazo por AuditoriaDAO.RegistrarEnTransaccion para conservar usuario, detalle, modulo y datos JSONB dentro de la misma transaccion. No se omite la auditoria ni se relajan restricciones.
+
+Compilacion Release correcta; 49 comprobaciones correctas, incluidas designacion completa con estacion sin tecnico_responsable_id, registro canonical del inspector, una sola designacion vigente, idempotencia y rollback de designacion/estado por fallo de auditoria. Se actualizaron y verificaron por hash las DLL de public/public1/bin. Falta publicarlas en servidor y volver a Designar / Reasignar Inspector; la aceptacion documental ya lograda no necesita repetirse. No se creo una designacion en el expediente real.

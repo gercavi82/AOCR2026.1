@@ -47,7 +47,7 @@ namespace CapaDatos.DAOs
                 { "accion", log.Accion }, { "usuario", log.Usuario },
                 { "fecha", fecha }, { "fecha_accion", fecha }, { "fecha_hora", fecha },
                 { "datos_previos", log.DatosPrevios }, { "datos_anteriores", log.DatosPrevios },
-                { "datos_nuevos", log.DatosNuevos }
+                { "datos_nuevos", log.DatosNuevos }, { "detalle", log.DatosNuevos }, { "modulo", log.Entidad }
             };
             var campos = new List<string>();
             var parametros = new List<string>();

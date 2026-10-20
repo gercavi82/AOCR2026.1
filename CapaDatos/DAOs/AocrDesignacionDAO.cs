@@ -1051,7 +1051,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         using (var cmdUpdSol = new NpgsqlCommand(@"
                             UPDATE public.aocr_tbsolicitud
                             SET codigo_tecnico=@inspector_id,
-                                tecnico_responsable_id=@inspector_id,
+                                " + (TieneColumnaSolicitud(cn, tx, "tecnico_responsable_id") ? "tecnico_responsable_id=@inspector_id," : "") + @"
                                 tecnico_responsable_cedula=@inspector_cedula,
                                 tecnico_responsable_nombre=@inspector_nombre,
                                 tecnico_responsable_tipo=@inspector_tipo,

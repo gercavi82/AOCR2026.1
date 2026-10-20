@@ -121,6 +121,18 @@ class RemisionDcavTest {
  Check(Convert.ToInt32(scalar("SELECT version FROM aocr_tbsolicitud WHERE codigo_solicitud=7"))==1,"Migracion agrega version inicial");
  Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))=="ACEPTADO_DIRCAV","Migracion repetida conserva datos documentales existentes");
  Check(estadosAntes==Convert.ToString(scalar("SELECT string_agg(codigo_solicitud::text||':'||estado,',' ORDER BY codigo_solicitud) FROM aocr_tbsolicitud")),"Migracion no modifica estados de expedientes");
+ sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN codigo_tecnico integer, ADD COLUMN tecnico_responsable_tipo text, ADD COLUMN inspector_apoyo_cedula text, ADD COLUMN inspector_apoyo_nombre text, ADD COLUMN inspector_apoyo_tipo text;
+ INSERT INTO aocr_tbsolicitud_estacion(solicitud_id,estacion_codigo,estacion_nombre,fecha_inicio,fecha_fin,activo,version,estado) VALUES(15,'UIO','Quito','2026-10-21','2026-10-21',true,1,'PROGRAMADA');");
+ Func<int,DircavDesignarInspectorParams> designar=id=>new DircavDesignarInspectorParams{SolicitudId=id,InspectorId=79,InspectorCedula="1700000000",InspectorNombre="Inspector Prueba",InspectorTipo="OPS",DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",Motivo="Designacion de prueba"};
+ var designado=dcav.EjecutarDesignacionTransaccional(designar(15));
+ Check(designado.Exitoso,"Designacion completa sin tecnico_responsable_id: "+designado.Mensaje);
+ Check(Convert.ToInt32(scalar("SELECT codigo_tecnico FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))==79,"Inspector queda registrado en codigo_tecnico");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND vigente=true AND firmado=false"))==1,"Designacion formal unica pendiente de firma");
+ Check(Convert.ToInt32(scalar("SELECT inspector_id FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15 LIMIT 1"))==79,"Designacion actualiza inspector de estacion");
+ Check(dcav.EjecutarDesignacionTransaccional(designar(15)).Exitoso&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND vigente=true"))==1,"Repetir designacion no duplica registro vigente");
+ sql("INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado) SELECT 17,'DOCUMENTACION_ACEPTADA_DIRCAV'; ALTER TABLE aocr_tbauditoria ADD CONSTRAINT prueba_fallo_designacion CHECK(registro_id <> 17);");
+ Check(!dcav.EjecutarDesignacionTransaccional(designar(17)).Exitoso,"Fallo de auditoria revierte designacion");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=17"))==0&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=17"))=="DOCUMENTACION_ACEPTADA_DIRCAV","Sin designacion parcial ni cambio de estado al fallar");
  }
  }
 }
