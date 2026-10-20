@@ -168,3 +168,11 @@ La descarga permite al RT propietario, al Inspector asignado y a los roles insti
 Verificacion: compilacion de vistas Razor correcta, Release correcto, 67 comprobaciones de integracion y 16 pruebas de menu correctas. Incluye listas sin oficios ajenos/no firmados, descarga de bytes exactos por ambos roles, rechazo de enlaces directos ajenos y ausencia de sustitucion del firmado faltante. Pruebas en base temporal, sin datos reales modificados.
 
 Publicar los cuatro DLL actualizados de public/public1/bin junto con public/public1/Views/SolicitudAOCR/GeneradasFirmadas.cshtml; esta carpeta local ya esta preparada y DLL verificados por hash. Los oficios vigentes que ya esten firmados tambien apareceran despues de publicar; no requiere nueva firma ni SQL adicional. No se publico en servidor.
+
+### Cierre documental y LV en la aceptacion DCAV (2026-10-20)
+
+La aceptacion documental ahora guarda, en una sola transaccion, la solicitud aceptada, el control ACEPTADA_POR_DCAV, el inspector confirmado, las fechas de habilitacion y el estado documental ACEPTADA de las inspecciones. La fase se muestra cerrada y sale de las bandejas de revision documental. La LV conserva sus validaciones de documentos, pago y pertenencia al inspector. La firma del oficio deja de ser el evento requerido para habilitar la LV y conserva las fechas ya registradas.
+
+Release y pruebas de integracion locales correctas: habilitacion antes de firma, rechazo del inspector ajeno, cierre de inspeccion, rollback y conservacion de fechas al firmar. DLL preparados en public/public1/bin; no publicados en servidor.
+
+Para expedientes previamente aceptados se prepara scripts/sql/20261020_habilitar_lv_aceptadas_dcav.sql. Solo regulariza controles de expedientes ya aceptados, con inspector y sin documentos observados; no acepta pendientes ni devueltos. El script no se ejecuto en la base del servidor.

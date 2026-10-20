@@ -477,6 +477,15 @@ namespace CapaNegocio
             var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
             var tieneInspectorAsignado = TieneInspectorAsignado(solicitud, inspecciones);
 
+            if (estado.DocumentacionAprobada
+                && (string.Equals(estadoSolicitud, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, AocrEstadosProceso.DesignacionFirmadaDircav, StringComparison.OrdinalIgnoreCase)))
+            {
+                AsignarFlujoDocumental(estado, "CERRADA_POR_DCAV", "Fase documental cerrada por DCAV", string.Empty);
+                return;
+            }
+
             if (estado.TotalDocumentosVigentes <= 0)
             {
                 AsignarFlujoDocumental(estado, "PENDIENTE_CARGA_DOCUMENTAL", "Pendiente de carga documental", "RT");

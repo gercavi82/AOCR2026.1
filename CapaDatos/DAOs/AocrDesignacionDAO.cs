@@ -724,6 +724,49 @@ UPDATE public.aocr_tbdesignacion_inspector
                             cmdUpd.ExecuteNonQuery();
                         }
 
+                        // La aceptación DCAV cierra el control documental y habilita la LV.
+                        // La firma del oficio continúa como un trámite independiente.
+                        using (var existeRevision = new NpgsqlCommand("SELECT to_regclass('public.aocr_revision_documental_coordinador') IS NOT NULL", cn, tx))
+                        {
+                            if (Convert.ToBoolean(existeRevision.ExecuteScalar()))
+                            {
+                                using (var habilitar = new NpgsqlCommand(@"
+UPDATE public.aocr_revision_documental_coordinador r
+SET estado='ACEPTADA_POR_DCAV',
+    inspector_confirmado_id=COALESCE(NULLIF((to_jsonb(s)->>'codigo_tecnico')::integer,0), NULLIF(r.inspector_confirmado_id,0), r.inspector_original_id),
+    fecha_habilitacion_lv=NOW(), fecha_habilitacion_informe=NOW(), fecha_actualizacion=NOW()
+FROM public.aocr_tbsolicitud s
+WHERE r.solicitud_id=@solicitud AND s.codigo_solicitud=r.solicitud_id
+  AND r.activo=TRUE AND r.estado='PENDIENTE_ACEPTACION_DCAV'
+  AND COALESCE(NULLIF((to_jsonb(s)->>'codigo_tecnico')::integer,0), NULLIF(r.inspector_confirmado_id,0), r.inspector_original_id)>0;", cn, tx))
+                                {
+                                    habilitar.Parameters.AddWithValue("@solicitud", p.SolicitudId);
+                                    habilitar.ExecuteNonQuery();
+                                }
+                                using (var pendiente = new NpgsqlCommand("SELECT COUNT(*) FROM public.aocr_revision_documental_coordinador WHERE solicitud_id=@solicitud AND activo=TRUE AND estado <> 'ACEPTADA_POR_DCAV'", cn, tx))
+                                {
+                                    pendiente.Parameters.AddWithValue("@solicitud", p.SolicitudId);
+                                    if (Convert.ToInt32(pendiente.ExecuteScalar()) > 0)
+                                    {
+                                        tx.Rollback();
+                                        return new DircavTransaccionResultado { Exitoso=false, HttpStatusCode=409, Mensaje="No se pudo cerrar la fase documental: verifique la remisión de Coordinación y el inspector asignado." };
+                                    }
+                                }
+                            }
+                        }
+
+                        using (var existeEstadoInspeccion = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='aocr_tbinspeccion' AND column_name='estado_documental')", cn, tx))
+                        {
+                            if (Convert.ToBoolean(existeEstadoInspeccion.ExecuteScalar()))
+                            {
+                                using (var cerrar = new NpgsqlCommand("UPDATE public.aocr_tbinspeccion SET estado_documental='ACEPTADA' WHERE codigo_solicitud=@solicitud", cn, tx))
+                                {
+                                    cerrar.Parameters.AddWithValue("@solicitud", p.SolicitudId);
+                                    cerrar.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
                         // 6. Inserción en historial
                         using (var cmdHist = new NpgsqlCommand(@"
                             INSERT INTO public.aocr_tbhistorial_documental
@@ -766,7 +809,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                             HttpStatusCode = 200,
                             NuevoEstado = AocrEstadosProceso.DocumentacionAceptadaDircav,
                             Version = nuevaVersion,
-                            Mensaje = "Documentación técnica aceptada formalmente por DIRCAV. Se habilita la designación del Inspector."
+                            Mensaje = "Fase documental cerrada por DIRCAV. LV habilitada para el inspector asignado, sujeta a las precondiciones de la inspección."
                         };
                     }
                     catch (Exception ex)
@@ -1382,7 +1425,8 @@ WHERE solicitud_id = @solicitud_id
                         cmdEst.ExecuteNonQuery();
                     }
 
-                    // Only the signed DCAV designation unlocks the assigned inspector's operational phase.
+                    // Compatibilidad con aceptaciones históricas pendientes de habilitación.
+                    // Las nuevas aceptaciones ya habilitaron la LV y conservan sus fechas.
                     using (var existeRevision = new NpgsqlCommand("SELECT to_regclass('public.aocr_revision_documental_coordinador') IS NOT NULL", cn, tx))
                     {
                         if (Convert.ToBoolean(existeRevision.ExecuteScalar()))

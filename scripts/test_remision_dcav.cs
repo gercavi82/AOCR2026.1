@@ -96,7 +96,8 @@ class RemisionDcavTest {
  ALTER TABLE aocr_tbauditoria ALTER COLUMN datos_nuevos TYPE jsonb USING to_jsonb(datos_nuevos);
  CREATE TABLE aocr_tbdocumento(codigo_documento serial primary key,codigo_solicitud integer,estado text);
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado) VALUES(10,'PENDIENTE_DIRCAV'),(11,'DEVUELTO_COORDINADOR'),(12,'PENDIENTE_DIRCAV'),(13,'PENDIENTE_DIRCAV'),(14,'PENDIENTE_DIRCAV');
- INSERT INTO aocr_tbdocumento(codigo_solicitud,estado) VALUES(12,'OBSERVADO');");
+ INSERT INTO aocr_tbdocumento(codigo_solicitud,estado) VALUES(12,'OBSERVADO');
+ INSERT INTO aocr_revision_documental_coordinador(solicitud_id,inspector_original_id,estado,activo) VALUES(13,79,'PENDIENTE_ACEPTACION_DCAV',true);");
  var dcav=new AocrDesignacionDAO();
  Func<int,DircavAceptarDocumentacionParams> aceptar=id=>new DircavAceptarDocumentacionParams{SolicitudId=id,DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",Observacion="Revision DCAV"};
  var aceptado=dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(10));
@@ -108,13 +109,24 @@ class RemisionDcavTest {
  sql("ALTER TABLE aocr_tbauditoria ADD CONSTRAINT prueba_rollback_dcav CHECK(registro_id NOT IN (13,14));");
  Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(13)).Exitoso,"Fallo de auditoria cancela aceptacion");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=13"))=="PENDIENTE_DIRCAV"&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbhistorial_documental WHERE codigo_solicitud=13"))==0,"Aceptacion fallida no guarda estado ni historial parcial");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_revision_documental_coordinador WHERE solicitud_id=13 AND estado='PENDIENTE_ACEPTACION_DCAV' AND fecha_habilitacion_lv IS NULL"))==1,"Rollback de aceptacion mantiene LV bloqueada");
  Check(dcav.DevolverCoordinadorTransaccional(aceptar(10)).Exitoso,"Devolucion y auditoria se guardan juntas");
  Check(!dcav.DevolverCoordinadorTransaccional(aceptar(14)).Exitoso&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=14"))=="PENDIENTE_DIRCAV","Devolucion fallida no cambia estado");
  Check(dao.EjecutarTransicionCoordinadorTransaccional(parametros(10)).Exitoso,"Coordinador puede remitir de nuevo expediente devuelto");
  sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN estado_documental text;
- INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,estado_documental) VALUES(15,'PENDIENTE_DIRCAV',NULL),(16,'PENDIENTE_DIRCAV','OBSERVADO');");
+ INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,estado_documental) VALUES(15,'PENDIENTE_DIRCAV',NULL),(16,'PENDIENTE_DIRCAV','OBSERVADO');
+ INSERT INTO aocr_revision_documental_coordinador(solicitud_id,inspector_original_id,estado,activo) VALUES(15,79,'PENDIENTE_ACEPTACION_DCAV',true);
+ CREATE TABLE aocr_tbinspeccion(codigo_inspeccion integer,codigo_solicitud integer,estado_documental text);
+ INSERT INTO aocr_tbinspeccion VALUES(150,15,'EN_REVISION_DOCUMENTAL');");
  Check(dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(15)).Exitoso,"Aceptacion compatible cuando estado_documental existe");
  Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))=="ACEPTADO_DIRCAV","Conserva actualizacion de estado documental cuando existe");
+ Check(new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,79),"Aceptacion DCAV habilita control LV antes de designar o firmar");
+ Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbinspeccion WHERE codigo_inspeccion=150"))=="ACEPTADA","Aceptacion cierra tambien estado documental de la inspeccion");
+ Check(!new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,98),"Aceptacion no habilita LV de inspector ajeno");
+ var fechaLvAceptacion=Convert.ToDateTime(scalar("SELECT fecha_habilitacion_lv FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"));
+ var faseCerrada=new EstadoRevisionDocumental{TotalDocumentosVigentes=1,DocumentacionAprobada=true};
+ typeof(CapaNegocio.SolicitudAocrInfraBL).GetMethod("ConfigurarFlujoDocumental",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{faseCerrada,new SolicitudAOCR{Estado="DOCUMENTACION_ACEPTADA_DIRCAV"},new List<Inspeccion>()});
+ Check(faseCerrada.FlujoDocumentalCodigo=="CERRADA_POR_DCAV"&&!faseCerrada.VisibleEnBandejaCoordinador&&!faseCerrada.VisibleEnBandejaInspector&&!faseCerrada.VisibleEnBandejaRt,"Aceptacion retira fase cerrada de bandejas de revision documental");
  Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(16)).Exitoso,"Estado documental observado sigue bloqueando aceptacion");
  var estadosAntes=Convert.ToString(scalar("SELECT string_agg(codigo_solicitud::text||':'||estado,',' ORDER BY codigo_solicitud) FROM aocr_tbsolicitud"));
  sql(File.ReadAllText(args[2]));sql(File.ReadAllText(args[2]));
@@ -133,8 +145,7 @@ class RemisionDcavTest {
  sql("INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado) SELECT 17,'DOCUMENTACION_ACEPTADA_DIRCAV'; ALTER TABLE aocr_tbauditoria ADD CONSTRAINT prueba_fallo_designacion CHECK(registro_id <> 17);");
  Check(!dcav.EjecutarDesignacionTransaccional(designar(17)).Exitoso,"Fallo de auditoria revierte designacion");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=17"))==0&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=17"))=="DOCUMENTACION_ACEPTADA_DIRCAV","Sin designacion parcial ni cambio de estado al fallar");
- sql(@"INSERT INTO usuario VALUES(79,'INSPECTOR','Inspector','Prueba','Inspector','inspector@example.test',1);
- INSERT INTO aocr_revision_documental_coordinador(solicitud_id,estado,activo) VALUES(15,'PENDIENTE_ACEPTACION_DCAV',true);");
+ sql(@"INSERT INTO usuario VALUES(79,'INSPECTOR','Inspector','Prueba','Inspector','inspector@example.test',1);");
  var firma=new DircavFirmarDesignacionParams{SolicitudId=15,EstacionId=null,DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",RutaDocumentoFirmado="/prueba/firmado.pdf",HashDocumento="HASH_TRANSACCION_SIMULADA",TamanioBytes=1024,CodigoVerificacion="PRUEBA"};
  var crearCorreos=typeof(DesignacionDocumentoService).GetMethod("CrearCorreosOficioFirmado",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static);
  firma.CorreosDocumentoFirmado=(List<EmailQueueItem>)crearCorreos.Invoke(null,new object[]{15,1,"AOCR-PRUEBA","/prueba/firmado.pdf","Oficio_Firmado.pdf","HASH_TRANSACCION_SIMULADA",1024L,new List<NotificacionDestinatario>{new NotificacionDestinatario{Email="rt@example.test",Nombre="RT"},new NotificacionDestinatario{Email="inspector@example.test",Nombre="Inspector"},new NotificacionDestinatario{Email="INSPECTOR@example.test",Nombre="Duplicado"}}});
@@ -143,7 +154,7 @@ class RemisionDcavTest {
  Check(firmaGuardada.Exitoso,"Persistencia de firma con estacion nula: "+firmaGuardada.Mensaje);
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND firmado=true"))==1,"Marca firma persistida en base temporal");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15 LIMIT 1"))=="DESIGNADO","Firma general actualiza estacion sin error de parametro");
- Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"))=="ACEPTADA_POR_DCAV","Firma habilita fase del inspector");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"))=="ACEPTADA_POR_DCAV"&&Convert.ToDateTime(scalar("SELECT fecha_habilitacion_lv FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"))==fechaLvAceptacion,"Firma conserva cierre y habilitacion de LV de la aceptacion");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND to_address='inspector@example.test'"))==1,"Firma encola aviso al inspector");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue q JOIN email_attachment a ON a.email_queue_id=q.id WHERE q.solicitud_id=15 AND q.to_address IN ('rt@example.test','inspector@example.test') AND a.file_name='Oficio_Firmado.pdf' AND a.content_type='application/pdf' AND a.sha256='HASH_TRANSACCION_SIMULADA'"))==2,"Ambos correos incluyen el mismo PDF firmado con hash");
  Check(dcav.EjecutarFirmaDesignacionTransaccional(firma).EsIdempotente,"Segundo registro de firma no duplica efectos");
@@ -171,6 +182,11 @@ class RemisionDcavTest {
  var sinSustituto=false;try{oficio.ObtenerDocumentoParaDescarga(15,90,"RT","RT_PRUEBA",out descarga);}catch(FileNotFoundException){sinSustituto=true;}
  Check(sinSustituto,"Archivo firmado faltante no se reemplaza por PDF regenerado");
  }finally{if(File.Exists(archivoPrueba))File.Delete(archivoPrueba);}
+ sql("UPDATE aocr_revision_documental_coordinador SET estado='PENDIENTE_ACEPTACION_DCAV',fecha_habilitacion_lv=NULL,fecha_habilitacion_informe=NULL WHERE solicitud_id=15; UPDATE aocr_tbinspeccion SET estado_documental='EN_REVISION_DOCUMENTAL' WHERE codigo_solicitud=15;");
+ var regularizar=File.ReadAllText(Path.Combine(Path.GetDirectoryName(args[2]),"20261020_habilitar_lv_aceptadas_dcav.sql"));
+ sql(regularizar);sql(regularizar);
+ Check(new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,79)&&Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbinspeccion WHERE codigo_inspeccion=150"))=="ACEPTADA","Regularizacion repetible habilita expediente previamente aceptado");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=13"))=="PENDIENTE_ACEPTACION_DCAV","Regularizacion no acepta expedientes pendientes");
  }
  }
 }

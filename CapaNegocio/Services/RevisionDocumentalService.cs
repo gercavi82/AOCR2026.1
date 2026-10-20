@@ -392,7 +392,7 @@ namespace CapaNegocio.Services
                     inspeccion.CodigoSolicitud,
                     inspeccion.CodigoInspector.GetValueOrDefault()))
             {
-                return "La revision documental requiere verificacion de Coordinacion y aceptacion formal con designacion firmada por DCAV. LV e Informe Tecnico permanecen bloqueados.";
+                return "La revision documental requiere verificacion de Coordinacion y aceptacion formal por DCAV. La aceptacion cierra la fase documental y habilita la LV para el inspector asignado.";
             }
 
             return ObtenerMensajeBloqueo(inspeccion.CodigoSolicitud);
