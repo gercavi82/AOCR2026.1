@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -83,6 +83,62 @@ namespace CapaDatos.DAOs
             _connectionString = !string.IsNullOrWhiteSpace(connectionString)
                 ? connectionString
                 : ResolveConnectionString();
+        }
+
+        private static bool TieneVersionSolicitud(NpgsqlConnection cn, NpgsqlTransaction tx)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='aocr_tbsolicitud' AND column_name='version')", cn, tx))
+                return Convert.ToBoolean(cmd.ExecuteScalar());
+        }
+
+        private static string ObtenerCorreoCoordinador(NpgsqlConnection cn, NpgsqlTransaction tx, int solicitudId)
+        {
+            using (var cmd = new NpgsqlCommand(@"SELECT u.correo FROM public.usuario u
+JOIN public.aocr_revision_documental_coordinador r ON r.coordinador_id=u.idusuario
+WHERE r.solicitud_id=@id AND r.activo=TRUE AND COALESCE(to_jsonb(u)->>'estadoactividad','1')='1' LIMIT 1", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", solicitudId);
+                return Convert.ToString(cmd.ExecuteScalar());
+            }
+        }
+
+        public DircavTransaccionResultado DevolverCoordinadorTransaccional(DircavAceptarDocumentacionParams p)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        string anterior;
+                        using (var cmd = new NpgsqlCommand("SELECT estado FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id FOR UPDATE", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@id", p.SolicitudId);
+                            anterior = Convert.ToString(cmd.ExecuteScalar());
+                        }
+                        if (anterior != AocrEstadosProceso.PendienteDircav && anterior != AocrEstadosProceso.DocumentacionAceptadaDircav)
+                            return new DircavTransaccionResultado { Exitoso = false, HttpStatusCode = 409, Mensaje = "El estado actual no permite devolver a Coordinacion: " + anterior };
+                        using (var cmd = new NpgsqlCommand("UPDATE public.aocr_tbsolicitud SET estado=@estado,observaciones=@motivo,updated_at=NOW(),updated_by=@usuario WHERE codigo_solicitud=@id", cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@id", p.SolicitudId);
+                            cmd.Parameters.AddWithValue("@estado", AocrEstadosProceso.DevueltoCoordinador);
+                            cmd.Parameters.AddWithValue("@motivo", p.Observacion ?? "");
+                            cmd.Parameters.AddWithValue("@usuario", p.DircavUsuarioNombre ?? "DIRCAV");
+                            cmd.ExecuteNonQuery();
+                        }
+                        AuditoriaDAO.RegistrarEnTransaccion(cn, tx, new Auditoria { Entidad = "DIRCAV", Accion = "DEVOLVER_COORDINADOR", Usuario = p.DircavUsuarioNombre ?? "DIRCAV", DatosPrevios = anterior, DatosNuevos = AocrEstadosProceso.DevueltoCoordinador }, p.SolicitudId, p.DircavUsuarioId);
+                        tx.Commit();
+                        return new DircavTransaccionResultado { Exitoso = true, NuevoEstado = AocrEstadosProceso.DevueltoCoordinador, Mensaje = "Expediente devuelto a Coordinacion." };
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        LoggingServiceFactory.Create().LogError("[DIRCAV][DEVOLVER_ERROR] SolicitudId=" + p.SolicitudId + "; " + ex);
+                        return new DircavTransaccionResultado { Exitoso = false, HttpStatusCode = 500, Mensaje = "No se pudo devolver el expediente; no se guardaron cambios parciales." };
+                    }
+                }
+            }
         }
 
         private static string ResolveConnectionString()
@@ -537,7 +593,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         int versionActual = 1;
                         string estadoDocActual = null;
 
-                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE(version, 1), estado_documental FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
+                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE((to_jsonb(aocr_tbsolicitud)->>'version')::integer, 1), estado_documental FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
                             using (var rd = cmd.ExecuteReader())
@@ -593,10 +649,10 @@ UPDATE public.aocr_tbdesignacion_inspector
                         }
 
                         using (var cmdObs = new NpgsqlCommand(@"
-                            SELECT COUNT(*) FROM public.aocr_tbdocumentos 
+                            SELECT COUNT(*) FROM public.aocr_tbdocumento
                             WHERE codigo_solicitud=@solicitud_id 
                               AND (UPPER(estado)='OBSERVADO' OR UPPER(estado)='DEVUELTO_INSPECTOR') 
-                              AND activo=TRUE;", cn, tx))
+                              AND COALESCE((to_jsonb(aocr_tbdocumento)->>'activo')::boolean, TRUE)=TRUE;", cn, tx))
                         {
                             cmdObs.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
                             var countObs = Convert.ToInt32(cmdObs.ExecuteScalar() ?? 0);
@@ -618,7 +674,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                             UPDATE public.aocr_tbsolicitud
                             SET estado=@estado,
                                 estado_documental='ACEPTADO_DIRCAV',
-                                version=@version,
+                                " + (TieneVersionSolicitud(cn, tx) ? "version=@version," : "") + @"
                                 updated_at=NOW(),
                                 updated_by=@updated_by
                             WHERE codigo_solicitud=@solicitud_id;", cn, tx))
@@ -646,22 +702,12 @@ UPDATE public.aocr_tbdesignacion_inspector
                         }
 
                         // 7. Inserción en auditoría atómica
-                        using (var cmdAudit = new NpgsqlCommand(@"
-                            INSERT INTO public.aocr_tbauditoria
-                            (entidad, accion, usuario, fecha, datos_previos, datos_nuevos)
-                            VALUES
-                            ('DIRCAV', 'ACEPTAR_DOCUMENTACION', @usuario, NOW(), @datos_previos, @datos_nuevos);", cn, tx))
-                        {
-                            cmdAudit.Parameters.AddWithValue("@usuario", (object)(p.DircavUsuarioNombre ?? "DIRCAV"));
-                            cmdAudit.Parameters.AddWithValue("@datos_previos", "Estado=" + estadoActual + "; Version=" + versionActual);
-                            cmdAudit.Parameters.AddWithValue("@datos_nuevos", "Estado=" + AocrEstadosProceso.DocumentacionAceptadaDircav + "; Version=" + nuevaVersion);
-                            cmdAudit.ExecuteNonQuery();
-                        }
+                        AuditoriaDAO.RegistrarEnTransaccion(cn, tx, new Auditoria { Entidad = "DIRCAV", Accion = "ACEPTAR_DOCUMENTACION", Usuario = p.DircavUsuarioNombre ?? "DIRCAV", DatosPrevios = "Estado=" + estadoActual + "; Version=" + versionActual, DatosNuevos = "Estado=" + AocrEstadosProceso.DocumentacionAceptadaDircav + "; Version=" + nuevaVersion }, p.SolicitudId, p.DircavUsuarioId);
 
                         // 8. Encolar notificación en email_queue
                         var emailItem = new CapaDatos.Services.EmailQueueItem
                         {
-                            Para = "coordinacion@dgac.gob.ec",
+                            Para = ObtenerCorreoCoordinador(cn, tx, p.SolicitudId),
                             ParaNombre = "Coordinación AOCR",
                             Asunto = "AOCR - Documentación técnica aceptada por DIRCAV #" + p.SolicitudId,
                             Cuerpo = "La Autoridad DIRCAV ha aceptado formalmente la documentación técnica del expediente #" + p.SolicitudId + ".",
@@ -672,7 +718,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         };
                         bool duplicate;
                         if (!string.IsNullOrWhiteSpace(emailItem.Para))
-                        new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                        new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
 
                         tx.Commit();
 
@@ -688,7 +734,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                     catch (Exception ex)
                     {
                         tx.Rollback();
-                        Trace.TraceError("[DIRCAV][ACEPTAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
+                        LoggingServiceFactory.Create().LogError("[DIRCAV][ACEPTAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
                         return new DircavTransaccionResultado
                         {
                             Exitoso = false,
@@ -739,7 +785,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         int versionActual = 1;
 
                         using (var cmd = new NpgsqlCommand(@"
-                            SELECT estado, COALESCE(version, 1)
+                            SELECT estado, COALESCE((to_jsonb(aocr_tbsolicitud)->>'version')::integer, 1)
                             FROM public.aocr_tbsolicitud
                             WHERE codigo_solicitud=@solicitud_id
                             FOR UPDATE;", cn, tx))
@@ -1005,7 +1051,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                                 inspector_apoyo_nombre=@inspector_apoyo_nombre,
                                 inspector_apoyo_tipo=@inspector_apoyo_tipo,
                                 estado=@estado,
-                                version=@version,
+                                " + (TieneVersionSolicitud(cn, tx) ? "version=@version," : "") + @"
                                 updated_at=NOW(),
                                 updated_by=@updated_by
                             WHERE codigo_solicitud=@solicitud_id;", cn, tx))
@@ -1040,22 +1086,12 @@ UPDATE public.aocr_tbdesignacion_inspector
                         }
 
                         // 12. Inserción en auditoría atómica
-                        using (var cmdAudit = new NpgsqlCommand(@"
-                            INSERT INTO public.aocr_tbauditoria
-                            (entidad, accion, usuario, fecha, datos_previos, datos_nuevos)
-                            VALUES
-                            ('DIRCAV', 'DESIGNAR_INSPECTOR', @usuario, NOW(), @datos_previos, @datos_nuevos);", cn, tx))
-                        {
-                            cmdAudit.Parameters.AddWithValue("@usuario", (object)(p.DircavUsuarioNombre ?? "DIRCAV"));
-                            cmdAudit.Parameters.AddWithValue("@datos_previos", "Estado=" + estadoActual + "; Version=" + versionActual);
-                            cmdAudit.Parameters.AddWithValue("@datos_nuevos", "Designado=" + p.InspectorNombre + "; Version=" + versionNuevaDesignacion);
-                            cmdAudit.ExecuteNonQuery();
-                        }
+                        AuditoriaDAO.RegistrarEnTransaccion(cn, tx, new Auditoria { Entidad = "DIRCAV", Accion = "DESIGNAR_INSPECTOR", Usuario = p.DircavUsuarioNombre ?? "DIRCAV", DatosPrevios = "Estado=" + estadoActual + "; Version=" + versionActual, DatosNuevos = "Designado=" + p.InspectorNombre + "; Version=" + versionNuevaDesignacion }, p.SolicitudId, p.DircavUsuarioId);
 
                         // 13. Encolar notificación provisional en email_queue (NO definitiva antes de AC-06)
                         var emailItem = new CapaDatos.Services.EmailQueueItem
                         {
-                            Para = "coordinacion@dgac.gob.ec",
+                            Para = ObtenerCorreoCoordinador(cn, tx, p.SolicitudId),
                             ParaNombre = "Coordinación AOCR",
                             Asunto = "AOCR - Designación de Inspector registrada #" + p.SolicitudId,
                             Cuerpo = "Se ha registrado la designación formal del Inspector " + p.InspectorNombre + ". Pendiente de firma digital DIRCAV.",
@@ -1065,7 +1101,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                             Estado = "PENDIENTE"
                         };
                         bool duplicate;
-                        new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                        new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
 
                         tx.Commit();
 
@@ -1100,7 +1136,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                     catch (Exception ex)
                     {
                         tx.Rollback();
-                        Trace.TraceError("[DIRCAV][DESIGNAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
+                        LoggingServiceFactory.Create().LogError("[DIRCAV][DESIGNAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
                         return new DircavTransaccionResultado
                         {
                             Exitoso = false,
@@ -1216,7 +1252,7 @@ FOR UPDATE;";
                     // 3. Bloqueo pesimista de solicitud principal
                     string estadoSolActual = null;
                     int versionSolActual = 1;
-                    using (var cmdSol = new NpgsqlCommand("SELECT estado, COALESCE(version, 1) FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
+                    using (var cmdSol = new NpgsqlCommand("SELECT estado, COALESCE((to_jsonb(aocr_tbsolicitud)->>'version')::integer, 1) FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
                     {
                         cmdSol.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
                         using (var rd = cmdSol.ExecuteReader())
@@ -1280,7 +1316,7 @@ WHERE id = @id;";
                     using (var cmdUpdSol = new NpgsqlCommand(@"
 UPDATE public.aocr_tbsolicitud
 SET estado = @estado,
-    version = @version,
+    " + (TieneVersionSolicitud(cn, tx) ? "version = @version," : "") + @"
     updated_at = NOW(),
     updated_by = @updated_by
 WHERE codigo_solicitud = @solicitud_id;", cn, tx))
@@ -1345,17 +1381,7 @@ VALUES
                     }
 
                     // 8. Inserción en auditoría atómica
-                    using (var cmdAudit = new NpgsqlCommand(@"
-INSERT INTO public.aocr_tbauditoria
-(entidad, accion, usuario, fecha, datos_previos, datos_nuevos)
-VALUES
-('DIRCAV', 'FIRMAR_DESIGNACION_INSPECTOR', @usuario, NOW(), @datos_previos, @datos_nuevos);", cn, tx))
-                    {
-                        cmdAudit.Parameters.AddWithValue("@usuario", (object)(p.DircavUsuarioNombre ?? "DIRCAV"));
-                        cmdAudit.Parameters.AddWithValue("@datos_previos", "Estado=" + estadoSolActual + "; Version=" + versionSolActual);
-                        cmdAudit.Parameters.AddWithValue("@datos_nuevos", "Estado=" + AocrEstadosProceso.DesignacionFirmadaDircav + "; CodigoVerif=" + p.CodigoVerificacion + "; Hash=" + p.HashDocumento);
-                        cmdAudit.ExecuteNonQuery();
-                    }
+                    AuditoriaDAO.RegistrarEnTransaccion(cn, tx, new Auditoria { Entidad = "DIRCAV", Accion = "FIRMAR_DESIGNACION_INSPECTOR", Usuario = p.DircavUsuarioNombre ?? "DIRCAV", DatosPrevios = "Estado=" + estadoSolActual + "; Version=" + versionSolActual, DatosNuevos = "Estado=" + AocrEstadosProceso.DesignacionFirmadaDircav + "; CodigoVerif=" + p.CodigoVerificacion + "; Hash=" + p.HashDocumento }, p.SolicitudId, p.DircavUsuarioId);
 
                     // 9. Encolar notificación en email_queue (outbox post-commit)
                     var emailItem = new CapaDatos.Services.EmailQueueItem
@@ -1370,7 +1396,7 @@ VALUES
                         Estado = "PENDIENTE"
                     };
                     bool duplicate;
-                    new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                    new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
 
                     if (!conExterno)
                     {
@@ -1401,7 +1427,7 @@ VALUES
                 catch (Exception ex)
                 {
                     if (!conExterno) tx.Rollback();
-                    Trace.TraceError("[DIRCAV][FIRMAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
+                    LoggingServiceFactory.Create().LogError("[DIRCAV][FIRMAR_ERROR] SolicitudId=" + p.SolicitudId + "; Error=" + ex);
                     return new DircavTransaccionResultado
                     {
                         Exitoso = false,

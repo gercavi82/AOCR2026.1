@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
@@ -175,7 +175,8 @@ namespace CapaNegocio.Services
 
             var estadoActual = (solicitud.Estado ?? string.Empty).Trim();
             if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+                && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, AocrEstadosProceso.DevueltoCoordinador, StringComparison.OrdinalIgnoreCase))
             {
                 return new RevisionDocumentalCoordinadorResultado
                 {

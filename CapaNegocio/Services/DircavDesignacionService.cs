@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.Constants;
@@ -195,21 +195,14 @@ namespace CapaNegocio.Services
                 };
             }
 
-            solicitud.Estado = AocrEstadosProceso.DevueltoCoordinador;
-            solicitud.Observaciones = motivo.Trim();
-            solicitud.UpdatedAt = DateTime.Now;
-            _solicitudDao.Actualizar(solicitud);
-
-            // Auditoría institucional
-            _auditoriaDao.Registrar(new Auditoria
+            var devolucion = _designacionDao.DevolverCoordinadorTransaccional(new DircavAceptarDocumentacionParams
             {
-                Entidad = "DIRCAV",
-                Accion = "DEVOLVER_COORDINADOR",
-                Usuario = dircavNombre ?? "DIRCAV",
-                Fecha = DateTime.Now,
-                DatosPrevios = AocrEstadosProceso.PendienteDircav,
-                DatosNuevos = AocrEstadosProceso.DevueltoCoordinador
+                SolicitudId = solicitudId, DircavUsuarioId = dircavUsuarioId,
+                DircavUsuarioNombre = dircavNombre, Observacion = motivo.Trim()
             });
+            if (!devolucion.Exitoso)
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = devolucion.HttpStatusCode, Mensaje = devolucion.Mensaje };
+            solicitud.Estado = AocrEstadosProceso.DevueltoCoordinador;
 
             // Notificación al Coordinador
             try

@@ -307,7 +307,8 @@ WHERE solicitud_id=@solicitud_id AND @inspector_id IS NOT NULL
                         }
 
                         if (!string.Equals(estadoActual, AocrEstadosProceso.PendienteCoordinador, StringComparison.OrdinalIgnoreCase)
-                            && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+                            && !string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(estadoActual, AocrEstadosProceso.DevueltoCoordinador, StringComparison.OrdinalIgnoreCase))
                         {
                             tx.Rollback();
                             return new TransicionCoordinadorResultadoDAO

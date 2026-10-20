@@ -44,19 +44,19 @@
       <publishTime>10/19/2026 19:30:13</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>10/20/2026 11:03:01</publishTime>
+      <publishTime>10/20/2026 11:28:52</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>10/20/2026 11:03:01</publishTime>
+      <publishTime>10/20/2026 11:28:52</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>10/20/2026 11:03:03</publishTime>
+      <publishTime>10/20/2026 11:28:54</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>10/20/2026 11:03:03</publishTime>
+      <publishTime>10/20/2026 11:28:54</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8132,7 +8132,7 @@
       <publishTime>10/20/2026 08:57:30</publishTime>
     </File>
     <File Include="Views/Dircav/Detalle.cshtml">
-      <publishTime>10/20/2026 08:57:30</publishTime>
+      <publishTime>10/20/2026 11:29:10</publishTime>
     </File>
     <File Include="Views/Dircav/RevisionCl.cshtml">
       <publishTime>09/15/2026 11:01:00</publishTime>
@@ -8621,7 +8621,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>10/20/2026 11:04:56</publishTime>
+      <publishTime>10/20/2026 11:40:40</publishTime>
     </File>
   </ItemGroup>
 </Project>

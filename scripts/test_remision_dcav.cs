@@ -87,6 +87,31 @@ class RemisionDcavTest {
  Check(bloqueada,"Construccion oficial sigue exigiendo designacion formal");
  var denegada=false;try{oficio.GenerarVistaPrevia(7,99,"DIRDAC");}catch(UnauthorizedAccessException){denegada=true;}
  Check(denegada,"Vista previa mantiene segregacion DIRDAC");
+ sql(@"ALTER TABLE aocr_tbsolicitud DROP COLUMN version;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN estado_documental text;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN observaciones text;
+ ALTER TABLE aocr_tbauditoria ADD COLUMN tabla_afectada varchar(100) NOT NULL DEFAULT 'prueba';
+ ALTER TABLE aocr_tbauditoria ALTER COLUMN tabla_afectada DROP DEFAULT;
+ ALTER TABLE aocr_tbauditoria DROP COLUMN datos_previos;
+ ALTER TABLE aocr_tbauditoria ADD COLUMN datos_anteriores jsonb;
+ ALTER TABLE aocr_tbauditoria ALTER COLUMN datos_nuevos TYPE jsonb USING to_jsonb(datos_nuevos);
+ CREATE TABLE aocr_tbdocumento(codigo_documento serial primary key,codigo_solicitud integer,estado text);
+ INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado) VALUES(10,'PENDIENTE_DIRCAV'),(11,'DEVUELTO_COORDINADOR'),(12,'PENDIENTE_DIRCAV'),(13,'PENDIENTE_DIRCAV'),(14,'PENDIENTE_DIRCAV');
+ INSERT INTO aocr_tbdocumento(codigo_solicitud,estado) VALUES(12,'OBSERVADO');");
+ var dcav=new AocrDesignacionDAO();
+ Func<int,DircavAceptarDocumentacionParams> aceptar=id=>new DircavAceptarDocumentacionParams{SolicitudId=id,DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",Observacion="Revision DCAV"};
+ var aceptado=dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(10));
+ Check(aceptado.Exitoso,"Aceptacion DCAV con tabla singular, sin version y auditoria JSONB: "+aceptado.Mensaje);
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbauditoria WHERE registro_id=10 AND tabla_afectada='aocr_tbsolicitud' AND accion='ACEPTAR_DOCUMENTACION'"))==1,"Auditoria de aceptacion con tabla afectada e identificador");
+ Check(dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(10)).HttpStatusCode==409,"Aceptacion repetida rechazada sin duplicados");
+ Check(dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(11)).HttpStatusCode==409,"Expediente devuelto no se acepta antes de nueva remision");
+ Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(12)).Exitoso,"Documentos observados bloquean aceptacion");
+ sql("ALTER TABLE aocr_tbauditoria ADD CONSTRAINT prueba_rollback_dcav CHECK(registro_id NOT IN (13,14));");
+ Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(13)).Exitoso,"Fallo de auditoria cancela aceptacion");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=13"))=="PENDIENTE_DIRCAV"&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbhistorial_documental WHERE codigo_solicitud=13"))==0,"Aceptacion fallida no guarda estado ni historial parcial");
+ Check(dcav.DevolverCoordinadorTransaccional(aceptar(10)).Exitoso,"Devolucion y auditoria se guardan juntas");
+ Check(!dcav.DevolverCoordinadorTransaccional(aceptar(14)).Exitoso&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=14"))=="PENDIENTE_DIRCAV","Devolucion fallida no cambia estado");
+ Check(dao.EjecutarTransicionCoordinadorTransaccional(parametros(10)).Exitoso,"Coordinador puede remitir de nuevo expediente devuelto");
  }
  }
 }

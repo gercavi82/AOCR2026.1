@@ -208,7 +208,8 @@
         !procesoCerradoOperativamente &&
         !esSolicitudModificacion &&
         (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
-        estadoActual == EstadoSolicitud.AceptacionDocumental;
+        (estadoActual == EstadoSolicitud.AceptacionDocumental
+         || string.Equals(Model.Estado, AocrEstadosProceso.DevueltoCoordinador, System.StringComparison.OrdinalIgnoreCase));
     if (revisionPendienteCoordinador
         && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Coordinacion") || User.IsInRole("Administrador")))
     {

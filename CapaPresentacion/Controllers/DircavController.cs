@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -265,7 +265,7 @@ namespace CapaPresentacion.Controllers
                 }
                 if (resultado.HttpStatusCode == 409)
                 {
-                    return new HttpStatusCodeResult(409, resultado.Mensaje);
+                    return ResponderConflictoFirma(id, resultado.Mensaje);
                 }
                 if (resultado.HttpStatusCode == 404)
                 {
