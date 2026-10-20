@@ -29,13 +29,13 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>10/19/2026 19:30:14</publishTime>
+      <publishTime>10/20/2026 12:08:37</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>10/19/2026 19:30:14</publishTime>
+      <publishTime>10/20/2026 12:08:37</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -44,19 +44,19 @@
       <publishTime>10/19/2026 19:30:13</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>10/20/2026 11:28:52</publishTime>
+      <publishTime>10/20/2026 12:08:38</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>10/20/2026 11:28:52</publishTime>
+      <publishTime>10/20/2026 12:08:38</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>10/20/2026 11:28:54</publishTime>
+      <publishTime>10/20/2026 12:08:40</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>10/20/2026 11:28:54</publishTime>
+      <publishTime>10/20/2026 12:08:40</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8525,7 +8525,7 @@
       <publishTime>07/14/2026 10:05:30</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Detalle.cshtml">
-      <publishTime>10/19/2026 14:38:51</publishTime>
+      <publishTime>10/20/2026 11:59:57</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/FormularioEmisionAOCR.cshtml">
       <publishTime>06/05/2026 12:50:52</publishTime>
@@ -8621,7 +8621,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>10/20/2026 11:40:40</publishTime>
+      <publishTime>10/20/2026 12:09:34</publishTime>
     </File>
   </ItemGroup>
 </Project>

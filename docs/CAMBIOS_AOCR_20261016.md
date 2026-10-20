@@ -110,3 +110,15 @@ Se corrigieron incompatibilidades de AocrDesignacionDAO con la base publicada: s
 El log de 11:54 confirma que DevolverCoordinador modifico la solicitud antes de fallar en datos_previos. Ahora estado y auditoria de devolucion se confirman o revierten juntos. Para el expediente ya devuelto se habilita una nueva remision desde Coordinacion, sin saltar directamente a la aceptacion DCAV ni modificarlo manualmente. La aceptacion fuera de estado permitido vuelve al detalle con mensaje visible.
 
 Verificacion: 36 comprobaciones de integracion local correctas, incluidas aceptacion con el esquema publicado, auditoria, rechazo de repeticion/observaciones, rollback sin historial parcial, devolucion atomica y nueva remision del expediente devuelto. Tres pruebas del controlador correctas y compilacion Debug/Release correcta. DLL actualizados en public/public1/bin y vista SolicitudAOCR/Detalle.cshtml actualizada localmente. Falta publicar estos archivos. Luego Coordinacion debe remitir nuevamente AOCR003 y DCAV podra aceptar su documentacion y continuar con designacion/firma. No se ejecutaron cambios sobre el expediente real.
+
+### Columna opcional estado_documental - intento de las 12:13
+
+El nuevo log identifica una columna adicional ausente: aocr_tbsolicitud.estado_documental. La aceptacion ahora lee ese valor como propiedad JSON del registro y solo lo actualiza si la columna existe. Mantiene validacion por estado del tramite y por documentos observados. Se corrigio la base temporal de prueba para no agregar artificialmente esa columna antes del caso de aceptacion. Pasaron 39 comprobaciones, incluidas aceptacion sin estado_documental, compatibilidad cuando existe y rechazo si contiene OBSERVADO.
+
+El detalle deshabilita Aceptar Documentacion fuera de PENDIENTE_DIRCAV y explica la nueva remision requerida cuando esta DEVUELTO_COORDINADOR. Compilacion Release correcta; DLL y Views/Dircav/Detalle.cshtml actualizados en public/public1. Falta publicar esta version y remitir AOCR003 nuevamente desde Coordinacion. No se modifico el estado real mediante SQL.
+
+### Migracion de base aplicada con autorizacion del usuario
+
+Se creo `scripts/sql/20261020_solicitud_campos_dcav.sql`, repetible y transaccional, que agrega a aocr_tbsolicitud `version integer NOT NULL DEFAULT 1` y `estado_documental varchar(50)` nullable. No asigna estados documentales retroactivos ni modifica estados del tramite, usuarios o roles.
+
+Tras 42 comprobaciones locales correctas, se ejecuto la migracion en `172.20.16.55:5432/dgac_des`, verificando que las configuraciones AOCRConnection de CapaPresentacion y public/public1 apuntan al mismo destino. No se pudo leer configuracion remota del sitio; el destino aplicado es el comprobado en esas configuraciones locales. Se confirmaron ambas columnas y sus propiedades despues de ejecutar. AOCR003 estaba DEVUELTO_COORDINADOR antes y conserva ese estado despues. Coordinacion debe volver a remitirlo para habilitar aceptacion DCAV. La migracion de base no sustituye la publicacion pendiente de las correcciones del codigo.

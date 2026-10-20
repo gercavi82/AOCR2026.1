@@ -88,7 +88,6 @@ class RemisionDcavTest {
  var denegada=false;try{oficio.GenerarVistaPrevia(7,99,"DIRDAC");}catch(UnauthorizedAccessException){denegada=true;}
  Check(denegada,"Vista previa mantiene segregacion DIRDAC");
  sql(@"ALTER TABLE aocr_tbsolicitud DROP COLUMN version;
- ALTER TABLE aocr_tbsolicitud ADD COLUMN estado_documental text;
  ALTER TABLE aocr_tbsolicitud ADD COLUMN observaciones text;
  ALTER TABLE aocr_tbauditoria ADD COLUMN tabla_afectada varchar(100) NOT NULL DEFAULT 'prueba';
  ALTER TABLE aocr_tbauditoria ALTER COLUMN tabla_afectada DROP DEFAULT;
@@ -112,6 +111,16 @@ class RemisionDcavTest {
  Check(dcav.DevolverCoordinadorTransaccional(aceptar(10)).Exitoso,"Devolucion y auditoria se guardan juntas");
  Check(!dcav.DevolverCoordinadorTransaccional(aceptar(14)).Exitoso&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=14"))=="PENDIENTE_DIRCAV","Devolucion fallida no cambia estado");
  Check(dao.EjecutarTransicionCoordinadorTransaccional(parametros(10)).Exitoso,"Coordinador puede remitir de nuevo expediente devuelto");
+ sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN estado_documental text;
+ INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,estado_documental) VALUES(15,'PENDIENTE_DIRCAV',NULL),(16,'PENDIENTE_DIRCAV','OBSERVADO');");
+ Check(dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(15)).Exitoso,"Aceptacion compatible cuando estado_documental existe");
+ Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))=="ACEPTADO_DIRCAV","Conserva actualizacion de estado documental cuando existe");
+ Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(16)).Exitoso,"Estado documental observado sigue bloqueando aceptacion");
+ var estadosAntes=Convert.ToString(scalar("SELECT string_agg(codigo_solicitud::text||':'||estado,',' ORDER BY codigo_solicitud) FROM aocr_tbsolicitud"));
+ sql(File.ReadAllText(args[2]));sql(File.ReadAllText(args[2]));
+ Check(Convert.ToInt32(scalar("SELECT version FROM aocr_tbsolicitud WHERE codigo_solicitud=7"))==1,"Migracion agrega version inicial");
+ Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))=="ACEPTADO_DIRCAV","Migracion repetida conserva datos documentales existentes");
+ Check(estadosAntes==Convert.ToString(scalar("SELECT string_agg(codigo_solicitud::text||':'||estado,',' ORDER BY codigo_solicitud) FROM aocr_tbsolicitud")),"Migracion no modifica estados de expedientes");
  }
  }
 }

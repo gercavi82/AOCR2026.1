@@ -87,8 +87,16 @@ namespace CapaDatos.DAOs
 
         private static bool TieneVersionSolicitud(NpgsqlConnection cn, NpgsqlTransaction tx)
         {
-            using (var cmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='aocr_tbsolicitud' AND column_name='version')", cn, tx))
+            return TieneColumnaSolicitud(cn, tx, "version");
+        }
+
+        private static bool TieneColumnaSolicitud(NpgsqlConnection cn, NpgsqlTransaction tx, string columna)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='aocr_tbsolicitud' AND column_name=@columna)", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@columna", columna);
                 return Convert.ToBoolean(cmd.ExecuteScalar());
+            }
         }
 
         private static string ObtenerCorreoCoordinador(NpgsqlConnection cn, NpgsqlTransaction tx, int solicitudId)
@@ -593,7 +601,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         int versionActual = 1;
                         string estadoDocActual = null;
 
-                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE((to_jsonb(aocr_tbsolicitud)->>'version')::integer, 1), estado_documental FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
+                        using (var cmd = new NpgsqlCommand("SELECT estado, COALESCE((to_jsonb(aocr_tbsolicitud)->>'version')::integer, 1), to_jsonb(aocr_tbsolicitud)->>'estado_documental' FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@solicitud_id FOR UPDATE;", cn, tx))
                         {
                             cmd.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
                             using (var rd = cmd.ExecuteReader())
@@ -673,7 +681,7 @@ UPDATE public.aocr_tbdesignacion_inspector
                         using (var cmdUpd = new NpgsqlCommand(@"
                             UPDATE public.aocr_tbsolicitud
                             SET estado=@estado,
-                                estado_documental='ACEPTADO_DIRCAV',
+                                " + (TieneColumnaSolicitud(cn, tx, "estado_documental") ? "estado_documental='ACEPTADO_DIRCAV'," : "") + @"
                                 " + (TieneVersionSolicitud(cn, tx) ? "version=@version," : "") + @"
                                 updated_at=NOW(),
                                 updated_by=@updated_by
