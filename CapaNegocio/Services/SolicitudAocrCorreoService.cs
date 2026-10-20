@@ -531,12 +531,12 @@ namespace CapaNegocio.Services
                     return new PlantillaSolicitudCorreo
                     {
                         Asunto = "AOCR - Expediente remitido a DIRCAV #" + solicitud.CodigoSolicitud,
-                        Titulo = "Expediente documental remitido a DIRCAV",
-                        Mensaje = "La Coordinación ha verificado la revisión documental y remitido oficialmente el expediente de la solicitud AOCR #" + solicitud.CodigoSolicitud + " a la Dirección de Certificación Aeronáutica (DIRCAV).",
+                        Titulo = "Documentos pendientes de aprobacion en DCAV",
+                        Mensaje = "Coordinacion ha remitido el expediente de la solicitud AOCR #" + solicitud.CodigoSolicitud + ". Tiene documentos pendientes de aprobacion en DCAV / Documentacion.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
-                            NotificacionDestinatarioPolicyService.GrupoDireccionFinal,
+                            NotificacionDestinatarioPolicyService.GrupoDcav,
                             NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion
                         }
                     };

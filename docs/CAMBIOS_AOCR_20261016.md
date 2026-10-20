@@ -54,3 +54,21 @@ El ultimo intento supera el CHECK, pero PostgreSQL rechaza el INSERT de auditori
 El DAO ahora completa tabla afectada, identificador de solicitud, usuario y fechas disponibles, y utiliza `datos_anteriores` o `datos_previos` segun el esquema. No se relajan restricciones ni se omite la auditoria. Se compilaron Datos y Presentacion y pasaron 14 comprobaciones con una tabla temporal que reproduce las columnas y nulabilidad del servidor, mas compatibilidad con el esquema anterior y rollback.
 
 Publicar el nuevo `CapaDatos.dll` compilado en esta correccion y volver a remitir desde Coordinacion. La prueba no cambia AOCR003 ni publica archivos en el servidor. No requiere otro script SQL para este fallo.
+
+### Remision, bandeja y avisos DCAV completos
+
+El log a las 19:22 aun muestra el error de auditoria `tabla_afectada`. La carpeta local de publicacion contenia DLL distintas de las corregidas. Se compilo Release y se actualizaron `public/public1/bin/CapaDatos.dll`, `CapaModelo.dll`, `CapaNegocio.dll` y `CapaPresentacion.dll`, mas la vista de detalle que muestra el resultado. Se verifico coincidencia SHA256 con la compilacion.
+
+La remision ahora resuelve expresamente usuarios activos con rol DIRCAV o DCAV; no utiliza el grupo generico de Direccion. Persiste el estado `PENDIENTE_DIRCAV`, el control documental, auditoria, aviso interno para cada usuario y correo en cola para cada direccion distinta en una sola transaccion. Si falla el aviso o el correo, revierte todo; un segundo clic no duplica envios. Se conserva la comunicacion transaccional al correo de la solicitud. Sin usuarios DCAV activos con correo, muestra un error de configuracion en lugar de aparentar un envio exitoso.
+
+El aviso indica documentos pendientes de aprobacion y abre `/Dircav/Bandeja?tab=documentacion`, respetando el directorio virtual del sitio. DCAV debe revisar la pestana Documentacion, no la pestana Remision a DIRDAC. Los correos se procesan por la cola existente; encolado no equivale a entrega SMTP confirmada.
+
+Validacion: compilacion Debug y Release correctas; 22 comprobaciones de integracion correctas con PostgreSQL temporal local. Se verificaron resolucion del destinatario activo, exclusion de DIRDAC/cuentas inactivas, aparicion de la solicitud en `DircavBandejaService`, aviso interno, correo pendiente, ausencia de duplicados, auditoria y rollback ante fallos de auditoria/correo, ambos esquemas compatibles y estados posteriores de firma.
+
+Despliegue: copiar al servidor los cuatro DLL actualizados y la vista de detalle de la carpeta local `public/public1`. Alternativamente, usar `.tmp/entrega-remision-dcav-20261019.zip` (contiene solo esos archivos, SQL y manifiesto SHA256, sin configuraciones). Si la restriccion de estados todavia no se actualizo, ejecutar primero `scripts/sql/20261019_estados_revision_dcav.sql`. Reintentar desde Coordinacion y comprobar `Ok=True` en `[COORD][REMITIR_DCAV_RESULTADO]`; luego acceder como DCAV a Documentacion y revisar su campana y correo. No se publico en el servidor ni se cambio manualmente AOCR003.
+
+### Menu de pendientes DCAV - 20/10/2026
+
+Se agregaron a Mi trabajo los accesos Documentacion por aprobar, Designaciones por firmar e Informes por revisar. Todos muestran el numero de pendientes de su bandeja correspondiente, al igual que Firma de Condiciones y Remision a DIRDAC. Se habilito expresamente la carga de contadores para el rol activo DCAV/DIRCAV, que antes se omitia en el filtro de direccion. Los contadores DCAV usan `DircavBandejaService`, igual que la pantalla de bandejas, sin depender de consultas de DIRDAC.
+
+Compilacion Debug/Release y 16 pruebas SidebarRoleMatrixTests correctas. `public/public1/bin/CapaPresentacion.dll` actualizado y verificado por SHA256; falta copiar esa DLL al servidor. El paquete del 19/10 no incluye este cambio posterior. No cambia estados ni permisos de aprobacion. El log del 20/10 confirma envio SMTP exitoso del aviso de AOCR003 a la cuenta de vigilancia continua; esto no acredita lectura ni entrega en la carpeta de entrada del destinatario.

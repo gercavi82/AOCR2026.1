@@ -1,5 +1,10 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Collections.Generic;
+using System.Net;
+using CapaModelo;
+using CapaDatos.Services;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
@@ -192,7 +197,43 @@ namespace CapaNegocio.Services
             if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
             if (string.IsNullOrWhiteSpace(texto)) texto = "Remitido formalmente a DIRCAV por Coordinacion.";
             var login = string.IsNullOrWhiteSpace(usuarioLogin) ? "coordinador" : usuarioLogin;
-            var eventKey = "AOCR_REV_DOC_REMIT_DIRCAV_" + solicitudId + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var eventKey = "AOCR_REV_DOC_REMIT_DIRCAV_" + solicitudId + "_" + Guid.NewGuid().ToString("N");
+            List<Usuario> destinatariosDcav;
+            try
+            {
+                // ListarPorRol filtra cuentas y asignaciones activas en la base.
+                destinatariosDcav = UsuarioDAO.ListarPorRol("DIRCAV")
+                    .Concat(UsuarioDAO.ListarPorRol("DCAV"))
+                    .Where(u => u.Id > 0).GroupBy(u => u.Id).Select(g => g.First()).ToList();
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("[REMITIR_DCAV][DESTINATARIOS] " + ex.Message);
+                return Error("No se pudieron resolver los usuarios DCAV. La solicitud no fue remitida.");
+            }
+            if (destinatariosDcav.Count == 0 || !destinatariosDcav.Any(u => !string.IsNullOrWhiteSpace(u.Email)))
+                return Error("Configure al menos un usuario activo DCAV/DIRCAV con correo antes de remitir.");
+            var numeroVisible = string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? "#" + solicitudId : solicitud.NumeroSolicitud;
+            var tituloDcav = "Documentos pendientes de aprobacion - " + numeroVisible;
+            var mensajeDcav = "Coordinacion ha remitido el expediente " + numeroVisible
+                + ". Tiene documentos pendientes de aprobacion en la bandeja DCAV, seccion Documentacion. " + texto;
+            var avisosDcav = destinatariosDcav.Select(u => new Notificacion
+            {
+                CodigoUsuario = u.Id, Titulo = tituloDcav, Mensaje = mensajeDcav, Tipo = "INFO",
+                Url = System.Web.VirtualPathUtility.ToAbsolute("~/Dircav/Bandeja", System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath ?? "/") + "?tab=documentacion", Modulo = "DIRCAV", EntidadId = solicitudId,
+                TipoEntidad = "SOLICITUD", FechaCreacion = DateTime.Now, Leida = false
+            }).ToList();
+            var correosDcav = destinatariosDcav.Where(u => !string.IsNullOrWhiteSpace(u.Email))
+                .GroupBy(u => u.Email.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+                .Select(u => new EmailQueueItem
+                {
+                    Para = u.Email.Trim(), ParaNombre = u.NombreUsuario,
+                    Asunto = "AOCR - " + tituloDcav,
+                    Cuerpo = "<p>" + WebUtility.HtmlEncode(mensajeDcav) + "</p><p>Ingrese al sistema AOCR y abra DCAV / Documentacion para revisar y aprobar el expediente.</p>",
+                    EsHtml = true, SolicitudId = solicitudId, Estado = "PENDIENTE",
+                    TipoNotificacion = "SOLICITUD_PENDIENTE_DIRCAV",
+                    EventKey = eventKey + ":DCAV:" + u.Email.Trim().ToLowerInvariant()
+                }).ToList();
 
             var resDao = _dao.EjecutarTransicionCoordinadorTransaccional(new TransicionCoordinadorParams
             {
@@ -205,6 +246,8 @@ namespace CapaNegocio.Services
                 Observacion = texto,
                 UsuarioLogin = login,
                 EventKey = eventKey,
+                NotificacionesInternas = avisosDcav,
+                CorreosAdicionales = correosDcav,
                 EmailDestinatario = solicitud.Email,
                 EmailNombre = solicitud.RazonSocial,
                 EmailAsunto = "AOCR - Expediente documental remitido a DIRCAV #" + solicitudId,
@@ -241,7 +284,9 @@ namespace CapaNegocio.Services
 
             try
             {
-                _correoService.NotificarEvento(solicitud, "PENDIENTE_DIRCAV", texto);
+                // El aviso DCAV y su correo ya quedaron persistidos junto con la remision.
+                Trace.TraceInformation("[REMITIR_DCAV][AVISOS] SolicitudId=" + solicitudId
+                    + "; Internos=" + avisosDcav.Count + "; CorreosEnCola=" + correosDcav.Count);
             }
             catch (Exception exNotif)
             {
@@ -251,7 +296,7 @@ namespace CapaNegocio.Services
             return new RevisionDocumentalCoordinadorResultado
             {
                 Ok = true,
-                Mensaje = "Expediente remitido exitosamente a DIRCAV para su atencion institucional.",
+                Mensaje = "Expediente enviado a la bandeja DCAV (Documentacion). Aviso interno registrado y correo de documentos pendientes de aprobacion encolado.",
                 Registro = resDao.Registro ?? _dao.ObtenerPorSolicitud(solicitudId)
             };
         }

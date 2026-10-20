@@ -89,7 +89,12 @@ namespace CapaDatos.DAOs
             using (var cn = CrearConexion())
             {
                 cn.Open();
+                return InsertarEnTransaccion(cn, null, notificacion);
+            }
+        }
 
+        public static bool InsertarEnTransaccion(NpgsqlConnection cn, NpgsqlTransaction tx, Notificacion notificacion)
+        {
                 var tieneModulo = ExisteColumna(cn, "aocr_tbnotificacion", "modulo");
                 var tieneEntidadId = ExisteColumna(cn, "aocr_tbnotificacion", "entidad_id");
                 var tieneTipoEntidad = ExisteColumna(cn, "aocr_tbnotificacion", "tipo_entidad");
@@ -130,7 +135,7 @@ namespace CapaDatos.DAOs
 
                 var sql = "INSERT INTO aocr_tbnotificacion (" + string.Join(", ", columnas) + ") VALUES (" + string.Join(", ", valores) + ") RETURNING codigonotificacion;";
 
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var cmd = new NpgsqlCommand(sql, cn, tx))
                 {
                     cmd.Parameters.AddWithValue("@user", notificacion.CodigoUsuario);
                     cmd.Parameters.AddWithValue("@tit", (object)notificacion.Titulo ?? DBNull.Value);
@@ -166,7 +171,6 @@ namespace CapaDatos.DAOs
 
                     return notificacion.CodigoNotificacion > 0;
                 }
-            }
         }
 
         // ==============================

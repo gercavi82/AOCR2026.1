@@ -49,6 +49,10 @@ namespace CapaPresentacion.Helpers
             public int DirdacPendingSignatures { get; set; }
             public int ExecutiveApprovalQueue { get; set; }
             public int DcavPendingConditions { get; set; }
+            public int DcavPendingDocumentation { get; set; }
+            public int DcavPendingDesignations { get; set; }
+            public int DcavPendingReports { get; set; }
+            public int DcavPendingRemissions { get; set; }
             public int AdminApprovalUsers { get; set; }
         }
 
@@ -804,10 +808,22 @@ namespace CapaPresentacion.Helpers
             {
                 if (DebeCargarContadorRol(context, "direccion"))
                 {
-                    var contadoresDireccion = new AocrSidebarCounterService().ObtenerContadoresDireccion();
-                    snapshot.ExecutiveApprovalQueue = contadoresDireccion.BandejaEjecutivaAprobacion;
-                    snapshot.DirdacPendingSignatures = contadoresDireccion.FirmasPendientesDirdac;
-                    snapshot.DcavPendingConditions = contadoresDireccion.CondicionesPendientesDcav;
+                    if (!context.EsDcavRol)
+                    {
+                        var contadoresDireccion = new AocrSidebarCounterService().ObtenerContadoresDireccion();
+                        snapshot.ExecutiveApprovalQueue = contadoresDireccion.BandejaEjecutivaAprobacion;
+                        snapshot.DirdacPendingSignatures = contadoresDireccion.FirmasPendientesDirdac;
+                        snapshot.DcavPendingConditions = contadoresDireccion.CondicionesPendientesDcav;
+                    }
+                    if (context.EsDcavRol)
+                    {
+                        var bandejaDcav = new DircavBandejaService();
+                        snapshot.DcavPendingDocumentation = bandejaDcav.ContarDocumentacionPendienteAceptacion();
+                        snapshot.DcavPendingDesignations = bandejaDcav.ContarDesignacionesPendientes();
+                        snapshot.DcavPendingReports = bandejaDcav.ContarInformesPendientesRevision();
+                        snapshot.DcavPendingConditions = bandejaDcav.ContarCondicionesPendientesFirma();
+                        snapshot.DcavPendingRemissions = bandejaDcav.ContarExpedientesPendientesRemisionDirdac();
+                    }
                     if (context.EsDirdacRol)
                     {
                         snapshot.DirdacPendingSignatures = new AocrFinalWorkflowService().ObtenerBandejaDirdac().TotalPendientes;
@@ -820,6 +836,10 @@ namespace CapaPresentacion.Helpers
                 snapshot.ExecutiveApprovalQueue = 0;
                 snapshot.DirdacPendingSignatures = 0;
                 snapshot.DcavPendingConditions = 0;
+                snapshot.DcavPendingDocumentation = 0;
+                snapshot.DcavPendingDesignations = 0;
+                snapshot.DcavPendingReports = 0;
+                snapshot.DcavPendingRemissions = 0;
                 LogSidebarCounterError(context, "DIRECCION_EJECUTIVA", ex);
             }
 
@@ -1503,8 +1523,11 @@ namespace CapaPresentacion.Helpers
 
             if (context.EsDcavRol)
             {
+                group.Items.Add(CreateItem(context, "dcav-documentacion-pendiente", "Documentación por aprobar", "Expedientes remitidos por Coordinación pendientes de aceptación documental.", "fas fa-folder-open", "Dircav", "Bandeja", new { tab = "documentacion" }, PendingBadge(context.Badges.DcavPendingDocumentation), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "documentacion", string.Empty));
+                group.Items.Add(CreateItem(context, "dcav-designaciones-pendientes", "Designaciones por firmar", "Aceptación y designación de inspectores pendientes de firma institucional.", "fas fa-user-check", "Dircav", "Bandeja", new { tab = "designaciones" }, PendingBadge(context.Badges.DcavPendingDesignations), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "designaciones", string.Empty));
+                group.Items.Add(CreateItem(context, "dcav-informes-pendientes", "Informes por revisar", "Informes técnicos remitidos a DCAV para su revisión.", "fas fa-file-alt", "Dircav", "Bandeja", new { tab = "informes" }, PendingBadge(context.Badges.DcavPendingReports), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "informes", string.Empty));
                 group.Items.Add(CreateItem(context, "dcav-condiciones-pendientes", "Firma de Condiciones y Limitaciones", "Revise y firme digitalmente de forma exclusiva Condiciones y Limitaciones.", "fas fa-file-contract", "Dircav", "Bandeja", new { tab = "condiciones", DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoCondiciones }, PendingBadge(context.Badges.DcavPendingConditions), "warning", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "DocumentoPendiente", AocrFirmaPendientePolicy.DocumentoCondiciones, string.Empty));
-                group.Items.Add(CreateItem(context, "dcav-remision-dirdac", "Remisión a DIRDAC", "Expedientes aprobados por DIRCAV listos para remisión a la Dirección General.", "fas fa-paper-plane", "Dircav", "Bandeja", new { tab = "remision" }, null, "success", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "tab", "remision", string.Empty));
+                group.Items.Add(CreateItem(context, "dcav-remision-dirdac", "Remisión a DIRDAC", "Expedientes aprobados por DIRCAV listos para remisión a la Dirección General.", "fas fa-paper-plane", "Dircav", "Bandeja", new { tab = "remision" }, PendingBadge(context.Badges.DcavPendingRemissions), "success", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "tab", "remision", string.Empty));
             }
             else if (context.EsDirdacRol)
             {
@@ -2244,7 +2267,8 @@ namespace CapaPresentacion.Helpers
                 case "coordinacion":
                     return context.EsCoordinadorRol || context.EsLegalRol || RoleGroupingHelper.IsCoordinacion(rolActivo);
                 case "direccion":
-                    return context.EsDirdacRol
+                    return context.EsDcavRol
+                        || context.EsDirdacRol
                         || context.EsDirectorGeneralRol
                         || RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActivo);
                 case "financiero":

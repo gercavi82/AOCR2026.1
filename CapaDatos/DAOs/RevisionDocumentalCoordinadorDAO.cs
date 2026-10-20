@@ -444,9 +444,19 @@ VALUES
                                 Estado = "PENDIENTE"
                             };
                             bool duplicate;
-                            new CapaDatos.Services.EmailQueueService().EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                            new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
                         }
 
+                        if (p.NotificacionesInternas != null)
+                            foreach (var notificacion in p.NotificacionesInternas)
+                                if (!NotificacionDAO.InsertarEnTransaccion(cn, tx, notificacion))
+                                    throw new InvalidOperationException("No se pudo registrar el aviso interno de DCAV.");
+                        if (p.CorreosAdicionales != null)
+                            foreach (var correo in p.CorreosAdicionales)
+                            {
+                                bool duplicado;
+                                new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, correo, null, out duplicado);
+                            }
                         tx.Commit();
                     }
                     catch (Exception ex)

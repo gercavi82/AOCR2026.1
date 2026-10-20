@@ -50,6 +50,8 @@ namespace CapaDatos.Models
         public string EmailAsunto { get; set; }
         public string EmailCuerpo { get; set; }
         public string TipoNotificacion { get; set; }
+        public System.Collections.Generic.List<CapaModelo.Notificacion> NotificacionesInternas { get; set; }
+        public System.Collections.Generic.List<CapaDatos.Services.EmailQueueItem> CorreosAdicionales { get; set; }
     }
 
     public sealed class TransicionCoordinadorResultadoDAO

@@ -14,7 +14,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'createdb' }
     Copy-Item "$taskRoot/CapaPresentacion/bin/*.dll" $taskDir
     $exe = "$taskDir/RemisionTest.exe"
-    & 'C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe' /nologo /out:$exe /r:"$taskRoot/CapaPresentacion/bin/CapaDatos.dll" /r:"$taskRoot/CapaPresentacion/bin/Npgsql.dll" /r:netstandard.dll /r:System.Data.dll /r:System.Configuration.dll "$PSScriptRoot/test_remision_dcav.cs"
+    & 'C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/Roslyn/csc.exe' /nologo /out:$exe /r:"$taskRoot/CapaPresentacion/bin/CapaDatos.dll" /r:"$taskRoot/CapaPresentacion/bin/CapaModelo.dll" /r:"$taskRoot/CapaPresentacion/bin/CapaNegocio.dll" /r:"$taskRoot/CapaPresentacion/bin/Npgsql.dll" /r:netstandard.dll /r:System.Data.dll /r:System.Configuration.dll "$PSScriptRoot/test_remision_dcav.cs"
     if ($LASTEXITCODE -ne 0) { throw 'csc' }
     $cfg = New-Object System.Xml.XmlDocument
     $cfg.LoadXml('<configuration><connectionStrings><add name="AOCRConnection" connectionString="Host=127.0.0.1;Port=55440;Database=remision_test;Username=aocr_review" /></connectionStrings></configuration>')

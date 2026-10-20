@@ -19,7 +19,7 @@ namespace AOCR.Tests.Unit
             AssertRoleKeys(body, "financiero-", 3);
             AssertRoleKeys(body, "coordinador-", 4);
             AssertRoleKeys(body, "dirdac-", 3);
-            AssertRoleKeys(body, "dcav-", 2);
+            AssertRoleKeys(body, "dcav-", 5);
         }
 
         [TestMethod]
@@ -31,6 +31,8 @@ namespace AOCR.Tests.Unit
 
             StringAssert.Contains(dcav, "DocumentoCondiciones");
             Assert.IsFalse(dcav.Contains("DocumentoAocr"));
+            foreach (var tab in new[] { "documentacion", "designaciones", "informes", "remision" })
+                StringAssert.Contains(dcav, "tab = \"" + tab + "\"");
             StringAssert.Contains(dirdac, "DocumentoAocr");
             Assert.IsFalse(dirdac.Contains("DocumentoCondiciones"));
         }

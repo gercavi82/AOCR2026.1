@@ -15,6 +15,7 @@ namespace CapaNegocio.Services
         public const string GrupoCoordinacionInspeccion = "COORDINACION_INSPECCION";
         public const string GrupoCoordinacionLegal = "COORDINACION_LEGAL";
         public const string GrupoDireccionFinal = "DIRECCION_FINAL";
+        public const string GrupoDcav = "DCAV";
         public const string GrupoDireccionJefaturaRevisionInforme = "DIRECCION_JEFATURA_REVISION_INFORME";
         public const string GrupoFinanciero = "FINANCIERO";
 
@@ -85,6 +86,10 @@ namespace CapaNegocio.Services
                             "CoordinacionLegal",
                             "CoordinadorLegal",
                             "Administrador");
+                        break;
+
+                    case GrupoDcav:
+                        AgregarUsuariosPorRol(destinatarios, "DIRCAV", "DCAV");
                         break;
 
                     case GrupoDireccionFinal:
