@@ -10,6 +10,7 @@ namespace CapaModelo
     {
         public int Id { get; set; }
         public int SolicitudId { get; set; }
+        public string NumeroSolicitud { get; set; }
         public int? InspeccionId { get; set; }
         public int? EstacionId { get; set; }
 

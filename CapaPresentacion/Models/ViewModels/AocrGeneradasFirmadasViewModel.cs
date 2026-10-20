@@ -57,6 +57,7 @@ namespace CapaPresentacion.Models.ViewModels
 
     public class AocrGeneradasFirmadasViewModel
     {
+        public IList<CapaModelo.AocrDesignacionInspector> OficiosDesignacionFirmados { get; set; } = new List<CapaModelo.AocrDesignacionInspector>();
         public AocrGeneradasFirmadasFiltroViewModel Filtros { get; set; } = new AocrGeneradasFirmadasFiltroViewModel();
         public IList<AocrGeneradasFirmadasRowViewModel> Items { get; set; } = new List<AocrGeneradasFirmadasRowViewModel>();
         public IList<SelectListItem> EstadosFinales { get; set; } = new List<SelectListItem>();

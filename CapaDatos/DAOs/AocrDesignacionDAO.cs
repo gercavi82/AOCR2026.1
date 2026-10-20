@@ -481,6 +481,35 @@ LIMIT 1;";
             }
         }
 
+        public List<AocrDesignacionInspector> ListarOficiosFirmadosUsuario(int usuarioId, bool esRt, bool esInspector)
+        {
+            var resultado = new List<AocrDesignacionInspector>();
+            if (usuarioId <= 0 || (!esRt && !esInspector)) return resultado;
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var cmd = new NpgsqlCommand(@"SELECT d.*,COALESCE(to_jsonb(s)->>'numero_solicitud',s.codigo_solicitud::text) AS numero_solicitud FROM public.aocr_tbdesignacion_inspector d
+JOIN public.aocr_tbsolicitud s ON s.codigo_solicitud=d.solicitud_id
+JOIN public.usuario u ON u.idusuario=@usuario
+WHERE d.firmado=TRUE AND d.vigente=TRUE
+AND ((@rt AND s.codigo_usuario=@usuario) OR (@inspector AND
+ (d.inspector_id=@usuario OR d.inspector_cedula=u.codigousuario::text OR d.inspector_apoyo_cedula=u.codigousuario::text)))
+ORDER BY d.fecha_firma DESC,d.id DESC", cn))
+                {
+                    cmd.Parameters.AddWithValue("@usuario", usuarioId);
+                    cmd.Parameters.AddWithValue("@rt", esRt);
+                    cmd.Parameters.AddWithValue("@inspector", esInspector);
+                    using (var rd = cmd.ExecuteReader()) while (rd.Read())
+                    {
+                        var oficio = Mapear(rd);
+                        oficio.NumeroSolicitud = Convert.ToString(rd["numero_solicitud"]);
+                        resultado.Add(oficio);
+                    }
+                }
+            }
+            return resultado;
+        }
+
         public List<AocrDesignacionInspector> ListarHistorial(int solicitudId)
         {
             var resultado = new List<AocrDesignacionInspector>();

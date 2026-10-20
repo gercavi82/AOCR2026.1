@@ -614,7 +614,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         [HttpGet]
         [OverrideAuthorization]
-        [Authorize(Roles = "Inspector,INSPECTOR,DIRCAV,DCAV,Coordinador,COORDINADOR,Administrador,ADMINISTRADOR")]
+        [Authorize(Roles = "Inspector,INSPECTOR,DIRCAV,DCAV,Coordinador,COORDINADOR,Administrador,ADMINISTRADOR,RT,Solicitante,SOLICITANTE,Operador")]
         public ActionResult DescargarDesignacionInspector(int id)
         {
             var rol = ObtenerRolActual();

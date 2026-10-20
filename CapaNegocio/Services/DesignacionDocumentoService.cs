@@ -735,12 +735,20 @@ namespace CapaNegocio.Services
             var esDircav = _dircavService.EsDircavAutorizado(rol);
             var esCoord = AocrRolesInstitucionales.EsCoordinador(rol);
             var esInspector = AocrRolesInstitucionales.EsInspector(rol);
+            var esRt = AocrRolesInstitucionales.EsRt(rol);
 
-            if (esInspector)
+            if (esRt)
+            {
+                var solicitudRt = _solicitudDao.ObtenerPorId(solicitudId);
+                if (usuarioId <= 0 || solicitudRt == null || solicitudRt.CodigoUsuario != usuarioId)
+                    throw new UnauthorizedAccessException("Solo el RT propietario del expediente puede descargar este oficio.");
+            }
+            else if (esInspector)
             {
                 var cedulaLogin = usuarioLogin ?? string.Empty;
                 var esAsignado = (usuarioId > 0 && usuarioId == designacion.InspectorId)
-                    || (!string.IsNullOrWhiteSpace(designacion.InspectorCedula) && string.Equals(designacion.InspectorCedula, cedulaLogin, StringComparison.OrdinalIgnoreCase));
+                    || (!string.IsNullOrWhiteSpace(designacion.InspectorCedula) && string.Equals(designacion.InspectorCedula, cedulaLogin, StringComparison.OrdinalIgnoreCase))
+                    || (!string.IsNullOrWhiteSpace(designacion.InspectorApoyoCedula) && string.Equals(designacion.InspectorApoyoCedula, cedulaLogin, StringComparison.OrdinalIgnoreCase));
 
                 if (!esAsignado)
                 {
@@ -764,11 +772,7 @@ namespace CapaNegocio.Services
                 }
             }
 
-            // Fallback: regenerar con los mismos metadatos históricos
-            var model = ConstruirDatosDesignacion(solicitudId);
-            model.EsVistaPrevia = false;
-            model.FechaFirma = designacion.FechaFirma ?? designacion.FechaDesignacion;
-            return GenerarPdfOficial(model, esVistaPrevia: false);
+            throw new FileNotFoundException("No se encuentra el PDF firmado en el almacenamiento institucional. No se sustituye por un PDF sin firma.");
         }
 
         #endregion

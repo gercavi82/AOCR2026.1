@@ -148,6 +148,29 @@ class RemisionDcavTest {
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue q JOIN email_attachment a ON a.email_queue_id=q.id WHERE q.solicitud_id=15 AND q.to_address IN ('rt@example.test','inspector@example.test') AND a.file_name='Oficio_Firmado.pdf' AND a.content_type='application/pdf' AND a.sha256='HASH_TRANSACCION_SIMULADA'"))==2,"Ambos correos incluyen el mismo PDF firmado con hash");
  Check(dcav.EjecutarFirmaDesignacionTransaccional(firma).EsIdempotente,"Segundo registro de firma no duplica efectos");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_attachment a JOIN email_queue q ON q.id=a.email_queue_id WHERE q.solicitud_id=15"))==2,"Repetir firma no duplica correos ni adjuntos");
+ sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN codigo_usuario integer;
+ UPDATE aocr_tbsolicitud SET codigo_usuario=90 WHERE codigo_solicitud=15;
+ INSERT INTO usuario VALUES(90,'RT_PRUEBA','RT','Prueba','RT','rt@example.test',1),(91,'RT_AJENO','RT','Ajeno','RT','ajeno@example.test',1);
+ INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,codigo_usuario) VALUES(18,'DOCUMENTACION_ACEPTADA_DIRCAV',90);");
+ Check(dcav.EjecutarDesignacionTransaccional(designar(18)).Exitoso,"Prepara oficio no firmado del mismo RT");
+ Check(dcav.ListarOficiosFirmadosUsuario(90,true,false).Count==1,"RT ve solo oficio propio firmado, excluye pendiente");
+ Check(dcav.ListarOficiosFirmadosUsuario(79,false,true).Count==1,"Inspector asignado ve oficio firmado en bandeja");
+ Check(dcav.ListarOficiosFirmadosUsuario(91,true,false).Count==0&&dcav.ListarOficiosFirmadosUsuario(98,false,true).Count==0,"Bandejas no muestran oficios de expedientes ajenos");
+ var archivoPrueba=Path.Combine(Path.GetTempPath(),"aocr_descarga_test_"+Guid.NewGuid().ToString("N")+".pdf");
+ try{
+ var contenido=System.Text.Encoding.ASCII.GetBytes("%PDF-prueba-descarga-exacta");File.WriteAllBytes(archivoPrueba,contenido);
+ using(var q=new NpgsqlCommand("UPDATE aocr_tbdesignacion_inspector SET ruta_documento_firmado=@ruta WHERE solicitud_id=15",c)){q.Parameters.AddWithValue("@ruta",archivoPrueba);q.ExecuteNonQuery();}
+ string descarga;
+ Check(oficio.ObtenerDocumentoParaDescarga(15,90,"RT","RT_PRUEBA",out descarga).SequenceEqual(contenido),"RT descarga bytes exactos del documento guardado");
+ Check(oficio.ObtenerDocumentoParaDescarga(15,79,"Inspector","INSPECTOR",out descarga).SequenceEqual(contenido),"Inspector descarga el mismo archivo firmado");
+ var rtAjenoBloqueado=false;try{oficio.ObtenerDocumentoParaDescarga(15,91,"RT","RT_AJENO",out descarga);}catch(UnauthorizedAccessException){rtAjenoBloqueado=true;}
+ Check(rtAjenoBloqueado,"Descarga directa bloqueada para RT ajeno");
+ var inspectorAjenoBloqueado=false;try{oficio.ObtenerDocumentoParaDescarga(15,98,"Inspector","AJENO",out descarga);}catch(UnauthorizedAccessException){inspectorAjenoBloqueado=true;}
+ Check(inspectorAjenoBloqueado,"Descarga directa bloqueada para inspector ajeno");
+ File.Delete(archivoPrueba);
+ var sinSustituto=false;try{oficio.ObtenerDocumentoParaDescarga(15,90,"RT","RT_PRUEBA",out descarga);}catch(FileNotFoundException){sinSustituto=true;}
+ Check(sinSustituto,"Archivo firmado faltante no se reemplaza por PDF regenerado");
+ }finally{if(File.Exists(archivoPrueba))File.Delete(archivoPrueba);}
  }
  }
 }

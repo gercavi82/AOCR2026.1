@@ -3536,6 +3536,9 @@ namespace CapaPresentacion.Controllers
             };
 
             ConfigurarEmptyStateBandeja(model, totalBaseSinFiltros, totalDespuesRol, totalDespuesTextoTipo, totalDespuesEstado, totalDespuesPdf);
+            if (contexto.EsSolicitante || contexto.EsInspector)
+                model.OficiosDesignacionFirmados = new AocrDesignacionDAO().ListarOficiosFirmadosUsuario(
+                    contexto.CodigoUsuarioActual, contexto.EsSolicitante, contexto.EsInspector);
 
             model.EstadosFinales = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFinal), filtros.EstadoFinal, "Todos los estados finales");
             model.EstadosFirma = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFirma), filtros.EstadoFirma, "Todos los estados de firma");

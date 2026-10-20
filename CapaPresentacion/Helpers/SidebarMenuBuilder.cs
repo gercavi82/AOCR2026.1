@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -1544,6 +1544,7 @@ namespace CapaPresentacion.Helpers
             }
             else if (context.EsInspectorRol)
             {
+                group.Items.Add(CreateItem(context, "inspector-oficios-firmados", "Oficios firmados", "Descargue los oficios de designación firmados por DCAV de sus expedientes.", "fas fa-file-signature", "SolicitudAOCR", "GeneradasFirmadas", null, null, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
                 group.Items.Add(CreateItem(context, "inspector-revision-documental", "Revisión documental", "Revise la documentación asignada y decida desde el expediente.", "fas fa-file-circle-check", "RevisionDocumental", "Index", null, PendingBadge(context.Badges.InspectorPendingRevision), "warning", true, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
                 group.Items.Add(CreateItem(context, "inspector-inspecciones", "Mis inspecciones", "Acceda a LV, observaciones y documentos técnicos desde el detalle.", "fas fa-plane-departure", "Inspeccion", "Index", null, PendingBadge(context.Badges.InspectorTotalInspections), "info", true, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
                 group.Items.Add(CreateItem(context, "inspector-informes", "Informes técnicos", "Cree, corrija y consulte informes desde una sola bandeja.", "fas fa-file-lines", "Informe", "Index", null, null, "neutral", true, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
@@ -1562,7 +1563,7 @@ namespace CapaPresentacion.Helpers
                 var ordenBadge = context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador ? (int?)1 : null;
                 group.Items.Add(CreateItem(context, "rt-orden-recaudacion", ordenTitle, "Cree, continúe o consulte el estado de su orden.", "fas fa-file-invoice-dollar", "OrdenRecaudacion", ordenAction, null, ordenBadge, "warning", true, true, string.Empty, new[] { "Nueva", "Obligatoria", "Index", "Detalles" }, null, null, string.Empty));
                 group.Items.Add(CreateItem(context, "rt-solicitudes", "Mis solicitudes AOCR", "Cree, continúe y atienda observaciones desde el expediente.", "fas fa-folder-open", "SolicitudAOCR", "MisSolicitudes", null, PendingBadge(context.Badges.RtActiveRequests), "info", true, true, string.Empty, new[] { "MisSolicitudes", "Index", "Detalle", "FormularioEmisionAOCR" }, null, null, string.Empty));
-                group.Items.Add(CreateItem(context, "rt-documentos-finales", "Documentos finales", "Consulte AOCR y Condiciones firmadas desde una sola entrada.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", new { EstadoFirma = "Firmado" }, PendingBadge(context.Badges.RtFinalDocuments), "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, "EstadoFirma", "Firmado", string.Empty));
+                group.Items.Add(CreateItem(context, "rt-documentos-finales", "Documentos finales", "Descargue oficios de designaci?n, AOCR y Condiciones firmadas de sus expedientes.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", new { EstadoFirma = "Firmado" }, PendingBadge(context.Badges.RtFinalDocuments), "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, "EstadoFirma", "Firmado", string.Empty));
             }
 
             group.Visible = group.Items.Any(item => item.Visible);

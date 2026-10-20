@@ -158,3 +158,13 @@ El flujo oficial de firma resuelve el RT propietario de la solicitud y el Inspec
 Los correos y metadatos de adjuntos se insertan en la misma transaccion de registro de firma; la transaccion se confirma despues de guardar el PDF firmado. La clave de evento incluye solicitud, version y destinatario, y la idempotencia impide repetir correos al repetir la firma. Se sustituye el aviso sin adjunto al Inspector de la ruta principal, evitando duplicarlo.
 
 Compilacion Release correcta y 58 comprobaciones correctas en base temporal: dos destinatarios unicos, adjunto PDF identico con hash en ambos correos y ausencia de duplicados al repetir. DLL actualizados en public/public1/bin; falta publicar. No se enviaron correos reales durante las pruebas. Encolado no acredita entrega SMTP. Este cambio aplica al completar una firma nueva; no reenvia automaticamente oficios previamente firmados.
+
+### Descarga del oficio firmado en las bandejas RT e Inspector
+
+Se agrega la seccion Oficios de designacion firmados en SolicitudAOCR/GeneradasFirmadas, accesible al RT desde Documentos finales y al Inspector desde el nuevo acceso Oficios firmados de Mi trabajo. Muestra tramite, inspector, fecha y descarga. La consulta usa designaciones vigentes ya firmadas y filtra por propietario RT o inspector relacionado; no depende de que el AOCR final o Condiciones ya esten generados.
+
+La descarga permite al RT propietario, al Inspector asignado y a los roles institucionales previamente autorizados. Las solicitudes de RT/Inspector ajenos reciben 403. Se entrega el archivo institucional guardado, con lectura desde la raiz compartida; si falta, devuelve archivo no encontrado y no regenera un PDF sin firma como sustituto.
+
+Verificacion: compilacion de vistas Razor correcta, Release correcto, 67 comprobaciones de integracion y 16 pruebas de menu correctas. Incluye listas sin oficios ajenos/no firmados, descarga de bytes exactos por ambos roles, rechazo de enlaces directos ajenos y ausencia de sustitucion del firmado faltante. Pruebas en base temporal, sin datos reales modificados.
+
+Publicar los cuatro DLL actualizados de public/public1/bin junto con public/public1/Views/SolicitudAOCR/GeneradasFirmadas.cshtml; esta carpeta local ya esta preparada y DLL verificados por hash. Los oficios vigentes que ya esten firmados tambien apareceran despues de publicar; no requiere nueva firma ni SQL adicional. No se publico en servidor.

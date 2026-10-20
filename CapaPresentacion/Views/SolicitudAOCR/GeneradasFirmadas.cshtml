@@ -241,6 +241,36 @@
         </div>
     </section>
 
+    @if (Model.EsSolicitante || Model.EsInspector)
+    {
+        <section class="card border shadow-sm" aria-label="Oficios de designación firmados">
+            <div class="card-header bg-white text-dark"><strong>Oficios de designación firmados</strong> <span class="badge bg-success">@Model.OficiosDesignacionFirmados.Count</span></div>
+            <div class="card-body">
+                @if (Model.OficiosDesignacionFirmados.Count == 0)
+                {
+                    <p class="text-muted mb-0">Los oficios aparecerán aquí cuando DCAV complete su firma.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Trámite</th><th>Inspector designado</th><th>Fecha de firma</th><th>Documento</th></tr></thead>
+                            <tbody>
+                            @foreach (var oficio in Model.OficiosDesignacionFirmados)
+                            {
+                                <tr>
+                                    <td>@oficio.NumeroSolicitud</td><td>@oficio.InspectorNombre</td>
+                                    <td>@(oficio.FechaFirma.HasValue ? oficio.FechaFirma.Value.ToString("dd/MM/yyyy HH:mm") : "—")</td>
+                                    <td><a class="btn btn-sm btn-outline-primary" href="@Url.Action("DescargarDesignacionInspector", "Dircav", new { id = oficio.SolicitudId })"><i class="fas fa-download" aria-hidden="true"></i> Descargar oficio firmado</a></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </section>
+    }
     <section class="aocr-tray-summary">
         <article class="aocr-tray-summary-card">
             <span class="aocr-tray-summary-card__label">Registros visibles</span>
