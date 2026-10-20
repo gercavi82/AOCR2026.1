@@ -150,3 +150,11 @@ El usuario confirma como raiz `\\172.20.16.90\aocr`. RT_FileStorageRoot ya estab
 Se alinearon tambien las escrituras directas de certificados, documentos oficiales de Coordinacion, facturas, borradores y subsanaciones con FileStorageHelper; los lectores seguros de Coordinacion/Inspeccion permiten las raices configuradas. No se trasladaron archivos historicos ni se tocaron certificados privados. No se aplica la alternativa de permisos sobre el almacenamiento local de IIS.
 
 Validacion: compilaciones Debug/Release y prueba de raiz configurada correctas. Prueba adicional con la raiz UNC real verifica rutas de designacion/condiciones y escritura/lectura de un archivo temporal, eliminado al finalizar. Esa prueba usa la cuenta de esta sesion, no la identidad IIS; el Application Pool debe tener acceso de escritura a la carpeta compartida. DLL actualizados en public/public1/bin; falta publicar y volver a firmar.
+
+### Oficio firmado adjunto por correo al RT e Inspector
+
+El flujo oficial de firma resuelve el RT propietario de la solicitud y el Inspector asignado (incluido apoyo cuando corresponda). Exige destinatarios resolubles de ambos grupos antes de completar la firma. Deduplica direcciones sin distinguir mayusculas y encola el PDF firmado como application/pdf, con nombre, ruta compartida, tamano y SHA256. No adjunta certificados ni contrasenas.
+
+Los correos y metadatos de adjuntos se insertan en la misma transaccion de registro de firma; la transaccion se confirma despues de guardar el PDF firmado. La clave de evento incluye solicitud, version y destinatario, y la idempotencia impide repetir correos al repetir la firma. Se sustituye el aviso sin adjunto al Inspector de la ruta principal, evitando duplicarlo.
+
+Compilacion Release correcta y 58 comprobaciones correctas en base temporal: dos destinatarios unicos, adjunto PDF identico con hash en ambos correos y ausencia de duplicados al repetir. DLL actualizados en public/public1/bin; falta publicar. No se enviaron correos reales durante las pruebas. Encolado no acredita entrega SMTP. Este cambio aplica al completar una firma nueva; no reenvia automaticamente oficios previamente firmados.

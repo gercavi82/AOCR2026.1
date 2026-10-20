@@ -136,13 +136,18 @@ class RemisionDcavTest {
  sql(@"INSERT INTO usuario VALUES(79,'INSPECTOR','Inspector','Prueba','Inspector','inspector@example.test',1);
  INSERT INTO aocr_revision_documental_coordinador(solicitud_id,estado,activo) VALUES(15,'PENDIENTE_ACEPTACION_DCAV',true);");
  var firma=new DircavFirmarDesignacionParams{SolicitudId=15,EstacionId=null,DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",RutaDocumentoFirmado="/prueba/firmado.pdf",HashDocumento="HASH_TRANSACCION_SIMULADA",TamanioBytes=1024,CodigoVerificacion="PRUEBA"};
+ var crearCorreos=typeof(DesignacionDocumentoService).GetMethod("CrearCorreosOficioFirmado",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static);
+ firma.CorreosDocumentoFirmado=(List<EmailQueueItem>)crearCorreos.Invoke(null,new object[]{15,1,"AOCR-PRUEBA","/prueba/firmado.pdf","Oficio_Firmado.pdf","HASH_TRANSACCION_SIMULADA",1024L,new List<NotificacionDestinatario>{new NotificacionDestinatario{Email="rt@example.test",Nombre="RT"},new NotificacionDestinatario{Email="inspector@example.test",Nombre="Inspector"},new NotificacionDestinatario{Email="INSPECTOR@example.test",Nombre="Duplicado"}}});
+ Check(firma.CorreosDocumentoFirmado.Count==2,"Correos del oficio para RT e Inspector sin duplicados");
  var firmaGuardada=dcav.EjecutarFirmaDesignacionTransaccional(firma);
  Check(firmaGuardada.Exitoso,"Persistencia de firma con estacion nula: "+firmaGuardada.Mensaje);
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND firmado=true"))==1,"Marca firma persistida en base temporal");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15 LIMIT 1"))=="DESIGNADO","Firma general actualiza estacion sin error de parametro");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"))=="ACEPTADA_POR_DCAV","Firma habilita fase del inspector");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND to_address='inspector@example.test'"))==1,"Firma encola aviso al inspector");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue q JOIN email_attachment a ON a.email_queue_id=q.id WHERE q.solicitud_id=15 AND q.to_address IN ('rt@example.test','inspector@example.test') AND a.file_name='Oficio_Firmado.pdf' AND a.content_type='application/pdf' AND a.sha256='HASH_TRANSACCION_SIMULADA'"))==2,"Ambos correos incluyen el mismo PDF firmado con hash");
  Check(dcav.EjecutarFirmaDesignacionTransaccional(firma).EsIdempotente,"Segundo registro de firma no duplica efectos");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_attachment a JOIN email_queue q ON q.id=a.email_queue_id WHERE q.solicitud_id=15"))==2,"Repetir firma no duplica correos ni adjuntos");
  }
  }
 }

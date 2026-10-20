@@ -62,6 +62,7 @@ namespace CapaDatos.DAOs
         public string HuellaCertificado { get; set; }
         public string CodigoVerificacion { get; set; }
         public string MimeType { get; set; } = "application/pdf";
+        public List<EmailQueueItem> CorreosDocumentoFirmado { get; set; }
     }
 
     /// <summary>
@@ -1404,7 +1405,13 @@ VALUES
                         Estado = "PENDIENTE"
                     };
                     bool duplicate;
-                    new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                    if (p.CorreosDocumentoFirmado != null)
+                    {
+                        foreach (var correoFirmado in p.CorreosDocumentoFirmado)
+                            new EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, correoFirmado, correoFirmado.Adjuntos, out duplicate);
+                    }
+                    else
+                        new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
 
                     if (!conExterno)
                     {

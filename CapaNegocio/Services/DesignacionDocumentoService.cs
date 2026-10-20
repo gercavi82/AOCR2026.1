@@ -9,6 +9,7 @@ using iTextSharp.text;
 using iTextSharp.text.pdf;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
+using CapaDatos.Services;
 using CapaModelo;
 using CapaModelo.DTOs;
 using CapaNegocio.Helpers;
@@ -61,6 +62,26 @@ namespace CapaNegocio.Services
         }
 
         #region Precondiciones y Construcción de Datos
+
+        private static List<EmailQueueItem> CrearCorreosOficioFirmado(int solicitudId, int version, string numeroSolicitud,
+            string rutaFisica, string nombreArchivo, string hash, long tamanio, IEnumerable<NotificacionDestinatario> destinatarios)
+        {
+            return destinatarios.Where(d => d != null && !string.IsNullOrWhiteSpace(d.Email))
+                .GroupBy(d => d.Email.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+                .Select(d => new EmailQueueItem
+                {
+                    Para = d.Email.Trim(), ParaNombre = d.Nombre, SolicitudId = solicitudId,
+                    Asunto = "AOCR - Oficio de designacion firmado - " + (numeroSolicitud ?? solicitudId.ToString()),
+                    Cuerpo = "<p>Se adjunta el oficio firmado digitalmente por la Direccion de Certificacion y Vigilancia Continua para la solicitud <strong>"
+                        + HttpUtility.HtmlEncode(numeroSolicitud ?? solicitudId.ToString()) + "</strong>.</p>",
+                    EsHtml = true, Estado = "PENDIENTE", TipoNotificacion = "SOLICITUD_DESIGNACION_FIRMADA",
+                    EventKey = "AOCR_DESIG_PDF:" + solicitudId + ":v" + version + ":" + d.Email.Trim().ToLowerInvariant(),
+                    Adjuntos = new List<EmailAttachmentItem> { new EmailAttachmentItem
+                    {
+                        FileName = nombreArchivo, FilePath = rutaFisica, ContentType = "application/pdf", FileSize = tamanio, Sha256 = hash
+                    } }
+                }).ToList();
+        }
 
         /// <summary>
         /// Valida las precondiciones y construye el ViewModel tipado para la designación.
@@ -579,6 +600,14 @@ namespace CapaNegocio.Services
             var rutaVirtual = $"~/App_Data/Uploads/Designaciones/{solicitudId}/{nombreArchivo}";
             var rutaFisica = FileStorageHelper.MapVirtualPath(rutaVirtual);
             var dirFisico = Path.GetDirectoryName(rutaFisica);
+            var politicaDestinatarios = new NotificacionDestinatarioPolicyService();
+            var destinatariosRt = politicaDestinatarios.ResolverDestinatarios(solicitud, null, NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico);
+            var destinatariosInspector = politicaDestinatarios.ResolverDestinatarios(solicitud, null, NotificacionDestinatarioPolicyService.GrupoInspectorAsignado);
+            if (destinatariosRt.Count == 0 || destinatariosInspector.Count == 0)
+                return new DircavDesignacionResult { Exitoso = false, HttpStatusCode = 400,
+                    Mensaje = "Registre un correo valido para el RT y el Inspector antes de firmar y enviar el oficio." };
+            var correosFirmados = CrearCorreosOficioFirmado(solicitudId, designacion.Version, solicitud.NumeroSolicitud,
+                rutaFisica, nombreArchivo, hashDoc, pdfFirmadoBytes.LongLength, destinatariosRt.Concat(destinatariosInspector));
 
             try
             {
@@ -604,7 +633,8 @@ namespace CapaNegocio.Services
                             TamanioBytes = pdfFirmadoBytes.LongLength,
                             HuellaCertificado = huellaCert,
                             CodigoVerificacion = model.CodigoVerificacion,
-                            MimeType = "application/pdf"
+                            MimeType = "application/pdf",
+                            CorreosDocumentoFirmado = correosFirmados
                         };
 
                         var resTx = _designacionDao.EjecutarFirmaDesignacionTransaccional(paramTx, tx);
@@ -656,7 +686,7 @@ namespace CapaNegocio.Services
                     DesignacionId = designacion.Id,
                     Version = designacion.Version,
                     NuevoEstado = AocrEstadosProceso.DesignacionFirmadaDircav,
-                    Mensaje = "Oficio de designación firmado digitalmente con éxito y notificado oficialmente al Inspector asignado."
+                    Mensaje = "Oficio firmado digitalmente. Correos al RT y al Inspector encolados con el PDF firmado adjunto."
                 };
             }
             catch (Exception ex)
