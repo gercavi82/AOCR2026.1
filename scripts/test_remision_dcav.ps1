@@ -18,6 +18,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'csc' }
     $cfg = New-Object System.Xml.XmlDocument
     $cfg.LoadXml('<configuration><connectionStrings><add name="AOCRConnection" connectionString="Host=127.0.0.1;Port=55440;Database=remision_test;Username=aocr_review" /></connectionStrings></configuration>')
+    $cola = $cfg.CreateElement('add')
+    $cola.SetAttribute('name', 'PostgreSQL')
+    $cola.SetAttribute('connectionString', 'Host=127.0.0.1;Port=55440;Database=remision_test;Username=aocr_review')
+    [void]$cfg.configuration.connectionStrings.AppendChild($cola)
     $ref = New-Object System.Xml.XmlDocument
     $ref.Load("$taskRoot/AOCR.Tests/bin/Debug/AOCR.Tests.dll.config")
     [void]$cfg.DocumentElement.AppendChild($cfg.ImportNode($ref.configuration.runtime,$true))

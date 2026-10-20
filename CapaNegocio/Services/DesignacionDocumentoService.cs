@@ -65,7 +65,7 @@ namespace CapaNegocio.Services
         /// <summary>
         /// Valida las precondiciones y construye el ViewModel tipado para la designación.
         /// </summary>
-        public DesignacionPdfViewModel ConstruirDatosDesignacion(int solicitudId, int? estacionId = null)
+        public DesignacionPdfViewModel ConstruirDatosDesignacion(int solicitudId, int? estacionId = null, bool permitirBorrador = false)
         {
             if (solicitudId <= 0)
                 throw new ArgumentException("ID de solicitud inválido.", nameof(solicitudId));
@@ -75,6 +75,21 @@ namespace CapaNegocio.Services
                 throw new KeyNotFoundException($"No se encontró la solicitud AOCR #{solicitudId}.");
 
             var designacion = _designacionDao.ObtenerDesignacionVigente(solicitudId, estacionId);
+            if (designacion == null && permitirBorrador
+                && string.Equals(solicitud.Estado, AocrEstadosProceso.PendienteDircav, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+                && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre))
+            {
+                // Solo lectura: no crea una designacion ni habilita la firma institucional.
+                designacion = new AocrDesignacionInspector
+                {
+                    SolicitudId = solicitudId, InspectorCedula = solicitud.TecnicoResponsableCedula,
+                    InspectorNombre = solicitud.TecnicoResponsableNombre,
+                    InspectorApoyoCedula = solicitud.InspectorApoyoCedula,
+                    InspectorApoyoNombre = solicitud.InspectorApoyoNombre,
+                    Estado = "BORRADOR", Version = 0, FechaDesignacion = DateTime.Now, Firmado = false
+                };
+            }
             if (designacion == null)
                 throw new InvalidOperationException($"La solicitud #{solicitudId} no cuenta con una designación formal de inspectores registrada por DIRCAV (Precondición AC-05).");
 
@@ -112,7 +127,7 @@ namespace CapaNegocio.Services
                 DesignacionId = designacion.Id,
                 SolicitudId = solicitudId,
                 NumeroSolicitud = solicitud.NumeroSolicitud ?? solicitudId.ToString(),
-                NumeroDesignacion = $"DIRCAV-DESIG-{solicitudId:D5}-v{designacion.Version}",
+                NumeroDesignacion = designacion.Id == 0 ? "BORRADOR - SIN DESIGNACION FORMAL" : $"DIRCAV-DESIG-{solicitudId:D5}-v{designacion.Version}",
                 Version = designacion.Version,
                 Estado = designacion.Estado,
                 Compania = companiaPersistida,
@@ -385,7 +400,7 @@ namespace CapaNegocio.Services
                 throw new UnauthorizedAccessException("Acceso denegado: Solo DIRCAV o Coordinación pueden acceder a la vista previa de la designación.");
             }
 
-            var model = ConstruirDatosDesignacion(solicitudId);
+            var model = ConstruirDatosDesignacion(solicitudId, permitirBorrador: true);
             model.EsVistaPrevia = true;
             return GenerarPdfOficial(model, esVistaPrevia: true);
         }

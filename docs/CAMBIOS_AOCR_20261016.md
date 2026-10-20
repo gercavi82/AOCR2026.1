@@ -72,3 +72,13 @@ Despliegue: copiar al servidor los cuatro DLL actualizados y la vista de detalle
 Se agregaron a Mi trabajo los accesos Documentacion por aprobar, Designaciones por firmar e Informes por revisar. Todos muestran el numero de pendientes de su bandeja correspondiente, al igual que Firma de Condiciones y Remision a DIRDAC. Se habilito expresamente la carga de contadores para el rol activo DCAV/DIRCAV, que antes se omitia en el filtro de direccion. Los contadores DCAV usan `DircavBandejaService`, igual que la pantalla de bandejas, sin depender de consultas de DIRDAC.
 
 Compilacion Debug/Release y 16 pruebas SidebarRoleMatrixTests correctas. `public/public1/bin/CapaPresentacion.dll` actualizado y verificado por SHA256; falta copiar esa DLL al servidor. El paquete del 19/10 no incluye este cambio posterior. No cambia estados ni permisos de aprobacion. El log del 20/10 confirma envio SMTP exitoso del aviso de AOCR003 a la cuenta de vigilancia continua; esto no acredita lectura ni entrega en la carpeta de entrada del destinatario.
+
+### Vista previa del oficio DCAV - 20/10/2026
+
+Se corrigio un inicio duplicado de funcion JavaScript sin cierre en `Views/Dircav/Bandeja.cshtml`, responsable de Unexpected end of input y del bloqueo de los modales. Se valido la sintaxis del bloque completo con Node.
+
+AOCR003 tiene inspector propuesto y estado PENDIENTE_DIRCAV, pero cero designaciones formales vigentes. Para ese caso, la vista previa ahora arma un borrador con los datos del inspector y las estaciones planificadas, sin crear designaciones ni firmas. El PDF muestra BORRADOR - SIN DESIGNACION FORMAL y la marca VISTA PREVIA NO OFICIAL. La construccion oficial y la firma siguen requiriendo designacion formal. Se muestra tambien TempData Error en el detalle para que los fallos del PDF sean visibles.
+
+Verificacion: compilaciones Debug/Release correctas y 26 comprobaciones de integracion local, incluidas generacion de PDF para el caso sin designacion, ausencia de escrituras de designacion, precondicion oficial conservada y acceso DIRDAC rechazado. No se genero ni firmo un documento real en el servidor.
+
+Publicar conjuntamente los DLL actualizados de `public/public1/bin` (Datos, Modelo, Negocio y Presentacion) y `public/public1/Views/Dircav/Bandeja.cshtml` y `Detalle.cshtml`. Esta carpeta local ya esta actualizada. La copia al servidor sigue pendiente; el paquete ZIP del 19/10 no contiene esta correccion.

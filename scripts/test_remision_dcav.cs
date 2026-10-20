@@ -72,6 +72,21 @@ class RemisionDcavTest {
  Check(Convert.ToInt32(scalar("SELECT version FROM aocr_tbsolicitud WHERE codigo_solicitud=9"))==2,"Version incrementada");
  sql("UPDATE aocr_revision_documental_coordinador SET estado='ACEPTADA_POR_DCAV' WHERE solicitud_id=9;");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=9"))=="ACEPTADA_POR_DCAV","Restriccion permite firma DCAV despues de remision");
+ sql(@"CREATE TABLE aocr_tbsolicitud_estacion(id serial primary key,solicitud_id integer,estacion_codigo text,estacion_nombre text,fecha_inicio timestamp,fecha_fin timestamp,inspector_id integer,inspector_nombre text,inspeccion_id integer,estado text,version integer,activo boolean,created_at timestamp,updated_at timestamp,created_by text,updated_by text);
+ ALTER TABLE aocr_tbsolicitud_estacion ADD COLUMN observacion text, ADD COLUMN creado_en timestamp, ADD COLUMN creado_por text, ADD COLUMN actualizado_en timestamp, ADD COLUMN actualizado_por text;
+ INSERT INTO aocr_tbsolicitud_estacion(solicitud_id,estacion_codigo,estacion_nombre,fecha_inicio,fecha_fin,activo) VALUES(7,'UIO','Quito','2026-10-21','2026-10-21',true);
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN deleted_at timestamp;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN tecnico_responsable_cedula text;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN tecnico_responsable_nombre text;
+ UPDATE aocr_tbsolicitud SET tecnico_responsable_cedula='1700000000',tecnico_responsable_nombre='Inspector Prueba' WHERE codigo_solicitud=7;");
+ var oficio=new DesignacionDocumentoService();
+ var pdf=oficio.GenerarVistaPrevia(7,97,"DIRCAV");
+ Check(pdf.Length>1000&&System.Text.Encoding.ASCII.GetString(pdf,0,4)=="%PDF","Vista previa PDF sin designacion formal para expediente remitido");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=7"))==0,"Vista previa no crea designacion ni firma");
+ var bloqueada=false;try{oficio.ConstruirDatosDesignacion(7);}catch(InvalidOperationException){bloqueada=true;}
+ Check(bloqueada,"Construccion oficial sigue exigiendo designacion formal");
+ var denegada=false;try{oficio.GenerarVistaPrevia(7,99,"DIRDAC");}catch(UnauthorizedAccessException){denegada=true;}
+ Check(denegada,"Vista previa mantiene segregacion DIRDAC");
  }
  }
 }
