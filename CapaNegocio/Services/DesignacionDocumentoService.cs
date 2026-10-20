@@ -220,7 +220,6 @@ namespace CapaNegocio.Services
                 };
                 celdaTitulo.AddElement(new Paragraph("DIRECCIÓN DE CERTIFICACIÓN AERONÁUTICA", fuenteSubtitulo));
                 celdaTitulo.AddElement(new Paragraph("ACEPTACION DE DOCUMENTACION REQUERIDA POR LA NORMATIVA, Y DESIGNACION DE SR. INSPECTOR PARA REALIZAR LAS INSPECCIONES SOLICITADAS", fuenteTitulo));
-                celdaTitulo.AddElement(new Paragraph("Vigilancia de Explotadores de Servicios Aéreos Extranjeros (RDAC 129)", fuentePequena));
                 tablaEncabezado.AddCell(celdaTitulo);
 
                 var celdaOficio = new PdfPCell
