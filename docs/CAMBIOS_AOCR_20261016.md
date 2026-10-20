@@ -82,3 +82,17 @@ AOCR003 tiene inspector propuesto y estado PENDIENTE_DIRCAV, pero cero designaci
 Verificacion: compilaciones Debug/Release correctas y 26 comprobaciones de integracion local, incluidas generacion de PDF para el caso sin designacion, ausencia de escrituras de designacion, precondicion oficial conservada y acceso DIRDAC rechazado. No se genero ni firmo un documento real en el servidor.
 
 Publicar conjuntamente los DLL actualizados de `public/public1/bin` (Datos, Modelo, Negocio y Presentacion) y `public/public1/Views/Dircav/Bandeja.cshtml` y `Detalle.cshtml`. Esta carpeta local ya esta actualizada. La copia al servidor sigue pendiente; el paquete ZIP del 19/10 no contiene esta correccion.
+
+### Texto del oficio y pais del explotador - 20/10/2026
+
+Se reemplazo EQUIPO INSPECTOR por INSPECTOR DESIGNADO POR LA DIRECCION DE CERTIFICACION Y VIGILANCIA CONTINUA y se retiro Aeronavegabilidad del cargo principal. Alcance y Mandato Tecnico contiene, en orden: aceptacion documental, facultades RDAC 129 y transporte proporcionado por el operador. Se corrigieron acentos y separacion de parrafos.
+
+La consulta de AOCR003 confirma `pais` vacio; no es un defecto de color o de renderizado. El catalogo local `operadores_operador` tampoco tiene una fila QATAR de la cual recuperar ese dato. Se solicito confirmacion del pais al usuario; no se deduce ni actualiza la nacionalidad a partir del nombre comercial. Cuando falta el valor, el PDF indica Pendiente de registrar. Cuando existe, lo muestra. La correccion de ese dato real queda pendiente de confirmacion.
+
+Validacion: prueba de PDF verifica pais de prueba, ausencia de EQUIPO INSPECTOR y Aeronavegabilidad, orden de los tres parrafos y fecha de estacion. PDF de una pagina renderizado y revisado sin superposiciones ni cortes. Compilaciones Debug/Release correctas. Se actualiza la carpeta local public/public1; falta publicarla en servidor. Los PDF firmados historicos no se modifican.
+
+### Acceso denegado al designar o firmar en DIRCAV
+
+El log del 20/10 a las 09:40 y 10:28-10:30 muestra al usuario GEN_DIRCAV autenticado, pero DesignarInspector/FirmarDesignacion devuelve sesion invalida. El controlador leia exclusivamente Session UsuarioId; la sesion canonica usa UserId, IdUsuario y CodigoUsuario. El 401 era convertido por Forms Authentication en redireccion a Login y luego por el filtro global en NoAutorizado.
+
+El controlador ahora lee los identificadores canonicos, mantiene compatibilidad con UsuarioId y recupera el contexto autenticado si faltan. No cambia la autorizacion del rol ni las precondiciones de designacion/firma. Tres pruebas correctas: resolucion de las cuatro claves con DIRCAV autorizado y DIRDAC rechazado, recursos publicados y ciclo de vida del controlador. Compilaciones Debug/Release correctas. Publicar `public/public1/bin/CapaPresentacion.dll`, actualizado localmente y verificado por hash, y reintentar la operacion. No se ejecuto ninguna firma real ni se modificaron roles en servidor.

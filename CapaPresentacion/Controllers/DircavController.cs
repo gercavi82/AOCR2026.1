@@ -78,12 +78,17 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerUsuarioIdActual()
         {
-            if (Session != null && Session["UsuarioId"] != null)
+            if (Session != null)
             {
-                int.TryParse(Session["UsuarioId"].ToString(), out var id);
-                return id;
+                foreach (var clave in new[] { "UserId", "IdUsuario", "CodigoUsuario", "UsuarioId" })
+                {
+                    int id;
+                    if (Session[clave] != null && int.TryParse(Session[clave].ToString(), out id) && id > 0)
+                        return id;
+                }
             }
-            return 0;
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated) return 0;
+            return new UsuarioContextoService(HttpContext).ObtenerContextoActual().UsuarioId;
         }
 
         private string ObtenerUsuarioLoginActual()

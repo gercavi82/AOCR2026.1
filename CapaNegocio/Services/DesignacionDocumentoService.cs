@@ -141,7 +141,7 @@ namespace CapaNegocio.Services
                 EmailRt = !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico) ? solicitud.CorreoRepresentanteTecnico.Trim() : (!string.IsNullOrWhiteSpace(solicitud.Email) ? solicitud.Email.Trim() : string.Empty),
                 InspectorPrincipalNombre = designacion.InspectorNombre,
                 InspectorPrincipalCedula = designacion.InspectorCedula,
-                InspectorPrincipalCargo = "Inspector de Operaciones / Aeronavegabilidad",
+                InspectorPrincipalCargo = "Inspector de Operaciones",
                 InspectorApoyoNombre = designacion.InspectorApoyoNombre,
                 InspectorApoyoCedula = designacion.InspectorApoyoCedula,
                 InspectorApoyoCargo = !string.IsNullOrWhiteSpace(designacion.InspectorApoyoNombre) ? "Inspector Asistente / Apoyo Técnico" : string.Empty,
@@ -248,7 +248,7 @@ namespace CapaNegocio.Services
                 AgregarParDatos(tablaOperador, "Operador Extranjero:", model.NombreOperador, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaOperador, "Tipo Solicitud:", model.TipoSolicitud, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaOperador, "Razón Social:", model.Compania, fuenteNegrita, fuenteNormal);
-                AgregarParDatos(tablaOperador, "País del Explotador:", model.PaisOperador, fuenteNegrita, fuenteNormal);
+                AgregarParDatos(tablaOperador, "País del Explotador:", string.IsNullOrWhiteSpace(model.PaisOperador) ? "Pendiente de registrar" : model.PaisOperador.Trim(), fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaOperador, "N° AOC Origen:", model.NumeroAoc, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaOperador, "Tipo Operación:", model.TipoOperacion, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaOperador, "Responsable Técnico:", model.ResponsableTecnico, fuenteNegrita, fuenteNormal);
@@ -261,7 +261,7 @@ namespace CapaNegocio.Services
                 var tablaInspectores = new PdfPTable(4) { WidthPercentage = 100 };
                 tablaInspectores.SetWidths(new float[] { 22f, 28f, 22f, 28f });
 
-                AgregarFilaCabeceraSeccion(tablaInspectores, "2. EQUIPO INSPECTOR DESIGNADO (AUTORIDAD DIRCAV)");
+                AgregarFilaCabeceraSeccion(tablaInspectores, "2. INSPECTOR DESIGNADO POR LA DIRECCIÓN DE CERTIFICACIÓN Y VIGILANCIA CONTINUA");
                 AgregarParDatos(tablaInspectores, "Inspector Principal:", model.InspectorPrincipalNombre, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaInspectores, "Identificación / Cédula:", model.InspectorPrincipalCedula, fuenteNegrita, fuenteNormal);
                 AgregarParDatos(tablaInspectores, "Cargo / Función:", model.InspectorPrincipalCargo, fuenteNegrita, fuenteNormal);
@@ -311,12 +311,10 @@ namespace CapaNegocio.Services
                 doc.Add(new Paragraph(" ", fuentePequena));
 
                 // 5. Alcance e Instrucciones Técnicas
-                var parrafoAlcance = new Paragraph();
-                parrafoAlcance.Add(new Chunk("Alcance y Mandato Técnico: ", fuenteNegrita));
-                parrafoAlcance.Add(new Chunk("En cumplimiento con la Regulación Técnica de Aviación Civil RDAC Parte 129, el equipo inspector designado queda legalmente facultado para ejecutar la verificación documental, operativa y de instalaciones en las estaciones y fechas arriba indicadas, debiendo emitir la correspondiente Lista de Verificación (LV) y el Informe Técnico motivado.", fuenteNormal));
-                doc.Add(parrafoAlcance);
-                doc.Add(new Paragraph("Esta Direccion informa que la documentacion requerida por la normativa ha sido verificada y aceptada para continuar con las inspecciones solicitadas. Para dicho efecto se designa al Inspector indicado en este oficio.", fuenteNormal));
-                doc.Add(new Paragraph("Los traslados aereos y terrestres deberan ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados.", fuenteNormal));
+                doc.Add(new Paragraph("Alcance y Mandato Técnico", fuenteNegrita) { SpacingAfter = 6f });
+                doc.Add(new Paragraph("Esta Dirección informa que la documentación requerida por la normativa ha sido verificada y aceptada para continuar con las inspecciones solicitadas. Para dicho efecto se designa al Inspector indicado en este oficio.", fuenteNormal) { SpacingAfter = 6f });
+                doc.Add(new Paragraph("En cumplimiento con la Regulación Técnica de Aviación Civil RDAC Parte 129, el Inspector designado por la Dirección de Certificación y Vigilancia Continua queda legalmente facultado para ejecutar la verificación documental, operativa y de instalaciones en las estaciones y fechas arriba indicadas, debiendo emitir la correspondiente Lista de Verificación (LV) y el Informe Técnico motivado.", fuenteNormal) { SpacingAfter = 6f });
+                doc.Add(new Paragraph("Los traslados aéreos y terrestres deberán ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados.", fuenteNormal));
                 doc.Add(new Paragraph(" ", fuentePequena));
 
                 // 6. Bloque de Firma Institucional DIRCAV

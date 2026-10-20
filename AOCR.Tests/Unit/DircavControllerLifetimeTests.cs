@@ -8,6 +8,42 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DircavControllerLifetimeTests
     {
+        private sealed class SesionPrueba : System.Web.HttpSessionStateBase
+        {
+            private readonly System.Collections.Generic.Dictionary<string, object> valores = new System.Collections.Generic.Dictionary<string, object>();
+            public override object this[string name] { get { object valor; return valores.TryGetValue(name, out valor) ? valor : null; } set { valores[name] = value; } }
+        }
+        private sealed class ContextoPrueba : System.Web.HttpContextBase
+        {
+            public readonly SesionPrueba Sesion = new SesionPrueba();
+            public override System.Web.HttpSessionStateBase Session { get { return Sesion; } }
+            public override System.Security.Principal.IPrincipal User { get; set; }
+        }
+        [TestMethod]
+        public void Dircav_ResuelveUsuarioDeSesionCanonicaSinPerderRolExclusivo()
+        {
+            var previo = Environment.GetEnvironmentVariable("AOCR_AS400_SERVER");
+            try
+            {
+                Environment.SetEnvironmentVariable("AOCR_AS400_SERVER", "127.0.0.1");
+                using (var controller = new DircavController())
+                {
+                    foreach (var clave in new[] { "UserId", "IdUsuario", "CodigoUsuario", "UsuarioId" })
+                    {
+                        var ctx = new ContextoPrueba { User = new System.Security.Principal.GenericPrincipal(new System.Security.Principal.GenericIdentity("GEN_DIRCAV"), new[] { "DIRCAV" }) };
+                        ctx.Sesion[clave] = 97;
+                        ctx.Sesion["Rol"] = "DIRCAV";
+                        controller.ControllerContext = new ControllerContext(ctx, new System.Web.Routing.RouteData(), controller);
+                        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                        Assert.AreEqual(97, controller.GetType().GetMethod("ObtenerUsuarioIdActual", flags).Invoke(controller, null), clave);
+                        Assert.AreEqual(true, controller.GetType().GetMethod("EsDircavAutorizado", flags).Invoke(controller, null));
+                        ctx.Sesion["Rol"] = "DIRDAC";
+                        Assert.AreEqual(false, controller.GetType().GetMethod("EsDircavAutorizado", flags).Invoke(controller, null), "DIRDAC no obtiene firma DIRCAV");
+                    }
+                }
+            }
+            finally { Environment.SetEnvironmentVariable("AOCR_AS400_SERVER", previo); }
+        }
         [TestMethod]
         public void Publicacion_IncluyeLosRecursosDelLayoutQueFallabanEnProduccion()
         {

@@ -20,7 +20,8 @@ namespace AOCR.Tests.Unit
             var vm = new CapaModelo.DTOs.DesignacionPdfViewModel
             {
                 SolicitudId = 7, NumeroSolicitud = "DGAC-GOP-2026-AOCR003", NumeroDesignacion = "DCAV-2026-0007",
-                Compania = "QATAR AIRWAYS Q.C.S.C.", NombreOperador = "QATAR AIRWAYS Q.C.S.C.",
+                Compania = "QATAR AIRWAYS Q.C.S.C.", NombreOperador = "QATAR AIRWAYS Q.C.S.C.", PaisOperador = "PAIS DE PRUEBA",
+                InspectorPrincipalCargo = "Inspector de Operaciones",
                 InspectorPrincipalNombre = "CATOTA TORRES LUIS WILKIR", InspectorPrincipalCedula = "1709565459",
                 AutoridadDircavNombre = "Autoridad DCAV", AutoridadDircavCargo = "Director DCAV",
                 FechaEmision = new DateTime(2026, 10, 16), Estado = "PENDIENTE_FIRMA"
@@ -36,7 +37,12 @@ namespace AOCR.Tests.Unit
                 for (int page = 1; page <= reader.NumberOfPages; page++)
                     text.Append(iTextSharp.text.pdf.parser.PdfTextExtractor.GetTextFromPage(reader, page));
                 StringAssert.Contains(text.ToString(), "ACEPTACION DE DOCUMENTACION");
-                StringAssert.Contains(text.ToString(), "traslados aereos y terrestres");
+                StringAssert.Contains(text.ToString(), "traslados aéreos y terrestres");
+                StringAssert.Contains(text.ToString(), "PAIS DE PRUEBA");
+                Assert.IsFalse(text.ToString().Contains("EQUIPO INSPECTOR"));
+                Assert.IsFalse(text.ToString().Contains("Aeronavegabilidad"));
+                Assert.IsTrue(text.ToString().IndexOf("Esta Dirección") < text.ToString().IndexOf("En cumplimiento"));
+                Assert.IsTrue(text.ToString().IndexOf("En cumplimiento") < text.ToString().IndexOf("Los traslados"));
                 StringAssert.Contains(text.ToString(), "21/10/2026");
             }
             var dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".tmp", "pdfs"));
