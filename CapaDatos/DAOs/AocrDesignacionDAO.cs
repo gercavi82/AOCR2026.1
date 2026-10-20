@@ -1347,7 +1347,7 @@ WHERE solicitud_id = @solicitud_id
   AND (@estacion_id IS NULL OR id = @estacion_id);", cn, tx))
                     {
                         cmdEst.Parameters.AddWithValue("@solicitud_id", p.SolicitudId);
-                        cmdEst.Parameters.AddWithValue("@estacion_id", (object)p.EstacionId ?? DBNull.Value);
+                        cmdEst.Parameters.Add("@estacion_id", NpgsqlTypes.NpgsqlDbType.Integer).Value = (object)p.EstacionId ?? DBNull.Value;
                         cmdEst.Parameters.AddWithValue("@actualizado_por", p.DircavUsuarioId);
                         cmdEst.ExecuteNonQuery();
                     }

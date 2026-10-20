@@ -558,7 +558,8 @@ namespace CapaPresentacion.Controllers
                 {
                     return Json(new { exitoso = false, mensaje = resultado.Mensaje });
                 }
-                return new HttpStatusCodeResult(resultado.HttpStatusCode, resultado.Mensaje);
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", new { id });
             }
 
             if (Request != null && Request.IsAjaxRequest())

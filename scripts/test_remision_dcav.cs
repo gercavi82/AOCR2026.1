@@ -133,6 +133,16 @@ class RemisionDcavTest {
  sql("INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado) SELECT 17,'DOCUMENTACION_ACEPTADA_DIRCAV'; ALTER TABLE aocr_tbauditoria ADD CONSTRAINT prueba_fallo_designacion CHECK(registro_id <> 17);");
  Check(!dcav.EjecutarDesignacionTransaccional(designar(17)).Exitoso,"Fallo de auditoria revierte designacion");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=17"))==0&&Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud WHERE codigo_solicitud=17"))=="DOCUMENTACION_ACEPTADA_DIRCAV","Sin designacion parcial ni cambio de estado al fallar");
+ sql(@"INSERT INTO usuario VALUES(79,'INSPECTOR','Inspector','Prueba','Inspector','inspector@example.test',1);
+ INSERT INTO aocr_revision_documental_coordinador(solicitud_id,estado,activo) VALUES(15,'PENDIENTE_ACEPTACION_DCAV',true);");
+ var firma=new DircavFirmarDesignacionParams{SolicitudId=15,EstacionId=null,DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",RutaDocumentoFirmado="/prueba/firmado.pdf",HashDocumento="HASH_TRANSACCION_SIMULADA",TamanioBytes=1024,CodigoVerificacion="PRUEBA"};
+ var firmaGuardada=dcav.EjecutarFirmaDesignacionTransaccional(firma);
+ Check(firmaGuardada.Exitoso,"Persistencia de firma con estacion nula: "+firmaGuardada.Mensaje);
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND firmado=true"))==1,"Marca firma persistida en base temporal");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15 LIMIT 1"))=="DESIGNADO","Firma general actualiza estacion sin error de parametro");
+ Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"))=="ACEPTADA_POR_DCAV","Firma habilita fase del inspector");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND to_address='inspector@example.test'"))==1,"Firma encola aviso al inspector");
+ Check(dcav.EjecutarFirmaDesignacionTransaccional(firma).EsIdempotente,"Segundo registro de firma no duplica efectos");
  }
  }
 }
