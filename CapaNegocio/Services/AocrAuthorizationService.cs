@@ -865,6 +865,8 @@ namespace CapaNegocio.Services
             }
 
             var estadosPermitidos = new AocrFlujoService().EsTransicionPermitida(estado, EstadoSolicitud.AceptacionDocumental)
+                || Comparer.Equals(estado, AocrEstadosProceso.DevueltoCoordinador)
+                || Comparer.Equals(estado, AocrEstadosProceso.PendienteCoordinador)
                 || Comparer.Equals(estado, EstadoSolicitud.AceptacionDocumental)
                 || Comparer.Equals(estado, EstadoSolicitud.EnRevision)
                 || Comparer.Equals(estado, EstadoSolicitud.DocumentacionCompleta)

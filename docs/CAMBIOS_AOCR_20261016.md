@@ -122,3 +122,9 @@ El detalle deshabilita Aceptar Documentacion fuera de PENDIENTE_DIRCAV y explica
 Se creo `scripts/sql/20261020_solicitud_campos_dcav.sql`, repetible y transaccional, que agrega a aocr_tbsolicitud `version integer NOT NULL DEFAULT 1` y `estado_documental varchar(50)` nullable. No asigna estados documentales retroactivos ni modifica estados del tramite, usuarios o roles.
 
 Tras 42 comprobaciones locales correctas, se ejecuto la migracion en `172.20.16.55:5432/dgac_des`, verificando que las configuraciones AOCRConnection de CapaPresentacion y public/public1 apuntan al mismo destino. No se pudo leer configuracion remota del sitio; el destino aplicado es el comprobado en esas configuraciones locales. Se confirmaron ambas columnas y sus propiedades despues de ejecutar. AOCR003 estaba DEVUELTO_COORDINADOR antes y conserva ese estado despues. Coordinacion debe volver a remitirlo para habilitar aceptacion DCAV. La migracion de base no sustituye la publicacion pendiente de las correcciones del codigo.
+
+### Autorizacion de nueva remision de expediente devuelto
+
+El log de las 14:05:39 confirma rol activo COORDINADOR, pero el filtro AocrAuthorizationService rechaza DEVUELTO_COORDINADOR antes de ejecutar FirmarAceptacionDocumental. Se agregaron los estados DEVUELTO_COORDINADOR y PENDIENTE_COORDINADOR al control contextual de esa accion, alineandolo con el DAO y el servicio ya corregidos. No se cambiaron roles autorizados ni se habilitaron expedientes cerrados.
+
+Prueba de regresion correcta con DAO simulado: acepta ambos estados para Coordinacion, rechaza Finalizado y rechaza Solicitante. Compilacion Debug/Release correcta y carpeta local public/public1/bin actualizada. Publicar las DLL actualizadas (en particular CapaNegocio.dll) y reintentar Revisar y remitir a DCAV desde Coordinacion. No requiere otra migracion ni modificacion manual del estado.

@@ -29,6 +29,34 @@ namespace AOCR.Tests.Unit
             return new AocrAuthorizationService(new FakeUsuarioAS400DAO(), new FakeEmpresaAS400DAO());
         }
 
+        private sealed class SolicitudRemisionPrueba : CapaDatos.DAOs.SolicitudAOCRDAO
+        {
+            public string Estado { get; set; }
+            public override CapaModelo.SolicitudAOCR ObtenerPorId(int id) => new CapaModelo.SolicitudAOCR { CodigoSolicitud = id, Estado = Estado };
+        }
+
+        [TestMethod]
+        public void Coordinacion_PuedeRemitirExpedienteDevueltoSinAutorizarRolesAjenosNiCerrados()
+        {
+            var servicio = CrearServicio();
+            var dao = new SolicitudRemisionPrueba();
+            var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            typeof(AocrAuthorizationService).GetField("_solicitudDao", flags).SetValue(servicio, dao);
+            var validar = typeof(AocrAuthorizationService).GetMethod("ValidarAprobacionDocumentalCoordinador", flags);
+            var usuario = new AocrAuthorizationContext { UserId = 90, IsAuthenticated = true, SelectedRole = "Coordinador", Roles = new List<string> { "Coordinador" } };
+            foreach (var estado in new[] { AocrEstadosProceso.DevueltoCoordinador, AocrEstadosProceso.PendienteCoordinador })
+            {
+                dao.Estado = estado;
+                Assert.IsTrue((bool)validar.Invoke(servicio, new object[] { usuario, 7, null }), estado);
+            }
+            dao.Estado = EstadoSolicitud.Finalizado;
+            Assert.IsFalse((bool)validar.Invoke(servicio, new object[] { usuario, 7, null }));
+            dao.Estado = AocrEstadosProceso.DevueltoCoordinador;
+            usuario.SelectedRole = "Solicitante";
+            usuario.Roles = new List<string> { "Solicitante" };
+            Assert.IsFalse((bool)validar.Invoke(servicio, new object[] { usuario, 7, null }));
+        }
+
         private static AocrAuthorizationContext ContextoRt(int userId = 100)
         {
             return new AocrAuthorizationContext
