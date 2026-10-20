@@ -180,7 +180,7 @@ namespace CapaNegocio.Helpers
                 }
 
                 // Fallback a almacenamiento local si existe allí históricamente
-                var local = MapVirtualPath(normalizedPath);
+                var local = MapLocalVirtualPath(normalizedPath);
                 if (!string.IsNullOrWhiteSpace(local) && File.Exists(local))
                 {
                     return local;
@@ -195,6 +195,15 @@ namespace CapaNegocio.Helpers
         public static string MapVirtualPath(string virtualPath)
         {
             if (string.IsNullOrWhiteSpace(virtualPath)) return virtualPath;
+            if (Path.IsPathRooted(virtualPath)) return Path.GetFullPath(virtualPath);
+            if (!string.IsNullOrWhiteSpace(FileStorageRoot) && Path.IsPathRooted(FileStorageRoot))
+                return GetPhysicalBasePath(virtualPath);
+            return MapLocalVirtualPath(virtualPath);
+        }
+
+        private static string MapLocalVirtualPath(string virtualPath)
+        {
+            if (string.IsNullOrWhiteSpace(virtualPath)) return virtualPath;
             if (HttpContext.Current != null && virtualPath.StartsWith("~"))
             {
                 try { return HttpContext.Current.Server.MapPath(virtualPath); } catch { }
@@ -203,7 +212,7 @@ namespace CapaNegocio.Helpers
             {
                 try { return HostingEnvironment.MapPath(virtualPath); } catch { }
             }
-            var baseDir = GetPhysicalBasePath(BasePathStorage);
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             return Path.Combine(baseDir, virtualPath.TrimStart('~', '/', '\\').Replace('/', Path.DirectorySeparatorChar));
         }
 

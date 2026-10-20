@@ -10,6 +10,15 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class CambiosAocrOctubreTests
     {
+        [TestMethod]
+        public void Almacenamiento_PdfUsaRaizConfiguradaEnLugarDeCarpetaLocalIis()
+        {
+            var raiz = CapaNegocio.Helpers.FileStorageHelper.FileStorageRoot;
+            Assert.IsFalse(string.IsNullOrWhiteSpace(raiz));
+            var ruta = CapaNegocio.Helpers.FileStorageHelper.MapVirtualPath("~/App_Data/Uploads/Designaciones/7/oficio.pdf");
+            Assert.AreEqual(System.IO.Path.Combine(raiz, "Uploads", "Designaciones", "7", "oficio.pdf"), ruta);
+            Assert.AreEqual(System.IO.Path.Combine(raiz, "Temp"), CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath("~/App_Data/Temp"));
+        }
         private static object Invoke(Type type, string method, params object[] args)
         {
             return type.GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, args);

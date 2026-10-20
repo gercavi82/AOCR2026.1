@@ -574,7 +574,7 @@ namespace CapaNegocio.Services
             }
 
             // 10. Gestión de archivo temporal antes del almacenamiento final
-            var tempFilePath = Path.Combine(Path.GetTempPath(), $"aocr_desig_tmp_{Guid.NewGuid():N}.pdf");
+            var tempFilePath = Path.Combine(FileStorageHelper.GetPhysicalBasePath("~/App_Data/Temp"), $"aocr_desig_tmp_{Guid.NewGuid():N}.pdf");
             var nombreArchivo = $"Designacion_{solicitudId}_v{designacion.Version}_Firmada.pdf";
             var rutaVirtual = $"~/App_Data/Uploads/Designaciones/{solicitudId}/{nombreArchivo}";
             var rutaFisica = FileStorageHelper.MapVirtualPath(rutaVirtual);
@@ -583,6 +583,7 @@ namespace CapaNegocio.Services
             try
             {
                 // Escribir en archivo temporal
+                Directory.CreateDirectory(Path.GetDirectoryName(tempFilePath));
                 File.WriteAllBytes(tempFilePath, pdfFirmadoBytes);
 
                 // 11. Ejecutar persistencia atómica con control transaccional de BD y Almacenamiento
@@ -726,7 +727,7 @@ namespace CapaNegocio.Services
             // Si existe en disco, servirlo
             if (!string.IsNullOrWhiteSpace(designacion.RutaDocumentoFirmado))
             {
-                var rutaFisica = FileStorageHelper.MapVirtualPath(designacion.RutaDocumentoFirmado);
+                var rutaFisica = FileStorageHelper.ResolvePhysicalPath(designacion.RutaDocumentoFirmado);
                 if (File.Exists(rutaFisica))
                 {
                     return File.ReadAllBytes(rutaFisica);

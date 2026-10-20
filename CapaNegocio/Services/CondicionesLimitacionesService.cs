@@ -710,7 +710,7 @@ namespace CapaNegocio.Services
             var rutaVirtual = $"~/App_Data/Uploads/AOCR/Condiciones/{request.SolicitudId}/{nombreArchivo}";
             var rutaFisica = FileStorageHelper.MapVirtualPath(rutaVirtual);
             var carpetaFisica = Path.GetDirectoryName(rutaFisica);
-            var rutaTemporal = Path.Combine(Path.GetTempPath(), $"cl_{request.SolicitudId}_{Guid.NewGuid():N}.tmp");
+            var rutaTemporal = Path.Combine(FileStorageHelper.GetPhysicalBasePath("~/App_Data/Temp"), $"cl_{request.SolicitudId}_{Guid.NewGuid():N}.tmp");
 
             try
             {
@@ -720,6 +720,7 @@ namespace CapaNegocio.Services
                 }
 
                 // Guardado atómico: escribir en temp y mover al destino controlado
+                Directory.CreateDirectory(Path.GetDirectoryName(rutaTemporal));
                 File.WriteAllBytes(rutaTemporal, pdfFirmadoBytes);
                 File.Copy(rutaTemporal, rutaFisica, overwrite: true);
                 try { if (File.Exists(rutaTemporal)) File.Delete(rutaTemporal); } catch { }

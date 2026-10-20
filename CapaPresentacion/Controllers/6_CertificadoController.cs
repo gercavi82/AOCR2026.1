@@ -446,18 +446,18 @@ namespace CapaPresentacion.Controllers
 
             if (rutaNormalizada.StartsWith("~/", StringComparison.Ordinal))
             {
-                return Server.MapPath(rutaNormalizada);
+                return CapaNegocio.Helpers.FileStorageHelper.ResolvePhysicalPath(rutaNormalizada);
             }
 
             if (rutaNormalizada.StartsWith("/", StringComparison.Ordinal)
                 || (rutaNormalizada.StartsWith("\\", StringComparison.Ordinal) && !rutaNormalizada.StartsWith("\\\\", StringComparison.Ordinal)))
             {
-                return Server.MapPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
+                return CapaNegocio.Helpers.FileStorageHelper.ResolvePhysicalPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
             }
 
             return Path.IsPathRooted(rutaNormalizada)
                 ? rutaNormalizada
-                : Server.MapPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
+                : CapaNegocio.Helpers.FileStorageHelper.ResolvePhysicalPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
         }
 
         private Certificado FirmarYPersistirCertificado(
@@ -617,7 +617,7 @@ namespace CapaPresentacion.Controllers
         private string GuardarCertificadoFirmado(int solicitudId, byte[] contenido, string nombreArchivo = null)
         {
             var carpetaRelativa = "~/App_Data/Uploads/AOCR/Certificados/" + solicitudId;
-            var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
+            var carpetaAbsoluta = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath(carpetaRelativa);
             if (!Directory.Exists(carpetaAbsoluta))
             {
                 Directory.CreateDirectory(carpetaAbsoluta);

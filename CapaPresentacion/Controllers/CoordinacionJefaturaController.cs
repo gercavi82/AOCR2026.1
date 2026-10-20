@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Globalization;
@@ -2878,7 +2878,7 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult ServirDocumentoGate7(int documentoId, int solicitudId, string ruta, string nombre, bool descargar)
         {
-            var seguro = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+            var seguro = new DocumentoSeguroService(CapaNegocio.Helpers.FileStorageHelper.GetAllowedStorageRoots(),
                 evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + (User != null ? User.Identity.Name : string.Empty)));
             var archivo = seguro.Resolver(documentoId, solicitudId, solicitudId, ruta, nombre, ResolverRutaDocumento);
             if (!archivo.EsValido)
@@ -3112,7 +3112,7 @@ namespace CapaPresentacion.Controllers
         private string GuardarPdfOficialAocr(int solicitudId, string nombreArchivo, byte[] contenido)
         {
             var carpetaRelativa = "~/App_Data/Uploads/AOCR/Oficiales/" + solicitudId;
-            var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
+            var carpetaAbsoluta = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath(carpetaRelativa);
             if (!Directory.Exists(carpetaAbsoluta))
             {
                 Directory.CreateDirectory(carpetaAbsoluta);
@@ -4576,7 +4576,7 @@ namespace CapaPresentacion.Controllers
         private string GuardarDocumentoFirmadoAocr(int solicitudId, string tipoDocumento, string nombreArchivo, byte[] contenido)
         {
             var carpetaRelativa = "~/App_Data/Uploads/AOCR/Firmados/" + solicitudId;
-            var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
+            var carpetaAbsoluta = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath(carpetaRelativa);
             if (!Directory.Exists(carpetaAbsoluta))
             {
                 Directory.CreateDirectory(carpetaAbsoluta);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -4316,7 +4316,7 @@ namespace CapaPresentacion.Controllers
             var ruta = preferirFirmaCoordinador
                 ? FirstNonEmpty(nc.RutaPdfFirmadoCoordinador, nc.RutaPdfFirmadoInspector, nc.RutaPdf)
                 : FirstNonEmpty(nc.RutaPdfFirmadoInspector, nc.RutaPdf);
-            var servicio = new DocumentoSeguroService(new[] { Server.MapPath("~/App_Data") },
+            var servicio = new DocumentoSeguroService(CapaNegocio.Helpers.FileStorageHelper.GetAllowedStorageRoots(),
                 evento => System.Diagnostics.Trace.TraceInformation("[GATE7] " + evento + ";Usuario=" + ObtenerCodigoUsuario()));
             var archivo = servicio.Resolver(nc.CodigoNoConformidad, nc.CodigoSolicitud, inspeccion.CodigoSolicitud,
                 ruta, "No_Conformidad_" + nc.CodigoNoConformidad + ".pdf", Server.MapPath);
@@ -4332,7 +4332,7 @@ namespace CapaPresentacion.Controllers
             var nc=new NoConformidadDAO().ObtenerPorId(codigoNoConformidad);var inspeccion=_inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if(nc==null||inspeccion==null||nc.CodigoInspeccion!=codigoInspeccion)return HttpNotFound();
             if(!PuedeAccederInspeccion(inspeccion))return new HttpStatusCodeResult(403);
-            var seguro=new DocumentoSeguroService(new[]{Server.MapPath("~/App_Data")},
+            var seguro=new DocumentoSeguroService(CapaNegocio.Helpers.FileStorageHelper.GetAllowedStorageRoots(),
                 evento=>System.Diagnostics.Trace.TraceInformation("[GATE7] "+evento+";Inspector="+ObtenerCodigoUsuario()));
             var archivo=seguro.Resolver(nc.CodigoNoConformidad,nc.CodigoSolicitud,inspeccion.CodigoSolicitud,
                 nc.RutaPdfSubsanacionRt,"Subsanacion_NC_"+nc.CodigoNoConformidad+".pdf",Server.MapPath);
@@ -9988,7 +9988,7 @@ namespace CapaPresentacion.Controllers
                 @"<\s*script|javascript\s*:|\son[a-z]+\s*=", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                 return new HttpStatusCodeResult(400, "El borrador contiene marcado no permitido.");
 
-            var carpeta = Server.MapPath("~/App_Data/Borradores");
+            var carpeta = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath("~/App_Data/Borradores");
             if (!System.IO.Directory.Exists(carpeta)) System.IO.Directory.CreateDirectory(carpeta);
             
             var rutaArchivo = System.IO.Path.Combine(carpeta, "BorradorCondiciones_" + inspeccion.CodigoSolicitud + ".txt");

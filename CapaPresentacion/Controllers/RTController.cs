@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Web.Mvc;
@@ -531,7 +531,7 @@ namespace CapaPresentacion.Controllers
                 if(archivoSubsanacion.ContentLength>MAX_SUBSANACION_BYTES)return new HttpStatusCodeResult(400,"El PDF supera el máximo de 10 MB.");
                 var header=new byte[5];archivoSubsanacion.InputStream.Position=0;var read=archivoSubsanacion.InputStream.Read(header,0,header.Length);archivoSubsanacion.InputStream.Position=0;
                 if(read!=5||System.Text.Encoding.ASCII.GetString(header)!="%PDF-")return new HttpStatusCodeResult(400,"El contenido cargado no es un PDF válido.");
-                var folder = Server.MapPath("~/App_Data/SubsanacionesNC/");
+                var folder = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath("~/App_Data/SubsanacionesNC/");
                 if (!System.IO.Directory.Exists(folder))
                     System.IO.Directory.CreateDirectory(folder);
 

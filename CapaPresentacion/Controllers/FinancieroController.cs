@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -309,7 +309,7 @@ namespace CapaPresentacion.Controllers
 
             var uploadOptions = new FileUploadOptions
             {
-                BasePath = Server.MapPath("~/App_Data/AOCR/Facturas"),
+                BasePath = CapaNegocio.Helpers.FileStorageHelper.GetPhysicalBasePath("~/App_Data/AOCR/Facturas"),
                 Subfolder = model.OrdenId.ToString(),
                 AllowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" },
                 AllowedContentTypes = null,
