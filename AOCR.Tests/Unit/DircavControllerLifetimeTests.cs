@@ -18,6 +18,12 @@ namespace AOCR.Tests.Unit
             public readonly SesionPrueba Sesion = new SesionPrueba();
             public override System.Web.HttpSessionStateBase Session { get { return Sesion; } }
             public override System.Security.Principal.IPrincipal User { get; set; }
+            public override System.Web.HttpRequestBase Request { get { return new SolicitudPrueba(); } }
+        }
+        private sealed class SolicitudPrueba : System.Web.HttpRequestBase
+        {
+            public override string this[string name] { get { return null; } }
+            public override System.Collections.Specialized.NameValueCollection Headers { get { return new System.Collections.Specialized.NameValueCollection(); } }
         }
         [TestMethod]
         public void Dircav_ResuelveUsuarioDeSesionCanonicaSinPerderRolExclusivo()
@@ -37,6 +43,11 @@ namespace AOCR.Tests.Unit
                         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
                         Assert.AreEqual(97, controller.GetType().GetMethod("ObtenerUsuarioIdActual", flags).Invoke(controller, null), clave);
                         Assert.AreEqual(true, controller.GetType().GetMethod("EsDircavAutorizado", flags).Invoke(controller, null));
+                        var conflicto = (RedirectToRouteResult)controller.GetType().GetMethod("ResponderConflictoFirma", flags)
+                            .Invoke(controller, new object[] { 7, "Falta la designación formal" });
+                        Assert.AreEqual("Detalle", conflicto.RouteValues["action"]);
+                        Assert.AreEqual(7, conflicto.RouteValues["id"]);
+                        Assert.AreEqual("Falta la designación formal", controller.TempData["Error"]);
                         ctx.Sesion["Rol"] = "DIRDAC";
                         Assert.AreEqual(false, controller.GetType().GetMethod("EsDircavAutorizado", flags).Invoke(controller, null), "DIRDAC no obtiene firma DIRCAV");
                     }

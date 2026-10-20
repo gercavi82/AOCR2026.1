@@ -71,6 +71,18 @@ namespace CapaPresentacion.Controllers
             _finalWorkflowService = finalWorkflowService ?? new AocrFinalWorkflowService();
         }
 
+        private ActionResult ResponderConflictoFirma(int solicitudId, string mensaje)
+        {
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                Response.StatusCode = 409;
+                Response.TrySkipIisCustomErrors = true;
+                return Json(new { exitoso = false, mensaje });
+            }
+            TempData["Error"] = mensaje;
+            return RedirectToAction("Detalle", new { id = solicitudId });
+        }
+
         private string ObtenerRolActual()
         {
             return Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
@@ -184,6 +196,7 @@ namespace CapaPresentacion.Controllers
                 id, solicitud, _inspeccionDao.ListarPorSolicitud(id));
             ViewBag.EstacionesSolicitud = solicitud.Estaciones;
             ViewBag.ContextoRemisionDirdac = _finalWorkflowService.ObtenerContextoRemisionDircav(id);
+            ViewBag.TieneDesignacionFormal = new AocrDesignacionDAO().ObtenerDesignacionVigente(id) != null;
 
             return View(solicitud);
         }
@@ -510,6 +523,9 @@ namespace CapaPresentacion.Controllers
                 passwordCert: passwordCertificado
             );
 
+            LoggingServiceFactory.Create().LogInfo("[DIRCAV][FIRMAR_DESIGNACION_RESULTADO] SolicitudId=" + id
+                + "; Ok=" + resultado.Exitoso + "; Codigo=" + resultado.HttpStatusCode + "; Mensaje=" + resultado.Mensaje);
+
             if (!resultado.Exitoso)
             {
                 if (resultado.HttpStatusCode == 401)
@@ -522,7 +538,7 @@ namespace CapaPresentacion.Controllers
                 }
                 if (resultado.HttpStatusCode == 409)
                 {
-                    return new HttpStatusCodeResult(409, resultado.Mensaje);
+                    return ResponderConflictoFirma(id, resultado.Mensaje);
                 }
                 if (resultado.HttpStatusCode == 404)
                 {

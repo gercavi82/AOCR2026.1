@@ -4,6 +4,7 @@
     ViewBag.Title = "Expediente DIRCAV #" + Model.NumeroSolicitud;
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var estaciones = Model.Estaciones ?? new List<SolicitudEstacionInspeccion>();
+    var tieneDesignacionFormal = ViewBag.TieneDesignacionFormal == true;
 }
 
 <div class="container-fluid py-3">
@@ -120,12 +121,20 @@
                                 {
                                     <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Oficio Firmado por DIRCAV</span>
                                 }
-                                else
+                                else if (tieneDesignacionFormal)
                                 {
                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pendiente de Firma Institucional DIRCAV</span>
                                 }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Pendiente de designación formal</span>
+                                }
                             </div>
-                            <p class="small text-muted mb-3">Documento formal con membrete oficial DGAC, equipo inspector asignado y las fechas independientes por cada estación requeridas bajo AC-02.</p>
+                            <p class="small text-muted mb-3">Documento con membrete oficial DGAC, inspector designado y fechas independientes por estación.</p>
+                            @if (!tieneDesignacionFormal)
+                            {
+                                <div class="alert alert-info" role="status">La vista previa es un borrador. Para firmar, complete primero la aceptación documental y registre al inspector mediante <strong>Designar / Reasignar Inspector</strong>.</div>
+                            }
                             <div class="d-flex flex-wrap gap-2">
                                 <a href="@Url.Action("VistaPreviaDesignacion", "Dircav", new { id = Model.CodigoSolicitud })" target="_blank" class="btn btn-sm btn-outline-secondary">
                                     <i class="fas fa-eye me-1"></i>Ver Vista Previa del Oficio
@@ -137,11 +146,15 @@
                                         <i class="fas fa-download me-1"></i>Descargar Oficio Firmado
                                     </a>
                                 }
-                                else
+                                else if (tieneDesignacionFormal)
                                 {
                                     <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalFirmarDesignacionDetalle">
                                         <i class="fas fa-signature me-1"></i>Firmar Oficialmente Oficio de Designación
                                     </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-secondary" disabled>Firma pendiente de designación formal</button>
                                 }
                             </div>
                         </div>

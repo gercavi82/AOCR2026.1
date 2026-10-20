@@ -490,7 +490,7 @@ namespace CapaNegocio.Services
                 {
                     Exitoso = false,
                     HttpStatusCode = 409,
-                    Mensaje = "No existe una designación activa registrada para esta solicitud."
+                    Mensaje = "Antes de firmar, acepte la documentación y registre la designación formal con Designar / Reasignar Inspector. El inspector propuesto y la vista previa no sustituyen esa designación."
                 };
             }
 
