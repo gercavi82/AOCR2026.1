@@ -210,3 +210,17 @@ Verificado con node --check y scripts/test_lv_form_identity.js: primer guardado 
 El log confirma firma correcta de LV 2. La autorizacion de ModalInformeTecnico llamaba a AocrFlujoValidacionService, que buscaba una LV general sin estacion. Se reemplaza por validacion de todas las LV de estaciones obligatorias de la inspeccion, conservando soporte de LV general historica. Se exige finalizacion y firma en cada una, y se informan estaciones pendientes.
 
 Release correcto. Validacion con codigo corregido sobre AOCR003/inspeccion 2: InformeHabilitado=True, motivo vacio; no se repitieron firmas ni se alteraron registros para aprobar. DLL preparados en public/public1/bin; pendiente publicacion. No requiere SQL ni nueva firma.
+
+### Informe tecnico independiente por estacion (2026-10-21)
+
+Se incorpora estacion_id al informe tecnico. Las consultas, borradores, vistas previas, PDF, adjuntos y firma del inspector mantienen la estacion seleccionada; el modal y los formularios envian estacionId/codigoInforme. Cada informe usa exclusivamente la LV completada y firmada de esa estacion, sin esperar la LV de otra. El selector permite abrir el informe de Quito o Guayaquil. La firma o aprobacion de uno no se aplica al otro.
+
+GuardarBorrador separa contenido y cadena de antecedentes por estacion, con bloqueo transaccional por inspeccion para evitar colisiones. La numeracion de version conserva su secuencia global por inspeccion para compatibilidad con indices y rutas PDF existentes. Se evitan los fallbacks al PDF comun de la inspeccion al trabajar con estaciones, y se conserva la estacion en las redirecciones. La autorizacion valida que la estacion pertenezca a la inspeccion y que el inspector asignado pueda escribir; un informe enviado desde otra estacion se rechaza.
+
+Las bandejas institucionales recuperan el ultimo informe de cada estacion y muestran su estacion. La generacion final exige informes completos, aceptados y con resultado habilitante en todas las estaciones. Firmar el primer informe no reabre la fase documental ya aceptada por DCAV; una devolucion documental conserva su bloqueo.
+
+Migracion: scripts/sql/20261021_informes_por_estacion.sql agrega una columna nullable y su indice. Es repetible y no reasigna informes anteriores ni modifica firmas. Los informes historicos sin estacion permanecen descargables como historicos; no se dividen ni duplican automaticamente.
+
+Verificacion: Release y compilacion completa de vistas Razor correctos; 19 pruebas unitarias seleccionadas correctas; integracion en PostgreSQL temporal correcta, incluyendo guardado separado, edicion de Guayaquil sin alterar Quito firmado, estacion nueva sin datos heredados, ambos informes en revision institucional, decision independiente y migracion repetida sin modificar firmas. Sintaxis JavaScript correcta. No se firmaron documentos reales ni se alteraron expedientes de produccion durante estas pruebas.
+
+Publicacion: ejecutar la migracion y publicar cuatro DLL de public/public1/bin, Views/Inspeccion/Detalle.cshtml, Views/Inspeccion/_FirmaInspectorPanel.cshtml, Views/InformeTecnico/_ModalInformeTecnico.cshtml, Views/InformeTecnico/PendientesDireccion.cshtml y Scripts/aocr-informe-tecnico-modal.js. Archivos preparados localmente; no publicados en servidor.

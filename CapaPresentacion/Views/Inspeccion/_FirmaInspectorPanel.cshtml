@@ -1,4 +1,4 @@
-@* ============================================================
+﻿@* ============================================================
    Partial: Panel de firma del Inspector — rediseño ergonómico
    ============================================================ *@
 @inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm>
@@ -24,7 +24,7 @@
     var tieneRutaPdf = informeTecnico != null
         && (!string.IsNullOrWhiteSpace(informeTecnico.RutaPdf) || !string.IsNullOrWhiteSpace(informeTecnico.RutaDocumentoFirmado));
     var urlVerPdf = codigoInspeccion > 0
-        ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })
+        ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion, estacionId = (informeTecnico != null ? informeTecnico.EstacionId : null) })
         : "#";
 
     // Etiquetas de estado
@@ -136,6 +136,8 @@ else if (informeTecnico != null)
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@codigoInspeccion" />
+                <input type="hidden" name="estacionId" value="@(informeTecnico != null ? informeTecnico.EstacionId : null)" />
+                <input type="hidden" name="codigoInforme" value="@(informeTecnico != null ? informeTecnico.CodigoInforme : 0)" />
                 <input type="hidden" name="codigoInspeccion" value="@codigoInspeccion" />
 
                 <div class="it-field">
@@ -217,6 +219,8 @@ else if (informeTecnico != null)
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@codigoInspeccion" />
+                <input type="hidden" name="estacionId" value="@(informeTecnico != null ? informeTecnico.EstacionId : null)" />
+                <input type="hidden" name="codigoInforme" value="@(informeTecnico != null ? informeTecnico.CodigoInforme : 0)" />
                 <button type="submit" class="it-btn primary">
                     <i class="fas fa-file-pdf"></i> Finalizar informe y generar PDF
                 </button>
@@ -232,7 +236,7 @@ else if (informeTecnico != null)
             <p class="hint">El informe técnico tiene resultado insatisfactorio. Debe definir la ruta a seguir y firmar digitalmente la No Conformidad.</p>
 
             <div class="it-actions" style="margin-bottom: 15px;">
-                <a href="@Url.Action("VistaPreviaNcPdf", "Inspeccion", new { id = codigoInspeccion })" target="_blank" class="it-btn it-btn-secondary">
+                <a href="@Url.Action("VistaPreviaNcPdf", "Inspeccion", new { id = codigoInspeccion, estacionId = (informeTecnico != null ? informeTecnico.EstacionId : null) })" target="_blank" class="it-btn it-btn-secondary">
                     <i class="fas fa-search"></i> Vista previa de la NC (Borrador)
                 </a>
             </div>
@@ -241,6 +245,8 @@ else if (informeTecnico != null)
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@codigoInspeccion" />
+                <input type="hidden" name="estacionId" value="@(informeTecnico != null ? informeTecnico.EstacionId : null)" />
+                <input type="hidden" name="codigoInforme" value="@(informeTecnico != null ? informeTecnico.CodigoInforme : 0)" />
 
                 <div class="it-field">
                     <label for="tipoRutaNc">Ruta obligatoria requerida</label>
@@ -280,7 +286,7 @@ else if (informeTecnico != null)
             <h4><i class="fas fa-check-circle" style="color: #4caf50;"></i> No Conformidad Generada</h4>
             <p>La No Conformidad (NC) ha sido generada y firmada.</p>
             <div class="it-actions">
-                <a href="@Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })" target="_blank" class="it-btn it-btn-secondary">
+                <a href="@Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion, estacionId = (informeTecnico != null ? informeTecnico.EstacionId : null) })" target="_blank" class="it-btn it-btn-secondary">
                     <i class="far fa-file-pdf"></i> Descargar NC Firmada
                 </a>
             </div>
@@ -308,6 +314,8 @@ else if (informeTecnico != null)
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@codigoInspeccion" />
+                <input type="hidden" name="estacionId" value="@(informeTecnico != null ? informeTecnico.EstacionId : null)" />
+                <input type="hidden" name="codigoInforme" value="@(informeTecnico != null ? informeTecnico.CodigoInforme : 0)" />
                 <button type="submit" class="it-btn primary full">
                     <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
                     @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")

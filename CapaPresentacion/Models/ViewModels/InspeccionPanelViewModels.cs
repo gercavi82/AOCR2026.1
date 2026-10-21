@@ -220,6 +220,7 @@ namespace CapaPresentacion.Models.ViewModels
 
     public class PendienteRevisionDireccionItemViewModel
     {
+        public string EstacionInforme { get; set; }
         public int CodigoInforme { get; set; }
         public int CodigoInspeccion { get; set; }
         public int CodigoSolicitud { get; set; }

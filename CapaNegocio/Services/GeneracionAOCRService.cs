@@ -497,6 +497,15 @@ namespace CapaNegocio.Services
                 foreach (var ins in inspecciones)
                 {
                     if (ins == null) continue;
+                    var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(codigoSolicitud)
+                        .Where(e => !e.InspeccionId.HasValue || e.InspeccionId == ins.CodigoInspeccion).ToList();
+                    foreach (var estacion in estaciones)
+                    {
+                        var informeEstacion = _informeDao.ObtenerUltimoPorInspeccion(ins.CodigoInspeccion, estacion.Id);
+                        if (informeEstacion == null || !InformeCompletaFaseTecnicaAocr(informeEstacion)
+                            || InformeTieneObservacionesPendientes(informeEstacion)
+                            || !InformeResultadoPermiteGeneracionAocr(informeEstacion)) return null;
+                    }
                     var inf = _informeDao.ObtenerUltimoPorInspeccion(ins.CodigoInspeccion);
                     if (inf == null) continue;
 

@@ -21,6 +21,7 @@ namespace CapaModelo
         public string NumeroLicenciaInspector { get; set; }
         public string TrabajosRealizados { get; set; }
         public string FechasInspeccionManual { get; set; }
+        public int? EstacionId { get; set; }
         public string EstacionesInspeccionManual { get; set; }
         public string OperacionComercial { get; set; }
         public string ServiciosEstaciones { get; set; }

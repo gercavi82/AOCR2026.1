@@ -63,6 +63,7 @@ namespace CapaPresentacion.Infrastructure
 
             return new AocrAuthorizationContext
             {
+                EstacionId = ReadEstacionId(httpContext),
                 IsAuthenticated = principal != null && principal.Identity != null && principal.Identity.IsAuthenticated,
                 UserId = userId,
                 CodigoUsuario = codigoUsuario > 0
@@ -75,6 +76,18 @@ namespace CapaPresentacion.Infrastructure
                 CompanyCode = CompaniaActivaSessionHelper.ObtenerCodigo(session),
                 CompanyName = CompaniaActivaSessionHelper.ObtenerNombre(session)
             };
+        }
+
+        private static int? ReadEstacionId(HttpContextBase context)
+        {
+            try
+            {
+                var raw = context?.Request?.Unvalidated?.Form["estacionId"] ?? context?.Request?.QueryString["estacionId"];
+                if (string.IsNullOrWhiteSpace(raw)) return null;
+                int id;
+                return int.TryParse(raw, out id) && id > 0 ? id : -1;
+            }
+            catch (NotImplementedException) { return null; }
         }
 
         private static void LogRolActivoInconsistente(

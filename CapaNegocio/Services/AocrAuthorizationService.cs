@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -29,6 +29,7 @@ namespace CapaNegocio.Services
     {
         public bool IsAuthenticated { get; set; }
         public int UserId { get; set; }
+        public int? EstacionId { get; set; }
         public string CodigoUsuario { get; set; }
         public string UserName { get; set; }
         public string SelectedRole { get; set; }
@@ -399,18 +400,28 @@ namespace CapaNegocio.Services
 
         public bool PuedeInspectorGenerarInforme(int codigoInspeccion, int codigoUsuario)
         {
+            return PuedeInspectorGenerarInforme(codigoInspeccion, codigoUsuario, null);
+        }
+
+        private bool PuedeInspectorGenerarInforme(int codigoInspeccion, int codigoUsuario, int? estacionId)
+        {
             if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
             {
                 return false;
             }
 
-            string motivoLv;
-            if (!new AocrFlujoValidacionService().PuedeGenerarInformeTecnico(codigoInspeccion, out motivoLv))
+            var inspeccion = _inspeccionDao.ObtenerPorId(codigoInspeccion);
+            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(inspeccion.CodigoSolicitud)
+                .Where(e => !e.InspeccionId.HasValue || e.InspeccionId == codigoInspeccion).ToList();
+            estacionId = estacionId ?? estaciones.FirstOrDefault()?.Id;
+            if (estacionId.HasValue && !estaciones.Any(e => e.Id == estacionId)) return false;
+            var lv = new ListaVerificacionOperacionalEaeDAO().ObtenerUltimaPorInspeccion(codigoInspeccion, estacionId);
+            if (lv == null || !lv.Finalizado || !lv.FirmadoTecnico)
             {
                 return false;
             }
 
-            var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion, estacionId);
             return informe == null
                 || string.IsNullOrWhiteSpace(informe.EstadoInforme)
                 || Comparer.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "BORRADOR_INFORME")
@@ -468,12 +479,22 @@ namespace CapaNegocio.Services
 
         public bool PuedeInspectorFirmarInforme(int codigoInspeccion, int codigoUsuario)
         {
+            return PuedeInspectorFirmarInforme(codigoInspeccion, codigoUsuario, null);
+        }
+
+        private bool PuedeInspectorFirmarInforme(int codigoInspeccion, int codigoUsuario, int? estacionId)
+        {
             if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
             {
                 return false;
             }
 
-            var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            var inspeccion = _inspeccionDao.ObtenerPorId(codigoInspeccion);
+            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(inspeccion.CodigoSolicitud)
+                .Where(e => !e.InspeccionId.HasValue || e.InspeccionId == codigoInspeccion).ToList();
+            estacionId = estacionId ?? estaciones.FirstOrDefault()?.Id;
+            if (estacionId.HasValue && !estaciones.Any(e => e.Id == estacionId)) return false;
+            var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion, estacionId);
             if (informe == null)
             {
                 return false;
@@ -677,7 +698,7 @@ namespace CapaNegocio.Services
                         && !rolesInspeccion.Contains("DIRDAC", Comparer)
                         && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer))))
                 {
-                    if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId))
                     {
                         motivo = "Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.";
                         return false;
@@ -686,7 +707,7 @@ namespace CapaNegocio.Services
 
                 if (!esAdministrador
                     && Comparer.Equals(accion, "FirmarInformeInspector")
-                    && !PuedeInspectorFirmarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    && !PuedeInspectorFirmarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId))
                 {
                     motivo = "El informe técnico no cumple las condiciones para firma del inspector.";
                     return false;
@@ -779,7 +800,7 @@ namespace CapaNegocio.Services
                 if (!esAdministrador
                     && (Comparer.Equals(accion, "RegistrarNoConforme")
                         || Comparer.Equals(accion, "SubirInforme"))
-                    && !PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                    && !PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId))
                 {
                     motivo = "Debe finalizar y firmar la LV antes de gestionar el informe o registrar no conformidades.";
                     return false;
@@ -788,7 +809,7 @@ namespace CapaNegocio.Services
 
             if (Comparer.Equals(modulo, "InformeTecnico"))
             {
-                if (Comparer.Equals(accion, "Inspector") && !PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId))
+                if (Comparer.Equals(accion, "Inspector") && !PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId))
                 {
                     motivo = "El informe técnico no puede abrirse porque la inspección o la LV/EAE aún no están habilitadas.";
                     return false;

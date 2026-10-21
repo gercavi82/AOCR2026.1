@@ -151,7 +151,9 @@ namespace CapaNegocio
             estado.TotalDocumentosVigentes = documentos.Count;
 
             var controlDcav = solicitud != null
-                && (string.Equals(solicitud.Estado, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
+                && ((string.Equals(solicitud.EstadoDocumental, "ACEPTADO_DIRCAV", StringComparison.OrdinalIgnoreCase)
+                        && !EsEstadoReaperturaDocumental(solicitud.Estado))
+                    || string.Equals(solicitud.Estado, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(solicitud.Estado, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(solicitud.Estado, AocrEstadosProceso.DesignacionFirmadaDircav, StringComparison.OrdinalIgnoreCase))
                 ? new RevisionDocumentalCoordinadorDAO().ObtenerPorSolicitud(codigoSolicitud) : null;
@@ -487,7 +489,9 @@ namespace CapaNegocio
             var tieneInspectorAsignado = TieneInspectorAsignado(solicitud, inspecciones);
 
             if (estado.DocumentacionAprobada
-                && (string.Equals(estadoSolicitud, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
+                && ((string.Equals(solicitud?.EstadoDocumental, "ACEPTADO_DIRCAV", StringComparison.OrdinalIgnoreCase)
+                        && !EsEstadoReaperturaDocumental(solicitud.Estado))
+                    || string.Equals(estadoSolicitud, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, AocrEstadosProceso.DesignacionFirmadaDircav, StringComparison.OrdinalIgnoreCase)))
             {
@@ -557,6 +561,15 @@ namespace CapaNegocio
             }
 
             AsignarFlujoDocumental(estado, "EN_REVISION_INSPECTOR", "En revision documental", "INSPECTOR");
+        }
+
+        private static bool EsEstadoReaperturaDocumental(string estado)
+        {
+            return new[] { AocrEstadosProceso.DevueltoCoordinador, AocrEstadosProceso.DevueltoCoordinadorPorDircav,
+                AocrEstadosProceso.DevueltoInspector, AocrEstadosProceso.PendienteDircav,
+                AocrEstadosProceso.PendienteCoordinador, AocrEstadosProceso.PendienteRevisionCoordinador,
+                EstadoSolicitud.Observada, EstadoSolicitud.Subsanada }
+                .Any(e => string.Equals(e, (estado ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
         }
 
         private static void AsignarFlujoDocumental(EstadoRevisionDocumental estado, string codigo, string nombre, string responsable)

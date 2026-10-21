@@ -875,7 +875,9 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                ViewBag.InformeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
+                ViewBag.InformeTecnico = ObtenerInformeEstacionActual(codigoInspeccion);
+                ViewBag.InformesHistoricosSinEstacion = _informeDAO.ListarUltimosPorEstacion(codigoInspeccion)
+                    .Where(i => !i.EstacionId.HasValue && i.Finalizado).ToList();
             }
             catch (Exception ex)
             {
@@ -996,7 +998,7 @@ namespace CapaPresentacion.Controllers
             informeDetalle = ViewBag.InformeTecnico as InspeccionInformeTecnico;
             ViewBag.RutaInformeTecnicoDisponible = ResolverRutaRelativaInformeDisponible(
                 informeDetalle != null ? informeDetalle.RutaDocumentoFirmado : null,
-                inspeccion.RutaInforme,
+                RutaInformeGeneralCompatible(inspeccion),
                 informeDetalle != null ? informeDetalle.RutaPdf : null);
 
             EnriquecerInspectoresInformeTecnico(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
@@ -1144,7 +1146,7 @@ namespace CapaPresentacion.Controllers
                 _logger.LogWarning("[GestionInspeccion] Error cargando documentos para modal informe. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 documentosSolicitante = new List<DocumentoInspeccion>();
             }
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            var informe = ObtenerInformeEstacionActual(codigoInspeccion);
 
             if (informe == null && PuedeEditarInformeTecnicoModal(inspeccion))
             {
@@ -1152,6 +1154,8 @@ namespace CapaPresentacion.Controllers
                 informe = _informeDAO.GuardarBorrador(new InspeccionInformeTecnico
                 {
                     CodigoInspeccion = codigoInspeccion,
+                    EstacionId = ResolverEstacionInforme(codigoInspeccion),
+                    EstacionesInspeccionManual = listaVerificacion.EstacionNombre,
                     Titulo = "INFORME TÉCNICO AOCR",
                     EstadoInforme = "BORRADOR_INFORME"
                 }, usuarioId);
@@ -1345,7 +1349,7 @@ namespace CapaPresentacion.Controllers
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
             EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             var vm = new InformeTecnicoPdfViewModel
             {
                 Inspeccion = inspeccion,
@@ -1690,7 +1694,7 @@ namespace CapaPresentacion.Controllers
 
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
             var nc = ncDao.ObtenerUltimaPorInforme(id);
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
 
             if (nc == null)
             {
@@ -1788,13 +1792,13 @@ namespace CapaPresentacion.Controllers
             if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
                 return new HttpStatusCodeResult(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
 
-            var informeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informeTecnico = ObtenerInformeEstacionActual(id);
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
             var rutasCandidatas = new[]
             {
                 informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null,
-                inspeccion.RutaInforme,
+                RutaInformeGeneralCompatible(inspeccion),
                 informeTecnico != null ? informeTecnico.RutaPdf : null
             }
             .Where(ruta => !string.IsNullOrWhiteSpace(ruta))
@@ -2079,7 +2083,7 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para acceder al adjunto.");
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             var adjuntos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivoItems(informe != null ? informe.DocumentosAdjuntosArchivos : null);
             var nombreFisico = Path.GetFileName(archivo);
             var adjunto = adjuntos.FirstOrDefault(x => x != null
@@ -2368,14 +2372,14 @@ namespace CapaPresentacion.Controllers
             if (InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Success"] = "La revisión documental ya fue confirmada previamente.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             string mensajeBloqueoDocumentalRt;
             if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
             {
                 TempData["Error"] = mensajeBloqueoDocumentalRt;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
@@ -2384,7 +2388,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
                     ? ObtenerMensajeBloqueoRevisionDocumentalInspector()
                     : estadoRevisionDocumental.MensajeBloqueoDocumental;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -2398,7 +2402,7 @@ namespace CapaPresentacion.Controllers
                 ? "Revisión documental confirmada. Ya puede ejecutar acciones del inspector."
                 : "No se pudo confirmar la revisión documental.";
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -2460,7 +2464,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -2476,11 +2480,11 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = mensajeLista;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
-                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var informeActual = ObtenerInformeEstacionActual(id);
                 if (!InformePuedeEditarsePorInspector(informeActual))
                 {
                     var mensajeBloqueoEdicion = ObtenerMensajeBloqueoEdicionInformeTecnico(informeActual);
@@ -2490,7 +2494,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = mensajeBloqueoEdicion;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var informeFormulario = ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true);
@@ -2503,7 +2507,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = mensajeInforme;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var informe = _informeDAO.GuardarBorrador(informeFormulario, usuarioId);
@@ -2524,7 +2528,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Success"] = "Borrador del informe técnico guardado correctamente.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informe);
@@ -2592,7 +2596,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = "No se pudo guardar el informe técnico. Verifique los datos ingresados e intente nuevamente.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
         }
 
@@ -2653,7 +2657,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
-                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var informeActual = ObtenerInformeEstacionActual(id);
                 var puedeEditarPreview = PuedeEditarInformeTecnicoModal(inspeccion) && InformePuedeEditarsePorInspector(informeActual);
                 if (!puedeEditarPreview && informeActual == null)
                 {
@@ -2668,7 +2672,7 @@ namespace CapaPresentacion.Controllers
 
                 var rutaDefinitiva = ResolverRutaRelativaInformeDisponible(
                     informeActual != null ? informeActual.RutaDocumentoFirmado : null,
-                    inspeccion.RutaInforme,
+                    RutaInformeGeneralCompatible(inspeccion),
                     informeActual != null ? informeActual.RutaPdf : null);
                 var rutaFisicaDefinitiva = !string.IsNullOrWhiteSpace(rutaDefinitiva)
                     ? ResolverRutaAbsolutaInforme(rutaDefinitiva)
@@ -2857,13 +2861,13 @@ namespace CapaPresentacion.Controllers
                 if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
                 {
                     TempData["Error"] = mensajeBloqueoDocumentalRt;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             try
@@ -2876,22 +2880,22 @@ namespace CapaPresentacion.Controllers
                 if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, true, out listaVerificacion, out mensajeLista))
                 {
                     TempData["Error"] = mensajeLista;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
-                var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var informe = ObtenerInformeEstacionActual(id);
                 if (informe == null)
                 {
                     TempData["Error"] = "Debe guardar un borrador del Informe Técnico antes de finalizarlo desde este panel.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 string mensajeInforme;
                 if (!ValidarInformeTecnicoParaFinalizar(informe, out mensajeInforme))
                 {
                     TempData["Error"] = mensajeInforme;
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informe);
@@ -3033,7 +3037,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -3046,7 +3050,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["Error"] = "La lista de verificación operacional EAE no aplica para esta inspección.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
@@ -3216,7 +3220,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = "No se pudo guardar la lista de verificación operacional EAE.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
         }
 
@@ -3261,7 +3265,7 @@ namespace CapaPresentacion.Controllers
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             try
@@ -3271,7 +3275,7 @@ namespace CapaPresentacion.Controllers
                 if (!UsaFlujoListaVerificacionOperacionalEae(solicitud))
                 {
                     TempData["Error"] = "La lista de verificación operacional EAE no aplica para esta inspección.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 var form = Request?.Unvalidated?.Form;
@@ -3339,7 +3343,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "No se pudo finalizar la lista de verificación operacional EAE.";
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -3398,7 +3402,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -3411,7 +3415,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = "La lista de verificación operacional EAE no aplica para esta inspección.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var estacionIdRaw = form?["lvEstacionId"] ?? form?["estacionId"] ?? Request?.Unvalidated?.QueryString["estacionId"] ?? Request?.Unvalidated?.QueryString["lvEstacionId"];
@@ -3457,7 +3461,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = mensajeValidacion;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             byte[] certificadoBytes;
@@ -3476,7 +3480,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = infoCertificado.Mensaje;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -3495,7 +3499,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = mensajePdfFuente;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var nombreFirmanteCertificado = !string.IsNullOrWhiteSpace(infoCertificado.NombreTitular)
@@ -3536,7 +3540,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = resultadoFirma.Mensaje;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var rutaFirmada = GuardarListaVerificacionOperacionalEaeFirmadaPdf(codigoInspeccion, lista.Version, resultadoFirma.PdfFirmado);
@@ -3555,7 +3559,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["Error"] = mensajeFirmaGuardada;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             _logger.LogInfo("[FIRMA_LV][SIGN_OK] InspeccionId=" + codigoInspeccion
@@ -3661,14 +3665,14 @@ namespace CapaPresentacion.Controllers
             if (!EstadoPermiteCargaCorreccionSolicitante(estadoActualNormalizado))
             {
                 TempData["Error"] = "La subsanación documental del RT solo se habilita después de la aprobación formal de la no conformidad por coordinación.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var archivo = Request.Files["DocumentoSolicitante"];
             if (archivo == null || archivo.ContentLength <= 0)
             {
                 TempData["Error"] = "Debe adjuntar un documento corregido.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var options = new FileUploadOptions
@@ -3686,10 +3690,10 @@ namespace CapaPresentacion.Controllers
             if (!FileUploadService.TrySave(archivo, options, out result, out error))
             {
                 TempData["Error"] = error ?? "No se pudo guardar el documento corregido.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             _documentoDAO.RegistrarDocumentoVersionado(new DocumentoInspeccion
             {
                 CodigoInspeccion = id,
@@ -3721,7 +3725,7 @@ namespace CapaPresentacion.Controllers
             _inspeccionBL.Actualizar(inspeccion, usuarioId);
 
             TempData["Success"] = "Documento corregido cargado correctamente. Se registró una nueva versión para revisión técnica.";
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -3736,17 +3740,17 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(tipoRuta) || (tipoRuta != "CON_INSPECCION" && tipoRuta != "SIN_INSPECCION"))
             {
                 TempData["Error"] = "Debe seleccionar una ruta válida para la No Conformidad.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            var informe = ObtenerInformeEstacionActual(codigoInspeccion);
             if (informe == null || informe.Resultado != "INSATISFACTORIO")
             {
                 TempData["Error"] = "El informe no existe o su resultado no es insatisfactorio.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
@@ -3795,7 +3799,7 @@ namespace CapaPresentacion.Controllers
             if (!resultadoFirma.Exitoso)
             {
                 TempData["Error"] = "Error al firmar la NC: " + resultadoFirma.Mensaje;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             // Guardar PDF (Simulado para no crear un nuevo DAO solo de Archivos)
@@ -3811,7 +3815,7 @@ namespace CapaPresentacion.Controllers
 
             // Transicionar estado de Inspeccion si es necesario, o notificar
             TempData["Success"] = "La No Conformidad ha sido firmada y enviada al Coordinador.";
-            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -3914,18 +3918,18 @@ namespace CapaPresentacion.Controllers
             if ((User.IsInRole(ROL_INSPECTOR) || User.IsInRole(ROL_ADMIN)) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             var resultado = EnviarInformeADirdacInterno(inspeccion, solicitud, informe, ObtenerCodigoUsuario());
-            var informeActualizado = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informeActualizado = ObtenerInformeEstacionActual(id);
             var mensajeKey = resultado.Exitoso
                 ? "Success"
                 : (InformeEstaEnviadoADirdac(informeActualizado) ? "Warning" : "Error");
 
             TempData[mensajeKey] = resultado.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -3943,23 +3947,23 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para remitir este informe técnico a Coordinación.");
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!informe.Finalizado)
             {
                 TempData["Error"] = "El informe técnico aún no ha sido finalizado en PDF.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!informe.FirmadoInspector)
             {
                 TempData["Error"] = "El informe técnico debe estar firmado por el inspector antes de enviarlo a Coordinación.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -3989,7 +3993,7 @@ namespace CapaPresentacion.Controllers
                 id,
                 informe.EstadoInforme,
                 "ENVIADO_A_COORDINADOR",
-                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                 informe.HashDocumento,
                 "Informe técnico transferido formalmente a la bandeja de Coordinación para revisión final. IP=" + ObtenerIpCliente(),
                 usuarioId,
@@ -4001,7 +4005,7 @@ namespace CapaPresentacion.Controllers
                 + ", Usuario=" + usuarioActual);
 
             TempData["Success"] = "El Informe Técnico ha sido remitido formalmente a Coordinación para revisión final.";
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4014,17 +4018,17 @@ namespace CapaPresentacion.Controllers
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) { return HttpNotFound("InspecciÃ³n no encontrada."); }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontrÃ³ el informe tÃ©cnico.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!informe.FirmadoInspector)
             {
                 TempData["Error"] = "El informe tÃ©cnico debe estar firmado por el inspector antes de ser remitido por CoordinaciÃ³n.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -4055,7 +4059,7 @@ namespace CapaPresentacion.Controllers
                 id,
                 informe.EstadoInforme,
                 "APROBADO_COORDINADOR_REMITIDO_DIRCAV",
-                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                 informe.HashDocumento,
                 "CoordinaciÃ³n aprobÃ³ la revisiÃ³n tÃ©cnica y remitiÃ³ el expediente a la bandeja de DIRCAV para Condiciones y Limitaciones. IP=" + ObtenerIpCliente(),
                 usuarioId,
@@ -4067,7 +4071,7 @@ namespace CapaPresentacion.Controllers
                 + ", Usuario=" + usuarioActual);
 
             TempData["Success"] = "CoordinaciÃ³n aprobÃ³ la revisiÃ³n tÃ©cnica y remitiÃ³ el trÃ¡mite formalmente a DIRCAV para la revisiÃ³n y firma de Condiciones y Limitaciones.";
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4077,7 +4081,7 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
             
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null) return HttpNotFound("Informe técnico no encontrado.");
 
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
@@ -4086,7 +4090,7 @@ namespace CapaPresentacion.Controllers
             if (nc == null || nc.Estado != "FIRMADA_INSPECTOR")
             {
                 TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado FIRMADA_INSPECTOR.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuario = UsuarioDAO.ObtenerPorId(ObtenerCodigoUsuario());
@@ -4106,7 +4110,7 @@ namespace CapaPresentacion.Controllers
             if (!resultadoFirma.Exitoso)
             {
                 TempData["Error"] = "Error al firmar la NC: " + resultadoFirma.Mensaje;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var relativePath = $"/Files/Informes/NC_{id}_v{nc.Version}_FINAL.pdf";
@@ -4133,7 +4137,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Success"] = "La No Conformidad ha sido aprobada y firmada por Coordinación. Se ha notificado al Representante Técnico.";
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4146,10 +4150,10 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(observacionDevolucion))
             {
                 TempData["Error"] = "Debe ingresar una observación para devolver la No Conformidad.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null) return HttpNotFound("Informe técnico no encontrado.");
 
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
@@ -4158,7 +4162,7 @@ namespace CapaPresentacion.Controllers
             if (nc == null || nc.Estado != "FIRMADA_INSPECTOR")
             {
                 TempData["Error"] = "La No Conformidad no existe o no puede ser devuelta en este estado.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             nc.Estado = "DEVUELTA_INSPECTOR";
@@ -4172,7 +4176,7 @@ namespace CapaPresentacion.Controllers
             ncDao.Actualizar(nc);
 
             TempData["Warning"] = "La No Conformidad ha sido devuelta al Inspector con sus observaciones.";
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4190,7 +4194,7 @@ namespace CapaPresentacion.Controllers
             if ((nc.Estado != "SUBSANADA_RT" && nc.Estado != "EN_REVISION_INSPECTOR") || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado de subsanación.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var inspectorId = ObtenerCodigoUsuario();
@@ -4214,7 +4218,7 @@ namespace CapaPresentacion.Controllers
                 _logger.LogError("[GATE5] No se pudo preparar el ciclo de reevaluacion. InspeccionId="
                     + codigoInspeccion + ", NcId=" + codigoNoConformidad + ", Error=" + ex);
                 TempData["Warning"] = "La subsanacion fue aceptada, pero no se pudo preparar el nuevo ciclo de evaluacion: " + ex.Message;
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             NotificacionBL.EnviarNotificacion(inspectorId,
@@ -4222,7 +4226,7 @@ namespace CapaPresentacion.Controllers
                 "La subsanación documental fue aceptada. Debe elaborar un nuevo Informe Técnico; el resultado anterior no ha cambiado.",
                 "INFO", Url.Action("Detalle", "Inspeccion", new { id = codigoInspeccion }), "INSPECCION", codigoInspeccion, "INSPECCION");
             TempData["Success"] = "Todos los documentos fueron aceptados. La NC queda en SUBSANACION_ACEPTADA y debe registrar un nuevo informe técnico. El resultado no cambió automáticamente.";
-            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4244,7 +4248,7 @@ namespace CapaPresentacion.Controllers
             if (rechazar && string.IsNullOrWhiteSpace(comentario))
             {
                 TempData["Error"] = "El comentario es obligatorio al rechazar una subsanación.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             if (!ncDao.RegistrarDecisionDocumentoSubsanado(codigoNoConformidad, codigoDocumento, aceptar,
@@ -4262,7 +4266,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Warning"] = "Documento rechazado. El RT fue notificado y puede cargar una nueva versión.";
             }
             else TempData["Success"] = "Documento aceptado. Esto no modifica el resultado de la inspección.";
-            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4273,7 +4277,7 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(observacionDevolucion))
             {
                 TempData["Error"] = "Debe ingresar una observación para devolver la subsanación.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             var ncDao = new CapaDatos.DAOs.NoConformidadDAO();
@@ -4285,13 +4289,13 @@ namespace CapaPresentacion.Controllers
             if (nc.Estado != "SUBSANADA_RT" || !string.Equals(nc.TipoRuta,"SIN_INSPECCION",StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "La No Conformidad no existe o no se encuentra en estado de subsanación.";
-                return RedirectToAction("Detalle", new { id = codigoInspeccion });
+                return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
             }
 
             if(ncDao.DevolverSubsanacionComoNuevaVersion(codigoNoConformidad,observacionDevolucion)==null)return new HttpStatusCodeResult(409,"La NC cambió de estado antes de ser devuelta.");
 
             TempData["Warning"] = "La subsanación ha sido devuelta al Representante Técnico.";
-            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
         }
 
         [HttpGet]
@@ -4356,26 +4360,26 @@ namespace CapaPresentacion.Controllers
             if (UsaFlujoListaVerificacionOperacionalEae(solicitud))
             {
                 TempData["Error"] = "El flujo EAE no utiliza devoluciones de Coordinación para el informe técnico.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Coordinación.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (string.IsNullOrWhiteSpace(observacionDevolucion))
             {
                 TempData["Error"] = "Debe ingresar los argumentos de devolución.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -4394,7 +4398,7 @@ namespace CapaPresentacion.Controllers
                 + ", Observacion=" + observacionDevolucion.Trim());
 
             TempData["Warning"] = "Informe técnico devuelto al inspector con argumentos del coordinador.";
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -4403,7 +4407,7 @@ namespace CapaPresentacion.Controllers
         public ActionResult FirmarInformeDirdac(int id, string passwordCertificado)
         {
             TempData["Error"] = "La firma digital de Dirección / Jefatura ya no aplica en esta etapa. Use el flujo de aprobación o devolución.";
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             return informe != null
                 ? RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme })
                 : RedirectToAction("PendientesDireccion");
@@ -4470,7 +4474,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
@@ -4583,7 +4587,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
@@ -4634,7 +4638,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
@@ -4722,32 +4726,32 @@ namespace CapaPresentacion.Controllers
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             HttpPostedFileBase archivo = Request.Files["Informe"];
             if (archivo == null || archivo.ContentLength <= 0)
             {
                 TempData["Error"] = "No se recibió ningún archivo.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (archivo.ContentLength > MAX_PDF_BYTES)
             {
                 TempData["Error"] = "El archivo supera el tamaño permitido (10 MB).";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!archivo.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "Solo se permiten archivos PDF (.pdf).";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (!TieneFirmaPdf(archivo))
             {
                 TempData["Error"] = "El archivo no parece un PDF válido (firma).";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var options = new FileUploadOptions
@@ -4765,7 +4769,7 @@ namespace CapaPresentacion.Controllers
             if (!FileUploadService.TrySave(archivo, options, out result, out error))
             {
                 TempData["Error"] = error ?? "No se pudo guardar el archivo.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             string rutaRelativa = CARPETA_VIRTUAL_INFORMES + "/" + result.StoredName;
@@ -4777,7 +4781,7 @@ namespace CapaPresentacion.Controllers
                 ? "Informe cargado y asociado correctamente."
                 : "El PDF se guardó, pero no se pudo asociar en base de datos.";
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         // ============================================================
@@ -4847,7 +4851,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = ex.Message;
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         // ============================================================
@@ -4878,7 +4882,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Success"] = "Orden devuelta a Financiero. El expediente queda pendiente de corrección y nueva validación.";
             }
             catch (Exception ex) { TempData["Error"] = ex.Message; }
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpGet]
@@ -5033,7 +5037,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "No se pudo guardar la planificación y sus fechas. Intente nuevamente.";
             }
 
-            return RedirectToAction("Detalle", new { id = codigoInspeccion });
+            return RedirectToAction("Detalle", new { id = codigoInspeccion, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5050,7 +5054,7 @@ namespace CapaPresentacion.Controllers
             if ((User.IsInRole(ROL_INSPECTOR) || User.IsInRole(ROL_ADMIN)) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -5076,7 +5080,7 @@ namespace CapaPresentacion.Controllers
                 ? "Viáticos solicitados correctamente."
                 : "No se pudo registrar la solicitud de viáticos.";
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5113,7 +5117,7 @@ namespace CapaPresentacion.Controllers
                 ? "Pago de viáticos validado."
                 : "No se pudo validar el pago de viáticos.";
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5130,7 +5134,7 @@ namespace CapaPresentacion.Controllers
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -5139,7 +5143,7 @@ namespace CapaPresentacion.Controllers
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5153,7 +5157,7 @@ namespace CapaPresentacion.Controllers
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -5161,7 +5165,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.EvaluarInspeccion(id, resultado, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5174,7 +5178,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.SubsanarInspeccion(id, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5187,7 +5191,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.RevalidarInspeccion(id, aprobada, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5200,7 +5204,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.AprobarNoConformidadParaNuevaInspeccion(id, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5214,7 +5218,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.AprobarNoConformidadParaSubsanacionDocumental(id, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         [HttpPost]
@@ -5229,7 +5233,7 @@ namespace CapaPresentacion.Controllers
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
@@ -5237,7 +5241,7 @@ namespace CapaPresentacion.Controllers
             var op = _inspeccionService.RegistrarNoConformidad(id, descripcion, criticidad, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         // ============================================================
@@ -5521,7 +5525,7 @@ namespace CapaPresentacion.Controllers
                 return Redirect(returnUrl);
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         private bool PuedeIniciarInspeccionAocr(Inspeccion inspeccion, out SolicitudAOCR solicitud, out string mensaje, out string claveTempData)
@@ -6114,6 +6118,57 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private string RutaInformeGeneralCompatible(Inspeccion inspeccion)
+        {
+            if (inspeccion == null) return null;
+            return ResolverEstacionInforme(inspeccion.CodigoInspeccion).HasValue ? null : inspeccion.RutaInforme;
+        }
+
+        private int? ResolverEstacionInforme(int inspeccionId)
+        {
+            var raw = Request?.Unvalidated?.Form["estacionId"] ?? Request?.QueryString["estacionId"];
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                var informeRaw = Request?.Unvalidated?.Form["codigoInforme"] ?? Request?.QueryString["codigoInforme"];
+                int informeId;
+                if (int.TryParse(informeRaw, out informeId) && informeId > 0)
+                {
+                    var seleccionado = _informeDAO.ObtenerPorId(informeId);
+                    if (seleccionado != null && seleccionado.CodigoInspeccion == inspeccionId)
+                        raw = seleccionado.EstacionId?.ToString();
+                }
+            }
+            var inspeccion = _inspeccionDAO.ObtenerPorId(inspeccionId);
+            if (inspeccion == null) throw new HttpException(404, "Inspección no encontrada.");
+            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(inspeccion.CodigoSolicitud)
+                .Where(e => !e.InspeccionId.HasValue || e.InspeccionId == inspeccionId).ToList();
+            int id;
+            if (!string.IsNullOrWhiteSpace(raw) && (!int.TryParse(raw, out id) || !estaciones.Any(e => e.Id == id)))
+                throw new HttpException(400, "Seleccione una estación válida para el informe.");
+            var estacion = string.IsNullOrWhiteSpace(raw) ? estaciones.FirstOrDefault() : estaciones.First(e => e.Id == int.Parse(raw, CultureInfo.InvariantCulture));
+            if (Request?.HttpMethod == "POST" && EsRolInspector() && estacion?.InspectorId > 0
+                && !ObtenerIdsInspectorActual().Contains(estacion.InspectorId.Value))
+                throw new HttpException(403, "Solo el inspector asignado a la estación puede modificar su informe.");
+            return estacion?.Id;
+        }
+
+        private InspeccionInformeTecnico ObtenerInformeEstacionActual(int inspeccionId)
+        {
+            // Las decisiones institucionales ya identifican el informe por su ID.
+            var raw = Request?.Unvalidated?.Form["codigoInforme"] ?? Request?.QueryString["codigoInforme"];
+            int informeId;
+            if (int.TryParse(raw, out informeId) && informeId > 0)
+            {
+                var informe = _informeDAO.ObtenerPorId(informeId);
+                if (informe == null || informe.CodigoInspeccion != inspeccionId)
+                    throw new HttpException(400, "El informe no pertenece a esta inspección.");
+                if (Request?.HttpMethod == "POST" && EsRolInspector() && informe.EstacionId != ResolverEstacionInforme(inspeccionId))
+                    throw new HttpException(400, "El informe no corresponde a la estación seleccionada.");
+                return informe;
+            }
+            return _informeDAO.ObtenerUltimoPorInspeccion(inspeccionId, ResolverEstacionInforme(inspeccionId));
+        }
+
         private ActionResult ValidarEstacionLista(Inspeccion inspeccion, int? estacionId, bool escritura)
         {
             if (!_listaVerificacionService.EsRolAutorizadoLectura(ObtenerRolActual()))
@@ -6515,34 +6570,12 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
-            var solicitudId = solicitud != null ? solicitud.CodigoSolicitud : inspeccion.CodigoSolicitud;
-            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId)
-                .Where(e => !e.InspeccionId.HasValue || e.InspeccionId == inspeccion.CodigoInspeccion).ToList();
-            var listas = _listaVerificacionOperacionalEaeDAO.ListarPorSolicitud(solicitudId)
-                .Where(lv => lv.CodigoInspeccion == inspeccion.CodigoInspeccion
-                    && (estaciones.Count == 0 ? !lv.EstacionId.HasValue : estaciones.Any(e => e.Id == lv.EstacionId))).ToList();
-            lista = listas.FirstOrDefault();
+            var estacionId = ResolverEstacionInforme(inspeccion.CodigoInspeccion);
+            lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(inspeccion.CodigoInspeccion, estacionId);
             HidratarListaVerificacionOperacionalEae(lista, solicitud, inspeccion);
-            List<string> estacionesPendientes;
-            var todasFirmadas = _listaVerificacionOperacionalEaeDAO.TodasLasListasEstacionesFirmadas(solicitudId, inspeccion.CodigoInspeccion, out estacionesPendientes);
-            if (listas.Count < Math.Max(1, estaciones.Count) || listas.Any(lv => !lv.Finalizado))
+            if (lista == null || !lista.Finalizado || (requiereListaFirmada && !lista.FirmadoTecnico))
             {
-                mensaje = "Debe finalizar la LV de cada estacion antes de elaborar el Informe Tecnico.";
-                return false;
-            }
-
-            if (requiereListaFirmada && (!lista.FirmadoTecnico || !todasFirmadas))
-            {
-                if (estacionesPendientes != null && estacionesPendientes.Any())
-                {
-                    mensaje = string.Format(
-                        "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV) en todas las estaciones. Pendientes: {0}.",
-                        string.Join(", ", estacionesPendientes));
-                }
-                else
-                {
-                    mensaje = "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV).";
-                }
+                mensaje = "Debe finalizar y firmar la LV de esta estación antes de elaborar su Informe Técnico.";
                 return false;
             }
 
@@ -7165,6 +7198,8 @@ namespace CapaPresentacion.Controllers
             var informeFormulario = new InspeccionInformeTecnico
             {
                 CodigoInspeccion = codigoInspeccion,
+                EstacionId = ResolverEstacionInforme(codigoInspeccion),
+                CodigoInforme = informeActual?.CodigoInforme ?? 0,
                 Titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null),
                 Resumen = TomarCampoTexto(form, "resumen", 8000, informeActual != null ? informeActual.Resumen : null),
                 Antecedentes = TomarCampoTexto(form, "antecedentes", 8000, informeActual != null ? informeActual.Antecedentes : null),
@@ -7203,7 +7238,7 @@ namespace CapaPresentacion.Controllers
             var usaFlujoLv = UsaFlujoListaVerificacionOperacionalEae(solicitud);
             var rutaInformeDisponible = ResolverRutaRelativaInformeDisponible(
                 informe != null ? informe.RutaDocumentoFirmado : null,
-                inspeccion != null ? inspeccion.RutaInforme : null,
+                inspeccion != null ? RutaInformeGeneralCompatible(inspeccion) : null,
                 informe != null ? informe.RutaPdf : null);
             var estadoInforme = !string.IsNullOrWhiteSpace(informe != null ? informe.EstadoInforme : null)
                 ? informe.EstadoInforme
@@ -7253,13 +7288,13 @@ namespace CapaPresentacion.Controllers
                 EstadoListaVerificacion = estadoLista,
                 CodigoInformeTecnico = informe != null && informe.CodigoInforme > 0 ? (int?)informe.CodigoInforme : null,
                 MensajeBloqueo = mensajeBloqueo,
-                UrlGuardar = Url.Action("GuardarInformeTecnico", "Inspeccion"),
-                UrlPrevisualizar = Url.Action("PrevisualizarInformeTecnico", "Inspeccion"),
+                UrlGuardar = Url.Action("GuardarInformeTecnico", "Inspeccion", new { estacionId = informe?.EstacionId }),
+                UrlPrevisualizar = Url.Action("PrevisualizarInformeTecnico", "Inspeccion", new { estacionId = informe?.EstacionId }),
                 UrlVerPdf = inspeccion != null && inspeccion.CodigoInspeccion > 0
-                    ? Url.Action("VerInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                    ? Url.Action("VerInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion, estacionId = informe?.EstacionId })
                     : string.Empty,
                 UrlDescargarPdf = inspeccion != null && inspeccion.CodigoInspeccion > 0
-                    ? Url.Action("DescargarInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                    ? Url.Action("DescargarInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion, estacionId = informe?.EstacionId })
                     : string.Empty,
                 FirmaInspectorPanel = ConstruirFirmaInspectorPanelViewModel(inspeccion, solicitud, informe, listaVerificacion),
                 TieneDocumentosObservados = estadoRevisionDocumental.TieneDocumentosObservados,
@@ -7320,7 +7355,7 @@ namespace CapaPresentacion.Controllers
                 EstadoInformeTecnico = estadoInformeTecnico,
                 RutaInformeVisual = ResolverRutaRelativaInformeDisponible(
                     informe != null ? informe.RutaDocumentoFirmado : null,
-                    inspeccion != null ? inspeccion.RutaInforme : null,
+                    inspeccion != null ? RutaInformeGeneralCompatible(inspeccion) : null,
                     informe != null ? informe.RutaPdf : null)
             };
         }
@@ -7332,9 +7367,15 @@ namespace CapaPresentacion.Controllers
             var urlAccion = ConstruirUrlAccionDireccion(workflow, informe, codigoSolicitud);
             var etiquetaAccion = ObtenerEtiquetaAccionDireccion(workflow);
             var iconoAccion = ObtenerIconoAccionDireccion(workflow);
+            if (informe != null && informe.FirmadoInspector && !informe.FirmadoDirdac)
+            {
+                urlAccion = ConstruirUrlRevisionDireccion(informe.CodigoInforme);
+                etiquetaAccion = "Revisar informe";
+            }
 
             return new PendienteRevisionDireccionItemViewModel
             {
+                EstacionInforme = informe?.EstacionesInspeccionManual,
                 CodigoInforme = informe != null ? informe.CodigoInforme : 0,
                 CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
                 CodigoSolicitud = codigoSolicitud,
@@ -7658,7 +7699,7 @@ namespace CapaPresentacion.Controllers
                 inspeccion.CodigoInspeccion,
                 FirstNonEmpty(informe.EstadoInforme, "SIN_ESTADO"),
                 FirstNonEmpty(informe.EstadoInforme, "SIN_ESTADO"),
-                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                 informe.HashDocumento,
                 string.Format("Vista institucional del informe técnico abierta por {0}. InformeId={1}. IP={2}", ObtenerUsuarioActual(), informe.CodigoInforme, ObtenerIpCliente()),
                 usuarioId,
@@ -7981,10 +8022,10 @@ namespace CapaPresentacion.Controllers
             if (!ValidarPrecondicionListaVerificacionOperacionalEae(inspeccion, solicitudInforme, out listaVerificacion, out mensajeLista))
             {
                 TempData["Error"] = mensajeLista;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
-            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var informe = ObtenerInformeEstacionActual(id);
             informe = AsegurarInformeTecnicoFirmable(inspeccion, informe, usuarioIdOperacion);
             if (informe == null || !informe.Finalizado)
             {
@@ -7992,7 +8033,7 @@ namespace CapaPresentacion.Controllers
                     + "; RolFirma=" + rolFirma
                     + "; Motivo=INFORME_NO_FINALIZADO;");
                 TempData["Error"] = "Debe generar el PDF del informe técnico antes de firmarlo.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && informe.FirmadoInspector)
@@ -8001,7 +8042,7 @@ namespace CapaPresentacion.Controllers
                     + "; InformeId=" + informe.CodigoInforme
                     + "; RolFirma=INSPECTOR; Motivo=YA_FIRMADO;");
                 TempData["Error"] = "El informe técnico ya fue firmado por el inspector.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
@@ -8009,19 +8050,19 @@ namespace CapaPresentacion.Controllers
                 if (!informe.FirmadoInspector)
                 {
                     TempData["Error"] = "El informe debe contar primero con la firma del inspector.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 if (informe.FirmadoDirdac)
                 {
                     TempData["Error"] = "El informe técnico ya cuenta con la firma final de DIRDAC.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
                 if (!string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
                 {
                     TempData["Error"] = "El informe aún no ha sido enviado formalmente a DIRDAC para firma.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
             }
 
@@ -8038,7 +8079,7 @@ namespace CapaPresentacion.Controllers
                     + "; Extension=" + (certificadoArchivo != null ? Path.GetExtension(certificadoArchivo.FileName ?? string.Empty) : string.Empty)
                     + "; Mensaje=" + mensajeValidacion + ";");
                 TempData["Error"] = mensajeValidacion;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             // --- VERSIONADO: determinar el PDF fuente ---
@@ -8053,7 +8094,7 @@ namespace CapaPresentacion.Controllers
                 if (string.IsNullOrWhiteSpace(pathFirmado) || !System.IO.File.Exists(pathFirmado))
                 {
                     TempData["Error"] = "No se encontró el PDF firmado por el inspector. Regenere el informe.";
-                    return RedirectToAction("Detalle", new { id });
+                    return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
                 pdfFuente = System.IO.File.ReadAllBytes(pathFirmado);
                 origenPdf = "FIRMADO_INSPECTOR:" + rutaFirmadaInspector;
@@ -8084,7 +8125,7 @@ namespace CapaPresentacion.Controllers
                     + "; Tamanio=" + certificadoBytes.Length
                     + "; Mensaje=" + infoCertificado.Mensaje + ";");
                 TempData["Error"] = infoCertificado.Mensaje;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
             var nombreFirmanteCertificado = !string.IsNullOrWhiteSpace(infoCertificado.NombreTitular)
                 ? infoCertificado.NombreTitular
@@ -8122,7 +8163,7 @@ namespace CapaPresentacion.Controllers
                     + ", InformeId=" + informe.CodigoInforme
                     + ", Mensaje=" + resultadoFirma.Mensaje);
                 TempData["Error"] = resultadoFirma.Mensaje;
-                return RedirectToAction("Detalle", new { id });
+                return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
             }
 
             pdfFirmado = resultadoFirma.PdfFirmado;
@@ -8223,7 +8264,7 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
         }
 
         private ResultadoOperacion SincronizarSolicitudAocrTrasFirmaFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId, string usuarioActual)
@@ -8311,7 +8352,7 @@ namespace CapaPresentacion.Controllers
                     inspeccion.CodigoInspeccion,
                     estadoAnterior,
                     "ENVIADO_A_DIRDAC",
-                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                     informe.HashDocumento,
                     "Documento transferido automáticamente a la bandeja de revisión de DIRDAC / Dirección - Jefatura. IP=" + ObtenerIpCliente(),
                     usuarioId,
@@ -8333,7 +8374,7 @@ namespace CapaPresentacion.Controllers
                     inspeccion.CodigoInspeccion,
                     "ENVIADO_A_DIRDAC",
                     "ENVIADO_A_DIRDAC",
-                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                     informe.HashDocumento,
                     "Reintento de notificación formal a Dirección / Jefatura. ResultadoCorreo=" + (resultadoCorreo.Exitoso ? "OK" : "ERROR") + ". IP=" + ObtenerIpCliente(),
                     usuarioId,
@@ -8775,8 +8816,8 @@ namespace CapaPresentacion.Controllers
                 return informeActual;
             }
 
-            var informe = informeActual ?? _informeDAO.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion);
-            var rutaPdfDisponible = FirstNonEmpty(informe != null ? informe.RutaPdf : null, inspeccion.RutaInforme);
+            var informe = informeActual ?? ObtenerInformeEstacionActual(inspeccion.CodigoInspeccion);
+            var rutaPdfDisponible = FirstNonEmpty(informe != null ? informe.RutaPdf : null, RutaInformeGeneralCompatible(inspeccion));
 
             if (informe == null)
             {
@@ -9197,7 +9238,7 @@ namespace CapaPresentacion.Controllers
                     inspeccion.CodigoInspeccion,
                     FirstNonEmpty(informe.EstadoInforme, "APROBADO_DIRECCION"),
                     FirstNonEmpty(informe.EstadoInforme, "APROBADO_DIRECCION"),
-                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, RutaInformeGeneralCompatible(inspeccion)),
                     informe.HashDocumento,
                     string.Format(
                         "Notificación final al RT encolada correctamente por {0}. Destinatario: {1}. Asunto: {2}. Resultado técnico: {3}. Tipo insatisfactorio: {4}. Tipo de notificación: {5}. Solicitud: {6}. Informe: {7}. IP={8}",
@@ -9404,6 +9445,16 @@ namespace CapaPresentacion.Controllers
             return Url.Action("Detalle", "Inspeccion", new { id = referenciaDetalle }) ?? string.Empty;
         }
 
+        private string EstacionNavegacion()
+        {
+            return Request?.Unvalidated?.Form["estacionId"] ?? Request?.Unvalidated?.Form["lvEstacionId"] ?? Request?.QueryString["estacionId"];
+        }
+        private string AgregarEstacionUrl(string url)
+        {
+            var estacion = EstacionNavegacion();
+            return string.IsNullOrWhiteSpace(estacion) ? url : url + (url.Contains("?") ? "&" : "?") + "estacionId=" + HttpUtility.UrlEncode(estacion);
+        }
+
         private string ConstruirUrlDetalle(int codigoInspeccion)
         {
             var referenciaDetalle = codigoInspeccion.ToString(CultureInfo.InvariantCulture);
@@ -9430,14 +9481,14 @@ namespace CapaPresentacion.Controllers
 
                 if (Request != null && Request.Url != null)
                 {
-                    return ConstruirRutaDetalle(referenciaDetalle, Request.Url.Scheme);
+                    return AgregarEstacionUrl(ConstruirRutaDetalle(referenciaDetalle, Request.Url.Scheme));
                 }
             }
             catch
             {
             }
 
-            return ConstruirRutaDetalle(referenciaDetalle);
+            return AgregarEstacionUrl(ConstruirRutaDetalle(referenciaDetalle));
         }
 
         private string ConstruirUrlDetalle(int codigoInspeccion, IDictionary<string, string> queryParams)

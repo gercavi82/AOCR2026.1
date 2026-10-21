@@ -162,6 +162,7 @@
                                 data-date="@(fecha.HasValue ? fecha.Value.ToString("yyyy-MM-dd") : "")">
                                 <td>
                                     <strong class="aocr-report-number">@(item.CodigoInforme > 0 ? "Informe #" + item.CodigoInforme : "Sin informe")</strong>
+                                    <span class="d-block small">@item.EstacionInforme</span>
                                     <span class="aocr-report-secondary">@item.NumeroSolicitud</span>
                                     <small>Inspección @item.CodigoInspeccion · Solicitud @item.CodigoSolicitud</small>
                                 </td>

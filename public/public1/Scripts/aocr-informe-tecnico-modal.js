@@ -696,6 +696,13 @@
     }
 
     function updateInformeStatus(modal, result) {
+        if (modal && result && result.codigoInforme) {
+            Array.prototype.forEach.call(modal.querySelectorAll('input[name="codigoInforme"]'), function (input) {
+                input.value = result.codigoInforme;
+            });
+            var form = modal.querySelector('[data-aocr-informe-form="true"]');
+            if (form) form.setAttribute('data-informe-tecnico-id', result.codigoInforme);
+        }
         if (!modal || !result || !result.estado) {
             return;
         }

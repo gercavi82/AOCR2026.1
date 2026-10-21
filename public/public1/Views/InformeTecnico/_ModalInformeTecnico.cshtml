@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.InformeTecnicoModalVm>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.InformeTecnicoModalVm>
 @using System
 @using System.Collections.Generic
 @using System.Globalization
@@ -98,10 +98,10 @@
     var mostrarHallazgosResultado = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
     var mostrarTipoResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
     var urlVerListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
-        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })
+        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = informe.EstacionId })
         : string.Empty;
     var urlDescargarListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
-        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })
+        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = informe.EstacionId })
         : string.Empty;
     var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo);
     var ayudaPdf = vm.ExistePdfInformeTecnico
@@ -115,6 +115,7 @@
             <div class="modal-header aocr-modal-header">
                 <div>
                     <h5 class="modal-title" id="modalInformeTecnicoLabel">Informe Técnico de Inspección</h5>
+                    <div>@informe.EstacionesInspeccionManual</div>
                     <small>Elaboración del Informe Técnico posterior a la finalización de la LV/EAE.</small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -193,6 +194,8 @@
                               data-operador="@operadorVisual">
                             @Html.AntiForgeryToken()
                             @Html.Hidden("id", vm.CodigoInspeccion)
+                            @Html.Hidden("estacionId", informe.EstacionId)
+                            @Html.Hidden("codigoInforme", informe.CodigoInforme)
                             @Html.Hidden("titulo", string.IsNullOrWhiteSpace(informe.Titulo) ? "INFORME TÉCNICO AOCR" : informe.Titulo)
                             @Html.Hidden("modalRequest", "true")
                             @Html.Hidden("trabajosRealizados", informe.TrabajosRealizados ?? string.Empty, new { id = "trabajosRealizadosFieldModal" })

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using Npgsql;
@@ -27,6 +27,32 @@ namespace CapaDatos.DAOs
                 : ConexionDAO.CadenaConexion;
         }
 
+        public List<InspeccionInformeTecnico> ListarUltimosPorEstacion(int codigoInspeccion)
+        {
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open(); EnsureSchema(cn);
+                using (var cmd = new NpgsqlCommand(@"SELECT DISTINCT ON (estacion_id) codigo_informe
+                    FROM public.aocr_tbinforme_inspeccion WHERE codigo_inspeccion=@id
+                    ORDER BY estacion_id, version DESC, codigo_informe DESC", cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+                    using (var rd = cmd.ExecuteReader()) while (rd.Read()) ids.Add(rd.GetInt32(0));
+                }
+            }
+            return ids.Select(ObtenerPorId).ToList();
+        }
+
+        public InspeccionInformeTecnico ObtenerUltimoPorInspeccion(int codigoInspeccion, int? estacionId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open(); EnsureSchema(cn);
+                return ObtenerUltimoPorInspeccionInterno(cn, codigoInspeccion, estacionId, true);
+            }
+        }
+
         public InspeccionInformeTecnico ObtenerUltimoPorInspeccion(int codigoInspeccion)
         {
             using (var cn = new NpgsqlConnection(_cs))
@@ -36,7 +62,7 @@ namespace CapaDatos.DAOs
 
                 const string sql = @"
                     SELECT codigo_informe,
-                           codigo_inspeccion,
+                           codigo_inspeccion, estacion_id,
                            version,
                            titulo,
                            resumen,
@@ -109,9 +135,9 @@ namespace CapaDatos.DAOs
 
                   const string sql = @"
                       WITH ultimos AS (
-                       SELECT DISTINCT ON (codigo_inspeccion)
+                       SELECT DISTINCT ON (codigo_inspeccion, estacion_id)
                            codigo_informe,
-                           codigo_inspeccion,
+                           codigo_inspeccion, estacion_id,
                            version,
                            titulo,
                            resumen,
@@ -158,10 +184,10 @@ namespace CapaDatos.DAOs
                            updated_at,
                            updated_by
                        FROM public.aocr_tbinforme_inspeccion
-                       ORDER BY codigo_inspeccion, version DESC, codigo_informe DESC
+                       ORDER BY codigo_inspeccion, estacion_id, version DESC, codigo_informe DESC
                       )
                       SELECT codigo_informe,
-                          codigo_inspeccion,
+                          codigo_inspeccion, estacion_id,
                           version,
                           titulo,
                           resumen,
@@ -255,7 +281,7 @@ namespace CapaDatos.DAOs
             var idsFirmadosSinTransicion = ListarInspeccionesFirmadasSinTransicionDcav();
             var ids = idsEstadoCentral.Concat(idsFirmadosSinTransicion).Distinct();
 
-            return ids.Select(ObtenerUltimoPorInspeccion)
+            return ids.SelectMany(ListarUltimosPorEstacion)
                 .Where(x => x != null && x.Finalizado && x.FirmadoInspector && !x.FirmadoDirdac
                     && !string.IsNullOrWhiteSpace(x.RutaDocumentoFirmado)
                     && string.Equals((x.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
@@ -273,8 +299,8 @@ namespace CapaDatos.DAOs
 
                 const string sql = @"
 WITH ultimos AS (
-    SELECT DISTINCT ON (inf.codigo_inspeccion)
-           inf.codigo_inspeccion,
+    SELECT DISTINCT ON (inf.codigo_inspeccion, inf.estacion_id)
+           inf.codigo_inspeccion, inf.estacion_id,
            inf.estado_informe,
            inf.finalizado,
            inf.firmado_inspector,
@@ -282,7 +308,7 @@ WITH ultimos AS (
            inf.resultado,
            inf.ruta_documento_firmado
     FROM public.aocr_tbinforme_inspeccion inf
-    ORDER BY inf.codigo_inspeccion,inf.version DESC,inf.codigo_informe DESC
+    ORDER BY inf.codigo_inspeccion,inf.estacion_id,inf.version DESC,inf.codigo_informe DESC
 )
 SELECT u.codigo_inspeccion
 FROM ultimos u
@@ -326,7 +352,7 @@ WHERE u.finalizado=TRUE
 
                 const string sql = @"
                     SELECT codigo_informe,
-                           codigo_inspeccion,
+                           codigo_inspeccion, estacion_id,
                            version,
                            titulo,
                            resumen,
@@ -357,6 +383,7 @@ WHERE u.finalizado=TRUE
                         {
                             CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
                             CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                            EstacionId = dr["estacion_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(dr["estacion_id"]),
                             Version = dr.GetInt32(dr.GetOrdinal("version")),
                             Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
                             Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
@@ -394,7 +421,14 @@ WHERE u.finalizado=TRUE
                 cn.Open();
                 EnsureSchema(cn);
 
-                var ultimo = ObtenerUltimoPorInspeccionInterno(cn, informe.CodigoInspeccion);
+                using (var tx = cn.BeginTransaction())
+                {
+                using (var bloqueo = new NpgsqlCommand("SELECT pg_advisory_xact_lock(129, @id)", cn, tx))
+                {
+                    bloqueo.Parameters.AddWithValue("@id", informe.CodigoInspeccion);
+                    bloqueo.ExecuteNonQuery();
+                }
+                var ultimo = ObtenerUltimoPorInspeccionInterno(cn, informe.CodigoInspeccion, informe.EstacionId, true);
                 if (ultimo != null && !ultimo.Finalizado)
                 {
                     const string updateSql = @"
@@ -433,14 +467,17 @@ WHERE u.finalizado=TRUE
                         cmd.ExecuteNonQuery();
                     }
 
-                    return ObtenerPorIdInterno(cn, ultimo.CodigoInforme);
+                    var guardado = ObtenerPorIdInterno(cn, ultimo.CodigoInforme);
+                    tx.Commit();
+                    return guardado;
                 }
 
-                var version = ultimo != null ? ultimo.Version + 1 : 1;
+                var ultimoGlobal = ObtenerUltimoPorInspeccionInterno(cn, informe.CodigoInspeccion);
+                var version = ultimoGlobal != null ? ultimoGlobal.Version + 1 : 1;
                 const string insertSql = @"
                     INSERT INTO public.aocr_tbinforme_inspeccion
                     (
-                        codigo_inspeccion,
+                        codigo_inspeccion, estacion_id,
                         version,
                         codigo_informe_anterior,
                         titulo,
@@ -475,7 +512,7 @@ WHERE u.finalizado=TRUE
                     )
                     VALUES
                     (
-                        @codigo_inspeccion,
+                        @codigo_inspeccion, @estacion_id,
                         @version,
                         @codigo_informe_anterior,
                         @titulo,
@@ -517,7 +554,10 @@ WHERE u.finalizado=TRUE
                     cmd.Parameters.AddWithValue("@codigo_informe_anterior", (object)(ultimo != null ? (int?)ultimo.CodigoInforme : null) ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@created_by", usuarioId);
                     var codigoInforme = Convert.ToInt32(cmd.ExecuteScalar());
-                    return ObtenerPorIdInterno(cn, codigoInforme);
+                    var guardado = ObtenerPorIdInterno(cn, codigoInforme);
+                    tx.Commit();
+                    return guardado;
+                }
                 }
             }
         }
@@ -792,6 +832,7 @@ WHERE u.finalizado=TRUE
         private static void Bind(NpgsqlCommand cmd, InspeccionInformeTecnico informe, int usuarioId)
         {
             cmd.Parameters.AddWithValue("@codigo_inspeccion", informe.CodigoInspeccion);
+            cmd.Parameters.Add("@estacion_id", NpgsqlTypes.NpgsqlDbType.Integer).Value = (object)informe.EstacionId ?? DBNull.Value;
             cmd.Parameters.AddWithValue("@titulo", (object)informe.Titulo ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@resumen", (object)informe.Resumen ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@antecedentes", (object)informe.Antecedentes ?? DBNull.Value);
@@ -824,6 +865,7 @@ WHERE u.finalizado=TRUE
             {
                 CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
                 CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                EstacionId = dr["estacion_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(dr["estacion_id"]),
                 Version = dr.GetInt32(dr.GetOrdinal("version")),
                 Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
                 Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
@@ -902,6 +944,7 @@ WHERE u.finalizado=TRUE
                     (
                         codigo_informe SERIAL PRIMARY KEY,
                         codigo_inspeccion INTEGER NOT NULL,
+                        estacion_id INTEGER NULL,
                         version INTEGER NOT NULL,
                         titulo VARCHAR(250),
                         resumen TEXT,
@@ -961,6 +1004,8 @@ WHERE u.finalizado=TRUE
                 }
 
                 const string alterSql = @"
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estacion_id INTEGER NULL;
+                    CREATE INDEX IF NOT EXISTS idx_informe_inspeccion_estacion ON public.aocr_tbinforme_inspeccion(codigo_inspeccion, estacion_id, version DESC);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS antecedentes TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS base_legal TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS alcance TEXT;
@@ -1005,11 +1050,11 @@ WHERE u.finalizado=TRUE
             }
         }
 
-        private static InspeccionInformeTecnico ObtenerUltimoPorInspeccionInterno(NpgsqlConnection cn, int codigoInspeccion)
+        private static InspeccionInformeTecnico ObtenerUltimoPorInspeccionInterno(NpgsqlConnection cn, int codigoInspeccion, int? estacionId = null, bool filtrarEstacion = false)
         {
             const string sql = @"
                 SELECT codigo_informe,
-                       codigo_inspeccion,
+                       codigo_inspeccion, estacion_id,
                        version,
                        titulo,
                        resumen,
@@ -1057,12 +1102,15 @@ WHERE u.finalizado=TRUE
                        updated_by
                 FROM public.aocr_tbinforme_inspeccion
                 WHERE codigo_inspeccion = @codigo_inspeccion
+                  AND (NOT @filtrar_estacion OR estacion_id IS NOT DISTINCT FROM @estacion_id)
                 ORDER BY version DESC
                 LIMIT 1;";
 
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
                 cmd.Parameters.AddWithValue("@codigo_inspeccion", codigoInspeccion);
+                cmd.Parameters.AddWithValue("@filtrar_estacion", filtrarEstacion);
+                cmd.Parameters.Add("@estacion_id", NpgsqlTypes.NpgsqlDbType.Integer).Value = (object)estacionId ?? DBNull.Value;
                 using (var dr = cmd.ExecuteReader())
                 {
                     return dr.Read() ? Map(dr) : null;
@@ -1074,7 +1122,7 @@ WHERE u.finalizado=TRUE
         {
             const string sql = @"
                 SELECT codigo_informe,
-                       codigo_inspeccion,
+                       codigo_inspeccion, estacion_id,
                        version,
                        titulo,
                        resumen,

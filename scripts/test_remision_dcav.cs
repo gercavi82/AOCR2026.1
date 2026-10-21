@@ -191,6 +191,28 @@ class RemisionDcavTest {
  Check(sinSustituto,"Archivo firmado faltante no se reemplaza por PDF regenerado");
  }finally{if(File.Exists(archivoPrueba))File.Delete(archivoPrueba);}
  sql("UPDATE aocr_revision_documental_coordinador SET estado='PENDIENTE_ACEPTACION_DCAV',fecha_habilitacion_lv=NULL,fecha_habilitacion_informe=NULL WHERE solicitud_id=15; UPDATE aocr_tbinspeccion SET estado_documental='EN_REVISION_DOCUMENTAL' WHERE codigo_solicitud=15;");
+ var informesDao=new InspeccionInformeDAO();
+ var informeQuito=informesDao.GuardarBorrador(new InspeccionInformeTecnico{CodigoInspeccion=150,EstacionId=101,Titulo="Informe Quito",Resumen="Solo Quito"},79);
+ var informeGye=informesDao.GuardarBorrador(new InspeccionInformeTecnico{CodigoInspeccion=150,EstacionId=102,Titulo="Informe Guayaquil",Resumen="Solo Guayaquil"},79);
+ Check(informeQuito.CodigoInforme!=informeGye.CodigoInforme&&informeQuito.EstacionId==101&&informeGye.EstacionId==102,"Cada estacion guarda su propio informe con identidad independiente");
+ informesDao.MarcarFinalizado(informeQuito.CodigoInforme,"/prueba/quito.pdf",false,"INFORME_GENERADO",79);
+ informesDao.RegistrarFirmaInspector(informeQuito.CodigoInforme,"/prueba/quito_firmado.pdf","HASH_QUITO",DateTime.Now,"Inspector prueba","FIRMADO_INSPECTOR",79);
+ informeGye.Resumen="Avance Guayaquil";
+ var gyeEditado=informesDao.GuardarBorrador(informeGye,79);
+ var quitoFirmado=informesDao.ObtenerUltimoPorInspeccion(150,101);
+ Check(gyeEditado.CodigoInforme==informeGye.CodigoInforme&&gyeEditado.Resumen=="Avance Guayaquil"&&!gyeEditado.FirmadoInspector,"Guayaquil sigue editable despues de firmar Quito");
+ Check(quitoFirmado.FirmadoInspector&&quitoFirmado.Resumen=="Solo Quito"&&quitoFirmado.RutaDocumentoFirmado=="/prueba/quito_firmado.pdf","Guardar Guayaquil conserva contenido y firma de Quito");
+ Check(informesDao.ObtenerUltimoPorInspeccion(150,103)==null,"Estacion nueva no hereda informe ni firma de otra");
+ Check(informesDao.ListarUltimosPorEstacion(150).Count==2,"Bandeja recupera los dos informes de estacion");
+ Check(informesDao.ListarPendientesFirmaDirdac().Any(i=>i.CodigoInforme==informeQuito.CodigoInforme),"Informe firmado por estacion aparece en revision institucional");
+ informesDao.MarcarFinalizado(informeGye.CodigoInforme,"/prueba/gye.pdf",false,"INFORME_GENERADO",79);
+ informesDao.RegistrarFirmaInspector(informeGye.CodigoInforme,"/prueba/gye_firmado.pdf","HASH_GYE",DateTime.Now,"Inspector prueba","FIRMADO_INSPECTOR",79);
+ Check(informesDao.ListarPendientesFirmaDirdac().Count(i=>i.CodigoInspeccion==150)==2,"Revision institucional incluye ambos informes firmados de la misma inspeccion");
+ informesDao.RegistrarFirmaDirdac(informeQuito.CodigoInforme,"/prueba/quito_aprobado.pdf","HASH_QUITO_FINAL",DateTime.Now,"Direccion prueba","FIRMADO_FINAL",97);
+ Check(informesDao.ObtenerPorId(informeQuito.CodigoInforme).FirmadoDirdac&&!informesDao.ObtenerPorId(informeGye.CodigoInforme).FirmadoDirdac,"Decision institucional de Quito no aprueba Guayaquil");
+ var migracionInformes=File.ReadAllText(Path.Combine(Path.GetDirectoryName(args[2]),"20261021_informes_por_estacion.sql"));
+ sql(migracionInformes);sql(migracionInformes);
+ Check(informesDao.ObtenerPorId(informeQuito.CodigoInforme).HashDocumento=="HASH_QUITO_FINAL","Migracion repetible conserva firma y contenido de informe existente");
  var regularizar=File.ReadAllText(Path.Combine(Path.GetDirectoryName(args[2]),"20261020_habilitar_lv_aceptadas_dcav.sql"));
  sql(regularizar);sql(regularizar);
  Check(new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,79)&&Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbinspeccion WHERE codigo_inspeccion=150"))=="ACEPTADA","Regularizacion repetible habilita expediente previamente aceptado");
