@@ -204,3 +204,9 @@ Release correcto y 17 pruebas existentes de LV por estacion correctas. CapaPrese
 El log muestra guardado correcto de estacion 37, LV 2, seguido de rechazos al guardar/finalizar. El formulario AJAX no actualizaba lvCodigoLista con codigoLista devuelto por el servidor: conservaba el cero inicial. Se actualiza la identidad del mismo formulario tras cada respuesta exitosa, antes de cualquier accion posterior; errores no la modifican. Se conserva la validacion estricta del servidor y la independencia de otras estaciones/LV firmadas.
 
 Verificado con node --check y scripts/test_lv_form_identity.js: primer guardado asigna ID, finalizar envia ID correcto y fallos no lo reemplazan. Publicar public/public1/Scripts/aocr-lv-eae-flujo-automatico.js. No requiere SQL ni cambios en las LV guardadas. El inspector debe recargar la pagina despues de publicar para cargar el script actualizado.
+
+### Informe bloqueado despues de firmar LV por estacion (2026-10-21)
+
+El log confirma firma correcta de LV 2. La autorizacion de ModalInformeTecnico llamaba a AocrFlujoValidacionService, que buscaba una LV general sin estacion. Se reemplaza por validacion de todas las LV de estaciones obligatorias de la inspeccion, conservando soporte de LV general historica. Se exige finalizacion y firma en cada una, y se informan estaciones pendientes.
+
+Release correcto. Validacion con codigo corregido sobre AOCR003/inspeccion 2: InformeHabilitado=True, motivo vacio; no se repitieron firmas ni se alteraron registros para aprobar. DLL preparados en public/public1/bin; pendiente publicacion. No requiere SQL ni nueva firma.

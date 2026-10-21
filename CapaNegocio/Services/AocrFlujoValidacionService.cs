@@ -36,10 +36,16 @@ namespace CapaNegocio.Services
                 return false;
             }
 
-            var lista = ListaVerificacionDao.ObtenerUltimaPorInspeccion(codigoInspeccion);
-            if (lista == null || !lista.Finalizado || !lista.FirmadoTecnico)
+            var inspeccion = new InspeccionDAO().ObtenerPorId(codigoInspeccion);
+            if (inspeccion == null)
             {
-                motivo = "Debe finalizar y firmar la Lista de Verificación antes de generar el Informe Técnico.";
+                motivo = "Inspección no encontrada.";
+                return false;
+            }
+            System.Collections.Generic.List<string> pendientes;
+            if (!ListaVerificacionDao.TodasLasListasEstacionesFirmadas(inspeccion.CodigoSolicitud, codigoInspeccion, out pendientes))
+            {
+                motivo = "Debe finalizar y firmar la LV de cada estación antes de generar el Informe Técnico. Pendientes: " + string.Join(", ", pendientes);
                 return false;
             }
 

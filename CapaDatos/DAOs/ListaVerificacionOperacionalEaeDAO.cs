@@ -512,7 +512,7 @@ namespace CapaDatos.DAOs
                 if (listaEstaciones.Count == 0)
                 {
                     var lvGeneral = ObtenerUltimaPorInspeccionInterno(cn, inspeccionId, null);
-                    if (lvGeneral == null || !lvGeneral.FirmadoTecnico)
+                    if (lvGeneral == null || !lvGeneral.Finalizado || !lvGeneral.FirmadoTecnico)
                     {
                         estacionesPendientes.Add("Inspección Principal");
                         return false;
@@ -524,7 +524,7 @@ namespace CapaDatos.DAOs
                 foreach (var est in listaEstaciones)
                 {
                     var lvEst = ObtenerUltimaPorInspeccionInterno(cn, inspeccionId, est.Item1);
-                    if (lvEst == null || !lvEst.FirmadoTecnico)
+                    if (lvEst == null || !lvEst.Finalizado || !lvEst.FirmadoTecnico)
                     {
                         var etiqueta = !string.IsNullOrWhiteSpace(est.Item2)
                             ? $"{est.Item2} ({est.Item3})"
