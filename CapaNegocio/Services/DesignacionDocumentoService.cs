@@ -333,8 +333,8 @@ namespace CapaNegocio.Services
                 // 5. Alcance e Instrucciones Técnicas
                 doc.Add(new Paragraph("Alcance y Mandato Técnico", fuenteNegrita) { SpacingAfter = 6f });
                 doc.Add(new Paragraph("Esta Dirección informa que la documentación requerida por la normativa ha sido verificada y aceptada para continuar con las inspecciones solicitadas. Para dicho efecto se designa al Inspector indicado en este oficio.", fuenteNormal) { SpacingAfter = 6f });
-                doc.Add(new Paragraph("En cumplimiento con la Regulación Técnica de Aviación Civil RDAC Parte 129, el Inspector designado por la Dirección de Certificación y Vigilancia Continua queda legalmente facultado para ejecutar la verificación documental, operativa y de instalaciones en las estaciones y fechas arriba indicadas, debiendo emitir la correspondiente Lista de Verificación (LV) y el Informe Técnico motivado.", fuenteNormal) { SpacingAfter = 6f });
-                doc.Add(new Paragraph("Los traslados aéreos y terrestres deberán ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados.", fuenteNormal));
+                doc.Add(new Paragraph("En cumplimiento con el Art. 112 de la Ley Orgánica de Aviación Civil, el Inspector designado por la Dirección de Certificación y Vigilancia Continua queda legalmente facultado para ejecutar la verificación documental, operativa y de instalaciones en las estaciones y fechas arriba indicadas, debiendo emitir la correspondiente Lista de Verificación (LV) y el Informe Técnico motivado.", fuenteNormal) { SpacingAfter = 6f });
+                doc.Add(new Paragraph("Los traslados aéreos y terrestres deberán ser proporcionados por el operador al Inspector designado, hacia y desde los aeropuertos involucrados, conforme a la normativa vigente.", fuenteNormal));
                 doc.Add(new Paragraph(" ", fuentePequena));
 
                 // 6. Bloque de Firma Institucional DIRCAV

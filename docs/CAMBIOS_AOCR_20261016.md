@@ -182,3 +182,7 @@ Para expedientes previamente aceptados se prepara scripts/sql/20261020_habilitar
 Se detecto que la aceptacion documental y el registro de designacion notificaban exclusivamente a Coordinacion. Ahora cada evento encola tambien un aviso al RT propietario (aocr_tbsolicitud.codigo_usuario -> usuario.idusuario), dentro de la misma transaccion, con clave por evento/solicitud/version para evitar duplicados. El aviso de designacion informa que el oficio esta pendiente de firma; el envio posterior del PDF firmado se conserva. Si falta correo del propietario se registra advertencia DCAV/NOTIFICACION_RT sin inventar destinatarios.
 
 Release e integracion local correctos, incluyendo ambos avisos al RT y el envio posterior con adjunto. DLL actualizados en public/public1/bin. No se publico en servidor ni se reenviaron eventos historicos. El encolado probado no acredita entrega SMTP.
+
+### Texto del mandato del oficio de designacion (2026-10-21)
+
+Por solicitud del usuario se sustituye la referencia inicial a RDAC Parte 129 por Art. 112 de la Ley Organica de Aviacion Civil. Al parrafo de traslados se agrega: conforme a la normativa vigente. Compilacion Release correcta; DLL preparados en public/public1/bin. Afecta a vistas previas y oficios generados posteriormente; no modifica documentos ya firmados. Pendiente publicar en servidor.
