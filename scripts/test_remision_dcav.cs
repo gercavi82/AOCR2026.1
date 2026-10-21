@@ -131,6 +131,11 @@ class RemisionDcavTest {
  var faseCerrada=new EstadoRevisionDocumental{TotalDocumentosVigentes=1,DocumentacionAprobada=true};
  typeof(CapaNegocio.SolicitudAocrInfraBL).GetMethod("ConfigurarFlujoDocumental",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static).Invoke(null,new object[]{faseCerrada,new SolicitudAOCR{Estado="DOCUMENTACION_ACEPTADA_DIRCAV"},new List<Inspeccion>()});
  Check(faseCerrada.FlujoDocumentalCodigo=="CERRADA_POR_DCAV"&&!faseCerrada.VisibleEnBandejaCoordinador&&!faseCerrada.VisibleEnBandejaInspector&&!faseCerrada.VisibleEnBandejaRt,"Aceptacion retira fase cerrada de bandejas de revision documental");
+ var decisionDoc=typeof(CapaNegocio.SolicitudAocrInfraBL).GetMethod("ObtenerDecisionRevisionDocumental",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static);
+ Func<string,bool,string> evaluarDoc=(estado,cierre)=>Convert.ToString(decisionDoc.Invoke(null,new object[]{new Documento{CodigoDocumento=1,Estado=estado},new Dictionary<int,Tuple<string,string>>(),true,cierre}));
+ Check(evaluarDoc("Aprobado",true)=="ACEPTADO"&&evaluarDoc("ACEPTADO",true)=="ACEPTADO","Cierre DCAV reconoce documentos aceptados sin exigir segunda revision del inspector");
+ Check(evaluarDoc("Aprobado",false)=="","Sin cierre DCAV se conserva revision obligatoria del inspector");
+ Check(evaluarDoc("OBSERVADO",true)=="OBSERVADO"&&evaluarDoc("SUBSANADO",true)=="SUBSANADO","Observados y subsanados posteriores siguen bloqueando LV");
  Check(!dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(16)).Exitoso,"Estado documental observado sigue bloqueando aceptacion");
  var estadosAntes=Convert.ToString(scalar("SELECT string_agg(codigo_solicitud::text||':'||estado,',' ORDER BY codigo_solicitud) FROM aocr_tbsolicitud"));
  sql(File.ReadAllText(args[2]));sql(File.ReadAllText(args[2]));

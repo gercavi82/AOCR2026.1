@@ -150,9 +150,18 @@ namespace CapaNegocio
                 : ObtenerUltimasRevisionesPorSolicitud(codigoSolicitud);
             estado.TotalDocumentosVigentes = documentos.Count;
 
+            var controlDcav = solicitud != null
+                && (string.Equals(solicitud.Estado, AocrEstadosProceso.DocumentacionAceptadaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(solicitud.Estado, AocrEstadosProceso.DesignacionPendienteFirmaDircav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(solicitud.Estado, AocrEstadosProceso.DesignacionFirmadaDircav, StringComparison.OrdinalIgnoreCase))
+                ? new RevisionDocumentalCoordinadorDAO().ObtenerPorSolicitud(codigoSolicitud) : null;
+            var cierreDcav = controlDcav != null
+                && string.Equals(controlDcav.Estado, "ACEPTADA_POR_DCAV", StringComparison.OrdinalIgnoreCase)
+                && controlDcav.FechaHabilitacionLv.HasValue;
+
             foreach (var documento in documentos)
             {
-                var decision = ObtenerDecisionRevisionDocumental(documento, revisiones, faseInspector);
+                var decision = ObtenerDecisionRevisionDocumental(documento, revisiones, faseInspector, cierreDcav);
                 var estadoDocumento = NormalizarEstadoDocumento(documento.Estado);
 
                 if (decision == "ACEPTADO")
@@ -696,12 +705,20 @@ namespace CapaNegocio
         private static string ObtenerDecisionRevisionDocumental(
             Documento documento,
             IDictionary<int, Tuple<string, string>> revisiones,
-            bool faseInspector = false)
+            bool faseInspector = false,
+            bool cierreDcav = false)
         {
             if (documento == null)
             {
                 return string.Empty;
             }
+
+            // La aceptación institucional cierra la revisión de documentos aceptados.
+            // Una observación o subsanación posterior conserva su bloqueo.
+            var estadoCierre = NormalizarEstadoDocumento(documento.Estado);
+            if (cierreDcav && (estadoCierre == "ACEPTADO" || estadoCierre == "OBSERVADO"
+                || estadoCierre == "DEVUELTO" || estadoCierre == "SUBSANADO"
+                || estadoCierre == "PENDIENTE_REVISION_SUBSANACION")) return estadoCierre;
 
             Tuple<string, string> revisionActual;
             if (revisiones != null &&

@@ -186,3 +186,9 @@ Release e integracion local correctos, incluyendo ambos avisos al RT y el envio 
 ### Texto del mandato del oficio de designacion (2026-10-21)
 
 Por solicitud del usuario se sustituye la referencia inicial a RDAC Parte 129 por Art. 112 de la Ley Organica de Aviacion Civil. Al parrafo de traslados se agrega: conforme a la normativa vigente. Compilacion Release correcta; DLL preparados en public/public1/bin. Afecta a vistas previas y oficios generados posteriormente; no modifica documentos ya firmados. Pendiente publicar en servidor.
+### LV oculta tras cierre DCAV (2026-10-21)
+
+El log de AOCR003 mostraba documentos pendientes pese al cierre DCAV. Se verificó el control ACEPTADA_POR_DCAV, inspector confirmado y fecha LV en la base configurada. El cálculo exigía revisiones del inspector actual incluso para documentos ya aceptados institucionalmente.
+
+Se respeta la aceptación de documentos cuando existe cierre DCAV con fecha de habilitación y la solicitud está aceptada, designada o firmada. Documentos observados, devueltos o subsanados siguen bloqueando. Verificación con código corregido: 14 documentos vigentes aceptados, cero pendientes, flujo CERRADA_POR_DCAV y LV habilitada para inspección 2. Release y regresiones locales correctos. CapaNegocio.dll preparado en public/public1/bin; pendiente publicación. No requiere SQL adicional.
+
