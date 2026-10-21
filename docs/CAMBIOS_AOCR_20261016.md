@@ -224,3 +224,9 @@ Migracion: scripts/sql/20261021_informes_por_estacion.sql agrega una columna nul
 Verificacion: Release y compilacion completa de vistas Razor correctos; 19 pruebas unitarias seleccionadas correctas; integracion en PostgreSQL temporal correcta, incluyendo guardado separado, edicion de Guayaquil sin alterar Quito firmado, estacion nueva sin datos heredados, ambos informes en revision institucional, decision independiente y migracion repetida sin modificar firmas. Sintaxis JavaScript correcta. No se firmaron documentos reales ni se alteraron expedientes de produccion durante estas pruebas.
 
 Publicacion: ejecutar la migracion y publicar cuatro DLL de public/public1/bin, Views/Inspeccion/Detalle.cshtml, Views/Inspeccion/_FirmaInspectorPanel.cshtml, Views/InformeTecnico/_ModalInformeTecnico.cshtml, Views/InformeTecnico/PendientesDireccion.cshtml y Scripts/aocr-informe-tecnico-modal.js. Archivos preparados localmente; no publicados en servidor.
+
+### Consulta del informe firmado por estacion (2026-10-21)
+
+El log de 15:51:16 muestra bloqueo de ModalInformeTecnico para estacion 36 con mensaje sobre LV pendiente. La base confirma LV de 36 y 37 firmadas; informe 2 de estacion 36 finalizado y firmado. La autorizacion reutilizaba la validacion de edicion: el informe firmado se rechazaba tambien al consultarlo.
+
+Se permite solo consulta al abrir ModalInformeTecnico, manteniendo asignacion, pertenencia de estacion y LV firmada. Guardar/finalizar conservan el bloqueo del informe firmado. Verificacion con codigo compilado contra la base configurada: QuitoConsulta=True, QuitoEdicion=False, GuayaquilEdicion=True. No se modificaron informes ni firmas. CapaNegocio.dll preparado en public/public1/bin; pendiente publicar. No requiere SQL.

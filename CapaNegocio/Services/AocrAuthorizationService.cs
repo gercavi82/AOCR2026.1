@@ -403,7 +403,7 @@ namespace CapaNegocio.Services
             return PuedeInspectorGenerarInforme(codigoInspeccion, codigoUsuario, null);
         }
 
-        private bool PuedeInspectorGenerarInforme(int codigoInspeccion, int codigoUsuario, int? estacionId)
+        private bool PuedeInspectorGenerarInforme(int codigoInspeccion, int codigoUsuario, int? estacionId, bool soloConsulta = false)
         {
             if (!PuedeInspectorAbrirInspeccion(codigoInspeccion, codigoUsuario))
             {
@@ -422,7 +422,7 @@ namespace CapaNegocio.Services
             }
 
             var informe = _informeDao.ObtenerUltimoPorInspeccion(codigoInspeccion, estacionId);
-            return informe == null
+            return soloConsulta || informe == null
                 || string.IsNullOrWhiteSpace(informe.EstadoInforme)
                 || Comparer.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "BORRADOR_INFORME")
                 || !informe.FirmadoInspector;
@@ -698,7 +698,8 @@ namespace CapaNegocio.Services
                         && !rolesInspeccion.Contains("DIRDAC", Comparer)
                         && !rolesInspeccion.Contains("DireccionJefaturaTecnica", Comparer))))
                 {
-                    if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId))
+                    if (!PuedeInspectorGenerarInforme(codigoInspeccion.GetValueOrDefault(), usuario.UserId, usuario.EstacionId,
+                        Comparer.Equals(accion, "ModalInformeTecnico")))
                     {
                         motivo = "Debe finalizar y firmar la LV antes de gestionar el Informe Técnico.";
                         return false;
