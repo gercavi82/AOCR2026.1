@@ -192,3 +192,9 @@ El log de AOCR003 mostraba documentos pendientes pese al cierre DCAV. Se verific
 
 Se respeta la aceptación de documentos cuando existe cierre DCAV con fecha de habilitación y la solicitud está aceptada, designada o firmada. Documentos observados, devueltos o subsanados siguen bloqueando. Verificación con código corregido: 14 documentos vigentes aceptados, cero pendientes, flujo CERRADA_POR_DCAV y LV habilitada para inspección 2. Release y regresiones locales correctos. CapaNegocio.dll preparado en public/public1/bin; pendiente publicación. No requiere SQL adicional.
 
+
+### Navegacion independiente entre LV Quito y Guayaquil (2026-10-21)
+
+La redireccion de Inspeccion/Detalle desde el ID numerico a la referencia del expediente eliminaba la consulta estacionId/lvAutoOpen. Al seleccionar Guayaquil se volvia a la primera estacion, Quito, mostrando su LV firmada. La redireccion conserva ahora la consulta original. Cada consulta y guardado siguen filtrando por inspeccion y estacion; la firma de una LV conserva su inmutabilidad y no bloquea las otras estaciones. No se agregan restricciones por fecha ni orden entre estaciones.
+
+Release correcto y 17 pruebas existentes de LV por estacion correctas. CapaPresentacion.dll preparado en public/public1/bin; pendiente publicar. No requiere cambios SQL ni modificar la LV firmada.

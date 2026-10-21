@@ -830,7 +830,9 @@ namespace CapaPresentacion.Controllers
                 && (!string.Equals(referenciaDetalle, referenciaCanonica, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(rutaActual, rutaCanonica, StringComparison.OrdinalIgnoreCase)))
             {
-                return Redirect(rutaCanonica);
+                // La estación y la apertura de LV pertenecen a la navegación actual.
+                // Perder la consulta vuelve a la primera estación (incluso si ya firmó).
+                return Redirect(rutaCanonica + (Request.Url?.Query ?? string.Empty));
             }
 
             var codigoInspeccion = inspeccion.CodigoInspeccion;
