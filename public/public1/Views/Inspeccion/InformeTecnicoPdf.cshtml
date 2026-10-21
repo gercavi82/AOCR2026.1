@@ -213,10 +213,10 @@
             <thead>
                 <tr>
                     <th class="service-name"></th>
-                    <th>UIO</th>
-                    <th>GYE</th>
-                    <th>MEC</th>
-                    <th>LTX</th>
+                    @foreach (var codigoEstacion in InformeTecnicoTemplateHelper.GetColumnasEstacion(Model.EstacionCodigo))
+                    {
+                        <th>@codigoEstacion</th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -224,10 +224,10 @@
                 {
                     <tr>
                         <td class="service-name">@fila.Label</td>
-                        <td>@(string.IsNullOrWhiteSpace(fila.Uio) ? string.Empty : fila.Uio)</td>
-                        <td>@(string.IsNullOrWhiteSpace(fila.Gye) ? string.Empty : fila.Gye)</td>
-                        <td>@(string.IsNullOrWhiteSpace(fila.Mec) ? string.Empty : fila.Mec)</td>
-                        <td>@(string.IsNullOrWhiteSpace(fila.Ltx) ? string.Empty : fila.Ltx)</td>
+                        @foreach (var codigoEstacion in InformeTecnicoTemplateHelper.GetColumnasEstacion(Model.EstacionCodigo))
+                        {
+                            <td>@InformeTecnicoTemplateHelper.GetValorServicioEstacion(fila, codigoEstacion)</td>
+                        }
                     </tr>
                 }
             </tbody>

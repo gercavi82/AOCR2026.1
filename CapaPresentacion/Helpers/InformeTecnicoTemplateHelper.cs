@@ -6,6 +6,42 @@ namespace CapaPresentacion.Helpers
 {
     public static class InformeTecnicoTemplateHelper
     {
+        public static IList<string> GetColumnasEstacion(string codigoEstacion)
+        {
+            var codigo = (codigoEstacion ?? string.Empty).Trim().ToUpperInvariant();
+            switch (codigo)
+            {
+                case "SEQM": codigo = "UIO"; break;
+                case "SEGU": codigo = "GYE"; break;
+                case "SEMT": codigo = "MEC"; break;
+                case "SELT": codigo = "LTX"; break;
+            }
+            return string.IsNullOrWhiteSpace(codigo)
+                ? new[] { "UIO", "GYE", "MEC", "LTX" } : new[] { codigo };
+        }
+
+        public static string GetCampoServicioEstacion(string codigo)
+        {
+            switch ((codigo ?? string.Empty).ToUpperInvariant())
+            {
+                case "GYE": return "gye";
+                case "MEC": return "mec";
+                case "LTX": return "ltx";
+                default: return "uio";
+            }
+        }
+
+        public static string GetValorServicioEstacion(ServicioEstacionFila fila, string codigo)
+        {
+            switch (GetCampoServicioEstacion(codigo))
+            {
+                case "gye": return fila.Gye;
+                case "mec": return fila.Mec;
+                case "ltx": return fila.Ltx;
+                default: return fila.Uio;
+            }
+        }
+
         // Mantiene el texto histórico en la presentación sin copiarlo a campos nuevos.
         public static string ConsolidarTexto(string primero, string segundo)
         {

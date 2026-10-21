@@ -22,6 +22,24 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class Ac09DepuracionInformeTecnicoTests
     {
+        [TestMethod]
+        public void TablaServicios_MuestraSoloEstacionDelInforme()
+        {
+            CollectionAssert.AreEqual(new[] { "UIO" }, CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetColumnasEstacion("SEQM").ToArray());
+            CollectionAssert.AreEqual(new[] { "GYE" }, CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetColumnasEstacion("GYE").ToArray());
+            var fila = new CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.ServicioEstacionFila
+                { Uio = "Responsable Quito", Gye = "Responsable Guayaquil", Mec = "Manta", Ltx = "Latacunga" };
+            Assert.AreEqual("Responsable Guayaquil", CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetValorServicioEstacion(fila, "GYE"));
+            Assert.AreEqual("Responsable Quito", CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetValorServicioEstacion(fila, "UIO"));
+            Assert.AreEqual("gye", CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetCampoServicioEstacion("GYE"));
+        }
+
+        [TestMethod]
+        public void TablaServicios_HistoricoSinEstacionConservaColumnasOriginales()
+        {
+            CollectionAssert.AreEqual(new[] { "UIO", "GYE", "MEC", "LTX" }, CapaPresentacion.Helpers.InformeTecnicoTemplateHelper.GetColumnasEstacion(null).ToArray());
+        }
+
         private static string ObtenerRutaRaizProyecto()
         {
             var dir = AppDomain.CurrentDomain.BaseDirectory;

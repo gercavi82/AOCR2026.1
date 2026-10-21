@@ -1352,6 +1352,7 @@ namespace CapaPresentacion.Controllers
             var informe = ObtenerInformeEstacionActual(id);
             var vm = new InformeTecnicoPdfViewModel
             {
+                EstacionCodigo = ObtenerCodigoEstacionInforme(inspeccion, informe),
                 Inspeccion = inspeccion,
                 Solicitud = solicitud,
                 Informe = informe
@@ -5711,6 +5712,7 @@ namespace CapaPresentacion.Controllers
 
             var vm = new InformeTecnicoPdfViewModel
             {
+                EstacionCodigo = ObtenerCodigoEstacionInforme(inspeccion, informe),
                 Inspeccion = inspeccion,
                 Solicitud = solicitud,
                 Informe = informe,
@@ -6116,6 +6118,16 @@ namespace CapaPresentacion.Controllers
             catch
             {
             }
+        }
+
+        private string ObtenerCodigoEstacionInforme(Inspeccion inspeccion, InspeccionInformeTecnico informe)
+        {
+            if (inspeccion == null || informe?.EstacionId == null) return null;
+            var estacion = new SolicitudEstacionDAO().ListarPorSolicitud(inspeccion.CodigoSolicitud)
+                .FirstOrDefault(e => e.Id == informe.EstacionId);
+            if (estacion == null || string.IsNullOrWhiteSpace(estacion.EstacionCodigo))
+                throw new InvalidOperationException("No se pudo identificar la estación del informe.");
+            return estacion.EstacionCodigo;
         }
 
         private string RutaInformeGeneralCompatible(Inspeccion inspeccion)

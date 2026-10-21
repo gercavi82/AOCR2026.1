@@ -4,6 +4,7 @@ namespace CapaPresentacion.Models.ViewModels
 {
     public class InformeTecnicoPdfViewModel
     {
+        public string EstacionCodigo { get; set; }
         public Inspeccion Inspeccion { get; set; }
         public SolicitudAOCR Solicitud { get; set; }
         public InspeccionInformeTecnico Informe { get; set; }

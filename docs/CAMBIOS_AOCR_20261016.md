@@ -236,3 +236,9 @@ Se permite solo consulta al abrir ModalInformeTecnico, manteniendo asignacion, p
 La captura muestra acceso al PDF de LV sin estacionId, que es requerido al existir estaciones. El modal toma ahora la estacion de la LV vinculada, con respaldo en la estacion del informe, para ambos enlaces Ver PDF y Descargar. Esto cubre informes sin estacion propia cuando se muestran con una LV seleccionada y conserva la validacion que impide abrir una estacion incorrecta. No se modifica ningun PDF firmado.
 
 Publicar Views/InformeTecnico/_ModalInformeTecnico.cshtml desde public/public1 y cerrar/reabrir el modal para obtener los nuevos enlaces. No requiere SQL ni nuevas firmas.
+
+### Tabla de servicios: solo estacion del informe (2026-10-21)
+
+La tabla del formulario y PDF tenia encabezados fijos UIO/GYE/MEC/LTX. Ahora el PDF resuelve el codigo desde estacion_id del informe; el modal utiliza la estacion de su LV. Se muestra unicamente esa columna y sus valores. Se reconocen equivalencias OACI/IATA SEQM/UIO, SEGU/GYE, SEMT/MEC y SELT/LTX. Los informes historicos sin estacion conservan su presentacion original, y los PDF firmados no se alteran.
+
+Release y vistas Razor correctos; 13 pruebas del informe correctas, incluyendo columna unica para Quito/Guayaquil y conservacion de formato historico. Publicar CapaPresentacion.dll, Views/Inspeccion/InformeTecnicoPdf.cshtml y Views/InformeTecnico/_ModalInformeTecnico.cshtml desde public/public1. No requiere SQL. Aplica a nuevas vistas previas y documentos generados posteriormente; no reemplaza archivos ya firmados.

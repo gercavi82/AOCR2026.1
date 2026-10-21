@@ -254,10 +254,10 @@
                                             <thead>
                                                 <tr>
                                                     <th>Servicio / responsabilidad</th>
-                                                    <th class="text-center">UIO</th>
-                                                    <th class="text-center">GYE</th>
-                                                    <th class="text-center">MEC</th>
-                                                    <th class="text-center">LTX</th>
+                                                    @foreach (var codigoEstacion in InformeTecnicoTemplateHelper.GetColumnasEstacion(lista.EstacionCodigo))
+                                                    {
+                                                        <th class="text-center">@codigoEstacion</th>
+                                                    }
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -265,10 +265,10 @@
                                                 {
                                                     <tr>
                                                         <td>@fila.Label</td>
-                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_uio")" value="@(fila.Uio ?? string.Empty)" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_gye")" value="@(fila.Gye ?? string.Empty)" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_mec")" value="@(fila.Mec ?? string.Empty)" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_ltx")" value="@(fila.Ltx ?? string.Empty)" /></td>
+                                                        @foreach (var codigoEstacion in InformeTecnicoTemplateHelper.GetColumnasEstacion(lista.EstacionCodigo))
+                                                        {
+                                                            <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_" + InformeTecnicoTemplateHelper.GetCampoServicioEstacion(codigoEstacion))" value="@InformeTecnicoTemplateHelper.GetValorServicioEstacion(fila, codigoEstacion)" /></td>
+                                                        }
                                                     </tr>
                                                 }
                                             </tbody>
