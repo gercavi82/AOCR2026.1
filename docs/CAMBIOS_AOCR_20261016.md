@@ -176,3 +176,9 @@ La aceptacion documental ahora guarda, en una sola transaccion, la solicitud ace
 Release y pruebas de integracion locales correctas: habilitacion antes de firma, rechazo del inspector ajeno, cierre de inspeccion, rollback y conservacion de fechas al firmar. DLL preparados en public/public1/bin; no publicados en servidor.
 
 Para expedientes previamente aceptados se prepara scripts/sql/20261020_habilitar_lv_aceptadas_dcav.sql. Solo regulariza controles de expedientes ya aceptados, con inspector y sin documentos observados; no acepta pendientes ni devueltos. El script no se ejecuto en la base del servidor.
+
+### Avisos de aceptacion y designacion al RT (2026-10-21)
+
+Se detecto que la aceptacion documental y el registro de designacion notificaban exclusivamente a Coordinacion. Ahora cada evento encola tambien un aviso al RT propietario (aocr_tbsolicitud.codigo_usuario -> usuario.idusuario), dentro de la misma transaccion, con clave por evento/solicitud/version para evitar duplicados. El aviso de designacion informa que el oficio esta pendiente de firma; el envio posterior del PDF firmado se conserva. Si falta correo del propietario se registra advertencia DCAV/NOTIFICACION_RT sin inventar destinatarios.
+
+Release e integracion local correctos, incluyendo ambos avisos al RT y el envio posterior con adjunto. DLL actualizados en public/public1/bin. No se publico en servidor ni se reenviaron eventos historicos. El encolado probado no acredita entrega SMTP.

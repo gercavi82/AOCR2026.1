@@ -111,6 +111,32 @@ WHERE r.solicitud_id=@id AND r.activo=TRUE AND COALESCE(to_jsonb(u)->>'estadoact
             }
         }
 
+        private static void NotificarRtEnTransaccion(NpgsqlConnection cn, NpgsqlTransaction tx,
+            int solicitudId, string evento, int version, string asunto, string cuerpo)
+        {
+            string correo;
+            using (var cmd = new NpgsqlCommand(@"SELECT u.correo FROM public.aocr_tbsolicitud s
+JOIN public.usuario u ON u.idusuario=NULLIF(to_jsonb(s)->>'codigo_usuario','')::integer
+WHERE s.codigo_solicitud=@id AND COALESCE(to_jsonb(u)->>'estadoactividad','1')='1' LIMIT 1", cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", solicitudId);
+                correo = Convert.ToString(cmd.ExecuteScalar()).Trim();
+            }
+            if (string.IsNullOrWhiteSpace(correo))
+            {
+                System.Diagnostics.Trace.TraceWarning("[DCAV][NOTIFICACION_RT] Sin correo del RT propietario. SolicitudId=" + solicitudId + "; Evento=" + evento);
+                return;
+            }
+            bool duplicado;
+            new EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx,
+                new EmailQueueItem {
+                    Para=correo, ParaNombre="Representante Técnico", SolicitudId=solicitudId,
+                    Asunto=asunto, Cuerpo=cuerpo, TipoNotificacion=evento,
+                    EventKey=evento + "_" + solicitudId + "_" + version,
+                    Estado="PENDIENTE"
+                }, null, out duplicado);
+        }
+
         public DircavTransaccionResultado DevolverCoordinadorTransaccional(DircavAceptarDocumentacionParams p)
         {
             using (var cn = CrearConexion())
@@ -800,6 +826,9 @@ WHERE r.solicitud_id=@solicitud AND s.codigo_solicitud=r.solicitud_id
                         bool duplicate;
                         if (!string.IsNullOrWhiteSpace(emailItem.Para))
                         new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+                        NotificarRtEnTransaccion(cn, tx, p.SolicitudId, "SOLICITUD_DOCUMENTACION_ACEPTADA_DIRCAV_RT", nuevaVersion,
+                            "AOCR - Documentación aceptada por DCAV #" + p.SolicitudId,
+                            "DCAV ha aceptado la documentación del trámite #" + p.SolicitudId + ". La fase documental ha sido cerrada para continuar con las inspecciones solicitadas.");
 
                         tx.Commit();
 
@@ -1183,6 +1212,10 @@ WHERE r.solicitud_id=@solicitud AND s.codigo_solicitud=r.solicitud_id
                         };
                         bool duplicate;
                         new CapaDatos.Services.EmailQueueService(cn.ConnectionString).EncolarConAdjuntosEnTransaccion(cn, tx, emailItem, null, out duplicate);
+
+                        NotificarRtEnTransaccion(cn, tx, p.SolicitudId, "SOLICITUD_DESIGNACION_INSPECTOR_REGISTRADA_RT", versionNuevaDesignacion,
+                            "AOCR - Inspector designado para las inspecciones #" + p.SolicitudId,
+                            "DCAV ha registrado la designación del Inspector " + p.InspectorNombre + " para las inspecciones del trámite #" + p.SolicitudId + ". El oficio de designación se encuentra pendiente de firma institucional. Al firmarse, recibirá el documento por correo y podrá descargarlo desde su bandeja.");
 
                         tx.Commit();
 

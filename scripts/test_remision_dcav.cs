@@ -117,10 +117,14 @@ class RemisionDcavTest {
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,estado_documental) VALUES(15,'PENDIENTE_DIRCAV',NULL),(16,'PENDIENTE_DIRCAV','OBSERVADO');
  INSERT INTO aocr_revision_documental_coordinador(solicitud_id,inspector_original_id,estado,activo) VALUES(15,79,'PENDIENTE_ACEPTACION_DCAV',true);
  CREATE TABLE aocr_tbinspeccion(codigo_inspeccion integer,codigo_solicitud integer,estado_documental text);
- INSERT INTO aocr_tbinspeccion VALUES(150,15,'EN_REVISION_DOCUMENTAL');");
+ INSERT INTO aocr_tbinspeccion VALUES(150,15,'EN_REVISION_DOCUMENTAL');
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN codigo_usuario integer;
+ INSERT INTO usuario VALUES(90,'RT_PRUEBA','RT','Prueba','RT','rt@example.test',1),(91,'RT_AJENO','RT','Ajeno','RT','ajeno@example.test',1);
+ UPDATE aocr_tbsolicitud SET codigo_usuario=90 WHERE codigo_solicitud=15;");
  Check(dcav.EjecutarAceptacionDocumentalTransaccional(aceptar(15)).Exitoso,"Aceptacion compatible cuando estado_documental existe");
  Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))=="ACEPTADO_DIRCAV","Conserva actualizacion de estado documental cuando existe");
  Check(new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,79),"Aceptacion DCAV habilita control LV antes de designar o firmar");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND to_address='rt@example.test' AND tipo_notificacion='SOLICITUD_DOCUMENTACION_ACEPTADA_DIRCAV_RT'"))==1,"Aceptacion notifica al RT propietario");
  Check(Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbinspeccion WHERE codigo_inspeccion=150"))=="ACEPTADA","Aceptacion cierra tambien estado documental de la inspeccion");
  Check(!new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,98),"Aceptacion no habilita LV de inspector ajeno");
  var fechaLvAceptacion=Convert.ToDateTime(scalar("SELECT fecha_habilitacion_lv FROM aocr_revision_documental_coordinador WHERE solicitud_id=15"));
@@ -138,6 +142,7 @@ class RemisionDcavTest {
  Func<int,DircavDesignarInspectorParams> designar=id=>new DircavDesignarInspectorParams{SolicitudId=id,InspectorId=79,InspectorCedula="1700000000",InspectorNombre="Inspector Prueba",InspectorTipo="OPS",DircavUsuarioId=97,DircavUsuarioNombre="DCAV prueba",Motivo="Designacion de prueba"};
  var designado=dcav.EjecutarDesignacionTransaccional(designar(15));
  Check(designado.Exitoso,"Designacion completa sin tecnico_responsable_id: "+designado.Mensaje);
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND to_address='rt@example.test' AND tipo_notificacion='SOLICITUD_DESIGNACION_INSPECTOR_REGISTRADA_RT'"))==1,"Designacion notifica al RT antes de firma");
  Check(Convert.ToInt32(scalar("SELECT codigo_tecnico FROM aocr_tbsolicitud WHERE codigo_solicitud=15"))==79,"Inspector queda registrado en codigo_tecnico");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdesignacion_inspector WHERE solicitud_id=15 AND vigente=true AND firmado=false"))==1,"Designacion formal unica pendiente de firma");
  Check(Convert.ToInt32(scalar("SELECT inspector_id FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15 LIMIT 1"))==79,"Designacion actualiza inspector de estacion");
@@ -159,9 +164,7 @@ class RemisionDcavTest {
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue q JOIN email_attachment a ON a.email_queue_id=q.id WHERE q.solicitud_id=15 AND q.to_address IN ('rt@example.test','inspector@example.test') AND a.file_name='Oficio_Firmado.pdf' AND a.content_type='application/pdf' AND a.sha256='HASH_TRANSACCION_SIMULADA'"))==2,"Ambos correos incluyen el mismo PDF firmado con hash");
  Check(dcav.EjecutarFirmaDesignacionTransaccional(firma).EsIdempotente,"Segundo registro de firma no duplica efectos");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_attachment a JOIN email_queue q ON q.id=a.email_queue_id WHERE q.solicitud_id=15"))==2,"Repetir firma no duplica correos ni adjuntos");
- sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN codigo_usuario integer;
- UPDATE aocr_tbsolicitud SET codigo_usuario=90 WHERE codigo_solicitud=15;
- INSERT INTO usuario VALUES(90,'RT_PRUEBA','RT','Prueba','RT','rt@example.test',1),(91,'RT_AJENO','RT','Ajeno','RT','ajeno@example.test',1);
+ sql(@"UPDATE aocr_tbsolicitud SET codigo_usuario=90 WHERE codigo_solicitud=15;
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,estado,codigo_usuario) VALUES(18,'DOCUMENTACION_ACEPTADA_DIRCAV',90);");
  Check(dcav.EjecutarDesignacionTransaccional(designar(18)).Exitoso,"Prepara oficio no firmado del mismo RT");
  Check(dcav.ListarOficiosFirmadosUsuario(90,true,false).Count==1,"RT ve solo oficio propio firmado, excluye pendiente");
