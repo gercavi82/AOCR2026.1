@@ -153,6 +153,13 @@
                     throw new Error(payload && payload.message ? payload.message : 'No se pudo completar la operacion.');
                 }
 
+                // El primer guardado asigna el ID de la LV de esta estación.
+                // Las siguientes acciones deben enviar esa identidad, no el cero inicial.
+                if (payload.codigoLista) {
+                    Array.prototype.forEach.call(form.querySelectorAll('input[name="lvCodigoLista"]'), function (input) {
+                        input.value = payload.codigoLista;
+                    });
+                }
                 return payload;
             });
         });

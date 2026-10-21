@@ -198,3 +198,9 @@ Se respeta la aceptación de documentos cuando existe cierre DCAV con fecha de h
 La redireccion de Inspeccion/Detalle desde el ID numerico a la referencia del expediente eliminaba la consulta estacionId/lvAutoOpen. Al seleccionar Guayaquil se volvia a la primera estacion, Quito, mostrando su LV firmada. La redireccion conserva ahora la consulta original. Cada consulta y guardado siguen filtrando por inspeccion y estacion; la firma de una LV conserva su inmutabilidad y no bloquea las otras estaciones. No se agregan restricciones por fecha ni orden entre estaciones.
 
 Release correcto y 17 pruebas existentes de LV por estacion correctas. CapaPresentacion.dll preparado en public/public1/bin; pendiente publicar. No requiere cambios SQL ni modificar la LV firmada.
+
+### Identidad LV despues del primer guardado (2026-10-21)
+
+El log muestra guardado correcto de estacion 37, LV 2, seguido de rechazos al guardar/finalizar. El formulario AJAX no actualizaba lvCodigoLista con codigoLista devuelto por el servidor: conservaba el cero inicial. Se actualiza la identidad del mismo formulario tras cada respuesta exitosa, antes de cualquier accion posterior; errores no la modifican. Se conserva la validacion estricta del servidor y la independencia de otras estaciones/LV firmadas.
+
+Verificado con node --check y scripts/test_lv_form_identity.js: primer guardado asigna ID, finalizar envia ID correcto y fallos no lo reemplazan. Publicar public/public1/Scripts/aocr-lv-eae-flujo-automatico.js. No requiere SQL ni cambios en las LV guardadas. El inspector debe recargar la pagina despues de publicar para cargar el script actualizado.

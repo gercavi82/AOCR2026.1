@@ -53,10 +53,10 @@
       <publishTime>10/21/2026 10:22:00</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>10/21/2026 10:22:01</publishTime>
+      <publishTime>10/21/2026 12:19:44</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>10/21/2026 10:22:01</publishTime>
+      <publishTime>10/21/2026 12:19:44</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8621,7 +8621,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>10/21/2026 10:34:27</publishTime>
+      <publishTime>10/21/2026 12:38:25</publishTime>
     </File>
   </ItemGroup>
 </Project>
