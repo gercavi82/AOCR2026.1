@@ -97,11 +97,12 @@
     var mostrarObservacionesResultado = InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultadoSeleccionado);
     var mostrarHallazgosResultado = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
     var mostrarTipoResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
+    var estacionListaVinculada = lista.EstacionId ?? informe.EstacionId;
     var urlVerListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
-        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = informe.EstacionId })
+        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = estacionListaVinculada })
         : string.Empty;
     var urlDescargarListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
-        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = informe.EstacionId })
+        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion, estacionId = estacionListaVinculada })
         : string.Empty;
     var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo);
     var ayudaPdf = vm.ExistePdfInformeTecnico

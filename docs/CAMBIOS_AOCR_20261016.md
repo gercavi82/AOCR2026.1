@@ -230,3 +230,9 @@ Publicacion: ejecutar la migracion y publicar cuatro DLL de public/public1/bin, 
 El log de 15:51:16 muestra bloqueo de ModalInformeTecnico para estacion 36 con mensaje sobre LV pendiente. La base confirma LV de 36 y 37 firmadas; informe 2 de estacion 36 finalizado y firmado. La autorizacion reutilizaba la validacion de edicion: el informe firmado se rechazaba tambien al consultarlo.
 
 Se permite solo consulta al abrir ModalInformeTecnico, manteniendo asignacion, pertenencia de estacion y LV firmada. Guardar/finalizar conservan el bloqueo del informe firmado. Verificacion con codigo compilado contra la base configurada: QuitoConsulta=True, QuitoEdicion=False, GuayaquilEdicion=True. No se modificaron informes ni firmas. CapaNegocio.dll preparado en public/public1/bin; pendiente publicar. No requiere SQL.
+
+### Enlace de LV dentro del informe tecnico (2026-10-21)
+
+La captura muestra acceso al PDF de LV sin estacionId, que es requerido al existir estaciones. El modal toma ahora la estacion de la LV vinculada, con respaldo en la estacion del informe, para ambos enlaces Ver PDF y Descargar. Esto cubre informes sin estacion propia cuando se muestran con una LV seleccionada y conserva la validacion que impide abrir una estacion incorrecta. No se modifica ningun PDF firmado.
+
+Publicar Views/InformeTecnico/_ModalInformeTecnico.cshtml desde public/public1 y cerrar/reabrir el modal para obtener los nuevos enlaces. No requiere SQL ni nuevas firmas.
