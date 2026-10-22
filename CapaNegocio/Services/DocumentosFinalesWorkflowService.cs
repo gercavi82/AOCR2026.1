@@ -31,6 +31,9 @@ namespace CapaNegocio.Services
             try
             {
                 var solicitud = new SolicitudAOCRDAO().ObtenerPorCodigo(solicitudId);
+                string motivoInformes;
+                if (!new AocrFlujoValidacionService().PuedePrepararDocumentosFinales(solicitudId, out motivoInformes, true))
+                    return Error("DCAV debe aprobar todos los informes por estación antes del envío para firmas.");
                 var plan = new AocrCierrePorTipoTramiteService().Resolver(solicitud);
                 if (!plan.EsValido) return Error(plan.Motivo);
 

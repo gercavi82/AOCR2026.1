@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm>
 @using System
 @using System.Collections.Generic
 @using System.Linq
@@ -324,27 +324,6 @@
             },
             new LvOficialFilaPanel
             {
-                RowKey = "129-5-5",
-                RequirementCode = "129-5",
-                ResponseIndices = IndicesOficialPanel(4),
-                OrientationLines = LineasOficialPanel(LineaOficialPanel("c. área de operaciones.", "lv-orientacion-literal"))
-            },
-            new LvOficialFilaPanel
-            {
-                RowKey = "129-5-6",
-                RequirementCode = "129-5",
-                ResponseIndices = IndicesOficialPanel(5),
-                OrientationLines = LineasOficialPanel(LineaOficialPanel("d. aprobaciones específicas.", "lv-orientacion-literal"))
-            },
-            new LvOficialFilaPanel
-            {
-                RowKey = "129-5-7",
-                RequirementCode = "129-5",
-                ResponseIndices = IndicesOficialPanel(6),
-                OrientationLines = LineasOficialPanel(LineaOficialPanel("e. matrículas y aeródromos, si aplica.", "lv-orientacion-literal"))
-            },
-            new LvOficialFilaPanel
-            {
                 RowKey = "129-6-1",
                 RequirementCode = "129-6",
                 ResponseIndices = IndicesOficialPanel(0),
@@ -353,7 +332,7 @@
                 QuestionLines = LineasOficialPanel(LineaOficialPanel("129-6", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?", "lv-question-text")),
                 OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el manual de operaciones esté completo, con el contenido requerido por el Apéndice 2 del Anexo 6, Parte I o Apéndice 8 del Anexo 6, Parte III, según corresponda."))
             },
-            new LvOficialFilaPanel { RowKey = "129-6-2", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar las indicaciones de aprobación/aceptación, incluyendo, si se ubica en separada, una página de aprobación de la MEL.")) },
+            new LvOficialFilaPanel { RowKey = "129-6-2", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar las indicaciones de aprobación/aceptación, incluyendo, si se publica por separado, una página de aprobación de la MEL.")) },
             new LvOficialFilaPanel { RowKey = "129-6-3", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(2, 3, 4, 5, 6, 7), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. Verificar que la parte de 'rutas y aeródromos', incluyendo la guía de ruta (Tercera Parte o 'Parte C' del manual de operaciones) contiene información relativa a los servicios e instalaciones de comunicaciones y ayudas para la navegación, aeródromos y aproximaciones, llegadas y salidas por instrumentos, según corresponda para la operación y toda información necesaria para las operaciones solicitadas.")) },
             new LvOficialFilaPanel { RowKey = "129-6-4", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(8), OrientationLines = LineasOficialPanel(LineaOficialPanel("4. Verificar que el manual de operaciones contempla procedimientos y/o entrenamientos específicos para las operaciones en áreas o aeródromos especiales (p. ej. Cordillera de los Andes o aeródromos elevados).")) },
             new LvOficialFilaPanel { RowKey = "129-6-5", RequirementCode = "129-6", ResponseIndices = IndicesOficialPanel(9), OrientationLines = LineasOficialPanel(LineaOficialPanel("5. De ser requerido por el Estado verificar que el manual de operaciones contempla procedimientos específicos de despacho para las operaciones en su territorio (p. ej. Despachador local en lugar de despachador remoto).")) },
@@ -384,13 +363,12 @@
             {
                 RowKey = "129-9-1",
                 RequirementCode = "129-9",
-                ResponseIndices = IndicesOficialPanel(0),
+                ResponseIndices = IndicesOficialPanel(0, 1),
                 ShowCompliance = true,
                 ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
                 QuestionLines = LineasOficialPanel(LineaOficialPanel("129-9", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero los contratos (o cartas de intención) de los servicios de tierra que pretende utilizar?", "lv-question-text")),
-                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que los servicios de tierra, incluyan (de ser aplicable):"))
+                OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que los servicios de tierra incluyan la manipulación del equipaje y de carga (carga/descarga de la aeronave), de ser aplicable."))
             },
-            new LvOficialFilaPanel { RowKey = "129-9-2", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("a. manipulación del equipaje y de carga (carga/descarga de la aeronave);", "lv-orientacion-literal")) },
             new LvOficialFilaPanel { RowKey = "129-9-3", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("b. despacho y atención a los pasajeros;", "lv-orientacion-literal")) },
             new LvOficialFilaPanel { RowKey = "129-9-4", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(3), OrientationLines = LineasOficialPanel(LineaOficialPanel("c. reabastecimiento de combustible y aceite;", "lv-orientacion-literal")) },
             new LvOficialFilaPanel { RowKey = "129-9-5", RequirementCode = "129-9", ResponseIndices = IndicesOficialPanel(4), OrientationLines = LineasOficialPanel(LineaOficialPanel("d. operaciones de deshielo y antihielo para aeronaves en tierra;", "lv-orientacion-literal")) },
@@ -407,7 +385,7 @@
                 QuestionLines = LineasOficialPanel(LineaOficialPanel("129-10", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre su sistema de gestión de la seguridad operacional (SMS), en cumplimiento del Anexo 19?", "lv-question-text")),
                 OrientationLines = LineasOficialPanel(LineaOficialPanel("1. Verificar que el explotador tiene todos los elementos mínimos presentes."), LineaOficialPanel("Nota. La verificación detallada de implementación del SMS es compleja y exigiría una evaluación más detallada de los manuales, procedimientos y evidencias prácticas del explotador. En este caso, una verificación de que el explotador tiene esos elementos en su manual de operaciones puede ser suficiente.", "lv-orientacion-nota"))
             },
-            new LvOficialFilaPanel { RowKey = "129-10-2", RequirementCode = "129-10", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que el explotador tiene implementado el programa de análisis de datos de vuelo como parte de su sistema de gestión de la seguridad operacional."), LineaOficialPanel("Nota. El Anexo 6 Parte I contiene los requisitos para la implantación del programa de análisis de datos de vuelo. Su cumplimiento es requerido por el LAR 129.010 (b).", "lv-orientacion-nota")) },
+            new LvOficialFilaPanel { RowKey = "129-10-2", RequirementCode = "129-10", ResponseIndices = IndicesOficialPanel(1), OrientationLines = LineasOficialPanel(LineaOficialPanel("2. Verificar que el explotador tiene implementado el programa de análisis de datos de vuelo como parte de su sistema de gestión de la seguridad operacional."), LineaOficialPanel("Nota. El Anexo 6 Parte I contiene los requisitos para la implantación del programa de análisis de datos de vuelo. Su cumplimiento es requerido por el RDAC 129.010 (b).", "lv-orientacion-nota")) },
             new LvOficialFilaPanel { RowKey = "129-10-3", RequirementCode = "129-10", ResponseIndices = IndicesOficialPanel(2), OrientationLines = LineasOficialPanel(LineaOficialPanel("3. De ser requerido por el Estado, verificar que el plan de respuesta ante emergencias del explotador es adecuado al país y a los aeropuertos que pretende utilizar.")) },
             new LvOficialFilaPanel
             {
@@ -429,7 +407,7 @@
                 ReferenceLines = LineasOficialPanel(LineaOficialPanel("129.010 (b)"), LineaOficialPanel("129.100 (b)"), LineaOficialPanel("(9)")),
                 QuestionLines = LineasOficialPanel(LineaOficialPanel("129-12", "lv-question-code"), LineaOficialPanel("¿Ha presentado el explotador extranjero información sobre alguna exención emitida por su AAC que se aplique a las operaciones solicitadas?", "lv-question-text")),
                 OrientationLines = LineasOficialPanel(
-                    LineaOficialPanel("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados en el LAR 129.010 (b)."),
+                    LineaOficialPanel("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados en el RDAC 129.010 (b)."),
                     LineaOficialPanel("2. Verificar si los certificados de aeronavegabilidad y/o licencias que hayan sido objeto de alguna exención, han sido anotados/anotadas o se hayan agregado a éstos/éstas, una numeración completa de los detalles respecto a los cuales dejen de satisfacer la norma o normas relacionadas con la exención, de acuerdo con el Artículo 39 al Convenio sobre Aviación Civil Internacional."),
                     LineaOficialPanel("3. Verificar si la AAC del explotador extranjero ha solicitado la aceptación de la exención a la AAC y si esta exención ha sido aceptada, de conformidad con el Artículo 40 al Convenio sobre Aviación Civil Internacional."),
                     LineaOficialPanel("Nota. Si la exención no ha sido aceptada por la AAC, entonces el explotador extranjero cumplirá con los requisitos establecidos por la AAC.", "lv-orientacion-nota"))

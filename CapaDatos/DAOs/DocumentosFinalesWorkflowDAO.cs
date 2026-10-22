@@ -85,13 +85,13 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                         if (request.RequiereAocr) ValidarEvidencia(aocr, request.Aocr, TipoAocr);
                         if (request.RequiereCondiciones) ValidarEvidencia(condiciones, request.Condiciones, TipoCondiciones);
 
-                        if (request.RequiereAocr) ActualizarDocumentoEnviado(cn, tx, aocr.CodigoDocumento, AocrEstadosProceso.PendienteFirmaAocrDirdac, request.InspectorId);
+                        if (request.RequiereAocr) ActualizarDocumentoEnviado(cn, tx, aocr.CodigoDocumento, AocrEstadosProceso.AocrListoParaFirma, request.InspectorId);
                         if (request.RequiereCondiciones) ActualizarDocumentoEnviado(cn, tx, condiciones.CodigoDocumento, AocrEstadosProceso.PendienteFirmaCondicionesDcav, request.InspectorId);
                         var descripcionEnvio = request.RequiereAocr
-                            ? "AOCR y Condiciones enviados conjuntamente para firmas independientes."
+                            ? "AOCR y Condiciones enviados a DCAV para revision, firma de Condiciones y remision institucional del AOCR."
                             : "Condiciones y Limitaciones enviadas para firma DCAV según Módulo 8.";
                         CambiarEstadoExpediente(cn, tx, request.SolicitudId, request.InspeccionId,
-                            AocrEstadosProceso.DocumentosFinalesEnFirma, "FIRMAS_INSTITUCIONALES", request.RequiereAocr ? "DIRDAC_DCAV" : "DCAV",
+                            AocrEstadosProceso.DocumentosFinalesEnFirma, "FIRMAS_INSTITUCIONALES", "DCAV",
                             request.InspectorId, descripcionEnvio);
                         ActualizarEstadoSolicitud(cn, tx, request.SolicitudId, AocrEstadosProceso.DocumentosFinalesEnFirma, request.InspectorId);
                         RegistrarEvento(cn, tx, "DOCUMENTOS_FINALES_ENVIADOS_FIRMA:" + request.SolicitudId + ":" + (aocr != null ? aocr.VersionDocumento : 0) + ":" + (condiciones != null ? condiciones.VersionDocumento : 0),
@@ -99,9 +99,9 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                             request.InspectorId, request.InspectorNombre, AocrEstadosProceso.DocumentosFinalesPorGenerar,
                             AocrEstadosProceso.DocumentosFinalesEnFirma, "AOCR=" + (aocr != null ? aocr.VersionDocumento : 0) + ";CONDICIONES=" + (condiciones != null ? condiciones.VersionDocumento : 0));
 
-                        var dirdac = request.RequiereAocr ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.DirdacSqlTokens) : new List<Destinatario>();
+                        var dirdac = request.RequiereAocr ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.DircavSqlTokens) : new List<Destinatario>();
                         var dcav = request.RequiereCondiciones ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.DcavSqlTokens) : new List<Destinatario>();
-                        if (request.RequiereAocr && dirdac.Count == 0) throw new InvalidOperationException("No existen usuarios DIRDAC activos y autorizados con correo institucional.");
+                        if (request.RequiereAocr && dirdac.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
                         if (request.RequiereCondiciones && dcav.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
 
                         if (request.RequiereAocr) EncolarRama(cn, tx, expediente, request, aocr, dirdac, true);
@@ -134,6 +134,9 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                         if (expediente == null) throw new InvalidOperationException("Solicitud o inspeccion no encontrada.");
                         var tipo = NormalizarTipo(request.TipoDocumento);
                         ValidarRolFirma(tipo, request.Rol);
+                        if (tipo == TipoAocr && !string.Equals(expediente.EstadoProceso, AocrEstadosProceso.AocrPendienteDirdac, StringComparison.OrdinalIgnoreCase)
+                            && !string.Equals(expediente.EstadoProceso, AocrEstadosProceso.FirmasCompletas, StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("DCAV debe remitir formalmente el AOCR antes de la firma del Director General.");
                         var doc = CargarDocumentoParaUpdate(cn, tx, request.SolicitudId, tipo);
                         var estadoFirmado = tipo == TipoAocr ? AocrEstadosProceso.AocrFirmadoDirdac : AocrEstadosProceso.CondicionesFirmadasDcav;
                         var estadoPendiente = tipo == TipoAocr ? AocrEstadosProceso.AocrPendienteDirdac : AocrEstadosProceso.PendienteFirmaCondicionesDcav;
@@ -274,9 +277,9 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
         private static void EncolarRama(NpgsqlConnection cn, NpgsqlTransaction tx, ExpedienteRow expediente, DocumentoFinalEnvioRequest request, AocrDocumentoGenerado doc, IList<Destinatario> destinatarios, bool esAocr)
         {
             var tipoVisible = esAocr ? "AOCR" : "Condiciones y Limitaciones";
-            var tipoEvento = esAocr ? "AOCR_PENDIENTE_FIRMA_DIRDAC" : "CONDICIONES_PENDIENTES_FIRMA_DCAV";
-            var url = esAocr ? "/SolicitudAOCR/GeneradasFirmadas?DocumentoPendiente=AOCR" : "/SolicitudAOCR/GeneradasFirmadas?DocumentoPendiente=CONDICIONES";
-            var asunto = esAocr ? "Sistema AOCR - AOCR pendiente de firma" : "Sistema AOCR - Condiciones y Limitaciones pendientes de firma";
+            var tipoEvento = esAocr ? "AOCR_PENDIENTE_REVISION_DCAV" : "CONDICIONES_PENDIENTES_FIRMA_DCAV";
+            var url = "/Dircav/Detalle/" + request.SolicitudId;
+            var asunto = esAocr ? "Sistema AOCR - AOCR pendiente de revision y remision por DCAV" : "Sistema AOCR - Condiciones y Limitaciones pendientes de firma";
             foreach (var destinatario in destinatarios)
             {
                 var key = request.SolicitudId + ":" + request.InspeccionId + ":" + (esAocr ? "AOCR" : "CONDICIONES") + ":" + doc.VersionDocumento + ":PENDIENTE_FIRMA:" + destinatario.UsuarioId;
@@ -304,7 +307,7 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
         private static string ConstruirCuerpoPendiente(ExpedienteRow expediente, DocumentoFinalEnvioRequest request, string tipo, string url)
         {
             var sb = new StringBuilder();
-            sb.Append("<p>Existe un documento pendiente de revision y firma.</p><ul>")
+            sb.Append("<p>Existe un documento pendiente de revision institucional por DCAV.</p><ul>")
               .Append("<li>Solicitud: ").Append(Html(expediente.NumeroSolicitud)).Append("</li>")
               .Append("<li>Compania: ").Append(Html(expediente.Compania)).Append("</li>")
               .Append("<li>Inspeccion: ").Append(Html(expediente.NumeroInspeccion)).Append("</li>")
@@ -404,7 +407,7 @@ WHERE (codigo_solicitud=@solicitud OR codigo_inspeccion=@inspeccion OR codigo_in
         private static bool EsEnvioYaConfirmado(string estado, AocrDocumentoGenerado aocr, AocrDocumentoGenerado condiciones, bool requiereAocr, bool requiereCondiciones)
         {
             return string.Equals(estado, AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase)
-                && (!requiereAocr || (aocr != null && (string.Equals(aocr.Estado, AocrEstadosProceso.PendienteFirmaAocrDirdac, StringComparison.OrdinalIgnoreCase) || string.Equals(aocr.Estado, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase))))
+                && (!requiereAocr || (aocr != null && (string.Equals(aocr.Estado, AocrEstadosProceso.AocrListoParaFirma, StringComparison.OrdinalIgnoreCase) || string.Equals(aocr.Estado, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase))))
                 && (!requiereCondiciones || (condiciones != null && (string.Equals(condiciones.Estado, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase) || string.Equals(condiciones.Estado, AocrEstadosProceso.CondicionesFirmadasDcav, StringComparison.OrdinalIgnoreCase))));
         }
 
@@ -415,11 +418,11 @@ WHERE (codigo_solicitud=@solicitud OR codigo_inspeccion=@inspeccion OR codigo_in
                 Exitoso = ok,
                 Idempotente = idempotente,
                 EstadoExpediente = AocrEstadosProceso.DocumentosFinalesEnFirma,
-                EstadoAocr = requiereAocr ? AocrEstadosProceso.PendienteFirmaAocrDirdac : "NO_APLICA",
+                EstadoAocr = requiereAocr ? AocrEstadosProceso.AocrListoParaFirma : "NO_APLICA",
                 EstadoCondiciones = requiereCondiciones ? AocrEstadosProceso.PendienteFirmaCondicionesDcav : "NO_APLICA",
                 Mensaje = idempotente
                     ? "Los documentos requeridos ya fueron enviados; no se duplicaron estados ni notificaciones."
-                    : (requiereAocr ? "Los dos documentos fueron bloqueados y enviados a sus firmantes. Las notificaciones quedaron pendientes en la cola." : "Condiciones y Limitaciones fueron bloqueadas y enviadas a DCAV. La notificación quedó pendiente en la cola.")
+                    : (requiereAocr ? "Los documentos fueron bloqueados y enviados a DCAV. El AOCR requiere remision de DCAV antes de la firma del Director General." : "Condiciones y Limitaciones fueron bloqueadas y enviadas a DCAV. La notificación quedó pendiente en la cola.")
             };
         }
 

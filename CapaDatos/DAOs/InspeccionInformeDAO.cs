@@ -246,7 +246,8 @@ namespace CapaDatos.DAOs
                                 'PENDIENTE_FIRMA_INSTITUCIONAL',
                                 'FIRMADO_INSPECTOR',
                                 'FIRMADO_POR_INSPECTOR',
-                                'INFORME_TECNICO_FIRMADO_INSPECTOR'
+                                'INFORME_TECNICO_FIRMADO_INSPECTOR',
+                                'PENDIENTE_REVISION_INFORME_DCAV', 'PENDIENTE_REVISION_INFORME_DIRDAC'
                             )
                       ORDER BY COALESCE(fecha_envio_dirdac, fecha_finalizacion, updated_at, created_at) DESC,
                          codigo_inspeccion DESC;";
@@ -272,7 +273,8 @@ namespace CapaDatos.DAOs
         public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDirdac()
         {
             var idsEstadoCentral = new AocrProcesoEstadoDAO()
-                .ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDirdac);
+                .ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDirdac)
+                .Concat(new AocrProcesoEstadoDAO().ListarInspeccionesActivas(AocrEstadosProceso.PendienteRevisionInformeDcav)).Distinct();
 
             // Recuperación defensiva: versiones anteriores confundían la firma
             // del Inspector con el envío formal y no creaban el estado central.
@@ -284,7 +286,7 @@ namespace CapaDatos.DAOs
             return ids.SelectMany(ListarUltimosPorEstacion)
                 .Where(x => x != null && x.Finalizado && x.FirmadoInspector && !x.FirmadoDirdac
                     && !string.IsNullOrWhiteSpace(x.RutaDocumentoFirmado)
-                    && string.Equals((x.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+                    && (string.Equals((x.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) || string.Equals((x.Resultado ?? string.Empty).Trim(), "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase)))
                 .OrderBy(x => x.FechaEnvioDirdac ?? x.UpdatedAt ?? x.CreatedAt)
                 .ToList();
         }
@@ -325,7 +327,7 @@ WHERE u.finalizado=TRUE
       FROM public.aocr_proceso_estado pe
       WHERE pe.solicitud_id=i.codigo_solicitud
         AND pe.activo=TRUE
-        AND pe.estado_actual='PENDIENTE_REVISION_INFORME_DIRDAC'
+        AND pe.estado_actual IN ('PENDIENTE_REVISION_INFORME_DIRDAC','PENDIENTE_REVISION_INFORME_DCAV')
   );";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))

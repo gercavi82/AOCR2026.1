@@ -10,6 +10,10 @@ namespace CapaModelo
         public int CodigoInspeccion { get; set; }
         public int? SolicitudId { get; set; }
         public int? EstacionId { get; set; }
+        public string NumeroInspeccionEstacion
+        {
+            get { return "INS-" + CodigoInspeccion + (EstacionId.HasValue ? "-" + EstacionId.Value : string.Empty); }
+        }
         public string EstacionCodigo { get; set; }
         public string EstacionNombre { get; set; }
         public string TipoLista { get; set; } = "EAE";

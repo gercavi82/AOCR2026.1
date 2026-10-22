@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -216,6 +216,7 @@ namespace CapaPresentacion.Controllers
                 Session["RolesRaw"] ?? Session["Roles"]);
 
             return permisosRolActivo.EsAdministrador
+                || permisosRolActivo.EsDcavRol
                 || permisosRolActivo.EsDirdacRol
                 || permisosRolActivo.EsDirectorGeneralRol;
         }
@@ -223,6 +224,12 @@ namespace CapaPresentacion.Controllers
         private bool EsRolInspector()
         {
             return User != null && User.IsInRole(ROL_INSPECTOR);
+        }
+
+        private bool EsRolDcavSeleccionado()
+        {
+            return SidebarPermissionHelper.Resolve(Session["Rol"] as string ?? string.Empty,
+                Session["RolesRaw"] ?? Session["Roles"]).EsDcavRol;
         }
 
         private bool EsRolInspectorSeleccionado()
@@ -2498,7 +2505,7 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
                 }
 
-                var informeFormulario = ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true);
+                var informeFormulario = ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true, ResolverEstacionInforme(id));
                 string mensajeInforme;
                 if (finalizar && !ValidarInformeTecnicoParaFinalizar(informeFormulario, out mensajeInforme))
                 {
@@ -4490,7 +4497,7 @@ namespace CapaPresentacion.Controllers
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
 
-            if (!string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme), AocrEstadosProceso.PendienteRevisionInformeDirdac, StringComparison.OrdinalIgnoreCase))
+            if (!new[] { AocrEstadosProceso.PendienteRevisionInformeDirdac, AocrEstadosProceso.PendienteRevisionInformeDcav }.Contains(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme)))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -4652,7 +4659,7 @@ namespace CapaPresentacion.Controllers
                 return respuestaPermiso;
             }
 
-            if (!string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme), AocrEstadosProceso.PendienteRevisionInformeDirdac, StringComparison.OrdinalIgnoreCase))
+            if (!new[] { AocrEstadosProceso.PendienteRevisionInformeDirdac, AocrEstadosProceso.PendienteRevisionInformeDcav }.Contains(InformeTecnicoEstadosInstitucionales.NormalizarToken(informe.EstadoInforme)))
             {
                 TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
                 return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
@@ -6334,15 +6341,8 @@ namespace CapaPresentacion.Controllers
                 lista.DireccionEstadoExplotador = FirstNonEmpty(solicitud != null ? solicitud.Direccion : null, solicitud != null ? solicitud.Pais : null);
             }
 
-            if (string.IsNullOrWhiteSpace(lista.DireccionEstadoReconocimiento))
-            {
-                lista.DireccionEstadoReconocimiento = "Direccion General de Aviacion Civil del Ecuador";
-            }
-
-            if (string.IsNullOrWhiteSpace(lista.TiposAeronaves) && solicitud != null && solicitud.CodigoSolicitud > 0)
-            {
-                lista.TiposAeronaves = ObtenerResumenAeronavesSolicitud(solicitud.CodigoSolicitud);
-            }
+            // El inspector confirma el contacto del Estado y la aeronave inspeccionada.
+            // No completar estos campos con el país o toda la flota del operador.
 
             if (string.IsNullOrWhiteSpace(lista.TipoOperacion))
             {
@@ -7114,11 +7114,11 @@ namespace CapaPresentacion.Controllers
         private InspeccionInformeTecnico ConstruirContenidoPreviewInforme(int id, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico actual, bool puedeEditar)
         {
             return puedeEditar
-                ? ConstruirInformeTecnicoDesdeFormulario(id, form, actual, false)
+                ? ConstruirInformeTecnicoDesdeFormulario(id, form, actual, false, ResolverEstacionInforme(id))
                 : Newtonsoft.Json.JsonConvert.DeserializeObject<InspeccionInformeTecnico>(Newtonsoft.Json.JsonConvert.SerializeObject(actual));
         }
 
-        private InspeccionInformeTecnico ConstruirInformeTecnicoDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico informeActual, bool guardarAdjuntos)
+        private InspeccionInformeTecnico ConstruirInformeTecnicoDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico informeActual, bool guardarAdjuntos, int? estacionId)
         {
             var documentosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(TomarDocumentosAdjuntos(form, informeActual != null ? informeActual.DocumentosAdjuntos : null)).ToList();
             var documentosAdjuntosArchivoItems = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivoItems(informeActual != null ? informeActual.DocumentosAdjuntosArchivos : null).ToList();
@@ -7210,7 +7210,7 @@ namespace CapaPresentacion.Controllers
             var informeFormulario = new InspeccionInformeTecnico
             {
                 CodigoInspeccion = codigoInspeccion,
-                EstacionId = ResolverEstacionInforme(codigoInspeccion),
+                EstacionId = estacionId,
                 CodigoInforme = informeActual?.CodigoInforme ?? 0,
                 Titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null),
                 Resumen = TomarCampoTexto(form, "resumen", 8000, informeActual != null ? informeActual.Resumen : null),
@@ -7331,7 +7331,7 @@ namespace CapaPresentacion.Controllers
                 || InformeTieneDecisionInstitucionalFinal(informe);
             var notificacionFormalDirdac = informe != null && informeEnviadoADirdac && informe.CorreoEnviado;
             var esRolDireccionOJefatura = EsRolDireccionOJefatura();
-            var puedeTomarDecisionInstitucionalFinal = esRolDireccionOJefatura && InformePuedeTomarDecisionInstitucionalFinal(informe);
+            var puedeTomarDecisionInstitucionalFinal = EsRolDcavSeleccionado() && InformePuedeTomarDecisionInstitucionalFinal(informe);
             var puedeEnviarADirdac = (EsAdmin() || EsRolInspector() || esRolDireccionOJefatura)
                 && informe != null
                 && informe.Finalizado
@@ -7550,8 +7550,8 @@ namespace CapaPresentacion.Controllers
                     : string.Empty,
                 InformeFirmadoInspectorDisponible = disponibilidadPdfFirmadoInspector.Disponible,
                 MensajePdfFirmadoInspector = disponibilidadPdfFirmadoInspector.Mensaje,
-                PuedeAprobarDecisionFinal = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe) && disponibilidadPdfFirmadoInspector.Disponible,
-                PuedeDevolverConObservacion = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe),
+                PuedeAprobarDecisionFinal = EsRolDcavSeleccionado() && InformePuedeTomarDecisionInstitucionalFinal(informe) && disponibilidadPdfFirmadoInspector.Disponible,
+                PuedeDevolverConObservacion = EsRolDcavSeleccionado() && InformePuedeTomarDecisionInstitucionalFinal(informe),
                 PuedeReenviarNotificacionRt = false,
                 RequiereFirmaDireccion = false,
                 NotificadoRt = informe != null && informe.NotificadoRt,
@@ -7771,13 +7771,13 @@ namespace CapaPresentacion.Controllers
                 && informe.Finalizado
                 && !informe.FirmadoInspector
                 && listaVerificacionFirmada;
-            var puedeEnviarADirdac = puedeEditarInformeTecnico
+            var puedeEnviarADirdac = EsRolInspectorSeleccionado()
                 && informe.Finalizado
                 && informe.FirmadoInspector
                 && !informeEnviadoADirdac
                 && !InformeEstaDevueltoParaCorreccion(informe)
                 && !informeAprobadoDireccion;
-            var puedeReintentarNotificacionDirdac = (EsAdmin() || UsuarioTieneAlMenosUnRol(ROL_COORD, ROL_COORD_ALIAS, ROL_COORD_GRUPO, ROL_JEFATURA, ROL_JEFE, ROL_DIRECCION, ROL_DIRECTOR))
+            var puedeReintentarNotificacionDirdac = EsRolInspectorSeleccionado()
                 && informe.Finalizado
                 && informeEnviadoADirdac
                 && !notificacionFormalDirdac
@@ -8256,19 +8256,10 @@ namespace CapaPresentacion.Controllers
             {
                 if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && solicitudFinal != null)
                 {
-                    try
-                    {
-                        _solicitudDAO.CambiarEstado(
-                            solicitudFinal.CodigoSolicitud,
-                            AocrEstadosProceso.PendienteRevisionFinalCoordinador,
-                            usuarioId,
-                            "Informe técnico firmado por el Inspector. Remitido a revisión final de Coordinación.");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning("[FirmarInformePorRol] No se pudo cambiar estado de solicitud a PENDIENTE_REVISION_FINAL_COORDINADOR: " + ex.Message);
-                    }
-                    TempData["Success"] = "Informe técnico firmado correctamente y remitido a Coordinación para revisión final.";
+                    var envio = EnviarInformeADirdacInterno(inspeccion, solicitudFinal, informeFinal, usuarioId);
+                    TempData[envio.Exitoso ? "Success" : "Warning"] = envio.Exitoso
+                        ? "Informe firmado y remitido a DCAV para su revision."
+                        : "La firma se guardo. No se pudo completar el aviso a DCAV: " + envio.Mensaje;
                 }
                 else
                 {
@@ -8328,7 +8319,7 @@ namespace CapaPresentacion.Controllers
                 return ResultadoOperacion.Error("El informe técnico debe estar firmado por el inspector antes de remitirse a DIRDAC / Dirección - Jefatura.");
             }
 
-            if (!string.Equals((informe.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+            if (!(string.Equals((informe.Resultado ?? string.Empty).Trim(), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) || string.Equals((informe.Resultado ?? string.Empty).Trim(), "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase)))
             {
                 return ResultadoOperacion.Error("Solo un informe técnico SATISFACTORIO puede enviarse a revisión DCAV.");
             }
@@ -8349,15 +8340,17 @@ namespace CapaPresentacion.Controllers
                 var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "GENERADO");
                 using (var scope = new TransactionScope(TransactionScopeOption.Required))
                 {
-                    _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "PENDIENTE_REVISION_INFORME_DIRDAC", usuarioId);
+                    _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "PENDIENTE_REVISION_INFORME_DCAV", usuarioId);
                     new AocrProcesoEstadoDAO().CambiarEstado(
                         solicitud.CodigoSolicitud,
                         inspeccion.CodigoInspeccion,
-                        AocrEstadosProceso.PendienteRevisionInformeDirdac,
-                        "REVISION_INFORME_DIRDAC",
-                        ROL_DIRDAC,
+                        AocrEstadosProceso.PendienteRevisionInformeDcav,
+                        "REVISION_INFORME_DCAV",
+                        "DIRCAV",
                         usuarioId,
                         "Informe técnico firmado SATISFACTORIO enviado por Inspector a DCAV.");
+                    _solicitudDAO.CambiarEstado(solicitud.CodigoSolicitud, AocrEstadosProceso.PendienteRevisionInformeDcav,
+                        usuarioId, "Informe firmado remitido a DCAV para revision.");
                     scope.Complete();
                 }
                 RegistrarAuditoriaInformeDigital(
@@ -8410,6 +8403,21 @@ namespace CapaPresentacion.Controllers
                         : "El documento pasó a la bandeja de DIRDAC / Dirección - Jefatura, pero no fue posible enviar la notificación formal."));
         }
 
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR)]
+        [ValidateAntiForgeryToken]
+        public ActionResult ReintentarNotificacionInformeDcav(int id)
+        {
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (!EsRolInspectorSeleccionado() || inspeccion == null || !PuedeAccederInspeccion(inspeccion))
+                return new HttpStatusCodeResult(403, "Solo el inspector asignado puede reenviar el aviso a DCAV.");
+            var informe = ObtenerInformeEstacionActual(id);
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var resultado = EnviarInformeADirdacInterno(inspeccion, solicitud, informe, ObtenerCodigoUsuario());
+            TempData[resultado.Exitoso ? "Success" : "Warning"] = resultado.Mensaje;
+            return RedirectToAction("Detalle", new { id, estacionId = EstacionNavegacion() });
+        }
+
         private bool InformeEstaEnviadoADirdac(InspeccionInformeTecnico informe)
         {
             // Una firma del Inspector habilita el envío, pero no significa que el
@@ -8422,6 +8430,8 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult ValidarPermisoDecisionInstitucionalFinal(Inspeccion inspeccion, InspeccionInformeTecnico informe, string endpoint)
         {
+            if (Request?.HttpMethod == "POST" && !EsRolDcavSeleccionado())
+                return new HttpStatusCodeResult(403, "Solo DCAV puede decidir sobre el informe técnico; Dirección General consulta el expediente y firma AOCR.");
             if (EsRolDireccionOJefatura())
             {
                 return null;
@@ -8483,17 +8493,7 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            var usuariosDireccion = new[]
-                {
-                    ROL_DIRDAC,
-                    ROL_DIRECTOR_CERTIFICACIONES_DCAV,
-                    ROL_DIRECCION,
-                    ROL_DIRECCION_JEFATURA_TECNICA,
-                    "DirectorGeneral",
-                    ROL_DIRECTOR,
-                    ROL_JEFATURA,
-                    ROL_JEFE
-                }
+            var usuariosDireccion = new[] { "DIRCAV", "DCAV", ROL_DIRECTOR_CERTIFICACIONES_DCAV }
                 .SelectMany(rol => UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
                 .Where(usuario => usuario != null && usuario.Id > 0)
                 .GroupBy(usuario => usuario.Id)
@@ -8507,7 +8507,7 @@ namespace CapaPresentacion.Controllers
 
             var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
             var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
-            var titulo = "DIRDAC / Dirección - Jefatura: documentos pendientes de revisión";
+            var titulo = "DCAV: informe firmado pendiente de revision";
             var mensaje = string.Format(
                 "Tiene documentos por revisar en la inspección #{0} de la solicitud {1} ({2}). El informe técnico ya fue firmado por el inspector y quedó pendiente de revisión institucional de DIRDAC / Dirección - Jefatura.",
                 inspeccion.CodigoInspeccion,

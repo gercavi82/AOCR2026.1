@@ -52,6 +52,39 @@ namespace CapaNegocio.Services
             return true;
         }
 
+        public bool PuedePrepararDocumentosFinales(int solicitudId, out string motivo, bool requiereAprobacion = false)
+        {
+            motivo = "Debe finalizar y firmar los informes satisfactorios de todas las estaciones antes de preparar los documentos finales.";
+            if (solicitudId <= 0) return false;
+            var inspecciones = new InspeccionDAO().ListarPorSolicitud(solicitudId);
+            if (inspecciones == null || inspecciones.Count == 0) return false;
+            var estaciones = new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId);
+            Func<InspeccionInformeTecnico, bool> cumple = informe => InformeListoParaPreparacion(informe)
+                && (!requiereAprobacion || Array.Exists(new[] { "APROBADO_DIRECCION", "APROBADO_DIRDAC", "INFORME_APROBADO_DIRECCION",
+                    "INFORME_TECNICO_APROBADO", "INFORME_TECNICO_APROBADO_DIRECCION", "INFORME_TECNICO_APROBADO_DIRDAC", "INFORME_TECNICO_APROBADO_DCAV" },
+                    e => string.Equals(e, informe.EstadoInforme, StringComparison.OrdinalIgnoreCase)));
+            foreach (var inspeccion in inspecciones)
+            {
+                var estacionesInspeccion = estaciones.FindAll(e => !e.InspeccionId.HasValue || e.InspeccionId == inspeccion.CodigoInspeccion);
+                if (estacionesInspeccion.Count == 0)
+                {
+                    if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion))) return false;
+                }
+                foreach (var estacion in estacionesInspeccion)
+                    if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion, estacion.Id))) return false;
+            }
+            motivo = string.Empty;
+            return true;
+        }
+
+        public static bool InformeListoParaPreparacion(InspeccionInformeTecnico informe)
+        {
+            return informe != null && informe.Finalizado && informe.FirmadoInspector
+                && !string.IsNullOrWhiteSpace(informe.RutaDocumentoFirmado)
+                && string.Equals(informe.Resultado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(informe.EstadoInforme, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase);
+        }
+
         public bool PuedeFirmarInformeTecnico(int codigoInforme, out string motivo)
         {
             motivo = string.Empty;

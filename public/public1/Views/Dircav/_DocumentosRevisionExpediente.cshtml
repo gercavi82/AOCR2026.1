@@ -1,0 +1,22 @@
+@model CapaPresentacion.Models.ViewModels.DocumentosRevisionExpedienteVm
+<section class="card shadow-sm mb-3">
+    <div class="card-header"><strong>Documentos del expediente para revisión</strong></div>
+    <div class="card-body d-flex flex-wrap gap-2">
+        @foreach (var lv in Model.Listas)
+        {
+            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id=lv.CodigoInspeccion, estacionId=lv.EstacionId })">LV firmada · @lv.EstacionCodigo</a>
+        }
+        @foreach (var informe in Model.Informes)
+        {
+            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme })">Informe firmado · @informe.EstacionesInspeccionManual</a>
+            if (Model.PuedeDecidirInformes && !informe.FirmadoDirdac)
+            {
+                <a class="btn btn-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme })">Revisar y resolver informe · @informe.EstacionesInspeccionManual</a>
+            }
+        }
+        @foreach (var documento in Model.Documentos)
+        {
+            <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId=Model.SolicitudId, tipoDocumento=documento.TipoDocumento })">@(documento.TipoDocumento == "RECONOCIMIENTO" ? "Revisar AOCR" : "Revisar Condiciones y Limitaciones")</a>
+        }
+    </div>
+</section>

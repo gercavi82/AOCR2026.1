@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -69,16 +69,13 @@ namespace CapaDatos.Catalogos
                 CrearOrientacion("1. Verificar que el AOC contiene la informacion requerida y autoriza las operaciones solicitadas.", esSubnumeral: true),
                 CrearOrientacion("2. Verificar que las OpSpecs contienen la informacion requerida y autorizan las operaciones solicitadas.", esSubnumeral: true),
                 CrearOrientacion("a. modelos de aeronave.", esLiteral: true),
-                CrearOrientacion("b. tipo de transporte.", esLiteral: true),
-                CrearOrientacion("c. area de operaciones.", esLiteral: true),
-                CrearOrientacion("d. aprobaciones especificas.", esLiteral: true),
-                CrearOrientacion("e. matriculas y aerodromos, si aplica.", esLiteral: true));
+                CrearOrientacion("b. tipo de transporte.", esLiteral: true));
 
             AgregarGrupo(items, ref orden, 6, "129.100 (b) (3)", "129-6",
                 "Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?",
                 null,
                 CrearOrientacion("1. Verificar que el manual de operaciones este completo con el contenido requerido.", esSubnumeral: true),
-                CrearOrientacion("2. Verificar indicaciones de aprobacion/aceptacion.", esSubnumeral: true),
+                CrearOrientacion("2. Verificar las indicaciones de aprobacion/aceptacion, incluyendo, si se publica por separado, una pagina de aprobacion de la MEL.", esSubnumeral: true),
                 CrearOrientacion("3. Verificar que rutas y aerodromos contienen informacion de:", esSubnumeral: true),
                 CrearOrientacion("a. comunicaciones.", esLiteral: true),
                 CrearOrientacion("b. navegacion.", esLiteral: true),
@@ -129,7 +126,7 @@ namespace CapaDatos.Catalogos
             AgregarGrupo(items, ref orden, 12, "129.010 (b)\n129.100 (b) (9)", "129-12",
                 "Ha presentado el explotador extranjero informacion sobre alguna exencion emitida por su AAC que se aplique a las operaciones solicitadas?",
                 null,
-                CrearOrientacion("1. Verificar si la exencion no interfiere con el cumplimiento de los Anexos mencionados.", esSubnumeral: true),
+                CrearOrientacion("1. Verificar si la exencion no interfiere con el cumplimiento de los Anexos mencionados en la RDAC 129.010 (b).", esSubnumeral: true),
                 CrearOrientacion("2. Verificar anotaciones en certificados de aeronavegabilidad y/o licencias cuando hayan sido objeto de exencion.", esSubnumeral: true),
                 CrearOrientacion("3. Verificar si la AAC del explotador solicito la aceptacion de la exencion a la AAC y si fue aceptada.", esSubnumeral: true));
 

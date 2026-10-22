@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
@@ -259,9 +259,9 @@ namespace CapaPresentacion.Controllers
                     return JsonCamposFaltantes(solicitudId, contexto.CamposFaltantes);
                 }
 
-                if (!FirmaAocrWorkflowService.InformeAprobadoDireccion(contexto.Informe))
+                if (!FirmaAocrWorkflowService.PuedePrepararDocumentos(contexto))
                 {
-                    return JsonError(409, "El informe tecnico no esta aprobado por Direccion.", solicitudId);
+                    return JsonError(409, "Debe finalizar y firmar los informes satisfactorios de todas las estaciones para preparar los documentos.", solicitudId);
                 }
 
                 var firmaExistente = ObtenerFirmaPorTipo(contexto, tipoDocumento);
@@ -492,7 +492,7 @@ namespace CapaPresentacion.Controllers
                     return JsonCamposFaltantes(id, contexto.CamposFaltantes);
                 }
 
-                if (!FirmaAocrWorkflowService.InformeAprobadoDireccion(contexto.Informe))
+                if (!FirmaAocrWorkflowService.InformesAprobados(contexto))
                 {
                     return JsonError(409, "El informe tecnico no esta aprobado por Direccion.", id);
                 }

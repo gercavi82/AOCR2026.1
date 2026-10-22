@@ -186,6 +186,7 @@ namespace AOCR.Tests.Unit
             // REQUISITO 8: Una LV firmada debe ser inmutable
             var lv = _service.ObtenerOIniciarListaParaEstacion(100, 200, 10, 501, "InspectorTecnico", "Inspector 1");
             lv.DireccionEstadoExplotador = "Av. Amazonas 123";
+            lv.DireccionEstadoReconocimiento = "Contacto confirmado por el inspector";
             lv.TiposAeronaves = "B737-800";
 
             // Marcar como completada y finalizada con ítems completos
@@ -265,6 +266,7 @@ namespace AOCR.Tests.Unit
             Action<ListaVerificacionOperacionalEae> completarLv = l =>
             {
                 l.DireccionEstadoExplotador = "Av. Amazonas 123";
+                l.DireccionEstadoReconocimiento = "Contacto confirmado por el inspector";
                 l.TiposAeronaves = "B737-800";
                 foreach (var it in l.Items)
                 {

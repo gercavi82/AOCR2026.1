@@ -34,7 +34,7 @@ namespace AOCR.Tests.Integration
 
         private static InspeccionInformeTecnico Mapear(NameValueCollection form, InspeccionInformeTecnico actual) =>
             (InspeccionInformeTecnico)typeof(InspeccionController).GetMethod("ConstruirInformeTecnicoDesdeFormulario", Privado)
-                .Invoke(Controller(), new object[] { 940, form, actual, false });
+                .Invoke(Controller(), new object[] { 940, form, actual, false, actual.EstacionId });
 
         private static InspeccionInformeTecnico Completo() => new InspeccionInformeTecnico
         {

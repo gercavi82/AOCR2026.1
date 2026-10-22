@@ -3,6 +3,15 @@ using CapaModelo;
 
 namespace CapaPresentacion.Models.ViewModels
 {
+    public sealed class DocumentosRevisionExpedienteVm
+    {
+        public int SolicitudId { get; set; }
+        public bool PuedeDecidirInformes { get; set; }
+        public IList<ListaVerificacionOperacionalEae> Listas { get; set; }
+        public IList<InspeccionInformeTecnico> Informes { get; set; }
+        public IList<AocrDocumentoGenerado> Documentos { get; set; }
+    }
+
     public class DocumentoWorkflowActionsVm
     {
         public string UrlVerDocumentacion { get; set; }

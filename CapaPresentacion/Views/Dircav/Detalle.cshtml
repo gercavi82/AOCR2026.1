@@ -6,6 +6,7 @@
     var estaciones = Model.Estaciones ?? new List<SolicitudEstacionInspeccion>();
     var tieneDesignacionFormal = ViewBag.TieneDesignacionFormal == true;
     var puedeAceptarDocumentacion = string.Equals(Model.Estado, "PENDIENTE_DIRCAV", StringComparison.OrdinalIgnoreCase);
+    var faseDocumental = new[] { "PENDIENTE_DIRCAV", "DOCUMENTACION_ACEPTADA_DIRCAV", "PENDIENTE_DESIGNACION_DIRCAV", "DESIGNACION_PENDIENTE_FIRMA_DIRCAV", "DEVUELTO_COORDINADOR" }.Contains(Model.Estado);
 }
 
 <div class="container-fluid py-3">
@@ -58,6 +59,7 @@
         </div>
     </div>
 
+    @Html.Action("DocumentosRevisionExpediente", "Dircav", new { solicitudId = Model.CodigoSolicitud })
     <!-- Panel de Acciones Operativas DIRCAV -->
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-header bg-primary text-white py-2">
@@ -66,6 +68,7 @@
         <div class="card-body">
             <div class="row g-3">
                 <!-- 1. Aceptar Documentación -->
+                @if (faseDocumental) {
                 <div class="col-md-4">
                     <div class="p-3 border rounded h-100 bg-light">
                         <h6 class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i>1. Aceptación Documental</h6>
@@ -123,7 +126,7 @@
                 </div>
 
                 <!-- 3.1 Oficio Oficial de Designación (AC-06) -->
-                @if (!string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula))
+                if (!string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula))
                 {
                     <div class="col-md-12 mt-3">
                         <div class="p-3 border rounded bg-white shadow-sm">
@@ -173,6 +176,7 @@
                     </div>
                 }
 
+                }
                 <!-- 4. Firmar Condiciones y Limitaciones -->
                 <div class="col-md-6 mt-3">
                     <div class="p-3 border rounded h-100 bg-light">

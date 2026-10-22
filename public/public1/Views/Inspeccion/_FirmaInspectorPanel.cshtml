@@ -310,7 +310,7 @@ else if (informeTecnico != null)
                 <p class="hint">Envíe el PDF generado a la bandeja de DIRDAC / Dirección - Jefatura para la revisión institucional.</p>
             }
 
-            @using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post))
+            @using (Html.BeginForm("ReintentarNotificacionInformeDcav", "Inspeccion", FormMethod.Post))
             {
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@codigoInspeccion" />
@@ -318,7 +318,7 @@ else if (informeTecnico != null)
                 <input type="hidden" name="codigoInforme" value="@(informeTecnico != null ? informeTecnico.CodigoInforme : 0)" />
                 <button type="submit" class="it-btn primary full">
                     <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
-                    @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")
+                    @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DCAV" : "Enviar informe a DCAV")
                 </button>
             }
         </div>

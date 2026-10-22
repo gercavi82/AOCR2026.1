@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel>
 @using System
 @using System.Collections.Generic
 @using System.Globalization
@@ -359,24 +359,6 @@
                         ResponseIndices = Indices(3),
                         OrientationLines = Lineas(Linea("b. tipo de transporte.", "literal"))
                     },
-                    new PdfRowDefinition
-                    {
-                        RequirementCode = "129-5",
-                        ResponseIndices = Indices(4),
-                        OrientationLines = Lineas(Linea("c. área de operaciones.", "literal"))
-                    },
-                    new PdfRowDefinition
-                    {
-                        RequirementCode = "129-5",
-                        ResponseIndices = Indices(5),
-                        OrientationLines = Lineas(Linea("d. aprobaciones específicas.", "literal"))
-                    },
-                    new PdfRowDefinition
-                    {
-                        RequirementCode = "129-5",
-                        ResponseIndices = Indices(6),
-                        OrientationLines = Lineas(Linea("e. matrículas y aeródromos, si aplica.", "literal"))
-                    }
                 }
             },
             new PdfPageDefinition
@@ -397,7 +379,7 @@
                     {
                         RequirementCode = "129-6",
                         ResponseIndices = Indices(1),
-                        OrientationLines = Lineas(Linea("2. Verificar las indicaciones de aprobación/aceptación, incluyendo, si se ubica en separada, una página de aprobación de la MEL."))
+                        OrientationLines = Lineas(Linea("2. Verificar las indicaciones de aprobación/aceptación, incluyendo, si se publica por separado, una página de aprobación de la MEL."))
                     },
                     new PdfRowDefinition
                     {
@@ -466,17 +448,11 @@
                     new PdfRowDefinition
                     {
                         RequirementCode = "129-9",
-                        ResponseIndices = Indices(0),
+                        ResponseIndices = Indices(0, 1),
                         ShowCompliance = true,
                         ReferenceLines = Lineas(Linea("129.100 (b)"), Linea("(9)")),
                         QuestionLines = Lineas(Linea("129-9", "requirement-code"), Linea("¿Ha presentado el explotador extranjero los contratos (o cartas de intención) de los servicios de tierra que pretende utilizar?")),
-                        OrientationLines = Lineas(Linea("1. Verificar que los servicios de tierra, incluyan (de ser aplicable):"))
-                    },
-                    new PdfRowDefinition
-                    {
-                        RequirementCode = "129-9",
-                        ResponseIndices = Indices(1),
-                        OrientationLines = Lineas(Linea("a. manipulación del equipaje y de carga (carga/descarga de la aeronave);", "literal"))
+                        OrientationLines = Lineas(Linea("1. Verificar que los servicios de tierra incluyan la manipulación del equipaje y de carga (carga/descarga de la aeronave), de ser aplicable."))
                     },
                     new PdfRowDefinition
                     {
@@ -531,7 +507,7 @@
                         ResponseIndices = Indices(1),
                         OrientationLines = Lineas(
                             Linea("2. Verificar que el explotador tiene implementado el programa de análisis de datos de vuelo como parte de su sistema de gestión de la seguridad operacional."),
-                            Linea("Nota. El Anexo 6 Parte I contiene los requisitos para la implantación del programa de análisis de datos de vuelo. Su cumplimiento es requerido por el LAR 129.010 (b).", "nota"))
+                            Linea("Nota. El Anexo 6 Parte I contiene los requisitos para la implantación del programa de análisis de datos de vuelo. Su cumplimiento es requerido por el RDAC 129.010 (b).", "nota"))
                     }
                 }
             },
@@ -571,7 +547,7 @@
                         ReferenceLines = Lineas(Linea("129.010 (b)"), Linea("129.100 (b)"), Linea("(9)")),
                         QuestionLines = Lineas(Linea("129-12", "requirement-code"), Linea("¿Ha presentado el explotador extranjero información sobre alguna exención emitida por su AAC que se aplique a las operaciones solicitadas?")),
                         OrientationLines = Lineas(
-                            Linea("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados en el LAR 129.010 (b)."),
+                            Linea("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados en el RDAC 129.010 (b)."),
                             Linea("2. Verificar si los certificados de aeronavegabilidad y/o licencias que hayan sido objeto de alguna exención, han sido anotados/anotadas o se hayan agregado a éstos/éstas, una numeración completa de los detalles respecto a los cuales dejen de satisfacer la norma o normas relacionadas con la exención, de acuerdo con el Artículo 39 al Convenio sobre Aviación Civil Internacional."),
                             Linea("3. Verificar si la AAC del explotador extranjero ha solicitado la aceptación de la exención a la AAC y si esta exención ha sido aceptada, de conformidad con el Artículo 40 al Convenio sobre Aviación Civil Internacional."),
                             Linea("Nota. Si la exención no ha sido aceptada por la AAC, entonces el explotador extranjero cumplirá con los requisitos establecidos por la AAC.", "nota"))
@@ -678,13 +654,13 @@
                 : "Inspección Principal";
             <table class="field-table">
                 <tbody>
-                    <tr><td class="field-row"><span class="field-label">Inspección:</span> <span class="field-value">#@codigoInspeccionPdf</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span class="field-label">Estación:</span> <span class="field-value">@estacionTextoPdf</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">Inspección:</span> <span class="field-value">@(lista != null ? lista.NumeroInspeccionEstacion : "INS-" + codigoInspeccionPdf)</span> &nbsp;&nbsp;|&nbsp;&nbsp; <span class="field-label">Estación:</span> <span class="field-value">@estacionTextoPdf</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">1. Nombre del EAE / Nombre comercial del EAE:</span> <span class="field-value">@texto(lista != null ? lista.NombreEae : null)</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">2. N° AOC / Fecha de expedición / Validez:</span> <span class="field-value">@texto(lista != null ? lista.NumeroAocFechaValidez : null)</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</span> <span class="field-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento:</span> <span class="field-value">@direccionReconocimiento</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">5. Tipo/s de aeronave/s (marca, modelo, número de serie):</span> <span class="field-value">@texto(lista != null ? lista.TiposAeronaves : null)</span></td></tr>
-                    <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null) | Estación: @estacionTextoPdf</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null)</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">7. Fecha:</span> <span class="field-value">@fechaLista</span></td></tr>
                     <tr><td class="field-row"><span class="field-label">8. Inspector responsable de la aprobación:</span> <span class="field-value">@texto(lista != null ? lista.InspectorResponsable : null)</span></td></tr>
                 </tbody>

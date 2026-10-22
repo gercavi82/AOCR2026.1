@@ -201,6 +201,26 @@ namespace CapaPresentacion.Controllers
             return View(solicitud);
         }
 
+        [ChildActionOnly]
+        [OverrideAuthorization]
+        [Authorize(Roles = "DIRCAV,DCAV,DirectorCertificacionesDcav,DIRDAC,DirectorGeneral")]
+        public ActionResult DocumentosRevisionExpediente(int solicitudId)
+        {
+            var listas = new ListaVerificacionOperacionalEaeDAO().ListarPorSolicitud(solicitudId)
+                .Where(l => l.FirmadoTecnico).ToList();
+            var informeDao = new InspeccionInformeDAO();
+            var informes = (_inspeccionDao.ListarPorSolicitud(solicitudId) ?? new List<Inspeccion>())
+                .SelectMany(i => informeDao.ListarUltimosPorEstacion(i.CodigoInspeccion))
+                .Where(i => i.FirmadoInspector).ToList();
+            var documentoDao = new AocrDocumentoGeneradoDAO();
+            var documentos = new[] { "RECONOCIMIENTO", "CONDICIONES_LIMITACIONES" }
+                .Select(t => documentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, t))
+                .Where(d => d != null).ToList();
+            return PartialView("_DocumentosRevisionExpediente", new CapaPresentacion.Models.ViewModels.DocumentosRevisionExpedienteVm
+            { SolicitudId=solicitudId, Listas=listas, Informes=informes, Documentos=documentos,
+                PuedeDecidirInformes=SidebarPermissionHelper.Resolve(Session["Rol"] as string ?? string.Empty, Session["RolesRaw"] ?? Session["Roles"]).EsDcavRol });
+        }
+
         [HttpGet]
         public ActionResult DetalleExpediente(int id)
         {

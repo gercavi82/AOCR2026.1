@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -912,14 +912,14 @@ namespace CapaNegocio.Services
                 case "PENDIENTE_FIRMA_DIRDAC":
                     return new PlantillaCorreoInspeccion
                     {
-                        Asunto = "AOCR - Documentos pendientes de revision DIRDAC / Direccion - Jefatura " + numeroSolicitud,
+                        Asunto = "AOCR - Documentos pendientes de revision DCAV " + numeroSolicitud,
                         Titulo = "Documentos pendientes de revision institucional",
-                        Mensaje = "Tiene documentos pendientes de revision institucional en la bandeja de DIRDAC / Direccion - Jefatura. "
+                        Mensaje = "Tiene documentos pendientes de revision institucional en la bandeja de DCAV. "
                             + "El informe tecnico ya fue firmado por el inspector asignado y queda listo para decision final. "
                             + "La notificacion al RT se emitira una vez que Direccion / Jefatura registre la decision institucional correspondiente.",
                         GruposDestinatarios = new[]
                         {
-                            NotificacionDestinatarioPolicyService.GrupoDireccionJefaturaRevisionInforme
+                            NotificacionDestinatarioPolicyService.GrupoDcav
                         }
                     };
                 case "INFORME_TECNICO_FIRMADO":

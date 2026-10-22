@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel>
 @using System
 @using System.Collections.Generic
 @using System.Globalization
@@ -186,10 +186,7 @@
                 Fila(Linea("1. Verificar que el AOC contiene la información requerida y autoriza las operaciones solicitadas.")),
                 Fila(Linea("2. Verificar que las OpSpecs contienen la información requerida y autorizan las operaciones solicitadas.")),
                 Fila(Linea("a. modelos de aeronave.", "literal")),
-                Fila(Linea("b. tipo de transporte.", "literal")),
-                Fila(Linea("c. área de operaciones.", "literal")),
-                Fila(Linea("d. aprobaciones específicas.", "literal")),
-                Fila(Linea("e. matrículas y aeródromos, si aplica.", "literal"))),
+                Fila(Linea("b. tipo de transporte.", "literal"))),
 
             new OficialRequisito(
                 "129-6",
@@ -230,7 +227,6 @@
                 "¿Ha presentado el explotador extranjero los contratos (o cartas de intención) de los servicios de tierra que pretende utilizar?",
                 string.Empty,
                 Fila(Linea("1. Verificar que los servicios de tierra incluyan, si aplica:")),
-                Fila(Linea("a. manipulación de equipaje y carga.", "literal")),
                 Fila(Linea("b. despacho y atención a pasajeros.", "literal")),
                 Fila(Linea("c. combustible y aceite.", "literal")),
                 Fila(Linea("d. deshielo y antihielo.", "literal")),

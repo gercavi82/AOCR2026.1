@@ -56,13 +56,15 @@ namespace CapaNegocio.Services
                     || estadoInspeccion == AocrEstadosProceso.DocumentosFinalesPorGenerar
                     || estadoInspeccion == AocrEstadosProceso.InformeTecnicoAprobadoDirdac
                     || estadoInspeccion == AocrEstadosProceso.InformeTecnicoAprobadoDcav;
-                if (!tieneEstadoCentral && !tieneEstadoCompatible)
+                string motivoPreparacion;
+                var puedePreparar = new AocrFlujoValidacionService().PuedePrepararDocumentosFinales(inspeccion.CodigoSolicitud, out motivoPreparacion);
+                if (!tieneEstadoCentral && !tieneEstadoCompatible && !puedePreparar)
                 {
                     continue;
                 }
 
                 var informe = informeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion);
-                if (!EsInformeAprobadoDirdac(informe))
+                if (!EsInformeAprobadoDirdac(informe) && !puedePreparar)
                 {
                     continue;
                 }

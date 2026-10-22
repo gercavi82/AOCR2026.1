@@ -180,7 +180,7 @@ namespace CapaNegocio.Services
                     NombreEae = solicitud?.NombreOperador ?? solicitud?.RazonSocial ?? string.Empty,
                     NumeroAocFechaValidez = solicitud?.NumeroAOC ?? string.Empty,
                     DireccionEstadoExplotador = solicitud?.Direccion ?? string.Empty,
-                    DireccionEstadoReconocimiento = solicitud?.Pais ?? "ECUADOR",
+                    DireccionEstadoReconocimiento = string.Empty,
                     TiposAeronaves = string.Empty,
                     TipoOperacion = solicitud?.TipoOperacion ?? "TRANSPORTE AÉREO",
                     FechaLista = fechaEstacion ?? inspeccion?.FechaProgramada ?? DateTime.Now,

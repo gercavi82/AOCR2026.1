@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.DAOs;
@@ -89,7 +89,7 @@ namespace CapaNegocio.Services
                         break;
 
                     case GrupoDcav:
-                        AgregarUsuariosPorRol(destinatarios, "DIRCAV", "DCAV");
+                        AgregarUsuariosPorRol(destinatarios, "DIRCAV", "DCAV", "DirectorCertificacionesDcav");
                         break;
 
                     case GrupoDireccionFinal:

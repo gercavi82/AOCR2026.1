@@ -41,7 +41,7 @@ namespace AOCR.Tests.Unit
             var view = Read("CapaPresentacion/Views/FirmaAocr/Index.cshtml");
             StringAssert.Contains(controller, "FirmaAocrActiveRoleViewPolicy.Aplicar(model, permisos)");
             StringAssert.Contains(service, "if (permisos.EsDirdacRol)");
-            StringAssert.Contains(service, "AocrEstadosProceso.PendienteFirmaAocrDirdac");
+            StringAssert.Contains(service, "AocrEstadosProceso.AocrPendienteDirdac");
             StringAssert.Contains(service, "AocrEstadosProceso.PendienteFirmaCondicionesDcav");
             StringAssert.Contains(service, "documento.Bloqueado");
             StringAssert.Contains(view, "Disponible cuando el Inspector finalice y envíe este documento.");
@@ -182,10 +182,11 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(controller, "Request.ApplicationPath");
         }
 
-        [TestMethod] public void Inspector_NoGeneraAntesDeAprobacionDirdac()
+        [TestMethod] public void Inspector_PreparaConInformesFirmadosYConservaAprobacionParaFirma()
         {
             var controller = Read("CapaPresentacion/Controllers/FirmaAocrController.cs");
-            StringAssert.Contains(controller, "InformeAprobadoDireccion(contexto.Informe)");
+            StringAssert.Contains(controller, "PuedePrepararDocumentos(contexto)");
+            StringAssert.Contains(controller, "InformesAprobados(contexto)");
             StringAssert.Contains(controller, "Solo el Inspector asignado puede generar estos documentos");
             StringAssert.Contains(Read("CapaPresentacion/Services/FirmaAocrServices.cs"), "INFORME_TECNICO_APROBADO_DIRDAC");
         }
@@ -214,7 +215,7 @@ namespace AOCR.Tests.Unit
         [TestMethod] public void Notificaciones_PersistenDatosTiposEnlacesYUsuarioReal()
         {
             var source = Read("CapaDatos/DAOs/DocumentosFinalesWorkflowDAO.cs");
-            StringAssert.Contains(source, "AOCR_PENDIENTE_FIRMA_DIRDAC");
+            StringAssert.Contains(source, "AOCR_PENDIENTE_REVISION_DCAV");
             StringAssert.Contains(source, "CONDICIONES_PENDIENTES_FIRMA_DCAV");
             StringAssert.Contains(source, "Solicitud: ");
             StringAssert.Contains(source, "Compania: ");
