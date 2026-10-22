@@ -216,6 +216,7 @@ namespace CapaDatos.DAOs
                         throw new InvalidOperationException("Conflicto (409): la LV está cerrada y no admite modificaciones.");
                     if (ultima != null && !ultima.Finalizado && !ultima.FirmadoTecnico)
                     {
+                        lista.ItemsJson = ListaVerificacionCatalogo.ConservarRespuestasHistoricasRetiradas(lista.ItemsJson, ultima.ItemsJson);
                         const string updateSql = @"
                             UPDATE public.aocr_tblv_operacional_eae
                                SET estado_lista = @estado_lista,

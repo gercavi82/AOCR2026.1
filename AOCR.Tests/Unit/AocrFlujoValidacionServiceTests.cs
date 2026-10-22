@@ -8,6 +8,22 @@ namespace AOCR.Tests.Unit
     public class AocrFlujoValidacionServiceTests
     {
         [TestMethod]
+        public void Lv_CatalogoActualAdmiteLiteralesRetiradosSinPerderHistoria()
+        {
+            var catalogo = new CapaDatos.Catalogos.ListaVerificacionCatalogo();
+            const string historico = "[{\"Codigo\":\"129-5-05\",\"EstadoImplementacion\":\"IMPLEMENTADO\",\"PruebasNotasComentarios\":\"Evidencia anterior\"},{\"Codigo\":\"129-5-04\",\"EstadoCumplimiento\":\"SATISFACTORIO\"}]";
+            var items = catalogo.HidratarRespuestas(historico);
+            Assert.AreEqual(4, items.Count(i => i.CodigoPregunta == "129-5"));
+            Assert.AreEqual("SATISFACTORIO", items.Single(i => i.Codigo == "129-5-04").EstadoCumplimiento);
+            var guardado = CapaDatos.Catalogos.ListaVerificacionCatalogo.ConservarRespuestasHistoricasRetiradas(
+                CapaDatos.Catalogos.ListaVerificacionCatalogo.SerializarRespuestas(items), historico);
+            StringAssert.Contains(guardado, "Evidencia anterior");
+            Assert.AreEqual(items.Count, catalogo.HidratarRespuestas(guardado).Count);
+            Assert.ThrowsException<System.InvalidOperationException>(() => catalogo.HidratarRespuestas(
+                "[{\"Codigo\":\"129-5-99\",\"EstadoImplementacion\":\"IMPLEMENTADO\"}]"));
+        }
+
+        [TestMethod]
         public void PreparacionDocumentos_ExigeInformeFirmadoSatisfactorio()
         {
             var informe = new CapaModelo.InspeccionInformeTecnico { Finalizado=true, FirmadoInspector=true,

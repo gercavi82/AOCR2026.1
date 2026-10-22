@@ -199,6 +199,7 @@ namespace CapaDatos.Catalogos
                 && (!string.IsNullOrWhiteSpace(item.EstadoCumplimiento) || !string.IsNullOrWhiteSpace(item.EstadoImplementacion)
                     || !string.IsNullOrWhiteSpace(item.PruebasNotasComentarios))
                 && !codigos.Contains((item.Codigo ?? string.Empty).Trim())
+                && !EsLiteralHistoricoRetirado(item.Codigo)
                 && !preguntas.Contains((item.Codigo ?? string.Empty).Trim())))
                 throw new InvalidOperationException("La LV contiene respuestas de un catálogo no reconocido. Debe revisarse su correspondencia antes de editarla.");
             var respuestasPorPregunta = respuestas
@@ -228,6 +229,26 @@ namespace CapaDatos.Catalogos
             }
 
             return plantilla;
+        }
+
+        private static bool EsLiteralHistoricoRetirado(string codigo)
+        {
+            var clave = (codigo ?? string.Empty).Trim();
+            return string.Equals(clave, "129-5-05", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "129-5-06", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(clave, "129-5-07", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string ConservarRespuestasHistoricasRetiradas(string actualesJson, string persistidasJson)
+        {
+            var actuales = JsonConvert.DeserializeObject<List<ListaVerificacionOperacionalEaeItem>>(actualesJson ?? "[]")
+                ?? new List<ListaVerificacionOperacionalEaeItem>();
+            var persistidas = JsonConvert.DeserializeObject<List<ListaVerificacionOperacionalEaeItem>>(persistidasJson ?? "[]")
+                ?? new List<ListaVerificacionOperacionalEaeItem>();
+            // Solo se conservan los tres códigos retirados conocidos, desde la versión almacenada.
+            actuales.RemoveAll(i => i != null && EsLiteralHistoricoRetirado(i.Codigo));
+            actuales.AddRange(persistidas.Where(i => i != null && EsLiteralHistoricoRetirado(i.Codigo)));
+            return SerializarRespuestas(actuales);
         }
 
         public static string SerializarRespuestas(IEnumerable<ListaVerificacionOperacionalEaeItem> items)
