@@ -3620,11 +3620,14 @@ namespace CapaPresentacion.Controllers
                 + ", Estado=LV_FIRMADA"
                 + ", RutaDocumentoFirmado=" + rutaFirmada);
 
+            try { new DocumentosFinalesWorkflowDAO().RegistrarAvance(inspeccion.CodigoSolicitud,codigoInspeccion,usuarioId,"LV_ESTACION_FIRMADA",lista.CodigoListaVerificacion.ToString(),"LV de la estaci\u00f3n "+lista.EstacionCodigo+" firmada; informe t\u00e9cnico habilitado para esa estaci\u00f3n."); }
+            catch(Exception ex) { _logger.LogWarning("[AVANCE_RT] "+ex.Message); }
+
             var mensajeFirma = todasLvFirmadas
                 ? "Listas de verificación firmadas. Ahora puede trabajar el informe técnico."
                 : "LV de esta estación firmada. Continúe con las listas pendientes de las otras estaciones.";
             if (!todasLvFirmadas)
-                redirectInformeUrl = Url.Action("Detalle", new { id = codigoInspeccion, estacionId, lvAutoOpen = true });
+                redirectInformeUrl = Url.Action("Detalle", new { id = codigoInspeccion, estacionId, autoOpenInformeTecnico = true });
             TempData["Success"] = mensajeFirma;
 
             if (esSolicitudAjax)
@@ -7796,6 +7799,7 @@ namespace CapaPresentacion.Controllers
 
             return new FirmaInspectorPanelVm
             {
+                SolicitudId = inspeccion.CodigoSolicitud,
                 CodigoInspeccion = inspeccion.CodigoInspeccion,
                 InformeTecnico = informe,
                 UsaFlujoListaVerificacionEae = usaFlujoLv,
@@ -8256,10 +8260,20 @@ namespace CapaPresentacion.Controllers
             {
                 if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && solicitudFinal != null)
                 {
-                    var envio = EnviarInformeADirdacInterno(inspeccion, solicitudFinal, informeFinal, usuarioId);
-                    TempData[envio.Exitoso ? "Success" : "Warning"] = envio.Exitoso
-                        ? "Informe firmado y remitido a DCAV para su revision."
-                        : "La firma se guardo. No se pudo completar el aviso a DCAV: " + envio.Mensaje;
+                    try
+                    {
+                        new DocumentosFinalesWorkflowDAO().RegistrarAvance(inspeccion.CodigoSolicitud,id,usuarioId,
+                            "INFORME_ESTACION_FIRMADO",informeFinal.CodigoInforme.ToString(),"Informe t\u00e9cnico de estaci\u00f3n firmado por el Inspector.");
+                        string motivo;
+                        if(new AocrFlujoValidacionService().PuedePrepararDocumentosFinales(inspeccion.CodigoSolicitud,out motivo))
+                        {
+                            new AocrProcesoEstadoDAO().CambiarEstado(inspeccion.CodigoSolicitud,id,AocrEstadosProceso.DocumentosFinalesPorGenerar,
+                                "PREPARACION_DOCUMENTOS_FINALES",ROL_INSPECTOR,usuarioId,"Todos los informes satisfactorios firmados. Preparar CL y AOCR.");
+                            TempData["Success"]="Todos los informes est\u00e1n firmados. Ya puede generar CL y AOCR y enviarlos al Coordinador.";
+                        }
+                        else TempData["Success"]="Informe de esta estaci\u00f3n firmado. Puede continuar con otra estaci\u00f3n.";
+                    }
+                    catch(Exception ex) { _logger.LogWarning("[AVANCE_RT] Firma guardada; aviso pendiente: "+ex.Message); TempData["Warning"]="Firma guardada; no se pudo registrar el aviso de avance al RT."; }
                 }
                 else
                 {
@@ -8304,6 +8318,8 @@ namespace CapaPresentacion.Controllers
 
         private ResultadoOperacion EnviarInformeADirdacInterno(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId)
         {
+            if(EsRolInspectorSeleccionado())
+                return ResultadoOperacion.Error("Genere CL y AOCR y env\u00ede el paquete al Coordinador antes de DCAV.");
             if (inspeccion == null || solicitud == null || informe == null)
             {
                 return ResultadoOperacion.Error("No existe contexto suficiente para enviar el informe técnico a Dirección / Jefatura.");

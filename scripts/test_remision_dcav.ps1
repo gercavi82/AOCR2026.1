@@ -7,8 +7,10 @@ $started = $false
 try {
     & "$pg/initdb.exe" -D "$taskDir/pgdata" -U aocr_review -A trust --encoding=UTF8 --no-locale | Out-File "$taskDir/init.log"
     if ($LASTEXITCODE -ne 0) { throw 'initdb' }
-    & "$pg/pg_ctl.exe" -D "$taskDir/pgdata" -l "$taskDir/pg.log" -o '-p 55440 -h 127.0.0.1' -w start
-    if ($LASTEXITCODE -ne 0) { throw 'pg_ctl' }
+    $pgStarter = Start-Process -FilePath "$pg/pg_ctl.exe" -ArgumentList @('-D', "$taskDir/pgdata", '-l', "$taskDir/pg.log", '-o', '"-p 55440 -h 127.0.0.1"', '-w', 'start') -WindowStyle Hidden -PassThru -RedirectStandardOutput "$taskDir/start.log" -RedirectStandardError "$taskDir/start.err"
+    if (-not $pgStarter.WaitForExit(30000)) { throw 'Tiempo agotado iniciando PostgreSQL temporal' }
+    & "$pg/pg_isready.exe" -h 127.0.0.1 -p 55440 -U aocr_review > "$taskDir/ready.log"
+    if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL temporal no disponible' }
     $started = $true
     & "$pg/createdb.exe" -h 127.0.0.1 -p 55440 -U aocr_review remision_test
     if ($LASTEXITCODE -ne 0) { throw 'createdb' }
@@ -26,8 +28,11 @@ try {
     $ref.Load("$taskRoot/AOCR.Tests/bin/Debug/AOCR.Tests.dll.config")
     [void]$cfg.DocumentElement.AppendChild($cfg.ImportNode($ref.configuration.runtime,$true))
     $cfg.Save("$exe.config")
+    $ErrorActionPreference = 'Continue'
     & $exe "$taskRoot/scripts/sql/20260722_revision_documental_coordinador.sql" "$taskRoot/scripts/sql/20261019_estados_revision_dcav.sql" "$taskRoot/scripts/sql/20261020_solicitud_campos_dcav.sql"
-    if ($LASTEXITCODE -ne 0) { throw 'Pruebas fallidas' }
+    $testExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($testExit -ne 0) { throw 'Pruebas fallidas' }
 } finally {
     if ($started) { & "$pg/pg_ctl.exe" -D "$taskDir/pgdata" -m fast -w stop }
 }

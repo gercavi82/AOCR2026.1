@@ -61,11 +61,11 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
-        public void Caso15_InformePendienteNoAparece()
+        public void Caso15_InformeFirmadoPuedePrepararAntesDeAprobacion()
         {
             var service = Read("CapaNegocio/Services/InspectorBandejaService.cs");
             StringAssert.Contains(service, "!informe.Finalizado || !informe.FirmadoInspector");
-            StringAssert.Contains(service, "if (!EsInformeAprobadoDirdac(informe))");
+            StringAssert.Contains(service, "if (!EsInformeAprobadoDirdac(informe) && !puedePreparar)");
         }
 
         [TestMethod]

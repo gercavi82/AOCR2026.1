@@ -87,6 +87,7 @@ namespace CapaNegocio.Services
                 string.Equals(s.Estado, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionFinalDircav, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionInformeDcav, StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(s.Estado, AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(s.Estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
             ).ToList();
         }

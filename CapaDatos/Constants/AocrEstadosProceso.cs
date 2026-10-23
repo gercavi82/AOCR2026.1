@@ -69,6 +69,8 @@ namespace CapaDatos.Constants
         public const string PendienteRevisionInformeDirdac = "PENDIENTE_REVISION_INFORME_DIRDAC";
         public const string InformeTecnicoAprobadoDirdac = "INFORME_TECNICO_APROBADO_DIRDAC";
         public const string DocumentosFinalesPorGenerar = "DOCUMENTOS_FINALES_POR_GENERAR";
+        public const string DocumentosFinalesCoordinador = "DOCUMENTOS_FINALES_COORDINADOR";
+        public const string DocumentosFinalesDevueltos = "DOCUMENTOS_FINALES_DEVUELTOS";
         public const string DocumentosFinalesEnFirma = "DOCUMENTOS_FINALES_EN_FIRMA";
         public const string PendienteRevisionInformeDcav = "PENDIENTE_REVISION_INFORME_DCAV";
         public const string InformeTecnicoAprobadoDcav = "INFORME_TECNICO_APROBADO_DCAV";

@@ -51,6 +51,10 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var model = WorkflowService.ConstruirViewModel(solicitudId, User, Url);
+                var daoPaquete = new DocumentosFinalesWorkflowDAO();
+                ViewBag.PuedeRevisarPaquete = permisos.EsCoordinadorRol && daoPaquete.ObtenerEstado(solicitudId)==AocrEstadosProceso.DocumentosFinalesCoordinador;
+                var contextoPaquete=WorkflowService.CargarContexto(solicitudId);
+                ViewBag.VersionPaquete=Math.Max(contextoPaquete.DocumentoReconocimiento?.VersionConcurrencia??0,contextoPaquete.DocumentoCondiciones?.VersionConcurrencia??0);
                 FirmaAocrActiveRoleViewPolicy.Aplicar(model, permisos);
                 if (model != null && permisos.EsInspectorRol)
                 {
@@ -293,6 +297,9 @@ namespace CapaPresentacion.Controllers
                 }
 
                 workflow.RegistrarDocumentoGenerado(contexto, tipoDocumento, ruta, bytes, ObtenerUsuarioActualId(), ObtenerUsuarioActualNombre());
+                try { new DocumentosFinalesWorkflowDAO().RegistrarAvance(solicitudId,contexto.Inspeccion.CodigoInspeccion,ObtenerUsuarioActualId(),
+                    "DOCUMENTO_FINAL_GENERADO",tipoDocumento+":"+ruta,"Documento "+tipoDocumento+" generado por el Inspector."); }
+                catch(Exception exAviso) { Trace.TraceError("[AVANCE_RT] Documento generado; aviso pendiente: "+exAviso.Message); }
                 CapaNegocio.LogBL.RegistrarInfo(
                     "[FIRMA_AOCR][GENERAR_PDF_OK] SolicitudId=" + solicitudId
                     + "; TipoDocumento=" + tipoDocumento
@@ -380,6 +387,30 @@ namespace CapaPresentacion.Controllers
                 estadoCondiciones = resultado.EstadoCondiciones,
                 redirectUrl = Url.Action("PendientesEmisionAocr", "Inspeccion")
             });
+        }
+
+        [HttpGet]
+        public ActionResult PaquetesCoordinador()
+        {
+            if(!ObtenerPermisosRolActivo().EsCoordinadorRol) return new HttpStatusCodeResult(403);
+            var solicitudes=new SolicitudAOCRDAO().ObtenerTodos().Where(s=>s.Estado==AocrEstadosProceso.DocumentosFinalesCoordinador).ToList();
+            return View(solicitudes);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RevisarPaquete(int solicitudId,long versionEsperada,bool devolver=false,string observacion=null)
+        {
+            if(!ObtenerPermisosRolActivo().EsCoordinadorRol) return new HttpStatusCodeResult(403);
+            try {
+                var contexto=WorkflowService.CargarContexto(solicitudId);
+                if(contexto?.Inspeccion==null) return HttpNotFound();
+                var resultado=new DocumentosFinalesWorkflowDAO().RevisarPaqueteCoordinador(solicitudId,contexto.Inspeccion.CodigoInspeccion,
+                    ObtenerUsuarioActualId(),ObtenerRolActual(),versionEsperada,devolver,observacion,
+                    Request.Url.GetLeftPart(UriPartial.Authority)+(Request.ApplicationPath=="/"?string.Empty:Request.ApplicationPath));
+                TempData["FirmaAocrMensaje"]=resultado.Mensaje;TempData["FirmaAocrMensajeOk"]=resultado.Exitoso;
+            } catch(InvalidOperationException ex) {TempData["FirmaAocrMensaje"]=ex.Message;TempData["FirmaAocrMensajeOk"]=false;}
+            return RedirectToAction("Index",new{solicitudId});
         }
 
         [HttpGet]

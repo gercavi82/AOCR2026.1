@@ -2896,12 +2896,20 @@
 
                             <div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEaeResumen">
                                 <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Listas e informes por estación">
+                                        @foreach(var estacionLv in listaVerificacionVm.Estaciones) {
+                                            <a class="btn @(listaVerificacionVm.EstacionSeleccionadaId==estacionLv.Id?"btn-primary":"btn-outline-primary")"
+                                               href="@Url.Action("Detalle","Inspeccion",new{id=Model.CodigoInspeccion,estacionId=estacionLv.Id})">
+                                                LV e informe @estacionLv.EstacionCodigo — @(listaVerificacionVm.EstadosPorEstacion.ContainsKey(estacionLv.Id)?listaVerificacionVm.EstadosPorEstacion[estacionLv.Id]:"Pendiente")
+                                            </a>
+                                        }
+                                    </div>
                                     <div class="section-heading">
                                         <div class="section-icon">
                                             <i class="fas fa-clipboard-check"></i>
                                         </div>
                                         <div>
-                                            <h2 class="section-title">Lista de verificación operacional (LV)</h2>
+                                            <h2 class="section-title">LV — estación @listaVerificacionOperacionalEae.EstacionCodigo @listaVerificacionOperacionalEae.EstacionNombre</h2>
                                             <p class="section-copy">La LV/EAE ahora se gestiona en una ventana dedicada para no mezclar su captura con el editor del informe técnico.</p>
                                         </div>
                                     </div>
@@ -2946,6 +2954,16 @@
                                     }
                                 </div>
                             </div>
+
+                            if(esInspector) {
+                                string motivoDocumentos;
+                                var puedePrepararDocumentos=new CapaNegocio.Services.AocrFlujoValidacionService().PuedePrepararDocumentosFinales(Model.CodigoSolicitud,out motivoDocumentos);
+                                <div class="card mb-3"><div class="card-body">
+                                    <h3>Generar documentos finales</h3>
+                                    @if(puedePrepararDocumentos) { <a class="btn btn-success" href="@Url.Action("Index","FirmaAocr",new{solicitudId=Model.CodigoSolicitud})">Generar CL y AOCR / consultar documentos</a> }
+                                    else { <p>@motivoDocumentos</p> }
+                                </div></div>
+                            }
 
                             <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")" data-auto-open-signature="@(autoOpenLvSignature ? "true" : "false")">
                                 <div class="modal-dialog modal-xl modal-dialog-scrollable">

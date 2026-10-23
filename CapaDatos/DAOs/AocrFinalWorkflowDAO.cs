@@ -44,7 +44,7 @@ namespace CapaDatos.DAOs
                 if (repetido != null) return repetido;
                 if (actual.Version != request.VersionEsperada) return ConflictoVersion(actual);
                 if (!EsEstado(actual.Estado, AocrEstadosProceso.ClFirmadaDircav, AocrEstadosProceso.PendienteRevisionFinalDircav,
-                    AocrEstadosProceso.DocumentosFinalesPorGenerar, AocrEstadosProceso.DocumentosFinalesEnFirma))
+                    AocrEstadosProceso.DocumentosFinalesPorGenerar, AocrEstadosProceso.DocumentosFinalesEnFirma, AocrEstadosProceso.DevueltoDircav))
                     return AocrWorkflowResult.Error(409, "ESTADO_INVALIDO", "DIRCAV solo puede remitir un expediente revisado y con CL firmada.");
 
                 var aocr = CargarDocumento(cn, tx, request.SolicitudId, TipoAocr);
@@ -62,6 +62,7 @@ namespace CapaDatos.DAOs
                 RegistrarTrazabilidad(cn, tx, key, "AOCR_REMITIDO_DIRDAC", actual, siguiente, request.Actor, request.Observacion, aocr.Id, aocr.Version, aocr.Hash);
                 EncolarAUsuariosRol(cn, tx, AocrRolesInstitucionales.DirdacSqlTokens, request.SolicitudId, key,
                     "AOCR_PENDIENTE_DIRDAC", "AOCR pendiente de revisión y firma", request.BaseUrl, "/Dirdac/BandejaAocr");
+                DocumentosFinalesWorkflowDAO.NotificarAvanceRt(cn,tx,request.SolicitudId,key,"AOCR remitido por DCAV a DIRDAC para su firma.");
                 return Exito("REMITIDO_DIRDAC", "AOCR remitido a DIRDAC.", actual, siguiente, aocr.Id, key);
             });
         }
@@ -81,10 +82,12 @@ namespace CapaDatos.DAOs
 
                 var aocr = CargarDocumento(cn, tx, request.SolicitudId, TipoAocr);
                 if (aocr == null) return AocrWorkflowResult.Error(404, "AOCR_NO_EXISTE", "No existe AOCR vigente para devolver.");
+                ActualizarDocumento(cn,tx,aocr.Id,AocrEstadosProceso.AocrListoParaFirma,request.Actor.UsuarioId);
                 var siguiente = CambiarProceso(cn, tx, actual, AocrEstadosProceso.DevueltoDircav, "CORRECCION_AOCR", AocrRolesInstitucionales.Dircav, request.Actor, request.Observacion);
                 RegistrarTrazabilidad(cn, tx, key, "AOCR_DEVUELTO_DIRCAV", actual, siguiente, request.Actor, request.Observacion, aocr.Id, aocr.Version, aocr.Hash);
                 EncolarAUsuariosRol(cn, tx, AocrRolesInstitucionales.DircavSqlTokens, request.SolicitudId, key,
                     "AOCR_DEVUELTO_DIRCAV", "AOCR devuelto por DIRDAC", request.BaseUrl, "/Dircav/Bandeja?tab=devueltos");
+                DocumentosFinalesWorkflowDAO.NotificarAvanceRt(cn,tx,request.SolicitudId,key,"AOCR devuelto a DCAV por DIRDAC. "+request.Observacion);
                 return Exito("DEVUELTO_DIRCAV", "AOCR devuelto a DIRCAV con observación.", actual, siguiente, aocr.Id, key);
             });
         }
@@ -153,6 +156,7 @@ WHERE codigo_documento=@documento AND vigente=TRUE AND hash_pdf_firmado IS NULL;
                     "AC-12 debe resolver RT, Inspector y documentos después del commit.", aocr.Id, aocr.Version, request.HashPdfFirmado);
                 EncolarAUsuariosRol(cn, tx, AocrRolesInstitucionales.DircavSqlTokens, request.SolicitudId, key,
                     "AOCR_FIRMADA_DIRDAC", "AOCR firmado y legalizado por DIRDAC", string.Empty, "/Dircav/Bandeja");
+                DocumentosFinalesWorkflowDAO.NotificarAvanceRt(cn,tx,request.SolicitudId,key,"AOCR firmado por DIRDAC; firmas institucionales completas.");
                 return Exito("FIRMAS_COMPLETAS", "AOCR firmado por DIRDAC; ambas firmas quedaron verificadas. AC-11 no realiza la entrega.", actual, completo, aocr.Id, key);
             });
         }

@@ -1,0 +1,34 @@
+@model int
+@using System.Linq
+@{
+    var dao=new CapaDatos.DAOs.DocumentosFinalesWorkflowDAO();
+    var eventos=dao.ObtenerSeguimiento(Model);
+    var acciones=eventos.Rows.Cast<System.Data.DataRow>().Select(r=>Convert.ToString(r["accion"])).ToList();
+    var aocr=dao.ObtenerVigente(Model,"RECONOCIMIENTO");
+    var cl=dao.ObtenerVigente(Model,"CONDICIONES_LIMITACIONES");
+    var clFirmado=cl!=null && !string.IsNullOrWhiteSpace(cl.RutaPdfFirmado);
+    var aocrFirmado=aocr!=null && !string.IsNullOrWhiteSpace(aocr.RutaPdfFirmado);
+    string motivoRevision;
+    var revisionDcav=clFirmado || new CapaNegocio.Services.AocrFlujoValidacionService().PuedePrepararDocumentosFinales(Model,out motivoRevision,true);
+    var pasos=new[] {
+        new {Texto="3. CL y AOCR generados", Hecho=cl!=null && aocr!=null},
+        new {Texto="Revisión del Coordinador", Hecho=acciones.Contains("PAQUETE_REVISADO_COORDINADOR")},
+        new {Texto="Revisión de DCAV", Hecho=revisionDcav},
+        new {Texto="CL firmado por DCAV", Hecho=clFirmado},
+        new {Texto="AOCR remitido a DIRDAC", Hecho=acciones.Any(a=>a.Contains("REMIT") && a.Contains("DIRDAC")) || aocrFirmado},
+        new {Texto="AOCR firmado por DIRDAC", Hecho=aocrFirmado},
+        new {Texto="Documentos disponibles y envío a RT e Inspector encolado", Hecho=acciones.Contains("ENTREGA_FINAL_ENCOLADA")},
+        new {Texto="Copias para jefaturas aeroportuarias encoladas", Hecho=acciones.Contains("ENTREGA_JEFATURAS_ENCOLADA")}
+    };
+}
+<section class="card mb-3"><div class="card-header"><strong>Seguimiento de documentos finales</strong></div><div class="card-body">
+    <p>Las etapas se completan con las actuaciones registradas en el expediente.</p>
+    <ul class="list-group mb-3">
+        @foreach(var paso in pasos) { <li class="list-group-item"><span class="badge @(paso.Hecho?"bg-success":"bg-secondary")">@(paso.Hecho?"Completado":"Pendiente")</span> @paso.Texto</li> }
+    </ul>
+    @if(eventos.Rows.Count>0) {
+        <details><summary>Ver actuaciones y devoluciones</summary><ul>
+        @foreach(System.Data.DataRow fila in eventos.Rows) { <li><time>@Convert.ToDateTime(fila["fecha"]).ToString("dd/MM/yyyy HH:mm")</time> — @fila["observacion"]</li> }
+        </ul></details>
+    }
+</div></section>

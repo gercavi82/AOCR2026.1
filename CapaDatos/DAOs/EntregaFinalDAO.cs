@@ -56,6 +56,7 @@ namespace CapaDatos.DAOs
                         var existente = CargarEntrega(cn, tx, request.SolicitudId, aocr.Version, cl.Version);
                         if (existente != null)
                         {
+                            EncolarJefaturas(cn,tx,expediente,aocr,cl,request,existente.CorrelationId);
                             tx.Commit();
                             return Resultado(true, "IDEMPOTENTE", "La entrega final ya fue solicitada para estas versiones.", existente.Estado,
                                 proceso.Estado, proceso.Version, existente.Id, existente.CorrelationId);
@@ -79,6 +80,7 @@ namespace CapaDatos.DAOs
                         var emailIds = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                         CrearDestinatario(cn, tx, entregaId, expediente, rt, "RT", aocr, cl, request, correlationId, emailIds);
                         CrearDestinatario(cn, tx, entregaId, expediente, inspector, "INSPECTOR", aocr, cl, request, correlationId, emailIds);
+                        var avisoJefaturas=EncolarJefaturas(cn,tx,expediente,aocr,cl,request,correlationId);
 
                         var versionNueva = proceso.Version;
                         var estadoExpediente = proceso.Estado;
@@ -90,7 +92,7 @@ namespace CapaDatos.DAOs
                         RegistrarTrazabilidad(cn, tx, key, "ENTREGA_FINAL_ENCOLADA", request.SolicitudId, proceso.Estado,
                             estadoExpediente, request.Actor, correlationId, aocr.Id, aocr.Version, aocr.HashFirmado);
                         tx.Commit();
-                        return Resultado(false, "ENTREGA_ENCOLADA", "La entrega final quedó disponible y sus correos fueron encolados.",
+                        return Resultado(false, "ENTREGA_ENCOLADA", "La entrega final quedó disponible y sus correos fueron encolados. " + avisoJefaturas,
                             EstadosEntregaFinal.Encolada, estadoExpediente, versionNueva, entregaId, correlationId);
                     }
                     catch
@@ -232,8 +234,31 @@ VALUES(@entrega,@queue,@estado,@error,@message,NOW());",cn,tx)){cmd.Parameters.A
                 using(var fs=File.OpenRead(path)){var sig=new byte[5];if(fs.Read(sig,0,5)!=5||System.Text.Encoding.ASCII.GetString(sig)!="%PDF-"){error="El archivo no contiene una firma PDF válida.";return false;}fs.Position=0;using(var sha=SHA256.Create()){var hash=BitConverter.ToString(sha.ComputeHash(fs)).Replace("-","");if(!string.Equals(hash,doc.HashFirmado,StringComparison.OrdinalIgnoreCase)){error="El hash SHA-256 del PDF no coincide.";return false;}}}return true;
             }catch{error="No fue posible validar el archivo final.";return false;}}
 
-        private static string ResolverRuta(string value){if(string.IsNullOrWhiteSpace(value))return null;var p=value.Trim();if(Path.IsPathRooted(p))return Path.GetFullPath(p);p=p.TrimStart('~','/','\\').Replace('/',Path.DirectorySeparatorChar);return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,p));}
-        private static bool RutaControlada(string path){var n=(Path.GetFullPath(path)??string.Empty).Replace('\\','/');return n.IndexOf("/App_Data/Uploads/AOCR/Firmados/",StringComparison.OrdinalIgnoreCase)>=0;}
+        private static string ResolverRuta(string value)
+        {
+            if(string.IsNullOrWhiteSpace(value)) return null;
+            var p=value.Trim().Replace('\\','/');
+            if(Path.IsPathRooted(p)) return Path.GetFullPath(p);
+            p=p.TrimStart('~','/');
+            var root=ConfigurationManager.AppSettings["RT_FileStorageRoot"];
+            if(!string.IsNullOrWhiteSpace(root) && Path.IsPathRooted(root))
+            {
+                var rel=p.StartsWith("App_Data/",StringComparison.OrdinalIgnoreCase)?p.Substring(9):p;
+                var candidate=Path.GetFullPath(Path.Combine(root,rel.Replace('/',Path.DirectorySeparatorChar)));
+                if(candidate.StartsWith(Path.GetFullPath(root).TrimEnd('\\')+"\\",StringComparison.OrdinalIgnoreCase) && File.Exists(candidate))return candidate;
+            }
+            return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,p.Replace('/',Path.DirectorySeparatorChar)));
+        }
+        private static bool RutaControlada(string path)
+        {
+            var n=Path.GetFullPath(path).Replace('\\','/');
+            var root=ConfigurationManager.AppSettings["RT_FileStorageRoot"];
+            if(!string.IsNullOrWhiteSpace(root) && Path.IsPathRooted(root)
+                && n.StartsWith(Path.GetFullPath(root).Replace('\\','/').TrimEnd('/')+"/",StringComparison.OrdinalIgnoreCase))
+                return n.IndexOf("/Uploads/AOCR/Firmados/",StringComparison.OrdinalIgnoreCase)>=0;
+            var local=Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"App_Data/Uploads/AOCR/Firmados")).Replace('\\','/').TrimEnd('/')+"/";
+            return n.StartsWith(local,StringComparison.OrdinalIgnoreCase);
+        }
 
         private static void CrearDestinatario(NpgsqlConnection cn,NpgsqlTransaction tx,long entregaId,Expediente exp,UsuarioEntrega user,string tipo,DocumentoEntrega aocr,DocumentoEntrega cl,SolicitarEntregaFinalRequest req,string corr,IDictionary<string,int> emails)
         {
@@ -249,7 +274,37 @@ VALUES(@entrega,@tipo,@usuario,@correo,@queue,'DISPONIBLE','ENCOLADO',NOW(),NOW(
             {cmd.Parameters.AddWithValue("@entrega",entregaId);cmd.Parameters.AddWithValue("@tipo",tipo);cmd.Parameters.AddWithValue("@usuario",user.Id);cmd.Parameters.AddWithValue("@correo",user.Email);cmd.Parameters.AddWithValue("@queue",queueId);cmd.ExecuteNonQuery();}
         }
 
-        private static EmailAttachmentItem Adjunto(DocumentoEntrega d){return new EmailAttachmentItem{FileName=Path.GetFileName(d.Nombre),ContentType="application/pdf",FilePath=d.Ruta,FileSize=d.Tamanio,Sha256=d.HashFirmado};}
+        private static string EncolarJefaturas(NpgsqlConnection cn,NpgsqlTransaction tx,Expediente exp,DocumentoEntrega aocr,DocumentoEntrega cl,SolicitarEntregaFinalRequest req,string corr)
+        {
+            using(var cmd=new NpgsqlCommand(@"CREATE TABLE IF NOT EXISTS public.aocr_jefatura_aeropuerto_correo(
+estacion_codigo VARCHAR(10) NOT NULL,correo VARCHAR(254) NOT NULL,nombre VARCHAR(200) NOT NULL DEFAULT '',activo BOOLEAN NOT NULL DEFAULT TRUE,PRIMARY KEY(estacion_codigo,correo));",cn,tx))cmd.ExecuteNonQuery();
+            var contactos=new List<Tuple<string,string,string>>();
+            using(var cmd=new NpgsqlCommand(@"SELECT DISTINCT UPPER(TRIM(e.estacion_codigo)) estacion,c.correo,c.nombre
+FROM public.aocr_tbsolicitud_estacion e LEFT JOIN public.aocr_jefatura_aeropuerto_correo c ON UPPER(TRIM(c.estacion_codigo))=UPPER(TRIM(e.estacion_codigo)) AND c.activo=TRUE
+WHERE e.solicitud_id=@s AND e.activo=TRUE",cn,tx)) {
+                cmd.Parameters.AddWithValue("@s",exp.SolicitudId);using(var r=cmd.ExecuteReader())while(r.Read())contactos.Add(Tuple.Create(Convert.ToString(r[0]),Convert.ToString(r[1]),Convert.ToString(r[2])));
+            }
+            var faltantes=new List<string>();
+            foreach(var c in contactos) {
+                if(!EmailValido(c.Item2)){faltantes.Add(c.Item1);continue;}
+                bool duplicado;
+                new EmailQueueService().EncolarConAdjuntosEnTransaccion(cn,tx,new EmailQueueItem {
+                    Para=c.Item2,ParaNombre=c.Item3,Asunto="Sistema AOCR - documentos finales firmados - "+exp.NumeroSolicitud,
+                    Cuerpo="<p>Se adjuntan AOCR y Condiciones y Limitaciones firmados para la estación "+Html(c.Item1)+" del trámite "+Html(exp.NumeroSolicitud)+".</p>",
+                    Estado=EstadoEmail.Pendiente,SolicitudId=exp.SolicitudId,EventKey="ENTREGA_JEFATURA:"+exp.SolicitudId+":"+aocr.Version+":"+cl.Version+":"+Sha(c.Item2.Trim().ToLowerInvariant()),
+                    TipoNotificacion="ENTREGA_FINAL_JEFATURA",CorrelationId=corr,EsHtml=true,MaxIntentos=5
+                },new List<EmailAttachmentItem>{Adjunto(aocr),Adjunto(cl)},out duplicado);
+            }
+            var evento=faltantes.Count==0 && contactos.Count>0?"ENTREGA_JEFATURAS_ENCOLADA":"ENTREGA_JEFATURAS_PENDIENTE";
+            var mensaje=evento=="ENTREGA_JEFATURAS_ENCOLADA"?"Copias finales encoladas para las jefaturas de los aeropuertos involucrados.":"Faltan correos confirmados de jefaturas: "+string.Join(", ",faltantes.Distinct());
+            using(var cmd=new NpgsqlCommand(@"INSERT INTO public.aocr_evento_workflow(evento,event_key,correlation_id,modulo,accion,solicitud_id,observacion,resultado,intentos,fecha,created_at,updated_at)
+VALUES(@ev,@key,@corr,'ENTREGA_FINAL',@ev,@s,@msg,'REGISTRADO',1,NOW(),NOW(),NOW()) ON CONFLICT(event_key) DO NOTHING",cn,tx)) {
+                cmd.Parameters.AddWithValue("@ev",evento);cmd.Parameters.AddWithValue("@key",evento+":"+exp.SolicitudId+":"+aocr.Version+":"+cl.Version);cmd.Parameters.AddWithValue("@corr",corr);cmd.Parameters.AddWithValue("@s",exp.SolicitudId);cmd.Parameters.AddWithValue("@msg",mensaje);cmd.ExecuteNonQuery();
+            }
+            return mensaje;
+        }
+
+        private static EmailAttachmentItem Adjunto(DocumentoEntrega d){return new EmailAttachmentItem{FileName=Path.GetFileName(d.Nombre),ContentType="application/pdf",FilePath=ResolverRuta(d.Ruta),FileSize=d.Tamanio,Sha256=d.HashFirmado};}
         private static long ObtenerLimiteAdjuntos(){long n;return long.TryParse(ConfigurationManager.AppSettings["EntregaFinalMaxAdjuntosBytes"],out n)&&n>0?n:20L*1024*1024;}
         private static long InsertarEntrega(NpgsqlConnection cn,NpgsqlTransaction tx,Expediente e,DocumentoEntrega a,DocumentoEntrega c,string corr,string key,EntregaFinalActor actor)
         {using(var cmd=new NpgsqlCommand(@"INSERT INTO public.aocr_entrega_final(solicitud_id,inspeccion_id,codigo_compania,compania,version_aocr,version_cl,estado,correlation_id,event_key,created_at,created_by,updated_at)

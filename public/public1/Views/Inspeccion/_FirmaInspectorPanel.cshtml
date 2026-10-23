@@ -10,8 +10,8 @@
     var codigoInspeccion = vm.CodigoInspeccion;
     var usaFlujoListaVerificacionEae = vm.UsaFlujoListaVerificacionEae;
     var puedeFirmarInspector = vm.PuedeFirmarInspector;
-    var puedeEnviarADirdac = vm.PuedeEnviarADirdac;
-    var puedeReintentarNotificacionDirdac = vm.PuedeReintentarNotificacionDirdac;
+    var puedeEnviarADirdac = false; // El paquete completo se remite al Coordinador.
+    var puedeReintentarNotificacionDirdac = false;
     var requiereNoConformidad = vm.RequiereNoConformidad;
     var puedeFirmarNoConformidad = vm.PuedeFirmarNoConformidad;
     var informeEnviadoADirdac = vm.InformeEnviadoADirdac;
@@ -77,7 +77,7 @@ else if (informeTecnico != null)
                     Versión <strong>@informeTecnico.Version</strong> · Inspección #@codigoInspeccion
                     @if (usaFlujoListaVerificacionEae)
                     {
-                        <text> · Flujo EAE con revisión final DIRDAC</text>
+                        <text> · Informe de estación; paquete final mediante Coordinación</text>
                     }
                 </p>
             </div>
@@ -100,14 +100,9 @@ else if (informeTecnico != null)
             <div class="it-step @(pasoFirmado ? "done" : (pasoActivo2 ? "active" : ""))">
                 <span class="n">2</span> Firma inspector
             </div>
-            <div class="it-step @(pasoDirdac ? "done" : (pasoActivo3 ? "active" : ""))">
-                <span class="n">3</span> Revisión DIRDAC
-            </div>
-            <div class="it-step @(pasoDecisionFinal ? "done" : (pasoActivo4 ? "active" : ""))">
-                <span class="n">4</span> Decisión final / RT
-            </div>
         </div>
     </div>
+    if(vm.SolicitudId>0) { @Html.Partial("~/Views/Shared/_SeguimientoFinalAOCR.cshtml",vm.SolicitudId) }
 
     @* ── Observación de devolución ── *@
     if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && (informeDevueltoCoordinador || informeDevueltoDireccion))
@@ -204,7 +199,7 @@ else if (informeTecnico != null)
             else if (usaFlujoListaVerificacionEae)
             {
                 <i class="fas fa-info-circle"></i>
-                <div>En el flujo EAE la firma del inspector queda disponible cuando el PDF del informe ya fue generado y la LV/EAE está firmada. Después, el documento pasa a DIRDAC.</div>
+                <div>En el flujo EAE la firma del inspector queda disponible cuando el PDF del informe ya fue generado y la LV/EAE está firmada. Después de firmar todos los informes satisfactorios, genere CL y AOCR y envíe el paquete al Coordinador.</div>
             }
             else
             {

@@ -29,13 +29,13 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>10/22/2026 09:03:24</publishTime>
+      <publishTime>10/22/2026 16:47:59</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>10/22/2026 09:03:24</publishTime>
+      <publishTime>10/22/2026 16:47:59</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
       <publishTime>10/22/2026 08:44:30</publishTime>
@@ -44,19 +44,19 @@
       <publishTime>10/22/2026 08:44:30</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>10/22/2026 09:03:25</publishTime>
+      <publishTime>10/22/2026 16:48:00</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>10/22/2026 09:03:25</publishTime>
+      <publishTime>10/22/2026 16:48:00</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>10/22/2026 09:03:26</publishTime>
+      <publishTime>10/22/2026 16:48:01</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>10/22/2026 09:03:26</publishTime>
+      <publishTime>10/22/2026 16:48:01</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8132,19 +8132,19 @@
       <publishTime>10/20/2026 08:57:30</publishTime>
     </File>
     <File Include="Views/Dircav/Detalle.cshtml">
-      <publishTime>10/22/2026 08:53:47</publishTime>
+      <publishTime>10/22/2026 16:43:08</publishTime>
     </File>
     <File Include="Views/Dircav/RevisionCl.cshtml">
       <publishTime>09/15/2026 11:01:00</publishTime>
     </File>
     <File Include="Views/Dircav/_DocumentosRevisionExpediente.cshtml">
-      <publishTime>10/22/2026 08:48:16</publishTime>
+      <publishTime>10/22/2026 16:43:08</publishTime>
     </File>
     <File Include="Views/Dirdac/Bandeja.cshtml">
       <publishTime>09/04/2026 09:09:36</publishTime>
     </File>
     <File Include="Views/Dirdac/Detalle.cshtml">
-      <publishTime>10/22/2026 08:46:33</publishTime>
+      <publishTime>10/22/2026 16:43:08</publishTime>
     </File>
     <File Include="Views/Direccion/ConfiguracionSistema.cshtml">
       <publishTime>07/27/2026 12:31:04</publishTime>
@@ -8204,7 +8204,10 @@
       <publishTime>03/17/2026 09:32:01</publishTime>
     </File>
     <File Include="Views/FirmaAocr/Index.cshtml">
-      <publishTime>08/31/2026 11:26:37</publishTime>
+      <publishTime>10/22/2026 16:43:08</publishTime>
+    </File>
+    <File Include="Views/FirmaAocr/PaquetesCoordinador.cshtml">
+      <publishTime>10/22/2026 16:27:15</publishTime>
     </File>
     <File Include="Views/Hallazgo/Crear.cshtml">
       <publishTime>03/11/2026 10:52:44</publishTime>
@@ -8255,7 +8258,7 @@
       <publishTime>06/05/2026 11:11:46</publishTime>
     </File>
     <File Include="Views/Inspeccion/Detalle.cshtml">
-      <publishTime>10/21/2026 15:26:55</publishTime>
+      <publishTime>10/22/2026 16:28:57</publishTime>
     </File>
     <File Include="Views/Inspeccion/DocumentosFinales.cshtml">
       <publishTime>09/04/2026 09:58:36</publishTime>
@@ -8300,7 +8303,7 @@
       <publishTime>06/05/2026 11:12:30</publishTime>
     </File>
     <File Include="Views/Inspeccion/_FirmaInspectorPanel.cshtml">
-      <publishTime>10/22/2026 08:51:53</publishTime>
+      <publishTime>10/22/2026 16:37:14</publishTime>
     </File>
     <File Include="Views/Inspeccion/_InformeFirmaStyles.cshtml">
       <publishTime>04/28/2026 11:22:03</publishTime>
@@ -8503,6 +8506,9 @@
     <File Include="Views/Shared/_PdfLayoutDGACAocr.cshtml">
       <publishTime>03/27/2026 14:30:29</publishTime>
     </File>
+    <File Include="Views/Shared/_SeguimientoFinalAOCR.cshtml">
+      <publishTime>10/22/2026 16:43:06</publishTime>
+    </File>
     <File Include="Views/Shared/_SeleccionarRol.cshtml">
       <publishTime>06/05/2026 12:40:30</publishTime>
     </File>
@@ -8528,7 +8534,7 @@
       <publishTime>07/14/2026 10:05:30</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Detalle.cshtml">
-      <publishTime>10/20/2026 11:59:57</publishTime>
+      <publishTime>10/22/2026 16:43:08</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/FormularioEmisionAOCR.cshtml">
       <publishTime>06/05/2026 12:50:52</publishTime>
@@ -8624,7 +8630,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>10/22/2026 09:06:35</publishTime>
+      <publishTime>10/23/2026 06:16:01</publishTime>
     </File>
   </ItemGroup>
 </Project>

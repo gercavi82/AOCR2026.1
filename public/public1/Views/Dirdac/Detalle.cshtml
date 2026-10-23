@@ -23,3 +23,5 @@
     }}
 </div>
 <script>document.addEventListener('submit',function(e){var m=e.target.getAttribute('data-confirm');if(m&&!window.confirm(m)){e.preventDefault();return;}var b=e.target.querySelector('button[type=submit]');if(b){b.disabled=true;b.setAttribute('aria-busy','true');}});</script>
+
+@Html.Partial("~/Views/Shared/_SeguimientoFinalAOCR.cshtml",Model.Expediente.SolicitudId)

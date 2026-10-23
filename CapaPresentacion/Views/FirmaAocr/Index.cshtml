@@ -14,6 +14,24 @@
 
 <link rel="stylesheet" href="@Url.Content("~/Content/firma-aocr.css")" />
 
+@if(ViewBag.PuedeRevisarPaquete == true) {
+    <section class="card mb-3"><div class="card-body">
+        <h2>Revisión del Coordinador</h2>
+        <p>Compruebe los documentos vigentes antes de remitirlos a DCAV.</p>
+        @Html.Action("DocumentosRevisionExpediente","Dircav",new{solicitudId=Model.SolicitudId})
+        <form method="post" action="@Url.Action("RevisarPaquete")">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
+            <input type="hidden" name="versionEsperada" value="@ViewBag.VersionPaquete" />
+            <label for="observacionPaquete">Observación de revisión (obligatoria al devolver)</label>
+            <textarea class="form-control mb-2" id="observacionPaquete" name="observacion" maxlength="3000"></textarea>
+            <button class="btn btn-success" type="submit">Revisado: remitir CL y AOCR a DCAV</button>
+            <button class="btn btn-outline-danger" type="submit" name="devolver" value="true">Devolver al Inspector</button>
+        </form>
+    </div></section>
+}
+@Html.Partial("~/Views/Shared/_SeguimientoFinalAOCR.cshtml",Model.SolicitudId)
+
 <div class="firma-aocr"
      data-generar-url="@(Model != null ? Model.UrlGenerar : "")"
      data-guardar-url="@(Model != null ? Model.UrlGuardarDatos : "")"
@@ -228,17 +246,17 @@
                     <div class="firma-aocr__box-head">
                         <div>
                             <p class="firma-aocr__eyebrow">Envío transaccional</p>
-                            <h2>Finalizar documentos y enviar para firma</h2>
+                            <h2>Enviar documentos al Coordinador</h2>
                             <p>@(Model.Documentos != null && Model.Documentos.Count == 1
-                                ? "Esta acción bloquea la versión vigente de Condiciones y la envía a DCAV según la regla del Módulo 8."
-                                : "Esta única acción bloquea las dos versiones vigentes y crea las ramas AOCR a DIRDAC y Condiciones a DCAV.")</p>
+                                ? "Esta acción envía las Condiciones al Coordinador para revisión antes de DCAV."
+                                : "Esta acción bloquea las versiones vigentes y remite CL y AOCR al Coordinador antes de DCAV.")</p>
                         </div>
                     </div>
                     <form method="post" action="@Model.UrlEnviarParaFirma" data-enviar-documentos>
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
                         <button type="submit" class="firma-aocr__btn firma-aocr__btn--primary" @(Model.PuedeEnviarParaFirma ? null : "disabled")>
-                            Finalizar documentos y enviar para firma
+                            Enviar documentos al Coordinador
                         </button>
                         @if (!Model.PuedeEnviarParaFirma)
                         {

@@ -65,7 +65,7 @@ namespace CapaNegocio.Services
                     e => string.Equals(e, informe.EstadoInforme, StringComparison.OrdinalIgnoreCase)));
             foreach (var inspeccion in inspecciones)
             {
-                var estacionesInspeccion = estaciones.FindAll(e => !e.InspeccionId.HasValue || e.InspeccionId == inspeccion.CodigoInspeccion);
+                var estacionesInspeccion = estaciones.FindAll(e => e.Activo && (!e.InspeccionId.HasValue || e.InspeccionId == inspeccion.CodigoInspeccion));
                 if (estacionesInspeccion.Count == 0)
                 {
                     if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion))) return false;
@@ -82,7 +82,7 @@ namespace CapaNegocio.Services
             return informe != null && informe.Finalizado && informe.FirmadoInspector
                 && !string.IsNullOrWhiteSpace(informe.RutaDocumentoFirmado)
                 && string.Equals(informe.Resultado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(informe.EstadoInforme, AocrEstadosProceso.InformeTecnicoDevueltoInspector, StringComparison.OrdinalIgnoreCase);
+                && (informe.EstadoInforme ?? string.Empty).IndexOf("DEVUELT",StringComparison.OrdinalIgnoreCase)<0;
         }
 
         public bool PuedeFirmarInformeTecnico(int codigoInforme, out string motivo)

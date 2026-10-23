@@ -180,6 +180,7 @@ namespace CapaNegocio.Services
                 || string.Equals(normalizado, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(normalizado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(estado), AocrEstadosProceso.DocumentosFinalesCoordinador, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(InformeTecnicoEstadosInstitucionales.NormalizarToken(estado), AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase);
         }
 

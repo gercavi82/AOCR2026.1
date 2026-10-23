@@ -190,7 +190,7 @@ namespace CapaNegocio.Services
                 });
                 if (entrega.Exito)
                 {
-                    resultado.Mensaje += " La entrega final quedó disponible y encolada para RT e Inspector.";
+                    resultado.Mensaje += " " + entrega.Mensaje;
                     resultado.EstadoNuevo = entrega.EstadoExpediente;
                     resultado.VersionNueva = entrega.VersionExpediente;
                     resultado.CorrelationId = entrega.CorrelationId;

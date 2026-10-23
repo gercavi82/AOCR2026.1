@@ -17,7 +17,7 @@ namespace AOCR.Tests.Unit
             AssertRoleKeys(body, "inspector-", 5);
             Assert.AreEqual(1, Regex.Matches(body, "\"ins-certificados\"").Count);
             AssertRoleKeys(body, "financiero-", 3);
-            AssertRoleKeys(body, "coordinador-", 4);
+            AssertRoleKeys(body, "coordinador-", 5);
             AssertRoleKeys(body, "dirdac-", 3);
             AssertRoleKeys(body, "dcav-", 5);
         }

@@ -22,6 +22,100 @@ namespace CapaDatos.DAOs
         private const string TipoCondiciones = "CONDICIONES_LIMITACIONES";
         private readonly string _cs;
 
+        public string ObtenerEstado(int solicitudId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            using (var cmd = new NpgsqlCommand("SELECT estado_actual FROM public.aocr_proceso_estado WHERE solicitud_id=@s AND activo=TRUE ORDER BY id DESC LIMIT 1", cn))
+            { cmd.Parameters.AddWithValue("@s", solicitudId); cn.Open(); return Convert.ToString(cmd.ExecuteScalar()); }
+        }
+
+        public System.Data.DataTable ObtenerSeguimiento(int solicitudId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            using (var cmd = new NpgsqlCommand("SELECT fecha,accion,observacion FROM public.aocr_evento_workflow WHERE solicitud_id=@s ORDER BY fecha,id", cn))
+            { cn.Open(); EnsureSchema(cn, null); cmd.Parameters.AddWithValue("@s", solicitudId); var t = new System.Data.DataTable(); using(var r=cmd.ExecuteReader()) t.Load(r); return t; }
+        }
+
+        public void RegistrarAvance(int solicitudId, int inspeccionId, int usuarioId, string evento, string referencia, string mensaje)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            { cn.Open(); using(var tx=cn.BeginTransaction()) {
+                EnsureSchema(cn, tx);
+                var key=evento+":"+solicitudId+":"+referencia;
+                RegistrarEvento(cn,tx,key,evento,solicitudId,inspeccionId,usuarioId,string.Empty,string.Empty,string.Empty,mensaje);
+                NotificarAvanceRt(cn,tx,solicitudId,key,mensaje);
+                tx.Commit();
+            } }
+        }
+
+        public DocumentosFinalesResultado RevisarPaqueteCoordinador(int solicitudId, int inspeccionId, int usuarioId, string rol, long versionEsperada, bool devolver, string observacion, string baseUrl)
+        {
+            if (!AocrRolesInstitucionales.EsCoordinador(rol) || usuarioId<=0) throw new UnauthorizedAccessException("Solo el Coordinador activo puede revisar el paquete.");
+            if (devolver && string.IsNullOrWhiteSpace(observacion)) throw new InvalidOperationException("Indique el motivo de devolución.");
+            using(var cn=new NpgsqlConnection(_cs)) { cn.Open(); using(var tx=cn.BeginTransaction()) {
+                EnsureSchema(cn,tx); LockSolicitud(cn,tx,solicitudId);
+                var exp=CargarExpediente(cn,tx,solicitudId,inspeccionId);
+                if(exp==null || exp.EstadoProceso!=AocrEstadosProceso.DocumentosFinalesCoordinador) throw new InvalidOperationException("El paquete ya no está pendiente del Coordinador.");
+                var aocr=CargarDocumentoParaUpdate(cn,tx,solicitudId,TipoAocr);
+                var cl=CargarDocumentoParaUpdate(cn,tx,solicitudId,TipoCondiciones);
+                if(cl==null || !cl.Bloqueado || Math.Max(aocr?.VersionConcurrencia ?? 0,cl.VersionConcurrencia)!=versionEsperada) throw new InvalidOperationException("La versión cambió. Recargue los documentos antes de revisar.");
+                if (!devolver) { ValidarInformesPorEstacion(cn,tx,solicitudId); ValidarSinObservacionesPendientes(cn,tx,solicitudId,inspeccionId); }
+                var nuevo=devolver?AocrEstadosProceso.DocumentosFinalesDevueltos:AocrEstadosProceso.DocumentosFinalesEnFirma;
+                using(var cmd=new NpgsqlCommand(@"UPDATE public.aocr_tbdocumento_generado SET bloqueado=@bloqueado,
+estado=CASE WHEN @devolver THEN @nuevo WHEN UPPER(tipo_documento)='RECONOCIMIENTO' THEN @aocr ELSE @cl END,
+version_concurrencia=version_concurrencia+1 WHERE codigo_solicitud=@s AND vigente=TRUE AND estado=@anterior",cn,tx)) {
+                    cmd.Parameters.AddWithValue("@bloqueado",!devolver);cmd.Parameters.AddWithValue("@devolver",devolver);cmd.Parameters.AddWithValue("@nuevo",nuevo);
+                    cmd.Parameters.AddWithValue("@aocr",AocrEstadosProceso.AocrListoParaFirma);cmd.Parameters.AddWithValue("@cl",AocrEstadosProceso.PendienteFirmaCondicionesDcav);
+                    cmd.Parameters.AddWithValue("@s",solicitudId);cmd.Parameters.AddWithValue("@anterior",AocrEstadosProceso.DocumentosFinalesCoordinador);cmd.ExecuteNonQuery();
+                }
+                CambiarEstadoExpediente(cn,tx,solicitudId,inspeccionId,nuevo,"REVISION_DOCUMENTOS_FINALES",devolver?"INSPECTOR":"DCAV",usuarioId,observacion??string.Empty);
+                ActualizarEstadoSolicitud(cn,tx,solicitudId,nuevo,usuarioId);
+                if(!devolver) using(var cmd=new NpgsqlCommand(@"UPDATE public.aocr_tbinforme_inspeccion r SET estado_informe='PENDIENTE_REVISION_INFORME_DCAV'
+FROM (SELECT DISTINCT ON(x.codigo_inspeccion,x.estacion_id) x.codigo_informe FROM public.aocr_tbinforme_inspeccion x
+JOIN public.aocr_tbinspeccion i ON i.codigo_inspeccion=x.codigo_inspeccion WHERE i.codigo_solicitud=@s
+ORDER BY x.codigo_inspeccion,x.estacion_id,x.version DESC,x.codigo_informe DESC) actual
+WHERE r.codigo_informe=actual.codigo_informe AND r.firmado_inspector=TRUE AND UPPER(r.estado_informe) NOT LIKE '%APROBADO%'",cn,tx))
+                {cmd.Parameters.AddWithValue("@s",solicitudId);cmd.ExecuteNonQuery();}
+                var evento=devolver?"PAQUETE_DEVUELTO_INSPECTOR":"PAQUETE_REVISADO_COORDINADOR";
+                var key=evento+":"+solicitudId+":"+versionEsperada;
+                var mensaje=devolver?"El Coordinador devolvió los documentos al Inspector. "+observacion:"El Coordinador revisó CL y AOCR y los remitió a DCAV.";
+                RegistrarEvento(cn,tx,key,evento,solicitudId,inspeccionId,usuarioId,rol,exp.EstadoProceso,nuevo,mensaje);
+                NotificarAvanceRt(cn,tx,solicitudId,key,mensaje);
+                var destinos=devolver?ResolverDestinatarios(cn,tx,AocrRolesInstitucionales.InspectorSqlTokens).Where(d=>d.UsuarioId==exp.InspectorId).ToList():ResolverDestinatarios(cn,tx,AocrRolesInstitucionales.DircavSqlTokens);
+                if(destinos.Count==0) throw new InvalidOperationException("No hay destinatarios activos para la remisión.");
+                foreach(var d in destinos) EncolarAviso(cn,tx,d,solicitudId,key,mensaje,"/FirmaAocr/Index?solicitudId="+solicitudId,baseUrl);
+                tx.Commit(); return new DocumentosFinalesResultado{Exitoso=true,EstadoExpediente=nuevo,Mensaje=mensaje};
+            } }
+        }
+
+        private static void ValidarInformesPorEstacion(NpgsqlConnection cn, NpgsqlTransaction tx, int solicitudId)
+        {
+            // Locks follow the request lock; no report may change during the package transition.
+            using(var cmd=new NpgsqlCommand("SELECT codigo_informe FROM public.aocr_tbinforme_inspeccion WHERE codigo_inspeccion IN (SELECT codigo_inspeccion FROM public.aocr_tbinspeccion WHERE codigo_solicitud=@s) FOR UPDATE",cn,tx))
+            {cmd.Parameters.AddWithValue("@s",solicitudId);cmd.ExecuteNonQuery();}
+            const string sql=@"SELECT COUNT(*) FROM public.aocr_tbinspeccion i
+LEFT JOIN public.aocr_tbsolicitud_estacion e ON e.solicitud_id=i.codigo_solicitud AND e.activo=TRUE AND (e.inspeccion_id IS NULL OR e.inspeccion_id=i.codigo_inspeccion)
+LEFT JOIN LATERAL(SELECT x.* FROM public.aocr_tbinforme_inspeccion x WHERE x.codigo_inspeccion=i.codigo_inspeccion AND x.estacion_id IS NOT DISTINCT FROM e.id ORDER BY x.version DESC,x.codigo_informe DESC LIMIT 1) r ON TRUE
+WHERE i.codigo_solicitud=@s AND (r.codigo_informe IS NULL OR NOT COALESCE(r.finalizado,FALSE) OR NOT COALESCE(r.firmado_inspector,FALSE)
+OR UPPER(COALESCE(r.resultado,''))<>'SATISFACTORIO' OR COALESCE(r.ruta_documento_firmado,'')='' OR UPPER(COALESCE(r.estado_informe,'')) LIKE '%DEVUELT%');";
+            using(var cmd=new NpgsqlCommand(sql,cn,tx)){cmd.Parameters.AddWithValue("@s",solicitudId);if(Convert.ToInt32(cmd.ExecuteScalar())>0)throw new InvalidOperationException("Todas las estaciones deben tener su informe satisfactorio finalizado y firmado.");}
+        }
+
+        private static void EncolarAviso(NpgsqlConnection cn,NpgsqlTransaction tx,Destinatario d,int solicitudId,string key,string mensaje,string url,string baseUrl)
+        {
+            bool duplicado;
+            var enlace=string.IsNullOrWhiteSpace(baseUrl)?"<p>Puede consultar el avance ingresando al sistema AOCR.</p>":"<p><a href=\""+Html(CombinarUrl(baseUrl,url))+"\">Consultar expediente</a></p>";
+            new EmailQueueService().EncolarConAdjuntosEnTransaccion(cn,tx,new EmailQueueItem {Para=d.Email,ParaNombre=d.Nombre,Asunto="Sistema AOCR - avance del trámite",Cuerpo="<p>"+Html(mensaje)+"</p>"+enlace,Estado=EstadoEmail.Pendiente,SolicitudId=solicitudId,EventKey=key+":"+d.UsuarioId,TipoNotificacion="AVANCE_AOCR",CorrelationId="AVANCE-"+solicitudId,EsHtml=true,MaxIntentos=5},null,out duplicado);
+            InsertarNotificacionInterna(cn,tx,d.UsuarioId,"AVANCE_AOCR","Avance del trámite AOCR",mensaje,url,key+":"+d.UsuarioId+":INTERNA",solicitudId);
+        }
+
+        internal static void NotificarAvanceRt(NpgsqlConnection cn,NpgsqlTransaction tx,int solicitudId,string key,string mensaje)
+        {
+            var rt=ResolverRt(cn,tx,solicitudId);
+            if(rt==null) throw new InvalidOperationException("El RT del trámite no tiene correo válido; actualice sus datos antes de continuar.");
+            EncolarAviso(cn,tx,rt,solicitudId,key,mensaje,"/SolicitudAOCR/Detalle/"+solicitudId,string.Empty);
+        }
+
         public DocumentosFinalesWorkflowDAO()
         {
             var configured = ConfigurationManager.ConnectionStrings["AOCRConnection"];
@@ -70,6 +164,7 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                         LockSolicitud(cn, tx, request.SolicitudId);
                         var expediente = CargarExpediente(cn, tx, request.SolicitudId, request.InspeccionId);
                         ValidarInspectorYInforme(expediente, request);
+                        ValidarInformesPorEstacion(cn,tx,request.SolicitudId);
 
                         var aocr = CargarDocumentoParaUpdate(cn, tx, request.SolicitudId, TipoAocr);
                         var condiciones = CargarDocumentoParaUpdate(cn, tx, request.SolicitudId, TipoCondiciones);
@@ -85,27 +180,28 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                         if (request.RequiereAocr) ValidarEvidencia(aocr, request.Aocr, TipoAocr);
                         if (request.RequiereCondiciones) ValidarEvidencia(condiciones, request.Condiciones, TipoCondiciones);
 
-                        if (request.RequiereAocr) ActualizarDocumentoEnviado(cn, tx, aocr.CodigoDocumento, AocrEstadosProceso.AocrListoParaFirma, request.InspectorId);
-                        if (request.RequiereCondiciones) ActualizarDocumentoEnviado(cn, tx, condiciones.CodigoDocumento, AocrEstadosProceso.PendienteFirmaCondicionesDcav, request.InspectorId);
+                        if (request.RequiereAocr) ActualizarDocumentoEnviado(cn, tx, aocr.CodigoDocumento, AocrEstadosProceso.DocumentosFinalesCoordinador, request.InspectorId);
+                        if (request.RequiereCondiciones) ActualizarDocumentoEnviado(cn, tx, condiciones.CodigoDocumento, AocrEstadosProceso.DocumentosFinalesCoordinador, request.InspectorId);
                         var descripcionEnvio = request.RequiereAocr
                             ? "AOCR y Condiciones enviados a DCAV para revision, firma de Condiciones y remision institucional del AOCR."
                             : "Condiciones y Limitaciones enviadas para firma DCAV según Módulo 8.";
                         CambiarEstadoExpediente(cn, tx, request.SolicitudId, request.InspeccionId,
-                            AocrEstadosProceso.DocumentosFinalesEnFirma, "FIRMAS_INSTITUCIONALES", "DCAV",
+                            AocrEstadosProceso.DocumentosFinalesCoordinador, "REVISION_DOCUMENTOS_FINALES", "COORDINADOR",
                             request.InspectorId, descripcionEnvio);
-                        ActualizarEstadoSolicitud(cn, tx, request.SolicitudId, AocrEstadosProceso.DocumentosFinalesEnFirma, request.InspectorId);
-                        RegistrarEvento(cn, tx, "DOCUMENTOS_FINALES_ENVIADOS_FIRMA:" + request.SolicitudId + ":" + (aocr != null ? aocr.VersionDocumento : 0) + ":" + (condiciones != null ? condiciones.VersionDocumento : 0),
+                        ActualizarEstadoSolicitud(cn, tx, request.SolicitudId, AocrEstadosProceso.DocumentosFinalesCoordinador, request.InspectorId);
+                        RegistrarEvento(cn, tx, "DOCUMENTOS_FINALES_ENVIADOS_FIRMA:" + request.SolicitudId + ":" + (aocr != null ? aocr.VersionDocumento : 0) + ":" + (condiciones != null ? condiciones.VersionDocumento : 0) + ":" + Math.Max(aocr?.VersionConcurrencia ?? 0,condiciones?.VersionConcurrencia ?? 0),
                             "DOCUMENTOS_FINALES_ENVIADOS_FIRMA", request.SolicitudId, request.InspeccionId,
                             request.InspectorId, request.InspectorNombre, AocrEstadosProceso.DocumentosFinalesPorGenerar,
-                            AocrEstadosProceso.DocumentosFinalesEnFirma, "AOCR=" + (aocr != null ? aocr.VersionDocumento : 0) + ";CONDICIONES=" + (condiciones != null ? condiciones.VersionDocumento : 0));
+                            AocrEstadosProceso.DocumentosFinalesCoordinador, "AOCR=" + (aocr != null ? aocr.VersionDocumento : 0) + ";CONDICIONES=" + (condiciones != null ? condiciones.VersionDocumento : 0));
 
-                        var dirdac = request.RequiereAocr ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.DircavSqlTokens) : new List<Destinatario>();
-                        var dcav = request.RequiereCondiciones ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.DcavSqlTokens) : new List<Destinatario>();
+                        var dirdac = request.RequiereAocr ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.CoordinadorSqlTokens) : new List<Destinatario>();
+                        var dcav = request.RequiereCondiciones ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.CoordinadorSqlTokens) : new List<Destinatario>();
                         if (request.RequiereAocr && dirdac.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
                         if (request.RequiereCondiciones && dcav.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
 
                         if (request.RequiereAocr) EncolarRama(cn, tx, expediente, request, aocr, dirdac, true);
                         if (request.RequiereCondiciones) EncolarRama(cn, tx, expediente, request, condiciones, dcav, false);
+                        NotificarAvanceRt(cn, tx, request.SolicitudId, "PAQUETE_COORDINADOR:" + (aocr?.CodigoDocumento ?? condiciones.CodigoDocumento) + ":" + (aocr?.VersionConcurrencia ?? condiciones.VersionConcurrencia), "Documentos CL y AOCR enviados al Coordinador para revisión.");
                         tx.Commit();
                         return ResultadoEnvio(true, false, request.RequiereAocr, request.RequiereCondiciones);
                     }
@@ -152,6 +248,13 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
                             throw new InvalidOperationException("La firma no corresponde a la inspeccion vigente.");
 
                         InsertarFirma(cn, tx, request);
+                        NotificarAvanceRt(cn,tx,request.SolicitudId,"FIRMA_DOCUMENTO:"+doc.CodigoDocumento+":"+request.HashPdfFirmado,
+                            tipo==TipoCondiciones?"Condiciones y Limitaciones firmadas por DCAV.":"AOCR firmado por DIRDAC.");
+                        if(tipo==TipoCondiciones) {
+                            CambiarEstadoExpediente(cn,tx,request.SolicitudId,request.InspeccionId,AocrEstadosProceso.ClFirmadaDircav,"REMISION_AOCR_DIRDAC","DCAV",request.UsuarioId,"CL firmadas; pendiente remisi\u00f3n formal del AOCR por DCAV.");
+                            ActualizarEstadoSolicitud(cn,tx,request.SolicitudId,AocrEstadosProceso.ClFirmadaDircav,request.UsuarioId);
+                        }
+
                         const string update = @"UPDATE public.aocr_tbdocumento_generado SET estado=@estado,ruta_pdf_firmado=@ruta,
 hash_pdf_firmado=@hash,tamanio_pdf_firmado=@bytes,codigo_usuario_firma=@usuario,rol_firma=@rol,
 fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_documento=@id;";
@@ -277,12 +380,12 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
         private static void EncolarRama(NpgsqlConnection cn, NpgsqlTransaction tx, ExpedienteRow expediente, DocumentoFinalEnvioRequest request, AocrDocumentoGenerado doc, IList<Destinatario> destinatarios, bool esAocr)
         {
             var tipoVisible = esAocr ? "AOCR" : "Condiciones y Limitaciones";
-            var tipoEvento = esAocr ? "AOCR_PENDIENTE_REVISION_DCAV" : "CONDICIONES_PENDIENTES_FIRMA_DCAV";
-            var url = "/Dircav/Detalle/" + request.SolicitudId;
-            var asunto = esAocr ? "Sistema AOCR - AOCR pendiente de revision y remision por DCAV" : "Sistema AOCR - Condiciones y Limitaciones pendientes de firma";
+            var tipoEvento = esAocr ? "AOCR_PENDIENTE_REVISION_COORDINADOR" : "CONDICIONES_PENDIENTES_REVISION_COORDINADOR";
+            var url = "/FirmaAocr/Index?solicitudId=" + request.SolicitudId;
+            var asunto = esAocr ? "Sistema AOCR - AOCR pendiente de revision del Coordinador" : "Sistema AOCR - Condiciones pendientes de revision del Coordinador";
             foreach (var destinatario in destinatarios)
             {
-                var key = request.SolicitudId + ":" + request.InspeccionId + ":" + (esAocr ? "AOCR" : "CONDICIONES") + ":" + doc.VersionDocumento + ":PENDIENTE_FIRMA:" + destinatario.UsuarioId;
+                var key = request.SolicitudId + ":" + request.InspeccionId + ":" + (esAocr ? "AOCR" : "CONDICIONES") + ":" + doc.VersionDocumento + ":" + doc.VersionConcurrencia + ":PENDIENTE_REVISION:" + destinatario.UsuarioId;
                 var mensaje = "Solicitud " + expediente.NumeroSolicitud + "; compania " + expediente.Compania + "; inspeccion " + expediente.NumeroInspeccion + "; documento " + tipoVisible + "; enviado por " + request.InspectorNombre + ".";
                 InsertarNotificacionInterna(cn, tx, destinatario.UsuarioId, tipoEvento, asunto, mensaje, url, key + ":INTERNA", request.SolicitudId);
                 var queue = new EmailQueueService();
@@ -307,7 +410,7 @@ fecha_firma=NOW(),version_concurrencia=version_concurrencia+1 WHERE codigo_docum
         private static string ConstruirCuerpoPendiente(ExpedienteRow expediente, DocumentoFinalEnvioRequest request, string tipo, string url)
         {
             var sb = new StringBuilder();
-            sb.Append("<p>Existe un documento pendiente de revision institucional por DCAV.</p><ul>")
+            sb.Append("<p>Existe un documento pendiente de revision del Coordinador.</p><ul>")
               .Append("<li>Solicitud: ").Append(Html(expediente.NumeroSolicitud)).Append("</li>")
               .Append("<li>Compania: ").Append(Html(expediente.Compania)).Append("</li>")
               .Append("<li>Inspeccion: ").Append(Html(expediente.NumeroInspeccion)).Append("</li>")
@@ -384,8 +487,8 @@ WHERE (codigo_solicitud=@solicitud OR codigo_inspeccion=@inspeccion OR codigo_in
             if (expediente == null) throw new InvalidOperationException("Solicitud o inspeccion no encontrada.");
             if (request.InspectorId <= 0 || expediente.InspectorId != request.InspectorId)
                 throw new UnauthorizedAccessException("Solo el Inspector asignado puede finalizar los documentos.");
-            if (!expediente.InformeFinalizado || !expediente.InformeFirmadoInspector || !EsInformeAprobado(expediente.EstadoInforme))
-                throw new InvalidOperationException("El Informe Tecnico vigente debe estar firmado y aprobado por DIRDAC.");
+            if (!expediente.InformeFinalizado || !expediente.InformeFirmadoInspector)
+                throw new InvalidOperationException("El Informe Tecnico vigente debe estar finalizado y firmado por el Inspector.");
             if (string.IsNullOrWhiteSpace(expediente.RutaInformeFirmado) || string.IsNullOrWhiteSpace(expediente.HashInforme))
                 throw new InvalidOperationException("La evidencia firmada del Informe Tecnico vigente es incompleta.");
         }
@@ -399,31 +502,25 @@ WHERE (codigo_solicitud=@solicitud OR codigo_inspeccion=@inspeccion OR codigo_in
         private static void ValidarEstadoParaEnvio(string estado)
         {
             var e = (estado ?? string.Empty).Trim().ToUpperInvariant();
-            if (e != AocrEstadosProceso.DocumentosFinalesPorGenerar && e != AocrEstadosProceso.InformeTecnicoAprobadoDirdac
+            if (e != AocrEstadosProceso.DocumentosFinalesDevueltos && e != AocrEstadosProceso.InformeTecnicoFirmadoInspector && e != AocrEstadosProceso.PendienteRevisionInformeDcav && e != AocrEstadosProceso.PendienteRevisionInformeDirdac && e != AocrEstadosProceso.DocumentosFinalesPorGenerar && e != AocrEstadosProceso.InformeTecnicoAprobadoDirdac
                 && e != AocrEstadosProceso.InformeTecnicoAprobadoDcav)
                 throw new InvalidOperationException("El expediente no se encuentra habilitado para enviar documentos finales.");
         }
 
         private static bool EsEnvioYaConfirmado(string estado, AocrDocumentoGenerado aocr, AocrDocumentoGenerado condiciones, bool requiereAocr, bool requiereCondiciones)
         {
-            return string.Equals(estado, AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase)
-                && (!requiereAocr || (aocr != null && (string.Equals(aocr.Estado, AocrEstadosProceso.AocrListoParaFirma, StringComparison.OrdinalIgnoreCase) || string.Equals(aocr.Estado, AocrEstadosProceso.AocrFirmadoDirdac, StringComparison.OrdinalIgnoreCase))))
-                && (!requiereCondiciones || (condiciones != null && (string.Equals(condiciones.Estado, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase) || string.Equals(condiciones.Estado, AocrEstadosProceso.CondicionesFirmadasDcav, StringComparison.OrdinalIgnoreCase))));
+            return estado == AocrEstadosProceso.DocumentosFinalesCoordinador
+                && (!requiereAocr || (aocr != null && aocr.Bloqueado && aocr.Estado==estado))
+                && (!requiereCondiciones || (condiciones != null && condiciones.Bloqueado && condiciones.Estado==estado));
         }
 
         private static DocumentosFinalesResultado ResultadoEnvio(bool ok, bool idempotente, bool requiereAocr, bool requiereCondiciones)
         {
-            return new DocumentosFinalesResultado
-            {
-                Exitoso = ok,
-                Idempotente = idempotente,
-                EstadoExpediente = AocrEstadosProceso.DocumentosFinalesEnFirma,
-                EstadoAocr = requiereAocr ? AocrEstadosProceso.AocrListoParaFirma : "NO_APLICA",
-                EstadoCondiciones = requiereCondiciones ? AocrEstadosProceso.PendienteFirmaCondicionesDcav : "NO_APLICA",
-                Mensaje = idempotente
-                    ? "Los documentos requeridos ya fueron enviados; no se duplicaron estados ni notificaciones."
-                    : (requiereAocr ? "Los documentos fueron bloqueados y enviados a DCAV. El AOCR requiere remision de DCAV antes de la firma del Director General." : "Condiciones y Limitaciones fueron bloqueadas y enviadas a DCAV. La notificación quedó pendiente en la cola.")
-            };
+            return new DocumentosFinalesResultado { Exitoso=ok, Idempotente=idempotente,
+                EstadoExpediente=AocrEstadosProceso.DocumentosFinalesCoordinador,
+                EstadoAocr=requiereAocr?AocrEstadosProceso.DocumentosFinalesCoordinador:"NO_APLICA",
+                EstadoCondiciones=requiereCondiciones?AocrEstadosProceso.DocumentosFinalesCoordinador:"NO_APLICA",
+                Mensaje=idempotente?"El paquete ya fue enviado; no se duplicaron avisos.":"CL y AOCR enviados al Coordinador para su revisi\u00f3n antes de DCAV." };
         }
 
         private static void ActualizarDocumentoEnviado(NpgsqlConnection cn, NpgsqlTransaction tx, int documentoId, string estado, int usuarioId)

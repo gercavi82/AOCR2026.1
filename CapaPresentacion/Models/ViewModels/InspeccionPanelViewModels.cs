@@ -46,6 +46,7 @@ namespace CapaPresentacion.Models.ViewModels
 
     public class FirmaInspectorPanelVm
     {
+        public int SolicitudId { get; set; }
         public int CodigoInspeccion { get; set; }
         public InspeccionInformeTecnico InformeTecnico { get; set; }
         public bool UsaFlujoListaVerificacionEae { get; set; }

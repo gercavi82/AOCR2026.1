@@ -8,7 +8,7 @@
         }
         @foreach (var informe in Model.Informes)
         {
-            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerInformeFirmadoInspectorDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme })">Informe firmado · @informe.EstacionesInspeccionManual</a>
+            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerInforme", "Inspeccion", new { id=informe.CodigoInspeccion, codigoInforme=informe.CodigoInforme })">Informe firmado · @informe.EstacionesInspeccionManual</a>
             if (Model.PuedeDecidirInformes && !informe.FirmadoDirdac)
             {
                 <a class="btn btn-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme })">Revisar y resolver informe · @informe.EstacionesInspeccionManual</a>
@@ -16,7 +16,7 @@
         }
         @foreach (var documento in Model.Documentos)
         {
-            <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId=Model.SolicitudId, tipoDocumento=documento.TipoDocumento })">@(documento.TipoDocumento == "RECONOCIMIENTO" ? "Revisar AOCR" : "Revisar Condiciones y Limitaciones")</a>
+            <a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="@Url.Action("VerPdf", "FirmaAocr", new { solicitudId=Model.SolicitudId, tipoDocumento=documento.TipoDocumento, firmado=!string.IsNullOrWhiteSpace(documento.RutaPdfFirmado) })">@(documento.TipoDocumento == "RECONOCIMIENTO" ? "Revisar AOCR" : "Revisar Condiciones y Limitaciones") @(!string.IsNullOrWhiteSpace(documento.RutaPdfFirmado)?"firmado":"generado")</a>
         }
     </div>
 </section>

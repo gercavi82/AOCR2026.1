@@ -217,6 +217,81 @@ class RemisionDcavTest {
  sql(regularizar);sql(regularizar);
  Check(new RevisionDocumentalCoordinadorService().EstaAceptadaParaInspector(15,79)&&Convert.ToString(scalar("SELECT estado_documental FROM aocr_tbinspeccion WHERE codigo_inspeccion=150"))=="ACEPTADA","Regularizacion repetible habilita expediente previamente aceptado");
  Check(Convert.ToString(scalar("SELECT estado FROM aocr_revision_documental_coordinador WHERE solicitud_id=13"))=="PENDIENTE_ACEPTACION_DCAV","Regularizacion no acepta expedientes pendientes");
+
+ // Paquete final: pruebas reales en PostgreSQL desechable, sin SMTP.
+ sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS tipo_solicitud integer DEFAULT 1;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS numero_solicitud text;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS razon_social text;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS nombre_operador text;
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS deleted_at timestamp;
+ ALTER TABLE aocr_tbinspeccion ADD COLUMN IF NOT EXISTS numero_inspeccion text;
+ ALTER TABLE aocr_tbinspeccion ADD COLUMN IF NOT EXISTS codigo_inspector integer;
+ UPDATE aocr_tbinspeccion SET codigo_inspector=79,numero_inspeccion='INS-150' WHERE codigo_inspeccion=150;
+ UPDATE aocr_tbsolicitud SET codigo_usuario=90,tipo_solicitud=1,numero_solicitud='AOCR-PRUEBA-15' WHERE codigo_solicitud=15;
+ DELETE FROM aocr_tbsolicitud_estacion WHERE solicitud_id=15;
+ INSERT INTO aocr_tbsolicitud_estacion(id,solicitud_id,estacion_codigo,inspeccion_id,activo) VALUES(101,15,'UIO',150,true),(102,15,'GYE',150,true);
+ UPDATE aocr_tbinforme_inspeccion SET resultado='SATISFACTORIO' WHERE codigo_inspeccion=150;
+ CREATE TABLE IF NOT EXISTS aocr_proceso_estado(id serial primary key,solicitud_id integer,inspeccion_id integer,estado_actual text,etapa_actual text,rol_responsable text,observacion text,activo boolean,version integer,fecha_estado timestamp,created_at timestamp,created_by integer,updated_at timestamp,updated_by integer);
+ UPDATE aocr_proceso_estado SET activo=false WHERE solicitud_id=15;
+ INSERT INTO aocr_proceso_estado(solicitud_id,inspeccion_id,estado_actual,activo,version) VALUES(15,150,'DOCUMENTOS_FINALES_POR_GENERAR',true,1);
+ CREATE TABLE aocr_tbdocumento_generado(codigo_documento serial primary key,codigo_solicitud integer,codigo_inspeccion integer,tipo_documento text,numero_aocr text,nombre_archivo text,ruta_documento text,tamanio_pdf bigint,estado text,fecha_generacion timestamp,codigo_usuario integer,usuario_nombre text,created_at timestamp,hash_pdf_firmado text,codigo_usuario_liberacion integer);
+ CREATE TABLE aocr_tbnoconformidad(codigo_solicitud integer,codigo_inspeccion integer,codigo_inspeccion_nueva integer,fecha_cierre timestamp,estado text);
+ INSERT INTO usuario VALUES(96,'COORD','Coordinador','Prueba','COORDINADOR','coordinador@example.test',1);
+ INSERT INTO rol VALUES(3,'COORDINADOR',true),(4,'INSPECTOR',true); INSERT INTO usuario_rol VALUES('COORD',3,true),('INSPECTOR',4,true);");
+ var paquetes=new DocumentosFinalesWorkflowDAO();
+ paquetes.ObtenerVigente(15,"RECONOCIMIENTO"); // Construye columnas adicionales y outbox.
+ sql(@"INSERT INTO aocr_tbdocumento_generado(codigo_solicitud,codigo_inspeccion,tipo_documento,ruta_documento,tamanio_pdf,estado,completo,hash_pdf)
+ VALUES(15,150,'RECONOCIMIENTO','/prueba/aocr.pdf',10,'GENERADO',true,'HASH_AOCR'),(15,150,'CONDICIONES_LIMITACIONES','/prueba/cl.pdf',10,'GENERADO',true,'HASH_CL');
+ ALTER TABLE aocr_tbdocumento_generado ADD CONSTRAINT ck_documento_final_estado CHECK(estado IN ('GENERADO','AOCR_LISTO_PARA_FIRMA','PENDIENTE_FIRMA_CONDICIONES_DCAV'));");
+ var root=Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261022_revision_paquete_coordinador.sql")));
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261022_revision_paquete_coordinador.sql")));
+ Func<DocumentoFinalEnvioRequest> envioPaquete=()=>{
+ var ad=paquetes.ObtenerVigente(15,"RECONOCIMIENTO");var cd=paquetes.ObtenerVigente(15,"CONDICIONES_LIMITACIONES");
+ Func<AocrDocumentoGenerado,DocumentoFinalEvidencia> ev=d=>new DocumentoFinalEvidencia{DocumentoId=d.CodigoDocumento,InspeccionId=150,Version=d.VersionDocumento,TipoDocumento=d.TipoDocumento,RutaPdf=d.RutaDocumento,HashPdf=d.HashPdf,TamanioPdf=d.TamanioPdf.Value};
+ return new DocumentoFinalEnvioRequest{SolicitudId=15,InspeccionId=150,InspectorId=79,InspectorNombre="Inspector",Aocr=ev(ad),Condiciones=ev(cd),RequiereAocr=true,RequiereCondiciones=true};};
+ sql("UPDATE aocr_tbinforme_inspeccion SET firmado_inspector=false WHERE estacion_id=102;");
+ var rechazo=false;try{paquetes.FinalizarYEncolar(envioPaquete());}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdocumento_generado WHERE bloqueado=true"))==0,"Informe GYE pendiente bloquea envio y revierte paquete completo");
+ sql("UPDATE aocr_tbinforme_inspeccion SET firmado_inspector=true WHERE estacion_id=102;");
+ var enviado=paquetes.FinalizarYEncolar(envioPaquete());
+ Check(enviado.Exitoso&&paquetes.ObtenerEstado(15)=="DOCUMENTOS_FINALES_COORDINADOR","Paquete se remite al Coordinador, no a DCAV ni DIRDAC");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND tipo_notificacion IN ('AOCR_PENDIENTE_REVISION_COORDINADOR','CONDICIONES_PENDIENTES_REVISION_COORDINADOR') AND to_address='coordinador@example.test'"))==2,"Avisos de ambos documentos al Coordinador en la transaccion");
+ Check(paquetes.FinalizarYEncolar(envioPaquete()).Idempotente,"Doble clic no duplica paquete ni avisos");
+ var verPaquete=paquetes.ObtenerVigente(15,"CONDICIONES_LIMITACIONES").VersionConcurrencia;
+ rechazo=false;try{paquetes.RevisarPaqueteCoordinador(15,150,97,"DIRCAV",verPaquete,false,"","");}catch(UnauthorizedAccessException){rechazo=true;}
+ Check(rechazo,"DCAV no puede saltarse la revision del Coordinador");
+ rechazo=false;try{paquetes.RevisarPaqueteCoordinador(15,150,96,"COORDINADOR",verPaquete-1,false,"","");}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo&&paquetes.ObtenerEstado(15)=="DOCUMENTOS_FINALES_COORDINADOR","Version obsoleta no remite ni cambia estado");
+ var revisado=paquetes.RevisarPaqueteCoordinador(15,150,96,"COORDINADOR",verPaquete,false,"Revision conforme","");
+ Check(revisado.Exitoso&&paquetes.ObtenerEstado(15)=="DOCUMENTOS_FINALES_EN_FIRMA","Coordinador revisa y remite a DCAV");
+ Check(paquetes.ObtenerVigente(15,"CONDICIONES_LIMITACIONES").Estado=="PENDIENTE_FIRMA_CONDICIONES_DCAV"&&paquetes.ObtenerVigente(15,"RECONOCIMIENTO").Estado=="AOCR_LISTO_PARA_FIRMA","CL habilitada a DCAV; AOCR aun no se envia a DIRDAC");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND tipo_notificacion='AVANCE_AOCR' AND to_address='rt@example.test'"))>=2,"RT recibe avances del envio y revision del paquete");
+
+ // Devolucion y reenvio: no reescribe informes firmados ni pierde avisos.
+ sql("UPDATE aocr_proceso_estado SET estado_actual='DOCUMENTOS_FINALES_COORDINADOR' WHERE solicitud_id=15 AND activo=true; UPDATE aocr_tbdocumento_generado SET estado='DOCUMENTOS_FINALES_COORDINADOR' WHERE codigo_solicitud=15;");
+ verPaquete=paquetes.ObtenerVigente(15,"CONDICIONES_LIMITACIONES").VersionConcurrencia;
+ rechazo=false;try{paquetes.RevisarPaqueteCoordinador(15,150,96,"COORDINADOR",verPaquete,true,"","");}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo,"Devolucion exige motivo antes de modificar el paquete");
+ Check(paquetes.RevisarPaqueteCoordinador(15,150,96,"COORDINADOR",verPaquete,true,"Corregir datos","").Exitoso,"Coordinador devuelve paquete al Inspector");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdocumento_generado WHERE codigo_solicitud=15 AND bloqueado=false AND estado='DOCUMENTOS_FINALES_DEVUELTOS'"))==2,"Devolucion desbloquea ambas versiones sin tocar firmas de informes");
+ Check(paquetes.FinalizarYEncolar(envioPaquete()).Exitoso,"Inspector puede volver a remitir el paquete devuelto");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND tipo_notificacion='AOCR_PENDIENTE_REVISION_COORDINADOR' AND to_address='coordinador@example.test'"))==2,"Reenvio genera nuevo aviso; doble clic anterior no duplicaba");
+ // Jefaturas: invoca la misma operacion transaccional usada por la entrega final.
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261022_destinatarios_jefaturas_aeropuertos.sql")));
+ sql("INSERT INTO aocr_jefatura_aeropuerto_correo(estacion_codigo,correo,nombre) VALUES('UIO','jefatura.uio@example.test','Jefatura UIO'),('GYE','jefatura.gye@example.test','Jefatura GYE');");
+ var entregaTipo=typeof(EntregaFinalDAO);
+ Func<string,Dictionary<string,object>,object> privado=(nombre,campos)=>{var t=entregaTipo.GetNestedType(nombre,System.Reflection.BindingFlags.NonPublic);var o=Activator.CreateInstance(t,true);foreach(var campo in campos)t.GetField(campo.Key).SetValue(o,campo.Value);return o;};
+ var expEntrega=privado("Expediente",new Dictionary<string,object>{{"SolicitudId",15},{"NumeroSolicitud","AOCR-15"}});
+ var docA=privado("DocumentoEntrega",new Dictionary<string,object>{{"Version",1},{"Ruta","/App_Data/Uploads/AOCR/Firmados/aocr.pdf"},{"Nombre","AOCR.pdf"},{"Tamanio",10L},{"HashFirmado","HASH_A"}});
+ var docCl=privado("DocumentoEntrega",new Dictionary<string,object>{{"Version",1},{"Ruta","/App_Data/Uploads/AOCR/Firmados/cl.pdf"},{"Nombre","CL.pdf"},{"Tamanio",11L},{"HashFirmado","HASH_CL"}});
+ var encolarJefaturas=entregaTipo.GetMethod("EncolarJefaturas",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+ using(var tx=c.BeginTransaction()) {encolarJefaturas.Invoke(null,new object[]{c,tx,expEntrega,docA,docCl,new SolicitarEntregaFinalRequest{SolicitudId=15},"PRUEBA-JEFATURAS"});tx.Commit();}
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE tipo_notificacion='ENTREGA_FINAL_JEFATURA' AND solicitud_id=15"))==2,"Una copia final para cada jefatura de estacion involucrada");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_attachment a JOIN email_queue q ON q.id=a.email_queue_id WHERE q.tipo_notificacion='ENTREGA_FINAL_JEFATURA'"))==4,"Cada jefatura recibe AOCR y CL adjuntos");
+ using(var tx=c.BeginTransaction()) {encolarJefaturas.Invoke(null,new object[]{c,tx,expEntrega,docA,docCl,new SolicitarEntregaFinalRequest{SolicitudId=15},"PRUEBA-JEFATURAS"});tx.Commit();}
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE tipo_notificacion='ENTREGA_FINAL_JEFATURA' AND solicitud_id=15"))==2,"Reintento de entrega a jefaturas no duplica copias");
+
  }
  }
 }

@@ -203,7 +203,7 @@ namespace CapaPresentacion.Controllers
 
         [ChildActionOnly]
         [OverrideAuthorization]
-        [Authorize(Roles = "DIRCAV,DCAV,DirectorCertificacionesDcav,DIRDAC,DirectorGeneral")]
+        [Authorize(Roles = "DIRCAV,DCAV,DirectorCertificacionesDcav,DIRDAC,DirectorGeneral,COORDINADOR,Coordinador,Coordinacion,CoordinadorInspecciones,CoordinacionLegal,CoordinadorLegal")]
         public ActionResult DocumentosRevisionExpediente(int solicitudId)
         {
             var listas = new ListaVerificacionOperacionalEaeDAO().ListarPorSolicitud(solicitudId)
