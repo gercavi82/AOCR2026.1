@@ -306,16 +306,16 @@
         form.addEventListener('submit', function (event) {
             event.preventDefault();
             if (form.classList.contains('firma-aocr-is-loading')) { return; }
-            if (!window.confirm('Se bloquearan ambos documentos y se enviaran simultaneamente a DIRDAC y DCAV. ¿Desea continuar?')) { return; }
+            if (!window.confirm('Se bloquearán los documentos y se enviarán al Coordinador para su revisión. ¿Desea continuar?')) { return; }
             setBusy(form, true);
-            showResult('Finalizando ambos documentos y creando las dos ramas de firma...', true);
+            showResult('Enviando los documentos al Coordinador y registrando sus avisos...', true);
             fetch(form.getAttribute('action'), {
                 method: 'POST',
                 body: new FormData(form),
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': tokenFrom(form) }
             }).then(parseJson).then(function (payload) {
-                showResult(payload.message || 'Documentos enviados para firma.', true, payload.data);
+                showResult(payload.message || 'Documentos enviados al Coordinador para revisión.', true, payload.data);
                 window.setTimeout(function () {
                     if (payload.data && payload.data.redirectUrl) {
                         window.location.assign(payload.data.redirectUrl);

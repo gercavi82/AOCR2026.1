@@ -1,0 +1,61 @@
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaDatos.Models.CorreoInstitucionalHistorialModel>>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    var correo = ViewBag.CorreoInstitucional as CapaDatos.Models.CorreoInstitucionalModel;
+    ViewBag.Title = "Historial de correos institucionales";
+}
+
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
+    { "Title", "Historial de cambios" },
+    { "Subtitle", correo != null ? correo.NombreArea + " (" + correo.CodigoArea + ")" : "Correo institucional" }
+})
+
+<div class="card">
+    <div class="card-body table-responsive">
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Acción</th>
+                    <th>Correo anterior</th>
+                    <th>Correo nuevo</th>
+                    <th>CC anterior</th>
+                    <th>CC nuevo</th>
+                    <th>BCC anterior</th>
+                    <th>BCC nuevo</th>
+                    <th>Usuario</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.FechaModificacion.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="badge bg-info">@item.Accion</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(item.CorreoAnterior) ? "-" : item.CorreoAnterior)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.CorreoNuevo) ? "-" : item.CorreoNuevo)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.CcAnterior) ? "-" : item.CcAnterior)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.CcNuevo) ? "-" : item.CcNuevo)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.BccAnterior) ? "-" : item.BccAnterior)</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.BccNuevo) ? "-" : item.BccNuevo)</td>
+                            <td>@item.UsuarioModificacion</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="9" class="text-center text-muted">No existen cambios registrados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end mt-3">
+    <a class="btn btn-outline-secondary" href="@Url.Action("Index")">Volver</a>
+</div>

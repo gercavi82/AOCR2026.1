@@ -1,0 +1,230 @@
+@inherits System.Web.Mvc.WebViewPage
+@using CapaNegocio.Helpers
+@{
+    Layout = null;
+    var useInlinePdfBranding = ViewBag.UseInlinePdfBranding == true;
+    var inlinePdfBrandingAssets = useInlinePdfBranding
+        ? PdfBrandingHelper.ResolveHojaAssets("Views/Shared/_PdfLayoutDGAC.cshtml")
+        : null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: "Times New Roman", serif;
+            font-size: 12px;
+            color: #111;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        body {
+            padding: 0;
+        }
+
+        .pdf-inline-header,
+        .pdf-inline-footer {
+            position: fixed;
+            left: 8mm;
+            right: 8mm;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .pdf-inline-header {
+            top: 0;
+            height: 30mm;
+        }
+
+        .pdf-inline-footer {
+            bottom: 0;
+            height: 26mm;
+        }
+
+        .pdf-inline-header img,
+        .pdf-inline-footer img {
+            position: absolute;
+            display: block;
+            border: 0;
+        }
+
+        .pdf-hoja-barra-header {
+            top: 0;
+            right: 0;
+            width: 129mm;
+            height: 3.2mm;
+        }
+
+        .pdf-hoja-escudo {
+            left: 0;
+            top: 6.2mm;
+            width: 34mm;
+            height: auto;
+        }
+
+        .pdf-hoja-dgca {
+            right: 0;
+            top: 8.2mm;
+            width: 82mm;
+            height: auto;
+        }
+
+        .pdf-hoja-barra-footer {
+            left: 0;
+            top: 0;
+            width: 72mm;
+            height: 3.2mm;
+        }
+
+        .pdf-hoja-direccion {
+            left: 0;
+            top: 7.2mm;
+            width: 64mm;
+            height: auto;
+        }
+
+        .pdf-hoja-nuevo {
+            right: 0;
+            top: 6.2mm;
+            width: 44mm;
+            height: auto;
+        }
+
+        #pdf-content {
+            position: relative;
+            z-index: 10;
+            padding: 30mm 8mm 26mm 8mm;
+            box-sizing: border-box;
+        }
+
+        .pdf-inner {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        .pdf-inner > :first-child {
+            margin-top: 0 !important;
+        }
+
+        .pdf-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin: 6px 0 2px;
+        }
+
+        .pdf-subtitle {
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            margin: 0 0 6px;
+        }
+
+        .pdf-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin: 10px 0 4px;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            word-break: break-word;
+        }
+
+            .pdf-table th, .pdf-table td {
+                border: 1px solid #222;
+                padding: 5px 4px;
+                font-size: 11px;
+                vertical-align: top;
+                overflow-wrap: anywhere;
+                word-wrap: break-word;
+                hyphens: auto;
+            }
+
+            .pdf-table th {
+                background: #f2f2f2;
+                font-weight: 700;
+                text-align: center;
+            }
+
+            .pdf-table td {
+                text-align: left;
+            }
+
+            .pdf-table .totales {
+                font-weight: 700;
+                background: #e6e6e6;
+            }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .small {
+            font-size: 10px;
+        }
+
+        .wrap {
+            white-space: normal;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+
+        .no-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+        }
+    </style>
+
+    @RenderSection("PdfHead", required: false)
+</head>
+
+<body>
+    @if (useInlinePdfBranding && inlinePdfBrandingAssets != null && inlinePdfBrandingAssets.TieneHeaderCompleto)
+    {
+        <div class="pdf-inline-header">
+            <img class="pdf-hoja-barra-header" src="@inlinePdfBrandingAssets.BarraDataUri" alt="" />
+            <img class="pdf-hoja-escudo" src="@inlinePdfBrandingAssets.EscudoDataUri" alt="Escudo Republica del Ecuador" />
+            <img class="pdf-hoja-dgca" src="@inlinePdfBrandingAssets.DgcaDataUri" alt="Direccion General de Aviacion Civil" />
+        </div>
+    }
+
+    @if (useInlinePdfBranding && inlinePdfBrandingAssets != null && inlinePdfBrandingAssets.TieneFooterCompleto)
+    {
+        <div class="pdf-inline-footer">
+            <img class="pdf-hoja-barra-footer" src="@inlinePdfBrandingAssets.BarraDataUri" alt="" />
+            <img class="pdf-hoja-direccion" src="@inlinePdfBrandingAssets.DireccionDataUri" alt="Direccion DGAC" />
+            <img class="pdf-hoja-nuevo" src="@inlinePdfBrandingAssets.NuevoDataUri" alt="El Nuevo Ecuador" />
+        </div>
+    }
+
+    <div id="pdf-content">
+        <div class="pdf-inner">
+            @RenderBody()
+        </div>
+    </div>
+</body>
+</html>

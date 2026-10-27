@@ -1,0 +1,35 @@
+@model CapaPresentacion.Models.FirmaAocrInstitucionalViewModel
+@{ var d=Model.DatosDocumentales ?? new CapaModelo.DatosDocumentalesAocr(); }
+<p><strong>Tipo de trámite:</strong> @CapaNegocio.Services.DatosDocumentalesAocrReglas.TipoTramite(Model.TipoSolicitud)</p>
+<fieldset class="mb-3"><legend>Permiso de Operación CNAC y AOC de origen</legend>
+    <div class="firma-aocr__form-grid">
+        <label class="firma-aocr__field"><span>Número del permiso CNAC *</span>@Html.TextBox("DatosDocumentales.PermisoCnacNumero",d.PermisoCnacNumero,new{maxlength=150,required="required"})</label>
+        <label class="firma-aocr__field"><span>Emisión del permiso CNAC *</span>@Html.TextBox("DatosDocumentales.PermisoCnacEmision",d.PermisoCnacEmision.HasValue?d.PermisoCnacEmision.Value.ToString("yyyy-MM-dd"):"",new{type="date",required="required"})</label>
+        <label class="firma-aocr__field"><span>Vencimiento del permiso CNAC *</span>@Html.TextBox("DatosDocumentales.PermisoCnacVencimiento",d.PermisoCnacVencimiento.HasValue?d.PermisoCnacVencimiento.Value.ToString("yyyy-MM-dd"):"",new{type="date",required="required"})</label>
+        <label class="firma-aocr__field"><span>AOC vigente hasta *</span>@Html.TextBox("DatosDocumentales.AocVigenteHasta",d.AocVigenteHasta.HasValue?d.AocVigenteHasta.Value.ToString("yyyy-MM-dd"):"",new{type="date",required="required"})</label>
+        <label class="firma-aocr__field"><span>País de bandera / emitido por *</span>@Html.TextBox("DatosDocumentales.PaisBandera",d.PaisBandera,new{maxlength=100,required="required"})</label>
+        @if(Model.TipoSolicitud==2 || Model.TipoSolicitud==3) {
+            <label class="firma-aocr__field"><span>AOCR original que se renueva o modifica</span>@Html.DropDownList("DatosDocumentales.SolicitudOriginalId",Model.SolicitudesOriginales,Model.SolicitudesOriginales.Count==1?null:"Seleccione el certificado original")<small>Se conserva su número. Si hay un único original del explotador, se vincula automáticamente.</small></label>
+        }
+    </div>
+</fieldset>
+@foreach(var contacto in new[]{new{Titulo="Explotador: base principal de operaciones",Clave="Explotador",Valor=d.Explotador},new{Titulo="Gerente de Operaciones del EAE",Clave="GerenteOperaciones",Valor=d.GerenteOperaciones},new{Titulo="Representante Técnico del EAE",Clave="RepresentanteTecnico",Valor=d.RepresentanteTecnico},new{Titulo="Representante Legal en Ecuador",Clave="RepresentanteLegalEcuador",Valor=d.RepresentanteLegalEcuador}}) {
+    <fieldset class="mb-3"><legend>@contacto.Titulo</legend><div class="firma-aocr__form-grid">
+        <label class="firma-aocr__field"><span>Nombre *</span>@Html.TextBox("DatosDocumentales."+contacto.Clave+".Nombre",contacto.Valor.Nombre,new{maxlength=200,required="required"})</label>
+        <label class="firma-aocr__field"><span>Dirección *</span>@Html.TextBox("DatosDocumentales."+contacto.Clave+".Direccion",contacto.Valor.Direccion,new{maxlength=500,required="required"})</label>
+        <label class="firma-aocr__field"><span>Teléfono *</span>@Html.TextBox("DatosDocumentales."+contacto.Clave+".Telefono",contacto.Valor.Telefono,new{maxlength=60,type="tel",required="required"})</label>
+        <label class="firma-aocr__field"><span>Correo electrónico *</span>@Html.TextBox("DatosDocumentales."+contacto.Clave+".Correo",contacto.Valor.Correo,new{maxlength=254,type="email",required="required"})</label>
+    </div></fieldset>
+}
+<fieldset class="mb-3"><legend>Operación autorizada por estación</legend>
+    <p>Seleccione cada estación de forma independiente. Una selección vacía no acredita autorización.</p>
+    <div class="firma-aocr__form-grid">
+    @for(var i=0;i<d.Estaciones.Count;i++) {
+        var op=d.Estaciones[i];
+        <label class="firma-aocr__field"><span>@op.EstacionCodigo *</span>
+            @Html.Hidden("DatosDocumentales.Estaciones["+i+"].EstacionId",op.EstacionId)
+            @Html.DropDownList("DatosDocumentales.Estaciones["+i+"].Codigo",new[]{new SelectListItem{Text="Seleccione",Value=""},new SelectListItem{Text="R — Regular",Value="R",Selected=op.Codigo=="R"},new SelectListItem{Text="NR — No regular",Value="NR",Selected=op.Codigo=="NR"},new SelectListItem{Text="RC — Reabastecimiento de combustible",Value="RC",Selected=op.Codigo=="RC"},new SelectListItem{Text="ET — Escala técnica",Value="ET",Selected=op.Codigo=="ET"},new SelectListItem{Text="A — Alterno",Value="A",Selected=op.Codigo=="A"}},new{required="required"})
+        </label>
+    }
+    </div>
+</fieldset>

@@ -1,5 +1,25 @@
 # Observaciones AOCR y Condiciones — 27/10/2026
 
+## Verificación de remisión al Coordinador
+
+Consulta de solo lectura del intento de AOCR003 registrado a las 15:58:52: el paquete no quedó remitido. Los PDF permanecen desbloqueados, el proceso continúa en `PENDIENTE_REVISION_INFORME_DCAV` y no existen correos `*_REVISION_COORDINADOR` del expediente. El usuario 90 tiene correo configurado y roles activos `CoordinadorInspecciones` y `CoordinacionLegal`. Se verificaron mediante consultas y validadores de lectura los informes firmados, la asignación del Inspector, ausencia de no conformidades, integridad de archivos y resolución del RT y Coordinador. No se ejecutó la transición ni SMTP en el servidor.
+
+No hay evidencia suficiente para atribuir el rechazo anterior a una causa concreta: el servicio descartaba la excepción técnica al devolver el error genérico. Se incorporó registro persistente y Trace con solicitud, inspección y referencia `ENVIO-COORD-{id}`, además de registrar el resultado confirmado y rechazos del controlador. El cliente ahora confirma el envío al Coordinador y renueva la versión del JavaScript; ya no anuncia remisión directa a DIRDAC/DCAV.
+
+Prueba local con rol `CoordinadorInspecciones`: ambos avisos internos y ambos correos encolados correctamente; fallo forzado en el segundo correo revierte todo el paquete y sus notificaciones, y el reintento posterior funciona sin duplicar avisos. **127 comprobaciones PostgreSQL y 80 pruebas automatizadas correctas**. Compilación Release preparada en `public/public1` (DLL de Datos, Negocio y Presentación, script e Index).
+
+**Pendiente de diagnóstico en servidor:** publicar la compilación preparada y revisar el mensaje exacto del siguiente intento; se solicitó al usuario el texto del aviso anterior. No se afirma que el envío real esté corregido o que los correos hayan sido entregados. La bandeja de revisión corresponde a **CL y AOCR por revisar** (`FirmaAocr/PaquetesCoordinador`); `Tecnico/Index` corresponde a asignación de Inspector y no sustituye esa bandeja.
+
+## Incidencia posterior: los PDF no mostraban la actualización
+
+La consulta de solo lectura de los registros confirmó dos fallos al generar AOCR003 el 27/10, a las 15:51:59 y 15:52:05: PostgreSQL `23505`, índice `uq_aocr_doc_vigente_expediente_tipo`. Ambos documentos vigentes seguían apuntando a los archivos del 26/10. Los datos nuevos sí estaban guardados; la nueva versión del archivo no llegó a registrarse.
+
+Corregido `AocrDocumentoGeneradoDAO.Registrar`: bloqueo por expediente, lectura de versión vigente, retiro de la anterior e inserción de la nueva en comandos secuenciales dentro de una transacción. El CTE anterior no garantizaba retirar la versión antes de comprobar el índice único durante la inserción. Se mantienen los índices y los archivos históricos; un error revierte la operación completa. No se permite reemplazar versiones enviadas o firmadas. La misma evidencia no duplica versiones. `FirmaAocrController` agrega cabeceras para evitar reutilizar una respuesta PDF en caché.
+
+Validación de esta corrección: **125 comprobaciones PostgreSQL correctas**, con los dos índices únicos reales reproducidos en una base temporal; incluyen regeneración de ambos tipos, reintento, reversión y protección de enviados/firmados. **69 pruebas automatizadas correctas**, incluida la generación de seis PDF con plantillas reales. Compilación Release y copia local de `CapaDatos.dll` y `CapaPresentacion.dll` a `public/public1/bin` verificadas por hash. Evidencias: `.tmp/test-pdf-version-pg.log`, `.tmp/test-results/pdf-version.trx`.
+
+Para que se vea en el servidor: publicar esas DLL de la misma compilación y, con el Inspector asignado, guardar los datos y pulsar **Regenerar PDF** en AOCR y Condiciones. Guardar datos no regenera automáticamente archivos existentes. Esta corrección no necesita SQL adicional ni eliminar índices. No se publicaron DLL ni se regeneraron documentos en producción durante esta revisión.
+
 Referencia: `19. LV de pruebas (26 oct 2026).pdf` y solicitud pegada del usuario. Implementación local; no se publicaron cambios ni se modificó la base de producción.
 
 ## Diagnóstico y solución

@@ -373,6 +373,8 @@ namespace CapaPresentacion.Controllers
 
             if (!resultado.Exitoso)
             {
+                CapaNegocio.LogBL.RegistrarError("[DOCUMENTOS_FINALES][ENVIO_COORDINADOR_RECHAZADO] SolicitudId=" + solicitudId
+                    + "; InspeccionId=" + contexto.Inspeccion.CodigoInspeccion, resultado.Mensaje, "FirmaAocrController", ObtenerUsuarioActualId());
                 if (Request == null || !Request.IsAjaxRequest())
                 {
                     TempData["FirmaAocrMensaje"] = resultado.Mensaje;
@@ -382,6 +384,10 @@ namespace CapaPresentacion.Controllers
 
                 return JsonError(resultado.Mensaje != null && resultado.Mensaje.IndexOf("Inspector", StringComparison.OrdinalIgnoreCase) >= 0 ? 403 : 409, resultado.Mensaje, solicitudId);
             }
+
+            CapaNegocio.LogBL.RegistrarInfo("[DOCUMENTOS_FINALES][ENVIO_COORDINADOR_OK] SolicitudId=" + solicitudId
+                + "; InspeccionId=" + contexto.Inspeccion.CodigoInspeccion + "; Estado=" + resultado.EstadoExpediente
+                + "; Idempotente=" + resultado.Idempotente, "FirmaAocrController", ObtenerUsuarioActualId());
 
             if (Request == null || !Request.IsAjaxRequest())
             {
@@ -738,6 +744,9 @@ namespace CapaPresentacion.Controllers
                 "FirmaAocrController",
                 ObtenerUsuarioActualId());
             Response.Headers["X-Content-Type-Options"] = "nosniff";
+            Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            Response.Cache.SetNoStore();
+            Response.Cache.SetRevalidation(HttpCacheRevalidation.AllCaches);
             if (descargar)
             {
                 return File(archivo.RutaFisica, archivo.Mime, nombre);
@@ -849,6 +858,9 @@ namespace CapaPresentacion.Controllers
         private ActionResult JsonError(int code, string message, int solicitudId)
         {
             Trace.TraceError("[FIRMA_AOCR_V2][ERROR] SolicitudId=" + solicitudId + "; Motivo=" + (message ?? string.Empty) + "; Exception=");
+            CapaNegocio.LogBL.RegistrarError("[FIRMA_AOCR][OPERACION_RECHAZADA] SolicitudId=" + solicitudId
+                + "; Codigo=" + code + "; Accion=" + Convert.ToString(RouteData.Values["action"]), message,
+                "FirmaAocrController", ObtenerUsuarioActualId());
             Response.StatusCode = code;
             return Json(new
             {

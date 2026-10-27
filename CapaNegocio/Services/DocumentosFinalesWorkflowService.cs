@@ -55,9 +55,19 @@ namespace CapaNegocio.Services
                     VersionConcurrencia = Math.Max(aocr != null ? aocr.VersionConcurrencia : 0L, condiciones != null ? condiciones.VersionConcurrencia : 0L)
                 });
             }
-            catch (UnauthorizedAccessException ex) { return Error(ex.Message); }
-            catch (InvalidOperationException ex) { return Error(ex.Message); }
-            catch (Exception) { return Error("No fue posible finalizar los documentos. La transaccion fue revertida."); }
+            catch (UnauthorizedAccessException ex) { return RegistrarErrorEnvio(solicitudId, inspeccionId, inspectorId, ex, ex.Message); }
+            catch (InvalidOperationException ex) { return RegistrarErrorEnvio(solicitudId, inspeccionId, inspectorId, ex, ex.Message); }
+            catch (Exception ex) { return RegistrarErrorEnvio(solicitudId, inspeccionId, inspectorId, ex,
+                "No se enviaron los documentos al Coordinador ni se generaron sus avisos. La transacción fue revertida. Referencia: ENVIO-COORD-" + solicitudId + "."); }
+        }
+
+        private static DocumentosFinalesResultado RegistrarErrorEnvio(int solicitudId, int inspeccionId, int inspectorId, Exception ex, string mensaje)
+        {
+            var contexto = "[DOCUMENTOS_FINALES][ENVIO_COORDINADOR_ERROR] SolicitudId=" + solicitudId
+                + "; InspeccionId=" + inspeccionId + "; InspectorId=" + inspectorId + "; Referencia=ENVIO-COORD-" + solicitudId;
+            System.Diagnostics.Trace.TraceError(contexto + "; " + ex);
+            LogBL.RegistrarError(contexto, ex.ToString(), "DocumentosFinalesWorkflowService", inspectorId);
+            return Error(mensaje);
         }
 
         public DocumentosFinalesResultado RegistrarFirmaInstitucional(

@@ -94,7 +94,7 @@ namespace AOCR.Tests.Unit
             var source = Read("CapaDatos/DAOs/AocrDocumentoGeneradoDAO.cs");
             StringAssert.Contains(source, "INSERT INTO public.aocr_tbdocumento_generado");
             StringAssert.Contains(source, "SELECT\n                        @codigo_solicitud");
-            StringAssert.Contains(source, "WHERE NOT EXISTS (SELECT 1 FROM misma_evidencia)");
+            StringAssert.Contains(source, "if (mismaEvidencia) { tx.Commit(); return; }");
             Assert.IsFalse(source.Contains("VALUES\n                    (\n                        @codigo_solicitud"));
         }
 

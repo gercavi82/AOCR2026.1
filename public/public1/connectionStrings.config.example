@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<connectionStrings>
+  <!-- PLANTILLA DE CREDENCIALES EXTERNALIZADAS - NO COMMIETAR VALORES DE PRODUCCIÓN -->
+  <add name="AOCRConnection" connectionString="Host=YOUR_POSTGRES_HOST;Port=5432;Database=YOUR_DB;Username=YOUR_USER;Password=YOUR_PASSWORD;Pooling=true;Minimum Pool Size=1;Maximum Pool Size=20;Timeout=15;CommandTimeout=60;Keepalive=30;Tcp Keepalive=true;Connection Idle Lifetime=60;Connection Pruning Interval=10;" providerName="Npgsql"/>
+  <add name="PostgreSQL" connectionString="Host=YOUR_POSTGRES_HOST;Port=5432;Database=YOUR_DB;Username=YOUR_USER;Password=YOUR_PASSWORD;Pooling=true;Minimum Pool Size=1;Maximum Pool Size=20;Timeout=15;CommandTimeout=60;Keepalive=30;Tcp Keepalive=true;Connection Idle Lifetime=60;Connection Pruning Interval=10;" providerName="Npgsql"/>
+  <add name="PostgresMirror" connectionString="Host=YOUR_POSTGRES_HOST;Port=5432;Database=YOUR_DB;Username=YOUR_USER;Password=YOUR_PASSWORD;Pooling=true;Minimum Pool Size=1;Maximum Pool Size=10;Timeout=15;CommandTimeout=60;Keepalive=30;Tcp Keepalive=true;Connection Idle Lifetime=60;Connection Pruning Interval=10;" providerName="Npgsql"/>
+  <add name="P9ConnectionString" connectionString="DataSource=YOUR_AS400_HOST;UserID=YOUR_USER;Password=YOUR_PASSWORD;DefaultCollection=DGACSYS;LibraryList=DGACSYS;Pooling=true;" providerName="IBM.Data.DB2.iSeries"/>
+  <add name="As400Odbc" connectionString="" providerName="System.Data.Odbc"/>
+</connectionStrings>

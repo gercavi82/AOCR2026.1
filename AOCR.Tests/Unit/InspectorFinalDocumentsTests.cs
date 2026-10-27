@@ -113,7 +113,7 @@ namespace AOCR.Tests.Unit
             var dao = Read("CapaDatos/DAOs/AocrDocumentoGeneradoDAO.cs");
             StringAssert.Contains(controller, "if (docExistente != null)");
             StringAssert.Contains(dao, "pg_advisory_xact_lock");
-            StringAssert.Contains(dao, "WHERE NOT EXISTS (SELECT 1 FROM misma_evidencia)");
+            StringAssert.Contains(dao, "if (mismaEvidencia) { tx.Commit(); return; }");
         }
 
         [TestMethod]

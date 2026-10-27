@@ -254,9 +254,14 @@ class RemisionDcavTest {
  var rechazo=false;try{paquetes.FinalizarYEncolar(envioPaquete());}catch(InvalidOperationException){rechazo=true;}
  Check(rechazo&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdocumento_generado WHERE bloqueado=true"))==0,"Informe GYE pendiente bloquea envio y revierte paquete completo");
  sql("UPDATE aocr_tbinforme_inspeccion SET firmado_inspector=true WHERE estacion_id=102;");
+ sql("UPDATE rol SET descripcion='CoordinadorInspecciones' WHERE codigorol=3; ALTER TABLE email_queue ADD CONSTRAINT prueba_error_envio CHECK(tipo_notificacion<>'CONDICIONES_PENDIENTES_REVISION_COORDINADOR')");
+ rechazo=false;try{paquetes.FinalizarYEncolar(envioPaquete());}catch(Npgsql.PostgresException){rechazo=true;}
+ Check(rechazo&&paquetes.ObtenerEstado(15)=="DOCUMENTOS_FINALES_POR_GENERAR"&&Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND tipo_notificacion LIKE '%REVISION_COORDINADOR'"))==0&&Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbnotificacion WHERE entidad_id=15 AND tipo LIKE '%REVISION_COORDINADOR'"))==0,"Fallo al encolar segundo documento revierte paquete, ambos correos y ambos avisos internos");
+ sql("ALTER TABLE email_queue DROP CONSTRAINT prueba_error_envio");
  var enviado=paquetes.FinalizarYEncolar(envioPaquete());
  Check(enviado.Exitoso&&paquetes.ObtenerEstado(15)=="DOCUMENTOS_FINALES_COORDINADOR","Paquete se remite al Coordinador, no a DCAV ni DIRDAC");
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE solicitud_id=15 AND tipo_notificacion IN ('AOCR_PENDIENTE_REVISION_COORDINADOR','CONDICIONES_PENDIENTES_REVISION_COORDINADOR') AND to_address='coordinador@example.test'"))==2,"Avisos de ambos documentos al Coordinador en la transaccion");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbnotificacion WHERE entidad_id=15 AND codigousuario=96 AND tipo IN ('AOCR_PENDIENTE_REVISION_COORDINADOR','CONDICIONES_PENDIENTES_REVISION_COORDINADOR')"))==2,"Bandeja interna del Coordinador con rol CoordinadorInspecciones recibe ambos avisos");
  Check(paquetes.FinalizarYEncolar(envioPaquete()).Idempotente,"Doble clic no duplica paquete ni avisos");
  var verPaquete=paquetes.ObtenerVigente(15,"CONDICIONES_LIMITACIONES").VersionConcurrencia;
  rechazo=false;try{paquetes.RevisarPaqueteCoordinador(15,150,97,"DIRCAV",verPaquete,false,"","");}catch(UnauthorizedAccessException){rechazo=true;}
@@ -334,6 +339,30 @@ class RemisionDcavTest {
  Check(rechazo&&certDatos.ObtenerDatosDocumentales(201).PermisoCnacNumero=="CNAC-PRUEBA-19","Certificado historico firmado conserva sus datos y no se modifica");
  sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
  Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==3,"Reaplicar migracion no reinicia numeracion ni modifica historicos");
+
+ // Regresion del 27/10: reproducir los dos indices unicos reales del servidor.
+ sql(@"ALTER TABLE aocr_tbdocumento_generado DROP CONSTRAINT ck_documento_final_estado;
+ ALTER TABLE aocr_tbdocumento_generado ADD COLUMN IF NOT EXISTS eliminado boolean NOT NULL DEFAULT false;
+ CREATE UNIQUE INDEX IF NOT EXISTS ux_documento_final_vigente ON aocr_tbdocumento_generado(codigo_solicitud,upper(tipo_documento)) WHERE vigente=true;
+ CREATE UNIQUE INDEX uq_aocr_doc_vigente_expediente_tipo ON aocr_tbdocumento_generado(codigo_solicitud,codigo_inspeccion,upper(trim(tipo_documento))) WHERE vigente=true AND eliminado=false AND codigo_inspeccion IS NOT NULL AND upper(trim(tipo_documento)) IN ('RECONOCIMIENTO','CONDICIONES_LIMITACIONES');");
+ var pdfDao=new AocrDocumentoGeneradoDAO();
+ Func<string,string,AocrDocumentoGenerado> nuevoPdf=(tipo,hash)=>new AocrDocumentoGenerado{CodigoSolicitud=202,CodigoInspeccion=150,TipoDocumento=tipo,NumeroAocr=original19,RutaDocumento="/prueba/"+hash+".pdf",NombreArchivo=hash+".pdf",TamanioPdf=100,Estado="GENERADO",Completo=true,HashPdf=hash};
+ foreach(var tipoPdf in new[]{"RECONOCIMIENTO","CONDICIONES_LIMITACIONES"}) {
+ pdfDao.Registrar(nuevoPdf(tipoPdf,"ANTERIOR"));pdfDao.Registrar(nuevoPdf(tipoPdf,"ACTUALIZADO"));
+ var vigentePdf=pdfDao.ObtenerUltimoPorSolicitudTipo(202,tipoPdf);
+ Check(vigentePdf.HashPdf=="ACTUALIZADO"&&vigentePdf.VersionDocumento==2&&vigentePdf.RutaDocumento.Contains("ACTUALIZADO"),"Regenerar "+tipoPdf+" actualiza PDF vigente con ambos indices unicos reales");
+ pdfDao.Registrar(nuevoPdf(tipoPdf,"ACTUALIZADO"));
+ Check(pdfDao.ObtenerUltimoPorSolicitudTipo(202,tipoPdf).VersionDocumento==2,"Reintento de misma evidencia no duplica "+tipoPdf);
+ }
+ sql("ALTER TABLE aocr_tbdocumento_generado ADD CONSTRAINT prueba_rechazo_hash CHECK(hash_pdf<>'RECHAZADO')");
+ rechazo=false;try{pdfDao.Registrar(nuevoPdf("RECONOCIMIENTO","RECHAZADO"));}catch(Npgsql.PostgresException){rechazo=true;}
+ Check(rechazo&&pdfDao.ObtenerUltimoPorSolicitudTipo(202,"RECONOCIMIENTO").HashPdf=="ACTUALIZADO","Fallo de insercion revierte retiro de version anterior y mantiene PDF vigente");
+ sql("UPDATE aocr_tbdocumento_generado SET bloqueado=true WHERE codigo_solicitud=202 AND vigente=true AND tipo_documento='RECONOCIMIENTO'");
+ rechazo=false;try{pdfDao.Registrar(nuevoPdf("RECONOCIMIENTO","NO_REEMPLAZAR"));}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo&&pdfDao.ObtenerUltimoPorSolicitudTipo(202,"RECONOCIMIENTO").HashPdf=="ACTUALIZADO","Documento enviado permanece protegido ante regeneracion");
+ sql("UPDATE aocr_tbdocumento_generado SET ruta_pdf_firmado='/prueba/firmado.pdf' WHERE codigo_solicitud=202 AND vigente=true AND tipo_documento='CONDICIONES_LIMITACIONES'");
+ rechazo=false;try{pdfDao.Registrar(nuevoPdf("CONDICIONES_LIMITACIONES","NO_REEMPLAZAR"));}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo&&pdfDao.ObtenerUltimoPorSolicitudTipo(202,"CONDICIONES_LIMITACIONES").HashPdf=="ACTUALIZADO","Documento firmado permanece protegido ante regeneracion");
 
  }
  }

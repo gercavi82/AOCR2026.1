@@ -22,31 +22,43 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
                 EnsureSchema(cn);
-
+                using (var tx = cn.BeginTransaction())
+                {
+                    // Separate commands guarantee that the partial unique index sees the
+                    // previous version retired before the replacement INSERT is executed.
+                    using (var guard = new NpgsqlCommand("SELECT pg_advisory_xact_lock(@id::bigint)", cn, tx))
+                    {
+                        guard.Parameters.AddWithValue("@id", documento.CodigoSolicitud);
+                        guard.ExecuteNonQuery();
+                    }
+                    using (var actual = new NpgsqlCommand(@"SELECT hash_pdf,bloqueado,ruta_pdf_firmado
+                        FROM public.aocr_tbdocumento_generado WHERE codigo_solicitud=@id
+                        AND UPPER(tipo_documento)=UPPER(@tipo) AND vigente=TRUE FOR UPDATE", cn, tx))
+                    {
+                        actual.Parameters.AddWithValue("@id", documento.CodigoSolicitud);
+                        actual.Parameters.AddWithValue("@tipo", documento.TipoDocumento);
+                        bool mismaEvidencia = false;
+                        using (var reader = actual.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                if (Convert.ToBoolean(reader[1]) || !string.IsNullOrWhiteSpace(Convert.ToString(reader[2])))
+                                    throw new InvalidOperationException("No se puede reemplazar un documento enviado o firmado.");
+                                mismaEvidencia = !string.IsNullOrWhiteSpace(documento.HashPdf)
+                                    && string.Equals(Convert.ToString(reader[0]), documento.HashPdf, StringComparison.Ordinal);
+                            }
+                        }
+                        if (mismaEvidencia) { tx.Commit(); return; }
+                    }
+                    using (var anterior = new NpgsqlCommand(@"UPDATE public.aocr_tbdocumento_generado
+                        SET vigente=FALSE,estado='VERSION_ANTERIOR',version_concurrencia=version_concurrencia+1
+                        WHERE codigo_solicitud=@id AND UPPER(tipo_documento)=UPPER(@tipo) AND vigente=TRUE", cn, tx))
+                    {
+                        anterior.Parameters.AddWithValue("@id", documento.CodigoSolicitud);
+                        anterior.Parameters.AddWithValue("@tipo", documento.TipoDocumento);
+                        anterior.ExecuteNonQuery();
+                    }
                 const string sql = @"
-                    WITH guard AS (
-                        SELECT pg_advisory_xact_lock(@codigo_solicitud::bigint)
-                    ), actual AS (
-                        SELECT codigo_documento
-                        FROM public.aocr_tbdocumento_generado, guard
-                        WHERE codigo_solicitud = @codigo_solicitud
-                          AND UPPER(tipo_documento) = UPPER(@tipo_documento)
-                          AND vigente = TRUE
-                        FOR UPDATE
-                    ), misma_evidencia AS (
-                        SELECT codigo_documento
-                        FROM public.aocr_tbdocumento_generado
-                        WHERE codigo_documento IN (SELECT codigo_documento FROM actual)
-                          AND NULLIF(hash_pdf, '') IS NOT DISTINCT FROM NULLIF(@hash_pdf, '')
-                    ), anterior AS (
-                        UPDATE public.aocr_tbdocumento_generado
-                           SET vigente = FALSE,
-                               estado = CASE WHEN bloqueado THEN estado ELSE 'VERSION_ANTERIOR' END,
-                               version_concurrencia = version_concurrencia + 1
-                         WHERE codigo_documento IN (SELECT codigo_documento FROM actual)
-                           AND NOT EXISTS (SELECT 1 FROM misma_evidencia)
-                        RETURNING codigo_documento
-                    )
                     INSERT INTO public.aocr_tbdocumento_generado
                     (
                         codigo_solicitud,
@@ -87,9 +99,9 @@ namespace CapaDatos.DAOs
                         @hash_pdf,
                         1,
                         NOW()
-                    WHERE NOT EXISTS (SELECT 1 FROM misma_evidencia);";
+                    ;";
 
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var cmd = new NpgsqlCommand(sql, cn, tx))
                 {
                     cmd.Parameters.AddWithValue("@codigo_solicitud", documento.CodigoSolicitud);
                     cmd.Parameters.AddWithValue("@codigo_inspeccion", (object)documento.CodigoInspeccion ?? DBNull.Value);
@@ -105,6 +117,8 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@completo", documento.Completo);
                     cmd.Parameters.AddWithValue("@hash_pdf", (object)documento.HashPdf ?? DBNull.Value);
                     cmd.ExecuteNonQuery();
+                }
+                tx.Commit();
                 }
             }
         }

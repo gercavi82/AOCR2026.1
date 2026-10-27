@@ -196,8 +196,8 @@ ORDER BY version_documento DESC,codigo_documento DESC LIMIT 1;";
 
                         var dirdac = request.RequiereAocr ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.CoordinadorSqlTokens) : new List<Destinatario>();
                         var dcav = request.RequiereCondiciones ? ResolverDestinatarios(cn, tx, AocrRolesInstitucionales.CoordinadorSqlTokens) : new List<Destinatario>();
-                        if (request.RequiereAocr && dirdac.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
-                        if (request.RequiereCondiciones && dcav.Count == 0) throw new InvalidOperationException("No existen usuarios DCAV activos y autorizados con correo institucional.");
+                        if (request.RequiereAocr && dirdac.Count == 0) throw new InvalidOperationException("No existen Coordinadores activos y autorizados con correo válido para revisar el AOCR.");
+                        if (request.RequiereCondiciones && dcav.Count == 0) throw new InvalidOperationException("No existen Coordinadores activos y autorizados con correo válido para revisar Condiciones y Limitaciones.");
 
                         if (request.RequiereAocr) EncolarRama(cn, tx, expediente, request, aocr, dirdac, true);
                         if (request.RequiereCondiciones) EncolarRama(cn, tx, expediente, request, condiciones, dcav, false);

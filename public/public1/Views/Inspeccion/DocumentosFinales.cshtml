@@ -1,0 +1,7 @@
+@model CapaModelo.DocumentosFinalesViewModel
+@{ ViewBag.Title = "Documentos finales asignados"; Layout = "~/Views/Shared/_LayoutAOCR.cshtml"; }
+<style>.ac12-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.ac12-card{border:1px solid #d9e2ec;border-radius:8px;padding:16px;background:#fff}.ac12-card:focus-within{outline:3px solid #2b6cb0;outline-offset:2px}.ac12-download{min-height:44px}@@media(max-width:430px){.ac12-grid{display:block}.ac12-card{margin-bottom:14px}.ac12-download{display:block;width:100%}}</style>
+<section aria-labelledby="titulo-documentos-finales"><h2 id="titulo-documentos-finales">Documentos finales de inspecciones asignadas</h2>
+@if(Model==null||Model.Documentos==null||Model.Documentos.Count==0){<div class="alert alert-info" role="status">No existen documentos finales disponibles.</div>}
+else{<div class="ac12-grid">@foreach(var d in Model.Documentos){<article class="ac12-card"><h3>@d.TipoDocumento <small>v@d.Version</small></h3><p><strong>@d.NumeroSolicitud</strong><br/>@d.Compania</p><p>Firmado por @d.RolFirmante<br/><small>@(d.FechaFirma.HasValue?d.FechaFirma.Value.ToString("dd/MM/yyyy HH:mm"):"")</small></p><p>Disponible: @d.EstadoEntrega<br/><small>Correo: @d.EstadoCorreo</small></p><a class="btn btn-primary ac12-download" href="@Url.Action("DescargarFinal","Documento",new{documentoId=d.DocumentoId})">Descargar PDF</a></article>}</div>}
+</section>

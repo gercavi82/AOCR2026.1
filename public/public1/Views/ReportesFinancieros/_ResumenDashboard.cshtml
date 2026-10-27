@@ -1,0 +1,76 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ReportesFinancierosViewModel>
+
+@{
+    var r = (Model != null && Model.Resumen != null)
+        ? Model.Resumen
+        : new CapaModelo.ReportesFinancieros.ReporteResumenDTO();
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-blue shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Ordenes generadas</span>
+                    <i class="fas fa-file-invoice kpi-icon"></i>
+                </div>
+                <div class="kpi-value">@r.TotalOrdenesGeneradas.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-green shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Ordenes pagadas</span>
+                    <i class="fas fa-check-circle kpi-icon"></i>
+                </div>
+                <div class="kpi-value">@r.TotalOrdenesPagadas.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-orange shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Pendientes</span>
+                    <i class="fas fa-hourglass-half kpi-icon"></i>
+                </div>
+                <div class="kpi-value">@r.TotalPendientes.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-red shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Anuladas</span>
+                    <i class="fas fa-ban kpi-icon"></i>
+                </div>
+                <div class="kpi-value">@r.TotalAnuladas.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-dark shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Total recaudado</span>
+                    <i class="fas fa-dollar-sign kpi-icon"></i>
+                </div>
+                <div class="kpi-value">$@r.TotalRecaudado.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4">
+        <div class="card kpi-card kpi-dark shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <span class="kpi-label">Pendiente por cobrar</span>
+                    <i class="fas fa-coins kpi-icon"></i>
+                </div>
+                <div class="kpi-value">$@r.TotalPendientePorCobrar.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+</div>
