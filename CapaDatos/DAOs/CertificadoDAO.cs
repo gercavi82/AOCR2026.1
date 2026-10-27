@@ -9,6 +9,91 @@ namespace CapaDatos.DAOs
 {
     public class CertificadoDAO
     {
+        public DatosDocumentalesAocr ObtenerDatosDocumentales(int solicitudId)
+        {
+            using(var cn=CrearConexion()) using(var cmd=new NpgsqlCommand("SELECT to_jsonb(s)->>'datos_documentales_certificado' FROM public.aocr_tbsolicitud s WHERE codigo_solicitud=@id",cn)) {
+                cmd.Parameters.AddWithValue("@id",solicitudId);cn.Open();var json=Convert.ToString(cmd.ExecuteScalar());
+                return string.IsNullOrWhiteSpace(json)?new DatosDocumentalesAocr():Newtonsoft.Json.JsonConvert.DeserializeObject<DatosDocumentalesAocr>(json)??new DatosDocumentalesAocr();
+            }
+        }
+
+        public void GuardarDatosDocumentales(int solicitudId,DatosDocumentalesAocr datos,int usuarioId)
+        {
+            using(var cn=CrearConexion()) {cn.Open();using(var tx=cn.BeginTransaction()) {
+                using(var cmd=new NpgsqlCommand("SELECT codigo_solicitud FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id FOR UPDATE",cn,tx)) {cmd.Parameters.AddWithValue("@id",solicitudId);if(cmd.ExecuteScalar()==null)throw new InvalidOperationException("Solicitud inexistente.");}
+                ExigirDocumentoEditable(cn,tx,solicitudId);
+                using(var cmd=new NpgsqlCommand("SELECT NULLIF(datos_documentales_certificado->>'SolicitudOriginalId','')::integer FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id AND NULLIF(numero_aocr,'') IS NOT NULL",cn,tx)) {
+                    cmd.Parameters.AddWithValue("@id",solicitudId);var origen=cmd.ExecuteScalar();
+                    if(origen!=null && origen!=DBNull.Value && datos.SolicitudOriginalId!=Convert.ToInt32(origen))throw new InvalidOperationException("La referencia al certificado original es inmutable una vez asignado el número.");
+                }
+                using(var cmd=new NpgsqlCommand("UPDATE public.aocr_tbsolicitud SET datos_documentales_certificado=@datos::jsonb,updated_at=NOW(),updated_by=@usuario WHERE codigo_solicitud=@id",cn,tx)) {
+                    cmd.Parameters.AddWithValue("@id",solicitudId);cmd.Parameters.AddWithValue("@usuario",usuarioId.ToString());cmd.Parameters.AddWithValue("@datos",Newtonsoft.Json.JsonConvert.SerializeObject(datos));cmd.ExecuteNonQuery();
+                }
+                tx.Commit();
+            }}
+        }
+
+        private static void ExigirDocumentoEditable(NpgsqlConnection cn,NpgsqlTransaction tx,int solicitudId)
+        {
+            using(var cmd=new NpgsqlCommand(@"SELECT EXISTS(SELECT 1 FROM public.aocr_tbdocumento_generado WHERE codigo_solicitud=@id AND vigente=TRUE AND (bloqueado=TRUE OR NULLIF(ruta_pdf_firmado,'') IS NOT NULL))
+OR EXISTS(SELECT 1 FROM public.aocr_tbfirma_documento WHERE codigo_solicitud=@id)
+OR EXISTS(SELECT 1 FROM public.aocr_tbcertificado c WHERE codigo_solicitud=@id AND NULLIF(to_jsonb(c)->>'firmado_por','') IS NOT NULL)",cn,tx)) {
+                cmd.Parameters.AddWithValue("@id",solicitudId);if(Convert.ToBoolean(cmd.ExecuteScalar()))throw new InvalidOperationException("Los documentos enviados o firmados son inmutables. No se pueden modificar sus datos.");
+            }
+        }
+
+        public string ObtenerNumeroPersistido(int solicitudId)
+        {
+            using(var cn=CrearConexion())using(var cmd=new NpgsqlCommand("SELECT numero_aocr FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id",cn)) {cmd.Parameters.AddWithValue("@id",solicitudId);cn.Open();return Convert.ToString(cmd.ExecuteScalar());}
+        }
+
+        public List<Tuple<int,string>> ListarOriginales(int solicitudId)
+        {
+            var resultado=new List<Tuple<int,string>>();
+            using(var cn=CrearConexion())using(var cmd=new NpgsqlCommand(@"SELECT s.codigo_solicitud,COALESCE(NULLIF(s.numero_aocr,''),c.numero_certificado)||' — '||s.numero_solicitud
+FROM public.aocr_tbsolicitud actual JOIN public.aocr_tbsolicitud s ON UPPER(TRIM(s.codigo_oaci))=UPPER(TRIM(actual.codigo_oaci)) AND (COALESCE(TRIM(actual.ruc),'')='' OR TRIM(s.ruc)=TRIM(actual.ruc))
+LEFT JOIN LATERAL(SELECT numero_certificado FROM public.aocr_tbcertificado c WHERE c.codigo_solicitud=s.codigo_solicitud ORDER BY codigo_certificado DESC LIMIT 1)c ON TRUE
+WHERE actual.codigo_solicitud=@id AND s.codigo_solicitud<>@id AND s.tipo_solicitud=1 AND COALESCE(NULLIF(s.numero_aocr,''),NULLIF(c.numero_certificado,'')) IS NOT NULL ORDER BY s.codigo_solicitud",cn)) {
+                cmd.Parameters.AddWithValue("@id",solicitudId);cn.Open();using(var r=cmd.ExecuteReader())while(r.Read())resultado.Add(Tuple.Create(r.GetInt32(0),r.GetString(1)));
+            }return resultado;
+        }
+
+        public string AsegurarNumeroOriginal(int solicitudId,int usuarioId)
+        {
+            using(var cn=CrearConexion()){cn.Open();using(var tx=cn.BeginTransaction()) {
+                // One lock serializes allocation and origin resolution; no FR3 sequence is touched.
+                using(var cmd=new NpgsqlCommand("SELECT pg_advisory_xact_lock(12920261027)",cn,tx))cmd.ExecuteNonQuery();
+                string numero,oaci,ruc;int tipo;int? original;
+                using(var cmd=new NpgsqlCommand(@"SELECT numero_aocr,codigo_oaci,ruc,tipo_solicitud,NULLIF(datos_documentales_certificado->>'SolicitudOriginalId','')::integer origen
+FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id FOR UPDATE",cn,tx)) {
+                    cmd.Parameters.AddWithValue("@id",solicitudId);using(var r=cmd.ExecuteReader()){if(!r.Read())throw new InvalidOperationException("Solicitud inexistente.");numero=Convert.ToString(r[0]);oaci=Convert.ToString(r[1]).Trim().ToUpperInvariant();ruc=Convert.ToString(r[2]).Trim();tipo=Convert.ToInt32(r[3]);original=r.IsDBNull(4)?(int?)null:r.GetInt32(4);}
+                }
+                if(!string.IsNullOrWhiteSpace(numero)){tx.Commit();return numero;}
+                ExigirDocumentoEditable(cn,tx,solicitudId);
+                if(!System.Text.RegularExpressions.Regex.IsMatch(oaci,"^[A-Z0-9]{3}$"))throw new InvalidOperationException("Registre el código OACI del explotador (3 caracteres) antes de asignar el AOCR.");
+                if(tipo==1) {
+                    using(var cmd=new NpgsqlCommand("SELECT nextval('public.aocr_numero_certificado_seq')",cn,tx))numero="DGAC-129-"+oaci+"-"+Convert.ToInt64(cmd.ExecuteScalar()).ToString("000");
+                } else if(tipo==2 || tipo==3) {
+                    var origenes=new List<Tuple<int,string>>();
+                    using(var cmd=new NpgsqlCommand(@"SELECT s.codigo_solicitud,COALESCE(NULLIF(s.numero_aocr,''),NULLIF(c.numero_certificado,'')) numero
+FROM public.aocr_tbsolicitud s LEFT JOIN LATERAL(SELECT numero_certificado FROM public.aocr_tbcertificado c WHERE c.codigo_solicitud=s.codigo_solicitud ORDER BY codigo_certificado DESC LIMIT 1)c ON TRUE
+WHERE s.tipo_solicitud=1 AND s.codigo_solicitud<>@id AND UPPER(TRIM(s.codigo_oaci))=@oaci
+AND (@ruc='' OR TRIM(COALESCE(s.ruc,''))=@ruc) AND (@origen IS NULL OR s.codigo_solicitud=@origen)
+AND COALESCE(NULLIF(s.numero_aocr,''),NULLIF(c.numero_certificado,'')) IS NOT NULL",cn,tx)) {
+                        cmd.Parameters.AddWithValue("@id",solicitudId);cmd.Parameters.AddWithValue("@oaci",oaci);cmd.Parameters.AddWithValue("@ruc",ruc);cmd.Parameters.AddWithValue("@origen",NpgsqlTypes.NpgsqlDbType.Integer,(object)original??DBNull.Value);
+                        using(var r=cmd.ExecuteReader())while(r.Read())origenes.Add(Tuple.Create(r.GetInt32(0),r.GetString(1)));
+                    }
+                    if(origenes.Count!=1)throw new InvalidOperationException("Seleccione una solicitud original del mismo explotador con AOCR asignado. No se generará un nuevo consecutivo.");
+                    original=origenes[0].Item1;numero=origenes[0].Item2;
+                } else throw new InvalidOperationException("Tipo de trámite inválido.");
+                using(var cmd=new NpgsqlCommand(@"UPDATE public.aocr_tbsolicitud SET numero_aocr=@numero,
+datos_documentales_certificado=CASE WHEN @origen IS NULL THEN COALESCE(datos_documentales_certificado,'{}'::jsonb) ELSE jsonb_set(COALESCE(datos_documentales_certificado,'{}'::jsonb),'{SolicitudOriginalId}',to_jsonb(@origen::integer)) END
+WHERE codigo_solicitud=@id",cn,tx)) {cmd.Parameters.AddWithValue("@id",solicitudId);cmd.Parameters.AddWithValue("@numero",numero);cmd.Parameters.AddWithValue("@origen",NpgsqlTypes.NpgsqlDbType.Integer,(object)original??DBNull.Value);cmd.ExecuteNonQuery();}
+                using(var cmd=new NpgsqlCommand("UPDATE public.aocr_tbcertificado SET numero_certificado=@numero WHERE codigo_solicitud=@id",cn,tx)){cmd.Parameters.AddWithValue("@id",solicitudId);cmd.Parameters.AddWithValue("@numero",numero);cmd.ExecuteNonQuery();}
+                tx.Commit();return numero;
+            }}
+        }
+
         private const string TablaCertificado = "aocr_tbcertificado";
 
         private sealed class CertificadoSchema

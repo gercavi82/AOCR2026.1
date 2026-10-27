@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaModelo.Common.CertificadoAOCRViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Common.CertificadoAOCRViewModel>
 @using System.Globalization
 @using System.Linq
 @using System.Web.Mvc
@@ -226,6 +226,7 @@
                 <span class="label-es">Permiso Operacion CNAC</span>
                 <span class="label-en">CNAC Operation Permit</span>
                 <span class="value">@text(Model.PermisoOperacionCNAC)</span>
+                <span class="value">CNAC: @date(Model.DatosDocumentales.PermisoCnacEmision) / @date(Model.DatosDocumentales.PermisoCnacVencimiento)</span>
                 <span class="label-es" style="margin-top:6px;">AOCR #</span>
                 <span class="label-en">AOCR number</span>
                 <span class="value">@text(Model.NumeroAOCR)</span>
@@ -239,6 +240,7 @@
                 <span class="label-es">AOC base</span>
                 <span class="label-en">Base AOC</span>
                 <span class="value">@text(Model.NumeroAOCBase)</span>
+                <span class="value">Emitido por / Issued by: @text(Model.DatosDocumentales.PaisBandera)</span>
             </td>
             <td style="width:34%;">
                 <span class="label-es">Estado del explotador</span>
@@ -323,9 +325,7 @@
                     <span class="label-es">Fecha de expedicion</span>
                     <span class="label-en">Date of issue</span>
                     <span class="value">@date(Model.FechaEmision)</span>
-                    <span class="label-es" style="margin-top:8px;">Fecha de renovacion</span>
-                    <span class="label-en">Date of renewal</span>
-                    <span class="value">@date(Model.FechaRenovacion)</span>
+<span class="value">@(Model.Solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue | @(Model.Solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal | @(Model.Solicitud.TipoSolicitud==3?"[X]":"[ ]") Modificación / Modification</span>
                 </td>
                 <td style="width:55%; text-align:center;" data-firma-rol="DIRDAC">
                     <span class="label-es">Nombre y firma</span>
@@ -387,12 +387,7 @@
         <thead>
             <tr>
                 <th>Modelo y tipo de aeronave</th>
-                <th>Matricula</th>
-                <th>Serie</th>
-                <th>UIO</th>
-                <th>GYE</th>
-                <th>MEC</th>
-                <th>LTX</th>
+                @foreach(var op in Model.DatosDocumentales.Estaciones) { <th>@op.EstacionCodigo</th> }
             </tr>
         </thead>
         <tbody>
@@ -400,12 +395,7 @@
             {
                 <tr>
                     <td>@text(aeronave != null ? aeronave.ModeloTipo : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Matricula : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Serie : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Uio : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Gye : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Mec : null)</td>
-                    <td>@text(aeronave != null ? aeronave.Ltx : null)</td>
+                    @foreach(var op in Model.DatosDocumentales.Estaciones) { <td>@text(op.Codigo)</td> }
                 </tr>
             }
         </tbody>
@@ -440,7 +430,7 @@
             <td>
                 <span class="label-es">Fecha de emision / renovacion / modificacion</span>
                 <span class="label-en">Issue / renewal / amendment date</span>
-                <span class="value">@date(Model.FechaEmision) / @date(Model.FechaRenovacion) / @date(Model.FechaEmision)</span>
+                <span class="value">@date(Model.FechaEmision)</span><span class="value">@(Model.Solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue | @(Model.Solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal | @(Model.Solicitud.TipoSolicitud==3?"[X]":"[ ]") Modificación / Modification</span><span></span>
             </td>
             <td>
                 <span class="label-es">Base operativa aprobada</span>

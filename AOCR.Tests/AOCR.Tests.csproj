@@ -171,6 +171,7 @@
     <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Integration\Observaciones19PdfTests.cs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

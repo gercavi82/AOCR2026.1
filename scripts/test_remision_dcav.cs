@@ -292,6 +292,49 @@ class RemisionDcavTest {
  using(var tx=c.BeginTransaction()) {encolarJefaturas.Invoke(null,new object[]{c,tx,expEntrega,docA,docCl,new SolicitarEntregaFinalRequest{SolicitudId=15},"PRUEBA-JEFATURAS"});tx.Commit();}
  Check(Convert.ToInt32(scalar("SELECT count(*) FROM email_queue WHERE tipo_notificacion='ENTREGA_FINAL_JEFATURA' AND solicitud_id=15"))==2,"Reintento de entrega a jefaturas no duplica copias");
 
+ // Observaciones 19: datos documentales y numeracion AOCR; siempre base local.
+ sql(@"ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS numero_aocr varchar(80);
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS codigo_oaci varchar(10);
+ ALTER TABLE aocr_tbsolicitud ADD COLUMN IF NOT EXISTS ruc varchar(100);
+ CREATE TABLE IF NOT EXISTS aocr_tbcertificado(codigo_certificado serial primary key,codigo_solicitud integer UNIQUE,numero_certificado varchar(80) CONSTRAINT aocr_tbcertificado_numero_certificado_key UNIQUE,firmado_por text,ruta_pdf text);
+ CREATE TABLE IF NOT EXISTS aocr_tbfirma_documento(codigo_solicitud integer);
+ INSERT INTO aocr_tbsolicitud(codigo_solicitud,tipo_solicitud,codigo_oaci,ruc,numero_solicitud) VALUES
+ (201,1,'QTR','QTR-TEST','TEST-201'),(202,2,'QTR','QTR-TEST','TEST-202'),(203,3,'QTR','QTR-TEST','TEST-203'),(204,2,'XXX','OTRO','TEST-204'),(205,1,'QTR','QTR-TEST','TEST-205'),(207,1,'AAA','OTRO','TEST-207');");
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
+ var certDatos=new CertificadoDAO();
+ var datos19=new DatosDocumentalesAocr {PermisoCnacNumero="CNAC-PRUEBA-19",PermisoCnacEmision=new DateTime(2026,10,26),PermisoCnacVencimiento=new DateTime(2029,10,26),AocVigenteHasta=new DateTime(2030,1,1),PaisBandera="Qatar",
+ Explotador=new ContactoDocumentalAocr{Nombre="Explotador origen",Direccion="Base en Doha",Telefono="111",Correo="operador@example.test"},
+ GerenteOperaciones=new ContactoDocumentalAocr{Nombre="Gerente correcto",Direccion="Gerencia Doha",Telefono="222",Correo="gerente@example.test"},
+ RepresentanteTecnico=new ContactoDocumentalAocr{Nombre="RT EAE correcto",Direccion="RT Doha",Telefono="333",Correo="rt.eae@example.test"},
+ RepresentanteLegalEcuador=new ContactoDocumentalAocr{Nombre="Representante Ecuador",Direccion="Quito legal",Telefono="444",Correo="legal@example.test"},
+ Estaciones=new List<OperacionEstacionDocumentalAocr>{new OperacionEstacionDocumentalAocr{EstacionId=101,Codigo="R"},new OperacionEstacionDocumentalAocr{EstacionId=102,Codigo="ET"}}};
+ certDatos.GuardarDatosDocumentales(201,datos19,79);
+ var recDatos=certDatos.ObtenerDatosDocumentales(201);
+ Check(recDatos.PermisoCnacNumero==datos19.PermisoCnacNumero&&recDatos.PermisoCnacEmision==datos19.PermisoCnacEmision&&recDatos.PermisoCnacVencimiento==datos19.PermisoCnacVencimiento,"Permiso CNAC y fechas persisten tras recarga PostgreSQL");
+ Check(recDatos.GerenteOperaciones.Nombre=="Gerente correcto"&&recDatos.RepresentanteTecnico.Nombre=="RT EAE correcto"&&recDatos.RepresentanteLegalEcuador.Nombre=="Representante Ecuador"&&recDatos.Explotador.Direccion=="Base en Doha","Contactos diferenciados persisten sin intercambiar Inspector ni contacto Ecuador");
+ Check(recDatos.Estaciones.Single(e=>e.EstacionId==101).Codigo=="R"&&recDatos.Estaciones.Single(e=>e.EstacionId==102).Codigo=="ET","Operaciones distintas por estacion se conservan al recargar");
+ var original19=certDatos.AsegurarNumeroOriginal(201,79);
+ sql("INSERT INTO aocr_tbcertificado(codigo_solicitud,numero_certificado) VALUES(201,'DGAC-129-QTR-001'),(202,'BORRADOR-202'),(203,'BORRADOR-203')");
+ Check(original19=="DGAC-129-QTR-001"&&certDatos.AsegurarNumeroOriginal(201,79)==original19,"Emision asigna numero unico persistente y repeticion no consume consecutivo");
+ var contador19=Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"));
+ Check(certDatos.AsegurarNumeroOriginal(202,79)==original19,"Renovacion conserva exactamente el AOCR original");
+ Check(certDatos.AsegurarNumeroOriginal(203,79)==original19,"Modificacion conserva exactamente el AOCR original");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbcertificado WHERE numero_certificado='DGAC-129-QTR-001'"))==3,"Versiones de emision, renovacion y modificacion comparten numero sin conflicto de unicidad");
+ Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==contador19,"Renovacion y modificacion no generan nuevos consecutivos");
+ rechazo=false;try{certDatos.AsegurarNumeroOriginal(204,79);}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo,"Explotador ajeno sin original se rechaza sin generar un numero nuevo");
+ var tareas19=new[]{System.Threading.Tasks.Task.Run(()=>new CertificadoDAO().AsegurarNumeroOriginal(205,79)),System.Threading.Tasks.Task.Run(()=>new CertificadoDAO().AsegurarNumeroOriginal(207,79))};
+ System.Threading.Tasks.Task.WaitAll(tareas19);
+ Check(tareas19[0].Result!=tareas19[1].Result&&Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==3,"Emisiones concurrentes reciben numeros diferentes sin colisiones");
+ rechazo=false;try{sql("UPDATE aocr_tbsolicitud SET numero_aocr='CAMBIO-INDEBIDO' WHERE codigo_solicitud=201");}catch(Npgsql.PostgresException){rechazo=true;}
+ Check(rechazo&&certDatos.ObtenerNumeroPersistido(201)==original19,"Base rechaza alteracion del numero original ya asignado");
+ sql("INSERT INTO aocr_tbfirma_documento(codigo_solicitud) VALUES(201)");
+ rechazo=false;try{certDatos.GuardarDatosDocumentales(201,new DatosDocumentalesAocr{PermisoCnacNumero="NO GUARDAR"},79);}catch(InvalidOperationException){rechazo=true;}
+ Check(rechazo&&certDatos.ObtenerDatosDocumentales(201).PermisoCnacNumero=="CNAC-PRUEBA-19","Certificado historico firmado conserva sus datos y no se modifica");
+ sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
+ Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==3,"Reaplicar migracion no reinicia numeracion ni modifica historicos");
+
  }
  }
 }

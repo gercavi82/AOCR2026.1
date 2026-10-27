@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     'use strict';
 
     function qs(selector, root) {
@@ -153,6 +153,7 @@
         });
 
         function validateLocal() {
+            if (form.reportValidity && !form.reportValidity()) { return false; }
             var estado = qs('input[name="EstadoExplotador"]', form) || qs('input[name="estadoExplotador"]', form);
             var vencimiento = qs('input[name="FechaVencimiento"]', form) || qs('input[name="fechaVencimiento"]', form);
             var missing = [];

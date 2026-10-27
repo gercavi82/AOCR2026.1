@@ -723,7 +723,7 @@ namespace CapaPresentacion.Controllers
             }
             catch { }
 
-            return new CertificadoAOCRViewModel
+            var certificadoModelo = new CertificadoAOCRViewModel
             {
                 NumeroAOCR = numeroCert,
                 NumeroAOCBase = PrimerTextoNoVacio(solicitud.NumeroAOC, solicitud.NumeroSolicitud, numeroCert),
@@ -784,6 +784,10 @@ namespace CapaPresentacion.Controllers
                 EscudoBase64 = escudoBase64,
                 Solicitud = solicitud
             };
+            var certificadoDatosDao=new CapaDatos.DAOs.CertificadoDAO();
+            var numeroPersistido=certificadoDatosDao.ObtenerNumeroPersistido(solicitud.CodigoSolicitud);
+            if(!string.IsNullOrWhiteSpace(numeroPersistido)) certificadoModelo.NumeroAOCR=numeroPersistido;
+            return CapaNegocio.Services.DatosDocumentalesAocrReglas.AplicarCertificado(certificadoModelo,certificadoDatosDao.ObtenerDatosDocumentales(solicitud.CodigoSolicitud));
         }
 
         private static string ConstruirDetalleAeronaves(IEnumerable<AeronaveSolicitud> aeronaves)

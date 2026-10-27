@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -6916,7 +6916,7 @@ namespace CapaPresentacion.Controllers
             }
             catch { /* opcional */ }
 
-            return new CapaModelo.Common.CertificadoAOCRViewModel
+            var certificadoModelo = new CapaModelo.Common.CertificadoAOCRViewModel
             {
                 NumeroAOCR = numeroAOCR,
                 NumeroAOCBase = solicitud.NumeroSolicitud,
@@ -6959,6 +6959,10 @@ namespace CapaPresentacion.Controllers
                 EscudoBase64 = escudoBase64,
                 Solicitud = solicitud
             };
+            var certificadoDatosDao=new CapaDatos.DAOs.CertificadoDAO();
+            var numeroPersistido=certificadoDatosDao.ObtenerNumeroPersistido(solicitud.CodigoSolicitud);
+            if(!string.IsNullOrWhiteSpace(numeroPersistido)) certificadoModelo.NumeroAOCR=numeroPersistido;
+            return CapaNegocio.Services.DatosDocumentalesAocrReglas.AplicarCertificado(certificadoModelo,certificadoDatosDao.ObtenerDatosDocumentales(solicitud.CodigoSolicitud));
         }
 
         [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]

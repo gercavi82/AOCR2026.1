@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,6 +8,62 @@ using CapaModelo;
 
 namespace CapaNegocio.Services
 {
+    public static class DatosDocumentalesAocrReglas
+    {
+        public static CapaModelo.Common.CertificadoAOCRViewModel AplicarCertificado(CapaModelo.Common.CertificadoAOCRViewModel m,DatosDocumentalesAocr d)
+        {
+            m.DatosDocumentales=d;m.PermisoOperacionCNAC=d.PermisoCnacNumero;
+            m.NumeroAOCBase=m.Solicitud?.NumeroAOC;
+            m.EstadoExplotador=m.Solicitud?.Pais;
+            m.DireccionExplotador=d.Explotador.Direccion;m.TelefonoExplotador=d.Explotador.Telefono;m.CorreoExplotador=d.Explotador.Correo;
+            m.GerenciaSeguridadOperacional=d.GerenteOperaciones.Nombre;m.DireccionGSO=d.GerenteOperaciones.Direccion;m.TelefonoGSO=d.GerenteOperaciones.Telefono;m.CorreoGSO=d.GerenteOperaciones.Correo;
+            m.RepresentanteTecnico=d.RepresentanteTecnico.Nombre;m.DireccionRT=d.RepresentanteTecnico.Direccion;m.TelefonoRT=d.RepresentanteTecnico.Telefono;m.CorreoRT=d.RepresentanteTecnico.Correo;
+            m.PuntoContactoEcuador=d.RepresentanteLegalEcuador.Nombre;m.DireccionContactoEcuador=d.RepresentanteLegalEcuador.Direccion;m.TelefonoContactoEcuador=d.RepresentanteLegalEcuador.Telefono;m.CorreoContactoEcuador=d.RepresentanteLegalEcuador.Correo;
+            m.RepresentanteLegal=d.RepresentanteLegalEcuador.Nombre;
+            m.DireccionOperacional=string.Join(" | ",new[]{d.GerenteOperaciones.Nombre,d.GerenteOperaciones.Direccion,d.GerenteOperaciones.Telefono,d.GerenteOperaciones.Correo,d.RepresentanteTecnico.Nombre,d.RepresentanteTecnico.Direccion,d.RepresentanteTecnico.Telefono,d.RepresentanteTecnico.Correo});
+            m.AeronavesCondiciones=m.AeronavesCondiciones.Where(a=>!string.IsNullOrWhiteSpace(a.ModeloTipo)).GroupBy(a=>a.ModeloTipo.Trim(),StringComparer.OrdinalIgnoreCase).Select(g=>new CapaModelo.Common.CertificadoAOCRAeronaveFilaViewModel {
+                ModeloTipo=g.Key,Uio=d.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="UIO")?.Codigo,Gye=d.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="GYE")?.Codigo,
+                Mec=d.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="MEC")?.Codigo,Ltx=d.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="LTX")?.Codigo }).ToList();
+            m.AeronavesDetalle=string.Join(", ",m.AeronavesCondiciones.Select(a=>a.ModeloTipo));
+            var vigencia=d.AocVigenteHasta.HasValue?d.AocVigenteHasta.Value.ToString("dd/MM/yyyy"):"---";
+            m.TextoLegalEs="Certificado expedido en base al AOC N.º "+m.NumeroAOCBase+" vigente hasta "+vigencia+". "+m.TextoLegalEs;
+            m.TextoLegalEn="Certificate issued based on AOC No. "+m.NumeroAOCBase+", valid until "+vigencia+". "+m.TextoLegalEn;
+            return m;
+        }
+
+        public static string TipoTramite(int? tipo)
+        {
+            switch(tipo){case 1:return "Emisión";case 2:return "Renovación";case 3:return "Modificación";default:return string.Empty;}
+        }
+
+        public static List<string> Validar(DatosDocumentalesAocr datos,IEnumerable<SolicitudEstacionInspeccion> estaciones,bool completo)
+        {
+            var errores=new List<string>();
+            if(datos==null){errores.Add("Datos documentales del certificado");return errores;}
+            Action<string,string,int> texto=(v,n,max)=>{if((completo&&string.IsNullOrWhiteSpace(v))||(v??string.Empty).Length>max)errores.Add(n);};
+            texto(datos.PermisoCnacNumero,"Número del permiso CNAC",150);texto(datos.PaisBandera,"País de bandera",100);
+            if(completo && (!datos.PermisoCnacEmision.HasValue || !datos.PermisoCnacVencimiento.HasValue))errores.Add("Fechas del permiso CNAC");
+            if(datos.PermisoCnacEmision.HasValue && datos.PermisoCnacVencimiento.HasValue && datos.PermisoCnacEmision.Value.Date>datos.PermisoCnacVencimiento.Value.Date)errores.Add("El vencimiento CNAC debe ser igual o posterior a su emisión");
+            if(completo && !datos.AocVigenteHasta.HasValue)errores.Add("Vigencia del AOC");
+            foreach(var par in new[]{Tuple.Create("Explotador",datos.Explotador),Tuple.Create("Gerente de Operaciones",datos.GerenteOperaciones),Tuple.Create("Representante Técnico EAE",datos.RepresentanteTecnico),Tuple.Create("Representante Legal en Ecuador",datos.RepresentanteLegalEcuador)}) {
+                if(par.Item2==null){errores.Add(par.Item1);continue;}
+                texto(par.Item2.Nombre,par.Item1+": nombre",200);texto(par.Item2.Direccion,par.Item1+": dirección",500);texto(par.Item2.Telefono,par.Item1+": teléfono",60);texto(par.Item2.Correo,par.Item1+": correo",254);
+                if(!string.IsNullOrWhiteSpace(par.Item2.Correo))try{if(new System.Net.Mail.MailAddress(par.Item2.Correo).Address!=par.Item2.Correo)errores.Add(par.Item1+": correo inválido");}catch(FormatException){errores.Add(par.Item1+": correo inválido");}
+            }
+            var vigentes=(estaciones??Enumerable.Empty<SolicitudEstacionInspeccion>()).Where(e=>e.Activo).ToList();
+            var opciones=datos.Estaciones??new List<OperacionEstacionDocumentalAocr>();
+            if(opciones.Any(e=>e==null)||opciones.Where(e=>e!=null).GroupBy(e=>e.EstacionId).Any(g=>g.Count()>1))errores.Add("Estaciones duplicadas o inválidas");
+            foreach(var op in opciones.Where(e=>e!=null)) {
+                var real=vigentes.SingleOrDefault(e=>e.Id==op.EstacionId);
+                if(real==null){errores.Add("Estación ajena al trámite");continue;}
+                op.EstacionCodigo=real.EstacionCodigo; // Nunca confiar en el nombre o código remitido por el navegador.
+                if(!string.IsNullOrWhiteSpace(op.Codigo) && !new[]{"R","NR","RC","ET","A"}.Contains(op.Codigo))errores.Add("Código de operación inválido en "+real.EstacionCodigo);
+            }
+            if(completo)foreach(var estacion in vigentes)if(!opciones.Any(o=>o!=null&&o.EstacionId==estacion.Id&&!string.IsNullOrWhiteSpace(o.Codigo)))errores.Add("Operación de estación "+estacion.EstacionCodigo);
+            return errores.Distinct().ToList();
+        }
+    }
+
     /// <summary>
     /// Servicio institucional para la generación automática del documento AOCR.
     /// Reemplaza la carga manual del "Borrador AOCR" por generación controlada

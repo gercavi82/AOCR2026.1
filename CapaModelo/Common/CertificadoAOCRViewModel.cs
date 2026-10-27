@@ -5,6 +5,7 @@ namespace CapaModelo.Common
 {
     public class CertificadoAOCRViewModel
     {
+        public CapaModelo.DatosDocumentalesAocr DatosDocumentales { get; set; } = new CapaModelo.DatosDocumentalesAocr();
         // Identificación del certificado
         public string NumeroAOCR { get; set; }
         public string NumeroAOCBase { get; set; }

@@ -1,9 +1,11 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
 @using System
 @using System.Globalization
 @using System.Linq
 
 @{
+    var estacionesOperacion = Model.DatosDocumentales.Estaciones;
+    var columnasOperacion = Math.Max(1, estacionesOperacion.Count);
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
     var cultura = new CultureInfo("es-EC");
     var aeronaves = Model != null && Model.AeronavesCondiciones != null
@@ -14,7 +16,7 @@
     Func<DateTime?, string> fecha = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "---";
     var logoFisico = Server.MapPath("~/Content/imganes/logo1.png");
     var logo = System.IO.File.Exists(logoFisico) ? new Uri(logoFisico).AbsoluteUri : Url.Content("~/Content/imganes/logo1.png");
-    var filas = aeronaves.Take(5).ToList();
+    var filas = aeronaves.ToList();
 }
 
 @section PdfHead {
@@ -82,21 +84,18 @@
             <table class="cond">
                 <tr>
                     <th style="width:26%;">Representante Tecnico</th>
-                    <td colspan="4">@val(Model != null ? Model.RepresentanteTecnico : null)</td>
+                    <td colspan="@columnasOperacion">@val(Model != null ? Model.RepresentanteTecnico : null)</td>
                 </tr>
                 <tr>
                     <td></td>
-                    <td colspan="4" class="gray"></td>
+                    <td colspan="@columnasOperacion" class="gray"></td>
                 </tr>
                 <tr>
                     <th rowspan="2">Modelo y tipo de<br />Aeronaves autorizadas</th>
-                    <td colspan="4" class="center xl">Aeropuertos Autorizados / Tipos de Operacion</td>
+                    <td colspan="@columnasOperacion" class="center xl">Aeropuertos Autorizados / Tipos de Operacion</td>
                 </tr>
                 <tr>
-                    <td class="center">UIO</td>
-                    <td class="center">GYE</td>
-                    <td class="center">MEC</td>
-                    <td class="center">LTX</td>
+                    @foreach(var estacion in estacionesOperacion) { <td class="center">@estacion.EstacionCodigo</td> }
                 </tr>
                 @if (filas.Any())
                 {
@@ -104,20 +103,14 @@
                     {
                         <tr>
                             <td>@val(fila.ModeloTipo)</td>
-                            <td class="center">@val(fila.Uio)</td>
-                            <td class="center">@val(fila.Gye)</td>
-                            <td class="center">@val(fila.Mec)</td>
-                            <td class="center">@val(fila.Ltx)</td>
+                            @foreach(var estacion in estacionesOperacion) { <td class="center">@val(estacion.Codigo)</td> }
                         </tr>
                     }
                 }
                 @for (var i = filas.Count; i < 5; i++)
                 {
                     <tr>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
+                        @foreach(var estacion in estacionesOperacion) { <td>&nbsp;</td> }
                         <td>&nbsp;</td>
                     </tr>
                 }
@@ -136,6 +129,9 @@
             <div class="cell signature-left" style="width:39%;">
                 <div class="bold">Fecha de emision / renovacion /<br />modificacion: @fecha(Model != null ? (DateTime?)Model.FechaEmisionDocumento : null)</div>
                 <div class="small">/ Date of issue / renovation / modification</div>
+                <div>@(Model.Solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue</div>
+                <div>@(Model.Solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal</div>
+                <div>@(Model.Solicitud.TipoSolicitud==3?"[X]":"[ ]") Modificación / Modification</div>
             </div>
             <div class="cell signature-right" style="width:61%;">
                 <div>Nombre y firma: @val(Model != null ? Model.NombreDirectorCertificacion : null)</div>

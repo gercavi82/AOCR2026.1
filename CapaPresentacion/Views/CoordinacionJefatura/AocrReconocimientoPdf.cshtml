@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AocrDocumentoPdfViewModel>
 @using System
 @using System.Globalization
 @using System.Linq
@@ -18,7 +18,8 @@
     var logo = System.IO.File.Exists(logoFisico) ? new Uri(logoFisico).AbsoluteUri : Url.Content("~/Content/imganes/logo1.png");
     var fechaEmision = Model != null && Model.FechaEmisionDocumento != default(DateTime) ? Model.FechaEmisionDocumento : DateTime.Now;
     var aocOriginal = val(Model != null ? Model.AocOriginalNumero : null);
-    var aocVence = fecha(Model != null ? Model.FechaVencimiento : null);
+    var datos = Model.DatosDocumentales;
+    var aocVence = fecha(datos.AocVigenteHasta);
 }
 
 @section PdfHead {
@@ -81,17 +82,18 @@
             <div class="cell center" style="width:34%;">
                 <div class="section-head" style="margin-top:2mm;">PERMISO OPERACION CNAC</div>
                 <div class="xl">CNAC OPERATION PERMIT</div>
+                <div class="field-space">@val(datos.PermisoCnacNumero)</div>
                 <div class="section-head" style="margin-top:4mm;">Fecha de Emision <span class="subtitle">/ Date of issue:</span></div>
-                <div class="field-space">@fecha(fechaEmision)</div>
+                <div class="field-space">@fecha(datos.PermisoCnacEmision)</div>
                 <div class="section-head">Fecha de Vencimiento <span class="subtitle">/ Expiry date:</span></div>
-                <div class="field-space">@fecha(Model != null ? Model.FechaVencimiento : null)</div>
+                <div class="field-space">@fecha(datos.PermisoCnacVencimiento)</div>
             </div>
         </div>
         <div class="row h-135">
             <div class="cell" style="width:35%;">
                 <div class="section-head">AOCR #:</div>
                 <div class="field-space">@val(Model != null ? Model.NumeroAocr : null)</div>
-                <div class="xl">Otorgado en base al AOC No. @aocOriginal<br />emitido por @val(Model != null ? Model.EstadoExplotador : null)</div>
+                <div class="xl">Otorgado en base al AOC No. @aocOriginal<br />emitido por @val(datos.PaisBandera)</div>
                 <div class="small">Issued based on the original AOC granted by (State of the Operator)</div>
                 <div class="section-head" style="margin-top:4mm;">Fecha de Vencimiento:</div>
                 <div class="small">/ Expiry date</div>
@@ -103,17 +105,20 @@
                     <div><u><em>"Gerencia de Seguridad Operacional"</em></u></div>
                     <div><em>"Operational Safety Manage's office".</em></div>
                     <br />
-                    <div><span class="bold">Direccion</span> /Address: @val(Model != null ? Model.PuntosContactoOperacionales : null)</div><br />
-                    <div><span class="bold">Telefono:</span> /Telephone: @val(Model != null ? Model.ContactoTelefono : null)</div><br />
-                    <div><span class="bold">Correo-e</span> /Email: @val(Model != null ? Model.ContactoCorreo : null)</div><br />
+                    <div class="bold">@val(datos.GerenteOperaciones.Nombre)</div>
+                    <div><span class="bold">Direccion</span> /Address: @val(datos.GerenteOperaciones.Direccion)</div><br />
+                    <div><span class="bold">Telefono:</span> /Telephone: @val(datos.GerenteOperaciones.Telefono)</div><br />
+                    <div><span class="bold">Correo-e</span> /Email: @val(datos.GerenteOperaciones.Correo)</div><br />
                     <div><u><em><span class="bold">"Representante Tecnico"</span></em></u> / <em>"Technical Representative"</em></div>
-                    <div><span class="bold">Direccion</span> /Address: @val(Model != null ? Model.ContactoDireccion : null)</div><br />
-                    <div><span class="bold">Telefono</span> /Telephone: @val(Model != null ? Model.ContactoTelefono : null)</div><br />
-                    <div><span class="bold">Correo e</span> /Email: @val(Model != null ? Model.ContactoCorreo : null)</div>
+                    <div class="bold">@val(datos.RepresentanteTecnico.Nombre)</div>
+                    <div><span class="bold">Direccion</span> /Address: @val(datos.RepresentanteTecnico.Direccion)</div><br />
+                    <div><span class="bold">Telefono</span> /Telephone: @val(datos.RepresentanteTecnico.Telefono)</div><br />
+                    <div><span class="bold">Correo e</span> /Email: @val(datos.RepresentanteTecnico.Correo)</div>
                 </div>
             </div>
             <div class="cell center" style="width:31%;">
                 <div class="section-head xl" style="margin-top:3mm;">NOMBRE DEL EXPLOTADOR<br />OPERATOR NAME</div>
+                <div class="data-center">@val(Model.NombreExplotador)</div>
                 <div class="section-head" style="margin-top:5mm;">Estado del Explotador:</div>
                 <div class="small">/ Operator State:</div>
                 <div class="data-center">@val(Model != null ? Model.EstadoExplotador : null)</div>
@@ -146,15 +151,15 @@
         <div class="legal">
             Este Certificado es expedido en base al <span class="bold">AOC # @aocOriginal vigente hasta @aocVence</span>, y cualquier cambio al AOC original, o de las condiciones o limitaciones, que afecte las operaciones del explotador en su Estado, deberan ser notificados a esta AAC, dentro de 30 dias de dicho cambio.<br />
             Este Certificado deja de tener efecto inmediatamente despues de la expiracion, suspension, revocacion, cancelacion o cualquier accion similar sobre el AOC.<br /><br />
-            This certificate is issued based on the current <span class="bold">AOC # @aocOriginal until @aocVence</span>, and any changes to the original AOC or to the conditions or limitations that affect the operator's operations in its State, shall be notified to this CAA within 30 days of such change.<br />
+            This certificate is issued based on the original <span class="bold">AOC # @aocOriginal valid until @aocVence</span>, and any changes to the original AOC or to the conditions or limitations that affect the operator's operations in its State, shall be notified to this CAA within 30 days of such change.<br />
             This certificate ceases to have effect immediately upon expiration, suspension, revocation, cancellation or any similar action on the AOC.
         </div>
         <div class="row footer-sign">
             <div class="cell" style="width:35%;">
-                <div class="section-head">Fecha de expedicion <span class="small">/ Date of issue:</span></div>
-                <div class="field-space">@fecha(Model != null ? Model.FechaExpedicion : null)</div>
-                <div class="section-head" style="margin-top:3mm;">Fecha de renovacion <span class="small">/ Date of Renovation</span></div>
-                <div class="field-space">@fecha(Model != null ? Model.FechaRenovacion : null)</div>
+                <div class="section-head">Fecha / Date: @fecha(fechaEmision)</div>
+                <div style="margin-top:2mm;">@(solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue</div>
+                <div>@(solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal</div>
+                <div>@(solicitud.TipoSolicitud==3?"[X]":"[ ]") Modificación / Modification</div>
             </div>
             <div class="cell center" style="width:65%;">
                 <div class="xl">Nombre y firma <span class="small">/ Name and signature :</span></div>

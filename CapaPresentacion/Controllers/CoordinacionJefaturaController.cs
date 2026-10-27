@@ -3855,7 +3855,7 @@ namespace CapaPresentacion.Controllers
                 });
             }
 
-            return new CertificadoAOCRViewModel
+            var certificadoModelo = new CertificadoAOCRViewModel
             {
                 NumeroAOCR = model != null ? model.NumeroAocr : null,
                 NumeroAOCBase = PrimerTextoAocrNoVacio(model != null ? model.AocOriginalNumero : null, solicitud != null ? solicitud.NumeroAOC : null, model != null ? model.NumeroAocr : null),
@@ -3905,6 +3905,10 @@ namespace CapaPresentacion.Controllers
                 TextoLegalEn = ConstruirTextoLegalCertificadoEn(),
                 Observaciones = PrimerTextoAocrNoVacio(model != null ? model.ObservacionesReconocimiento : null, solicitud != null ? solicitud.Observaciones : null, "No aplica")
             };
+            var certificadoDatosDao=new CapaDatos.DAOs.CertificadoDAO();
+            var numeroPersistido=certificadoDatosDao.ObtenerNumeroPersistido(solicitud.CodigoSolicitud);
+            if(!string.IsNullOrWhiteSpace(numeroPersistido)) certificadoModelo.NumeroAOCR=numeroPersistido;
+            return CapaNegocio.Services.DatosDocumentalesAocrReglas.AplicarCertificado(certificadoModelo,certificadoDatosDao.ObtenerDatosDocumentales(solicitud.CodigoSolicitud));
         }
 
         private static string ConstruirTextoLegalCertificadoEs()

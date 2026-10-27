@@ -4,6 +4,36 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CapaModelo
 {
+    public sealed class ContactoDocumentalAocr
+    {
+        public string Nombre { get; set; }
+        public string Direccion { get; set; }
+        public string Telefono { get; set; }
+        public string Correo { get; set; }
+    }
+
+    public sealed class OperacionEstacionDocumentalAocr
+    {
+        public int EstacionId { get; set; }
+        public string EstacionCodigo { get; set; }
+        public string Codigo { get; set; }
+    }
+
+    public sealed class DatosDocumentalesAocr
+    {
+        public string PermisoCnacNumero { get; set; }
+        public DateTime? PermisoCnacEmision { get; set; }
+        public DateTime? PermisoCnacVencimiento { get; set; }
+        public DateTime? AocVigenteHasta { get; set; }
+        public string PaisBandera { get; set; }
+        public int? SolicitudOriginalId { get; set; }
+        public ContactoDocumentalAocr Explotador { get; set; } = new ContactoDocumentalAocr();
+        public ContactoDocumentalAocr GerenteOperaciones { get; set; } = new ContactoDocumentalAocr();
+        public ContactoDocumentalAocr RepresentanteTecnico { get; set; } = new ContactoDocumentalAocr();
+        public ContactoDocumentalAocr RepresentanteLegalEcuador { get; set; } = new ContactoDocumentalAocr();
+        public System.Collections.Generic.List<OperacionEstacionDocumentalAocr> Estaciones { get; set; } = new System.Collections.Generic.List<OperacionEstacionDocumentalAocr>();
+    }
+
     [Table("aocr_tbcertificado")]
     public class Certificado
     {

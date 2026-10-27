@@ -115,6 +115,7 @@ namespace CapaPresentacion.Controllers
                     return JsonError(400, "No se recibieron datos validos para guardar el AOCR.", solicitudId);
                 }
 
+                if(!ModelState.IsValid) return JsonError(400,"Revise los formatos de fechas y datos del certificado.",solicitudId);
                 if (!EsRolInspectorActivo() || !_authorizationService.UsuarioPuedeGenerar(User))
                 {
                     return JsonError(403, "Solo el Inspector asignado puede guardar los borradores finales.", solicitudId);
@@ -152,7 +153,7 @@ namespace CapaPresentacion.Controllers
                     + "; FechaVencimientoRaw='" + (fechaVencimientoRaw ?? string.Empty) + "';");
 
                 var errores = new System.Collections.Generic.List<string>();
-                if (string.IsNullOrWhiteSpace(estadoExplotador))
+                if (string.IsNullOrWhiteSpace(estadoExplotador) || estadoExplotador.Length>100)
                 {
                     errores.Add("Estado del explotador");
                 }
@@ -189,6 +190,12 @@ namespace CapaPresentacion.Controllers
                         }
                     });
                 }
+
+                var datosDocumentales=request.DatosDocumentales ?? new DatosDocumentalesAocr();
+                var estacionesDocumentales=new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId);
+                var erroresDocumentales=DatosDocumentalesAocrReglas.Validar(datosDocumentales,estacionesDocumentales,false);
+                if(erroresDocumentales.Count>0) return JsonCamposFaltantes(solicitudId,erroresDocumentales);
+                new CertificadoDAO().GuardarDatosDocumentales(solicitudId,datosDocumentales,ObtenerUsuarioActualId());
 
                 var resultado = WorkflowService.GuardarDatosObligatorios(
                     solicitudId,
@@ -274,6 +281,9 @@ namespace CapaPresentacion.Controllers
                     return JsonError(409, "No se puede regenerar un documento AOCR ya firmado.", solicitudId);
                 }
 
+                var numeroOriginal=new CertificadoDAO().AsegurarNumeroOriginal(solicitudId,ObtenerUsuarioActualId());
+                contexto.Documento.NumeroAocr=numeroOriginal;
+                if(contexto.Certificado!=null) contexto.Certificado.NumeroCertificado=numeroOriginal;
                 var pdfBytes = string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
                     ? _pdfService.GenerarPdfCondiciones(ControllerContext, contexto.Documento)
                     : _pdfService.GenerarPdfReconocimiento(ControllerContext, contexto.Documento);

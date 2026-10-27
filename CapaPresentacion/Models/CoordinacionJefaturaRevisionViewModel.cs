@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CapaModelo;
 
@@ -233,6 +233,9 @@ namespace CapaPresentacion.Models
 
     public class FirmaAocrInstitucionalViewModel
     {
+        public System.Collections.Generic.List<System.Web.Mvc.SelectListItem> SolicitudesOriginales { get; set; } = new System.Collections.Generic.List<System.Web.Mvc.SelectListItem>();
+        public int? TipoSolicitud { get; set; }
+        public CapaModelo.DatosDocumentalesAocr DatosDocumentales { get; set; } = new CapaModelo.DatosDocumentalesAocr();
         public int SolicitudId { get; set; }
         public int AocrId { get; set; }
         public string NumeroSolicitud { get; set; }
@@ -330,6 +333,7 @@ namespace CapaPresentacion.Models
 
     public class GuardarDatosFirmaAocrRequest
     {
+        public CapaModelo.DatosDocumentalesAocr DatosDocumentales { get; set; } = new CapaModelo.DatosDocumentalesAocr();
         public int SolicitudId { get; set; }
         public string EstadoExplotador { get; set; }
         public DateTime? FechaVencimiento { get; set; }
@@ -365,6 +369,7 @@ namespace CapaPresentacion.Models
 
     public class AocrDocumentoPdfViewModel
     {
+        public CapaModelo.DatosDocumentalesAocr DatosDocumentales { get; set; } = new CapaModelo.DatosDocumentalesAocr();
         public SolicitudAOCR Solicitud { get; set; }
         public Inspeccion Inspeccion { get; set; }
         public InspeccionInformeTecnico Informe { get; set; }

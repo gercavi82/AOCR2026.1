@@ -1,4 +1,4 @@
-@model CapaPresentacion.Models.FirmaAocrInstitucionalViewModel
+﻿@model CapaPresentacion.Models.FirmaAocrInstitucionalViewModel
 @{
     ViewBag.Title = "Firma institucional AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -108,10 +108,11 @@
                     <form id="frmGuardarDatosAocr" method="post" action="@Model.UrlGuardarDatos">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="solicitudId" value="@Model.SolicitudId" />
+                        @Html.Partial("_DatosDocumentales",Model)
                         <div class="firma-aocr__form-grid">
                             <label class="firma-aocr__field">
-                                <span>Estado del explotador *</span>
-                                <input type="text" id="EstadoExplotador" name="EstadoExplotador" value="@(Model.EstadoExplotador ?? "")" autocomplete="off" />
+                                <span>Estado del explotador (pa?s) *</span>
+                                <input type="text" id="EstadoExplotador" name="EstadoExplotador" maxlength="100" value="@(Model.EstadoExplotador ?? "")" autocomplete="off" />
                             </label>
                             <label class="firma-aocr__field">
                                 <span>Fecha de vencimiento *</span>

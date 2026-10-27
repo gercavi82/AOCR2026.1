@@ -288,6 +288,10 @@ namespace CapaPresentacion.Services
                 ?? _documentoGeneradoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, "CONDICIONES");
             var aeronaves = _aeronaveDao.ObtenerPorSolicitud(solicitudId) ?? new List<AeronaveSolicitud>();
             var documento = ConstruirDocumentoPdfModel(solicitud, inspeccion, informe, certificado, aeronaves);
+            var datos = _certificadoDao.ObtenerDatosDocumentales(solicitudId);
+            var estacionesDatos = new SolicitudEstacionDAO().ListarPorSolicitud(solicitudId).Where(e=>e.Activo).ToList();
+            AplicarDatosDocumentales(documento,datos,estacionesDatos);
+            documento.NumeroAocr=PrimerValorNoVacio(_certificadoDao.ObtenerNumeroPersistido(solicitudId),documento.NumeroAocr);
             Trace.TraceInformation("[FIRMA_AOCR][INFORME_ESTADO] SolicitudId=" + solicitudId
                 + "; InformeId=" + (informe != null ? informe.CodigoInforme : 0)
                 + "; EstadoInforme=" + (informe != null ? informe.EstadoInforme : string.Empty)
@@ -407,7 +411,10 @@ namespace CapaPresentacion.Services
                 NombreDirectorCertificacion = contexto.Documento != null ? contexto.Documento.NombreDirectorCertificacion : null,
                 FechaEmisionDocumento = contexto.Documento != null ? (DateTime?)contexto.Documento.FechaEmisionDocumento : null,
                 AocOriginalNumero = contexto.Documento != null ? contexto.Documento.AocOriginalNumero : null,
-                PermisoOperacionCnac = solicitud.NumeroAOC,
+                SolicitudesOriginales = _certificadoDao.ListarOriginales(solicitudId).Select(o=>new SelectListItem{Value=o.Item1.ToString(),Text=o.Item2,Selected=contexto.Documento.DatosDocumentales.SolicitudOriginalId==o.Item1}).ToList(),
+                TipoSolicitud = solicitud.TipoSolicitud,
+                DatosDocumentales = contexto.Documento.DatosDocumentales,
+                PermisoOperacionCnac = contexto.Documento.DatosDocumentales.PermisoCnacNumero,
                 CondicionBaseOperacion = contexto.Documento != null ? contexto.Documento.CondicionBaseOperacion : null,
                 PuedeGuardarDatos = puedeGenerarInspector && !todosFirmados,
                 UrlGuardarDatos = url.Action("GuardarDatos", "FirmaAocr", new { solicitudId }),
@@ -765,6 +772,29 @@ namespace CapaPresentacion.Services
             return null;
         }
 
+        public static void AplicarDatosDocumentales(AocrDocumentoPdfViewModel documento,DatosDocumentalesAocr datos,List<SolicitudEstacionInspeccion> estacionesDatos)
+        {
+            foreach(var estacionDatos in estacionesDatos)
+                if(!datos.Estaciones.Any(e=>e.EstacionId==estacionDatos.Id)) datos.Estaciones.Add(new OperacionEstacionDocumentalAocr{EstacionId=estacionDatos.Id,EstacionCodigo=estacionDatos.EstacionCodigo});
+            DatosDocumentalesAocrReglas.Validar(datos,estacionesDatos,false);
+            documento.Solicitud.Estaciones=estacionesDatos;
+            documento.DatosDocumentales=datos;
+            documento.EstadoOtorgante=datos.PaisBandera;
+            documento.NombreExplotador=PrimerValorNoVacio(datos.Explotador.Nombre,documento.NombreExplotador);
+            documento.DireccionExplotador=datos.Explotador.Direccion;documento.TelefonoExplotador=datos.Explotador.Telefono;documento.CorreoExplotador=datos.Explotador.Correo;
+            documento.PuntoContactoEcuador=datos.RepresentanteLegalEcuador.Nombre;documento.ContactoDireccion=datos.RepresentanteLegalEcuador.Direccion;documento.ContactoTelefono=datos.RepresentanteLegalEcuador.Telefono;documento.ContactoCorreo=datos.RepresentanteLegalEcuador.Correo;
+            documento.PuntosContactoOperacionales=datos.GerenteOperaciones.Nombre;
+            documento.RepresentanteTecnico=datos.RepresentanteTecnico.Nombre;
+            documento.AeronavesCondiciones=ConstruirFilasAeronavesCondiciones(documento.Aeronaves);
+            foreach(var fila in documento.AeronavesCondiciones) {
+                fila.Uio=datos.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="UIO")?.Codigo;
+                fila.Gye=datos.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="GYE")?.Codigo;
+                fila.Mec=datos.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="MEC")?.Codigo;
+                fila.Ltx=datos.Estaciones.FirstOrDefault(e=>e.EstacionCodigo=="LTX")?.Codigo;
+            }
+
+        }
+
         private static AocrDocumentoPdfViewModel ConstruirDocumentoPdfModel(SolicitudAOCR solicitud, Inspeccion inspeccion, InspeccionInformeTecnico informe, Certificado certificado, List<AeronaveSolicitud> aeronaves)
         {
             var operador = solicitud != null ? PrimerValorNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial) : null;
@@ -830,16 +860,9 @@ namespace CapaPresentacion.Services
         private static List<AocrCondicionAeronaveFilaViewModel> ConstruirFilasAeronavesCondiciones(IEnumerable<AeronaveSolicitud> aeronaves)
         {
             return (aeronaves ?? Enumerable.Empty<AeronaveSolicitud>())
-                .Select(a => new AocrCondicionAeronaveFilaViewModel
-                {
-                    ModeloTipo = PrimerValorNoVacio(a.Modelo, a.Marca),
-                    Matricula = a.Matricula,
-                    Serie = a.Serie,
-                    Uio = "Autorizado",
-                    Gye = "Autorizado",
-                    Mec = "N/A",
-                    Ltx = "N/A"
-                })
+                .Where(a=>!string.IsNullOrWhiteSpace(a.Modelo))
+                .GroupBy(a=>a.Modelo.Trim(),StringComparer.OrdinalIgnoreCase)
+                .Select(g=>new AocrCondicionAeronaveFilaViewModel { ModeloTipo=g.Key })
                 .ToList();
         }
 
@@ -879,6 +902,7 @@ namespace CapaPresentacion.Services
                 faltantes.Add("Tabla de aeronaves autorizadas");
             }
 
+            if(model.Solicitud!=null) faltantes.AddRange(DatosDocumentalesAocrReglas.Validar(model.DatosDocumentales,model.Solicitud.Estaciones,true));
             return faltantes.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
