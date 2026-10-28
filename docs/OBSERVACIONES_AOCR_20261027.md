@@ -1,5 +1,7 @@
 # Observaciones AOCR y Condiciones — 27/10/2026
 
+Actualización 28/10: el usuario confirmó que el AOCR debe conservar el consecutivo del trámite original. Esa regla reemplaza el contador independiente descrito en este registro del 27/10. Implementación y regularización de borradores: `docs/NUMERACION_AOCR_20261028.md`.
+
 ## Verificación de remisión al Coordinador
 
 Consulta de solo lectura del intento de AOCR003 registrado a las 15:58:52: el paquete no quedó remitido. Los PDF permanecen desbloqueados, el proceso continúa en `PENDIENTE_REVISION_INFORME_DCAV` y no existen correos `*_REVISION_COORDINADOR` del expediente. El usuario 90 tiene correo configurado y roles activos `CoordinadorInspecciones` y `CoordinacionLegal`. Se verificaron mediante consultas y validadores de lectura los informes firmados, la asignación del Inspector, ausencia de no conformidades, integridad de archivos y resolución del RT y Coordinador. No se ejecutó la transición ni SMTP en el servidor.
@@ -9,6 +11,8 @@ No hay evidencia suficiente para atribuir el rechazo anterior a una causa concre
 Prueba local con rol `CoordinadorInspecciones`: ambos avisos internos y ambos correos encolados correctamente; fallo forzado en el segundo correo revierte todo el paquete y sus notificaciones, y el reintento posterior funciona sin duplicar avisos. **127 comprobaciones PostgreSQL y 80 pruebas automatizadas correctas**. Compilación Release preparada en `public/public1` (DLL de Datos, Negocio y Presentación, script e Index).
 
 **Pendiente de diagnóstico en servidor:** publicar la compilación preparada y revisar el mensaje exacto del siguiente intento; se solicitó al usuario el texto del aviso anterior. No se afirma que el envío real esté corregido o que los correos hayan sido entregados. La bandeja de revisión corresponde a **CL y AOCR por revisar** (`FirmaAocr/PaquetesCoordinador`); `Tecnico/Index` corresponde a asignación de Inspector y no sustituye esa bandeja.
+
+El usuario confirmó que vio «mensaje enviado al coordinador». La nueva consulta mantuvo el mismo estado sin envío ni avisos; por ello esa confirmación no acredita una transacción completada. Se reforzó el cliente: exige `ok=true` y `estadoExpediente=DOCUMENTOS_FINALES_COORDINADOR`, muestra progreso sin estilo de éxito, conserva el resultado visible y evita repetir el envío confirmado. Cuatro escenarios JavaScript ejecutados correctamente: respuesta válida, estado distinto, respuesta incompleta y error de transacción. Copia local del script actualizada. La causa concreta de la discrepancia del intento anterior sigue pendiente; no se atribuye al SMTP ni se confirma una remisión real.
 
 ## Incidencia posterior: los PDF no mostraban la actualización
 

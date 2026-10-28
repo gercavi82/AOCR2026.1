@@ -135,6 +135,15 @@ namespace CapaNegocio.Services
             }
         }
 
+        private static string ObtenerNumeroReconocimiento(SolicitudAOCR solicitud)
+        {
+            var numero = new CertificadoDAO().ObtenerNumeroPersistido(solicitud.CodigoSolicitud);
+            if (!string.IsNullOrWhiteSpace(numero)) return numero;
+            if (solicitud.TipoSolicitud == 1)
+                return CertificadoDAO.ConstruirNumeroDesdeTramiteOriginal(solicitud.CodigoOaci, solicitud.NumeroSolicitud);
+            throw new InvalidOperationException("Vincule el AOCR de la emisión original antes de preparar Condiciones y Limitaciones.");
+        }
+
         private static bool EsInformeAprobado(string estado)
         {
             var e = (estado ?? string.Empty).Trim().ToUpperInvariant();
@@ -173,7 +182,7 @@ namespace CapaNegocio.Services
                 InspeccionId = inspeccion != null ? inspeccion.CodigoInspeccion : (int?)null,
                 InformeId = informe != null ? informe.CodigoInforme : (int?)null,
                 NumeroSolicitud = solicitud.NumeroSolicitud ?? solicitud.CodigoSolicitud.ToString(),
-                NumeroAocr = solicitud.NumeroAOC ?? (!string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? "AOCR-" + solicitud.NumeroSolicitud : "AOCR-" + solicitudId),
+                NumeroAocr = ObtenerNumeroReconocimiento(solicitud),
                 Compania = solicitud.RazonSocial ?? solicitud.NombreOperador ?? "Operador Aéreo",
                 OperadorExtranjero = solicitud.NombreOperador ?? solicitud.RazonSocial ?? "Operador Aéreo",
                 RepresentanteTecnico = solicitud.RepresentanteLegal ?? "Representante Técnico",
@@ -844,7 +853,7 @@ namespace CapaNegocio.Services
             var model = new CondicionesLimitacionesPdfViewModel
             {
                 SolicitudId = solicitudId,
-                NumeroAocr = cl?.NumeroAocr ?? solicitud.NumeroAOC ?? "AOCR-" + solicitudId,
+                NumeroAocr = ObtenerNumeroReconocimiento(solicitud),
                 Version = cl?.Version ?? 1,
                 TipoTramite = ObtenerTipoTramiteTexto(solicitud.TipoSolicitud),
                 FechaEmision = cl?.FechaFirmaDircav ?? DateTime.Now,

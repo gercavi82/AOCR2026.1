@@ -39,6 +39,22 @@ namespace AOCR.Tests.Integration
     [TestClass]
     public class Observaciones19PdfTests
     {
+        [DataTestMethod]
+        [DataRow("DGAC-GOP-2026-AOCR003", "DGAC-129-QTR-003")]
+        [DataRow("AOCR003", "DGAC-129-QTR-003")]
+        [DataRow("AOCR-12", "DGAC-129-QTR-012")]
+        [DataRow("DGAC-GOP-2026-AOCR1001", "DGAC-129-QTR-1001")]
+        public void NumeroAocr_ConservaConsecutivoDelTramiteOriginal(string tramite,string esperado)
+        {
+            Assert.AreEqual(esperado,CapaDatos.DAOs.CertificadoDAO.ConstruirNumeroDesdeTramiteOriginal(" qtr ",tramite));
+        }
+
+        [TestMethod]
+        public void NumeroAocr_RechazaReferenciaSinConsecutivoOriginal()
+        {
+            foreach(var tramite in new[]{"", "OT-002", "AOCR000", "AOCR003/OT002", "2026"})
+                Assert.ThrowsException<InvalidOperationException>(()=>CapaDatos.DAOs.CertificadoDAO.ConstruirNumeroDesdeTramiteOriginal("QTR",tramite));
+        }
         private static ContactoDocumentalAocr Contacto(string nombre) {return new ContactoDocumentalAocr{Nombre=nombre,Direccion="Base "+nombre,Telefono="123456",Correo=nombre.ToLowerInvariant()+"@example.test"};}
         public static DatosDocumentalesAocr Datos()
         {

@@ -304,7 +304,7 @@ class RemisionDcavTest {
  CREATE TABLE IF NOT EXISTS aocr_tbcertificado(codigo_certificado serial primary key,codigo_solicitud integer UNIQUE,numero_certificado varchar(80) CONSTRAINT aocr_tbcertificado_numero_certificado_key UNIQUE,firmado_por text,ruta_pdf text);
  CREATE TABLE IF NOT EXISTS aocr_tbfirma_documento(codigo_solicitud integer);
  INSERT INTO aocr_tbsolicitud(codigo_solicitud,tipo_solicitud,codigo_oaci,ruc,numero_solicitud) VALUES
- (201,1,'QTR','QTR-TEST','TEST-201'),(202,2,'QTR','QTR-TEST','TEST-202'),(203,3,'QTR','QTR-TEST','TEST-203'),(204,2,'XXX','OTRO','TEST-204'),(205,1,'QTR','QTR-TEST','TEST-205'),(207,1,'AAA','OTRO','TEST-207');");
+ (201,1,'QTR','QTR-TEST','DGAC-GOP-2026-AOCR003'),(202,2,'QTR','QTR-TEST','DGAC-GOP-2026-AOCR202'),(203,3,'QTR','QTR-TEST','DGAC-GOP-2026-AOCR203'),(204,2,'XXX','OTRO','DGAC-GOP-2026-AOCR204'),(205,1,'QTR','QTR-TEST','DGAC-GOP-2026-AOCR005'),(207,1,'AAA','OTRO','DGAC-GOP-2026-AOCR007');");
  sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
  sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
  var certDatos=new CertificadoDAO();
@@ -320,25 +320,25 @@ class RemisionDcavTest {
  Check(recDatos.GerenteOperaciones.Nombre=="Gerente correcto"&&recDatos.RepresentanteTecnico.Nombre=="RT EAE correcto"&&recDatos.RepresentanteLegalEcuador.Nombre=="Representante Ecuador"&&recDatos.Explotador.Direccion=="Base en Doha","Contactos diferenciados persisten sin intercambiar Inspector ni contacto Ecuador");
  Check(recDatos.Estaciones.Single(e=>e.EstacionId==101).Codigo=="R"&&recDatos.Estaciones.Single(e=>e.EstacionId==102).Codigo=="ET","Operaciones distintas por estacion se conservan al recargar");
  var original19=certDatos.AsegurarNumeroOriginal(201,79);
- sql("INSERT INTO aocr_tbcertificado(codigo_solicitud,numero_certificado) VALUES(201,'DGAC-129-QTR-001'),(202,'BORRADOR-202'),(203,'BORRADOR-203')");
- Check(original19=="DGAC-129-QTR-001"&&certDatos.AsegurarNumeroOriginal(201,79)==original19,"Emision asigna numero unico persistente y repeticion no consume consecutivo");
+ sql("INSERT INTO aocr_tbcertificado(codigo_solicitud,numero_certificado) VALUES(201,'DGAC-129-QTR-003'),(202,'BORRADOR-202'),(203,'BORRADOR-203')");
+ Check(original19=="DGAC-129-QTR-003"&&certDatos.AsegurarNumeroOriginal(201,79)==original19,"Emision conserva el consecutivo AOCR003 original, no el id 201 ni un contador nuevo");
  var contador19=Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"));
  Check(certDatos.AsegurarNumeroOriginal(202,79)==original19,"Renovacion conserva exactamente el AOCR original");
  Check(certDatos.AsegurarNumeroOriginal(203,79)==original19,"Modificacion conserva exactamente el AOCR original");
- Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbcertificado WHERE numero_certificado='DGAC-129-QTR-001'"))==3,"Versiones de emision, renovacion y modificacion comparten numero sin conflicto de unicidad");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbcertificado WHERE numero_certificado='DGAC-129-QTR-003'"))==3,"Versiones de emision, renovacion y modificacion comparten numero sin conflicto de unicidad");
  Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==contador19,"Renovacion y modificacion no generan nuevos consecutivos");
  rechazo=false;try{certDatos.AsegurarNumeroOriginal(204,79);}catch(InvalidOperationException){rechazo=true;}
  Check(rechazo,"Explotador ajeno sin original se rechaza sin generar un numero nuevo");
  var tareas19=new[]{System.Threading.Tasks.Task.Run(()=>new CertificadoDAO().AsegurarNumeroOriginal(205,79)),System.Threading.Tasks.Task.Run(()=>new CertificadoDAO().AsegurarNumeroOriginal(207,79))};
  System.Threading.Tasks.Task.WaitAll(tareas19);
- Check(tareas19[0].Result!=tareas19[1].Result&&Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==3,"Emisiones concurrentes reciben numeros diferentes sin colisiones");
+ Check(tareas19[0].Result=="DGAC-129-QTR-005"&&tareas19[1].Result=="DGAC-129-AAA-007"&&Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==contador19,"Emisiones concurrentes conservan sus consecutivos originales sin consumir secuencia nueva");
  rechazo=false;try{sql("UPDATE aocr_tbsolicitud SET numero_aocr='CAMBIO-INDEBIDO' WHERE codigo_solicitud=201");}catch(Npgsql.PostgresException){rechazo=true;}
  Check(rechazo&&certDatos.ObtenerNumeroPersistido(201)==original19,"Base rechaza alteracion del numero original ya asignado");
  sql("INSERT INTO aocr_tbfirma_documento(codigo_solicitud) VALUES(201)");
  rechazo=false;try{certDatos.GuardarDatosDocumentales(201,new DatosDocumentalesAocr{PermisoCnacNumero="NO GUARDAR"},79);}catch(InvalidOperationException){rechazo=true;}
  Check(rechazo&&certDatos.ObtenerDatosDocumentales(201).PermisoCnacNumero=="CNAC-PRUEBA-19","Certificado historico firmado conserva sus datos y no se modifica");
  sql(File.ReadAllText(Path.Combine(root,"sql/20261027_datos_documentales_certificado.sql")));
- Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))==3,"Reaplicar migracion no reinicia numeracion ni modifica historicos");
+ Check(Convert.ToInt64(scalar("SELECT last_value FROM aocr_numero_certificado_seq"))>=contador19,"Reaplicar migracion no reinicia numeracion ni modifica historicos");
 
  // Regresion del 27/10: reproducir los dos indices unicos reales del servidor.
  sql(@"ALTER TABLE aocr_tbdocumento_generado DROP CONSTRAINT ck_documento_final_estado;
@@ -363,6 +363,34 @@ class RemisionDcavTest {
  sql("UPDATE aocr_tbdocumento_generado SET ruta_pdf_firmado='/prueba/firmado.pdf' WHERE codigo_solicitud=202 AND vigente=true AND tipo_documento='CONDICIONES_LIMITACIONES'");
  rechazo=false;try{pdfDao.Registrar(nuevoPdf("CONDICIONES_LIMITACIONES","NO_REEMPLAZAR"));}catch(InvalidOperationException){rechazo=true;}
  Check(rechazo&&pdfDao.ObtenerUltimoPorSolicitudTipo(202,"CONDICIONES_LIMITACIONES").HashPdf=="ACTUALIZADO","Documento firmado permanece protegido ante regeneracion");
+
+ // Regularizacion limitada a borradores: copia de la regla del tramite original.
+ sql(@"INSERT INTO aocr_tbsolicitud(codigo_solicitud,tipo_solicitud,codigo_oaci,ruc,numero_solicitud,numero_aocr,estado) VALUES
+ (220,1,'QTR','REG-220','DGAC-GOP-2026-AOCR020','DGAC-129-QTR-900','DOCUMENTOS_FINALES_POR_GENERAR'),
+ (221,2,'QTR','REG-220','DGAC-GOP-2026-AOCR021','DGAC-129-QTR-900','DOCUMENTOS_FINALES_POR_GENERAR'),
+ (222,1,'AAA','REG-222','DGAC-GOP-2026-AOCR022','DGAC-129-AAA-902','FINALIZADO'),
+ (223,1,'BBB','REG-223','DGAC-GOP-2026-AOCR023','DGAC-129-BBB-903','DOCUMENTOS_FINALES_POR_GENERAR'),
+ (224,2,'BBB','REG-223','DGAC-GOP-2026-AOCR024','DGAC-129-BBB-903','DOCUMENTOS_FINALES_COORDINADOR'),
+ (225,1,'CCC','REG-225','DGAC-GOP-2026-AOCR025','DGAC-129-CCC-905','DOCUMENTOS_FINALES_POR_GENERAR');
+ INSERT INTO aocr_tbcertificado(codigo_solicitud,numero_certificado,ruta_pdf,firmado_por) VALUES
+ (220,'DGAC-129-QTR-900','/prueba/antiguo.pdf',NULL),(222,'DGAC-129-AAA-902','/prueba/firmado.pdf','99');
+ INSERT INTO aocr_tbdocumento_generado(codigo_solicitud,codigo_inspeccion,tipo_documento,numero_aocr,ruta_documento,estado,vigente,bloqueado,hash_pdf)
+ VALUES(220,2200,'RECONOCIMIENTO','DGAC-129-QTR-900','/prueba/antiguo.pdf','GENERADO',true,false,'NUMERO_ANTERIOR'),
+ (224,2240,'RECONOCIMIENTO','DGAC-129-BBB-903','/prueba/enviado.pdf','DOCUMENTOS_FINALES_COORDINADOR',true,true,'BLOQUEADO');
+ CREATE TABLE aocr_tbcondiciones_limitaciones(codigo_solicitud integer,ruta_pdf_firmado text,fecha_firma_dircav timestamp,estado text,vigente boolean DEFAULT true);
+ INSERT INTO aocr_tbcondiciones_limitaciones(codigo_solicitud,estado) VALUES(225,'CL_PENDIENTE_COORDINADOR'),(220,'CL_BORRADOR');");
+ var regularizacionNumero=File.ReadAllText(Path.Combine(root,"sql/20261028_numero_aocr_consecutivo_original.sql"));
+ sql(regularizacionNumero);
+ Check(certDatos.ObtenerNumeroPersistido(220)=="DGAC-129-QTR-020"&&certDatos.ObtenerNumeroPersistido(221)=="DGAC-129-QTR-020","Regularizacion corrige emision y renovacion borradores conservando el consecutivo original 020");
+ Check(Convert.ToString(scalar("SELECT numero_certificado FROM aocr_tbcertificado WHERE codigo_solicitud=220"))=="DGAC-129-QTR-020"&&scalar("SELECT ruta_pdf FROM aocr_tbcertificado WHERE codigo_solicitud=220")==DBNull.Value,"Certificado borrador queda alineado y exige regenerar archivo");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbdocumento_generado WHERE codigo_solicitud=220 AND NOT vigente AND numero_aocr='DGAC-129-QTR-900' AND ruta_documento='/prueba/antiguo.pdf'"))==1,"PDF antiguo conserva numero y ruta en el historial sin reescribirlo");
+ Check(certDatos.ObtenerNumeroPersistido(222)=="DGAC-129-AAA-902"&&Convert.ToString(scalar("SELECT ruta_pdf FROM aocr_tbcertificado WHERE codigo_solicitud=222"))=="/prueba/firmado.pdf","Regularizacion no altera certificado firmado");
+ Check(certDatos.ObtenerNumeroPersistido(223)=="DGAC-129-BBB-903"&&certDatos.ObtenerNumeroPersistido(224)=="DGAC-129-BBB-903","Renovacion enviada protege el numero de todo el grupo original");
+ Check(certDatos.ObtenerNumeroPersistido(225)=="DGAC-129-CCC-905","Paquete CL heredado remitido tambien protege su numeracion");
+ Check(Convert.ToInt32(scalar("SELECT count(*) FROM aocr_tbcondiciones_limitaciones WHERE codigo_solicitud=220 AND vigente=false"))==1,"Borrador CL heredado queda archivado para evitar reutilizar el numero anterior");
+ sql(regularizacionNumero);
+ rechazo=false;try{sql("UPDATE aocr_tbsolicitud SET numero_aocr='OTRO' WHERE codigo_solicitud=220");}catch(Npgsql.PostgresException){rechazo=true;}
+ Check(rechazo&&certDatos.ObtenerNumeroPersistido(220)=="DGAC-129-QTR-020","Regularizacion idempotente restaura proteccion de inmutabilidad");
 
  }
  }

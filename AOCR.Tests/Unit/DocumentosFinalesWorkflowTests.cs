@@ -130,7 +130,7 @@ namespace AOCR.Tests.Unit
             StringAssert.Contains(controller, "TempData[\"FirmaAocrMensaje\"]");
             StringAssert.Contains(controller, "redirectUrl = Url.Action(\"PendientesEmisionAocr\", \"Inspeccion\")");
             StringAssert.Contains(controller, "expedientePendienteInspector");
-            StringAssert.Contains(Read("CapaPresentacion/Scripts/firma-aocr.js"), "window.location.assign(payload.data.redirectUrl)");
+            StringAssert.Contains(Read("CapaPresentacion/Scripts/firma-aocr.js"), "payload.data.estadoExpediente !== 'DOCUMENTOS_FINALES_COORDINADOR'");
         }
 
         [TestMethod] public void Outbox_NoEjecutaSmtpEnTransaccion()

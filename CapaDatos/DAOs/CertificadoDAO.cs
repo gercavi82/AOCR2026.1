@@ -63,16 +63,16 @@ WHERE actual.codigo_solicitud=@id AND s.codigo_solicitud<>@id AND s.tipo_solicit
             using(var cn=CrearConexion()){cn.Open();using(var tx=cn.BeginTransaction()) {
                 // One lock serializes allocation and origin resolution; no FR3 sequence is touched.
                 using(var cmd=new NpgsqlCommand("SELECT pg_advisory_xact_lock(12920261027)",cn,tx))cmd.ExecuteNonQuery();
-                string numero,oaci,ruc;int tipo;int? original;
-                using(var cmd=new NpgsqlCommand(@"SELECT numero_aocr,codigo_oaci,ruc,tipo_solicitud,NULLIF(datos_documentales_certificado->>'SolicitudOriginalId','')::integer origen
+                string numero,oaci,ruc,numeroTramite;int tipo;int? original;
+                using(var cmd=new NpgsqlCommand(@"SELECT numero_aocr,codigo_oaci,ruc,tipo_solicitud,NULLIF(datos_documentales_certificado->>'SolicitudOriginalId','')::integer origen,numero_solicitud
 FROM public.aocr_tbsolicitud WHERE codigo_solicitud=@id FOR UPDATE",cn,tx)) {
-                    cmd.Parameters.AddWithValue("@id",solicitudId);using(var r=cmd.ExecuteReader()){if(!r.Read())throw new InvalidOperationException("Solicitud inexistente.");numero=Convert.ToString(r[0]);oaci=Convert.ToString(r[1]).Trim().ToUpperInvariant();ruc=Convert.ToString(r[2]).Trim();tipo=Convert.ToInt32(r[3]);original=r.IsDBNull(4)?(int?)null:r.GetInt32(4);}
+                    cmd.Parameters.AddWithValue("@id",solicitudId);using(var r=cmd.ExecuteReader()){if(!r.Read())throw new InvalidOperationException("Solicitud inexistente.");numero=Convert.ToString(r[0]);oaci=Convert.ToString(r[1]).Trim().ToUpperInvariant();ruc=Convert.ToString(r[2]).Trim();tipo=Convert.ToInt32(r[3]);original=r.IsDBNull(4)?(int?)null:r.GetInt32(4);numeroTramite=Convert.ToString(r[5]);}
                 }
                 if(!string.IsNullOrWhiteSpace(numero)){tx.Commit();return numero;}
                 ExigirDocumentoEditable(cn,tx,solicitudId);
                 if(!System.Text.RegularExpressions.Regex.IsMatch(oaci,"^[A-Z0-9]{3}$"))throw new InvalidOperationException("Registre el código OACI del explotador (3 caracteres) antes de asignar el AOCR.");
                 if(tipo==1) {
-                    using(var cmd=new NpgsqlCommand("SELECT nextval('public.aocr_numero_certificado_seq')",cn,tx))numero="DGAC-129-"+oaci+"-"+Convert.ToInt64(cmd.ExecuteScalar()).ToString("000");
+                    numero=ConstruirNumeroDesdeTramiteOriginal(oaci,numeroTramite);
                 } else if(tipo==2 || tipo==3) {
                     var origenes=new List<Tuple<int,string>>();
                     using(var cmd=new NpgsqlCommand(@"SELECT s.codigo_solicitud,COALESCE(NULLIF(s.numero_aocr,''),NULLIF(c.numero_certificado,'')) numero
@@ -92,6 +92,19 @@ WHERE codigo_solicitud=@id",cn,tx)) {cmd.Parameters.AddWithValue("@id",solicitud
                 using(var cmd=new NpgsqlCommand("UPDATE public.aocr_tbcertificado SET numero_certificado=@numero WHERE codigo_solicitud=@id",cn,tx)){cmd.Parameters.AddWithValue("@id",solicitudId);cmd.Parameters.AddWithValue("@numero",numero);cmd.ExecuteNonQuery();}
                 tx.Commit();return numero;
             }}
+        }
+
+        public static string ConstruirNumeroDesdeTramiteOriginal(string codigoOaci, string numeroTramite)
+        {
+            var oaci=(codigoOaci??string.Empty).Trim().ToUpperInvariant();
+            if(!System.Text.RegularExpressions.Regex.IsMatch(oaci,"^[A-Z0-9]{3}$"))
+                throw new InvalidOperationException("Registre el código OACI del explotador (3 caracteres) antes de asignar el AOCR.");
+            // Institutional and legacy request numbers end in AOCR003 or AOCR-003.
+            // Preserve all original digits; never allocate a second counter or use a DB id.
+            var match=System.Text.RegularExpressions.Regex.Match((numeroTramite??string.Empty).Trim(),@"AOCR-?(?<consecutivo>[0-9]+)$",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if(!match.Success || match.Groups["consecutivo"].Value.TrimStart('0').Length==0)
+                throw new InvalidOperationException("El trámite original debe tener un consecutivo AOCR válido antes de generar el certificado.");
+            return "DGAC-129-"+oaci+"-"+match.Groups["consecutivo"].Value.PadLeft(3,'0');
         }
 
         private const string TablaCertificado = "aocr_tbcertificado";

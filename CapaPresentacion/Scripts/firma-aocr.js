@@ -308,24 +308,34 @@
             if (form.classList.contains('firma-aocr-is-loading')) { return; }
             if (!window.confirm('Se bloquearán los documentos y se enviarán al Coordinador para su revisión. ¿Desea continuar?')) { return; }
             setBusy(form, true);
-            showResult('Enviando los documentos al Coordinador y registrando sus avisos...', true);
+            showResult('Envío en proceso. Espere la confirmación del Coordinador como destinatario...', false);
             fetch(form.getAttribute('action'), {
                 method: 'POST',
                 body: new FormData(form),
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'RequestVerificationToken': tokenFrom(form) }
             }).then(parseJson).then(function (payload) {
+                if (payload.ok !== true || !payload.data || payload.data.estadoExpediente !== 'DOCUMENTOS_FINALES_COORDINADOR') {
+                    throw { message: 'El servidor no confirmó la remisión al Coordinador. No se puede dar el envío por completado.' };
+                }
                 showResult(payload.message || 'Documentos enviados al Coordinador para revisión.', true, payload.data);
-                window.setTimeout(function () {
-                    if (payload.data && payload.data.redirectUrl) {
-                        window.location.assign(payload.data.redirectUrl);
-                        return;
-                    }
-                    window.location.reload();
-                }, 900);
+                form.setAttribute('data-envio-confirmado', 'true');
+                var host = qs('#firmaAocrResultado');
+                if (host && payload.data.redirectUrl) {
+                    var volver = document.createElement('a');
+                    volver.className = 'firma-aocr__btn firma-aocr__btn--outline';
+                    volver.href = payload.data.redirectUrl;
+                    volver.textContent = 'Volver a mi bandeja';
+                    host.appendChild(volver);
+                }
+                if (host && host.scrollIntoView) { host.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             }).catch(function (payload) {
                 showResult(payload && payload.message ? payload.message : 'No se pudo completar el envio conjunto.', false);
-            }).then(function () { setBusy(form, false); });
+                var host = qs('#firmaAocrResultado');
+                if (host && host.scrollIntoView) { host.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+            }).then(function () {
+                if (form.getAttribute('data-envio-confirmado') !== 'true') { setBusy(form, false); }
+            });
         });
     }
 
