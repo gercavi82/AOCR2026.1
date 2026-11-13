@@ -1,0 +1,169 @@
+{
+  "general": [
+    "RT: registro y compañía\nOrden y comprobante",
+    "Financiero: validación y factura\nSeguimiento FR3",
+    "RT: solicitud y documentos\nSeguimiento del expediente",
+    "Coordinador: revisión y asignación\npreliminar de trabajo",
+    "Inspector: revisión documental\nObservaciones y subsanación",
+    "Coordinador: revisión final\nRemisión a DIRCAV",
+    "DIRCAV: aceptación y designación\nOficio institucional",
+    "Inspector: LV e informe por estación\nNC o resultado satisfactorio",
+    "Inspector: genera AOCR y CL\nEnvía el paquete final",
+    "Coordinador: revisa el paquete\nDevuelve o remite a DIRCAV",
+    "DIRCAV: revisa soporte y firma CL\nRemite AOCR a DIRDAC",
+    "DIRDAC: revisa y firma AOCR\nEvalúa firmas y cierre",
+    "RT: recibe y descarga\nDocumentos finales autorizados"
+  ],
+  "roles": [
+    {
+      "rol": "RT",
+      "objetivo": "Representar a la compañía en la solicitud, documentación, pago y recepción de documentos.",
+      "menu": "Nueva o Continuar orden de recaudación; Solicitud AOCR; Renovación AOCR; Condiciones y limitaciones; Documentos y expediente; Documentos finales.",
+      "bandeja": "Mis solicitudes y seguimiento del trámite; documentos finales de la compañía activa.",
+      "estados": "Borradores, solicitudes en revisión, documentos observados o devueltos, subsanaciones y estados finales que correspondan a su compañía.",
+      "restriccion": "No valida su pago, no acepta sus propios documentos como autoridad y no firma en nombre de Inspector, DIRCAV o DIRDAC.",
+      "ids": [
+        "P02",
+        "P03",
+        "P04",
+        "P07",
+        "P08",
+        "P09",
+        "P11",
+        "P19",
+        "P25"
+      ],
+      "flujo": [
+        "Compañía y RT habilitados",
+        "Orden y comprobante",
+        "Solicitud y documentos",
+        "Subsanación si corresponde",
+        "Documentos finales autorizados"
+      ]
+    },
+    {
+      "rol": "Financiero",
+      "objetivo": "Verificar la evidencia económica y registrar decisiones, factura y correcciones de la orden.",
+      "menu": "Dashboard financiero; Órdenes de recaudación; detalle y corrección de orden; reintento FR3 cuando se habilite.",
+      "bandeja": "Financiero/Dashboard y consulta de órdenes según estado.",
+      "estados": "Estados económicos normalizados por FinancialOrderStateHelper y EstadoOrden; distinguir pendientes, revisión, observadas y aprobadas de estados técnicos AOCR.",
+      "restriccion": "No acepta la documentación técnica, no decide resultados de inspección y no firma certificados institucionales.",
+      "ids": [
+        "P05",
+        "P06"
+      ],
+      "flujo": [
+        "Orden y comprobante recibidos",
+        "Verificación y decisión",
+        "Factura y persistencia local",
+        "Integración FR3 y seguimiento"
+      ]
+    },
+    {
+      "rol": "Coordinador",
+      "objetivo": "Revisar y remitir expedientes, coordinar el trabajo y revisar el paquete final antes de DIRCAV.",
+      "menu": "Asignación de Inspector; Revisión y seguimiento; CL y AOCR por revisar; bandeja integral según permiso.",
+      "bandeja": "Revisión documental y FirmaAocr/PaquetesCoordinador para paquetes finales; Asignación de Inspector no reemplaza la bandeja de paquetes.",
+      "estados": "PENDIENTE_COORDINADOR, PENDIENTE_REVISION_COORDINADOR, DOCUMENTOS_FINALES_COORDINADOR y devoluciones de su etapa.",
+      "restriccion": "No sustituye la aceptación documental ni la designación formal de DIRCAV. No firma CL o AOCR por las autoridades finales.",
+      "ids": [
+        "P10",
+        "P12",
+        "P18",
+        "P21"
+      ],
+      "flujo": [
+        "Expediente técnico recibido",
+        "Revisión y observaciones",
+        "Remisión documental a DIRCAV",
+        "Revisión del paquete final",
+        "Remisión del paquete a DIRCAV"
+      ]
+    },
+    {
+      "rol": "DIRCAV",
+      "objetivo": "Aceptar formalmente documentación, designar al Inspector, revisar el soporte técnico, firmar CL y remitir AOCR a DIRDAC.",
+      "menu": "Documentación por aprobar; Designaciones por firmar; Informes por revisar; Firma de Condiciones y Limitaciones; Remisión a DIRDAC.",
+      "bandeja": "Dircav/Bandeja, con pestañas independientes por trabajo pendiente.",
+      "estados": "DOCUMENTACION_ACEPTADA_DIRCAV, DESIGNACION_PENDIENTE_FIRMA_DIRCAV, DESIGNACION_FIRMADA_DIRCAV, PENDIENTE_FIRMA_CONDICIONES_DCAV y estados de devolución/remisión.",
+      "restriccion": "DCAV es alias histórico de DIRCAV; DIRDAC es otra autoridad. No firmar AOCR en lugar de DIRDAC ni tratar una vista previa heredada como paquete final revisado.",
+      "ids": [
+        "P13",
+        "P14",
+        "P15",
+        "P22",
+        "P23"
+      ],
+      "flujo": [
+        "Remisión del Coordinador",
+        "Aceptación y designación formal",
+        "Revisión de informe y paquete",
+        "Firma institucional de CL",
+        "Remisión formal de AOCR a DIRDAC"
+      ]
+    },
+    {
+      "rol": "Inspector",
+      "objetivo": "Revisar documentación asignada, ejecutar LV e informes por estación, tratar hallazgos y preparar los documentos finales.",
+      "menu": "Oficios de designación; Revisión documental; Mis inspecciones; Documentos finales por preparar.",
+      "bandeja": "Inspeccion/Index y PendientesEmisionAocr según la asignación y etapa.",
+      "estados": "Revisión documental asignada, habilitación de LV, LV firmada, informe firmado o devuelto, DOCUMENTOS_FINALES_POR_GENERAR y DOCUMENTOS_FINALES_DEVUELTOS.",
+      "restriccion": "Solo actúa sobre expedientes asignados. No altera LV, informes ni documentos finales ya firmados. No sustituye las firmas de DIRCAV o DIRDAC.",
+      "ids": [
+        "P10",
+        "P16",
+        "P17",
+        "P18",
+        "P20",
+        "P21",
+        "P26"
+      ],
+      "flujo": [
+        "Designación y expediente habilitado",
+        "LV independiente por estación",
+        "Informe independiente por estación",
+        "NC o resultado satisfactorio",
+        "Preparación y envío al Coordinador"
+      ]
+    },
+    {
+      "rol": "DIRDAC",
+      "objetivo": "Revisar la remisión institucional y firmar o devolver el certificado AOCR.",
+      "menu": "Bandeja AOCR; detalle del expediente; devolución y firma/legalización según autorización.",
+      "bandeja": "Dirdac/BandejaAocr y sus alias controlados.",
+      "estados": "PENDIENTE_FIRMA_AOCR_DIRDAC, devoluciones a DIRCAV y evaluación de FIRMAS_COMPLETAS o entrega cuando corresponda.",
+      "restriccion": "No acepta ni designa por DIRCAV, no firma CL y no puede recibir un AOCR que el flujo no haya remitido formalmente.",
+      "ids": [
+        "P24",
+        "P25"
+      ],
+      "flujo": [
+        "AOCR remitido formalmente por DIRCAV",
+        "Revisión de expediente",
+        "Devolución motivada o firma AOCR",
+        "Evaluación del conjunto de firmas",
+        "Cierre y entrega autorizados"
+      ]
+    },
+    {
+      "rol": "Administrador",
+      "objetivo": "Administrar cuentas, roles, permisos, catálogos, parámetros y herramientas autorizadas de soporte y auditoría.",
+      "menu": "Usuarios; Roles y permisos; Usuarios internos RT; Designaciones RT; Parámetros y catálogos; Cola y correos institucionales; Monitoreo y logs funcionales.",
+      "bandeja": "Administración y panel de salud; la visibilidad de otros paneles no convierte al Administrador en autoridad decisora.",
+      "estados": "Estados de usuarios, configuración y seguimiento que permitan sus permisos; no son decisiones operativas de otros roles.",
+      "restriccion": "No suplanta a RT, Financiero, Coordinador, Inspector, DIRCAV ni DIRDAC. Una autorización MVC amplia debe complementarse con las restricciones efectivas del servicio.",
+      "ids": [
+        "P27",
+        "P28",
+        "P29"
+      ],
+      "flujo": [
+        "Solicitud de acceso o cambio",
+        "Validación de alcance y autorización",
+        "Configuración o soporte",
+        "Auditoría y comprobación",
+        "Cierre administrativo sin suplantar decisiones"
+      ]
+    }
+  ]
+}

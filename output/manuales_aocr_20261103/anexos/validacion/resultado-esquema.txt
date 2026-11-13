@@ -1,0 +1,2 @@
+Tablas restauradas=263
+RESTAURACION_ESQUEMA=CORRECTA; motor local PostgreSQL 18.1; sin seeds ni datos

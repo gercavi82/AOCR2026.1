@@ -1,0 +1,15 @@
+{
+  "fecha_corte": "2026-11-03",
+  "rama": "fix/cierre-flujo-aocr",
+  "commit": "6d885a984bb875507366a824a290681450376d87",
+  "remote_comparado": true,
+  "diferencia_commits": 0,
+  "esquema_origen": "PostgreSQL 16.10 consultado en modo de solo lectura",
+  "tablas": 263,
+  "vistas_bd": 9,
+  "columnas": 3628,
+  "restauracion": "Estructura restaurada en PostgreSQL temporal 18.1; no valida datos semilla ni una instalación operativa completa",
+  "autorizacion": "Rama, commit, capturas existentes y base de referencia confirmados por el usuario",
+  "secretos": "No se exportan datos de usuario ni valores de configuración",
+  "programaciones_externas": "No localizadas/por confirmar"
+}

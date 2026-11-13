@@ -1,0 +1,18 @@
+{
+  "commit": "6d885a984bb875507366a824a290681450376d87",
+  "rama": "fix/cierre-flujo-aocr",
+  "fecha_corte": "2026-11-03",
+  "proyectos_solucion": 7,
+  "archivos_compilados": 645,
+  "tipos": 1109,
+  "metodos": 6349,
+  "acciones": 508,
+  "pruebas": 782,
+  "columnas": 3628,
+  "tablas": 263,
+  "vistas_bd": 9,
+  "objetos_con_columnas": 272,
+  "restricciones": 638,
+  "postgresql": "16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)",
+  "vistas_razor": 212
+}

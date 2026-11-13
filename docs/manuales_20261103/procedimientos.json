@@ -1,0 +1,1102 @@
+[
+  {
+    "id": "P01",
+    "titulo": "Ingresar y seleccionar el contexto de trabajo",
+    "rol": "Todos los roles",
+    "menu": "Ingreso al portal y selector de rol",
+    "ctl": "AccountController",
+    "acciones": [
+      "Login",
+      "CambiarRol",
+      "SeleccionarCompania",
+      "CambiarCompaniaActiva",
+      "Logout"
+    ],
+    "servicios": [
+      "UsuarioContextoService",
+      "AocrUserContextService"
+    ],
+    "dao": [
+      "UsuarioDAO"
+    ],
+    "tablas": [
+      "usuario",
+      "usuario_rol",
+      "rol"
+    ],
+    "estado": "Implementado",
+    "antes": "Usuario habilitado, rol asignado y navegador con acceso al portal.",
+    "datos": "Usuario, contraseña y rol activo. El RT debe seleccionar una compañía autorizada cuando se solicite.",
+    "pasos": [
+      "Abra la URL institucional proporcionada para el entorno de trabajo. Verifique que corresponde a pruebas o producción antes de operar.",
+      "Ingrese sus credenciales en la pantalla de acceso. Si se exige cambio de contraseña, complételo antes de continuar.",
+      "Compruebe el nombre y el rol mostrado en el encabezado. Seleccione únicamente uno de los roles asignados a su cuenta.",
+      "Si actúa como RT, seleccione la compañía a la que pertenece el trámite. Cambiar de compañía cambia el ámbito de las solicitudes visibles.",
+      "Abra la bandeja de su rol desde Mi trabajo y compruebe el número de trámite antes de ejecutar acciones.",
+      "Al terminar, cierre la sesión; cerrar una pestaña no reemplaza esta acción."
+    ],
+    "despues": "Sesión autenticada y contexto de rol y compañía definido. No se acepta documentación ni se firma un documento por iniciar sesión.",
+    "correo": "El acceso no acredita envío de documentos. Los correos de recuperación o credenciales corresponden a acciones específicas.",
+    "error": "Acceso no autorizado: revise el rol activo y la compañía. Si el rol no fue asignado, solicite su revisión al Administrador; no utilice la cuenta de otra autoridad."
+  },
+  {
+    "id": "P02",
+    "titulo": "Registrar al RT y tramitar su designación",
+    "rol": "RT y Administrador en su aprobación específica",
+    "menu": "Registro y designación de RT",
+    "ctl": "RTController",
+    "acciones": [
+      "Registro",
+      "GuardarRegistro",
+      "Declaracion",
+      "AceptarDeclaracion",
+      "SubirDesignacion",
+      "Enviar",
+      "DescargarConstancia"
+    ],
+    "servicios": [
+      "SolicitudAocrInfraBL"
+    ],
+    "dao": [
+      "UsuarioInternoRTDAO"
+    ],
+    "tablas": [
+      "usuario",
+      "aocr_tbsolicitud"
+    ],
+    "estado": "Implementado con aprobación y datos institucionales requeridos",
+    "antes": "La compañía y la persona deben existir o poder registrarse según el contexto autorizado.",
+    "datos": "Razón social, RUC, teléfono, correo, declaración de responsabilidad y archivo de designación que solicite la pantalla.",
+    "pasos": [
+      "Abra el registro de RT y compruebe la compañía. Los campos de compañía bloqueados no se corrigen escribiendo sobre otra compañía.",
+      "Complete los datos personales y de contacto visibles. En esta pantalla el teléfono admite caracteres numéricos y el correo debe tener formato válido.",
+      "Abra la declaración asociada al registro, revise su contenido y confirme su aceptación mediante la acción disponible.",
+      "Cargue el archivo de designación en la sección correspondiente. Verifique que el archivo pueda abrirse y que corresponda al representante declarado.",
+      "Envíe el registro para su revisión y conserve la constancia cuando esté habilitada.",
+      "El Administrador revisa la designación desde Designaciones RT; aprobar este registro no le permite aceptar el expediente técnico ni firmar por DIRCAV o DIRDAC."
+    ],
+    "despues": "Registro y designación disponibles para el control administrativo previsto. La habilitación del trámite depende del estado y permisos resultantes.",
+    "correo": "Las acciones de alta, aprobación y reenvío pueden generar avisos. Que el correo exista no acredita aprobación; compruebe el estado del registro.",
+    "error": "Archivo faltante o registro bloqueado: complete el documento exigido y vuelva a consultar el estado. Un rechazo requiere corregir la causa indicada, no crear varias cuentas para la misma persona."
+  },
+  {
+    "id": "P03",
+    "titulo": "Crear o continuar una orden de recaudación",
+    "rol": "RT",
+    "menu": "Nueva orden de recaudación o Continuar orden de recaudación",
+    "ctl": "OrdenRecaudacionController",
+    "acciones": [
+      "Nueva",
+      "Obligatoria",
+      "Detalles",
+      "Editar",
+      "Generar",
+      "Enviar"
+    ],
+    "servicios": [
+      "OrdenRecaudacionOrchestrator"
+    ],
+    "dao": [
+      "OrdenRecaudacionDAO"
+    ],
+    "tablas": [
+      "aocr_or_orden"
+    ],
+    "estado": "Implementado",
+    "antes": "Compañía activa seleccionada y cuenta habilitada para iniciar el componente económico.",
+    "datos": "Compañía, conceptos y detalles que ofrece el catálogo, cantidades, tarifas y datos del trámite. Las tarifas no se escriben libremente para eludir el catálogo.",
+    "pasos": [
+      "Abra la opción de orden del menú Flujo AOCR. Si existe un borrador o una orden pendiente, continúe esa orden antes de intentar otra.",
+      "Revise la compañía y los conceptos disponibles. Seleccione los que correspondan a la operación solicitada.",
+      "Complete los detalles que solicite el formulario y revise subtotal, impuestos y total calculados.",
+      "Guarde la orden y abra su detalle. Si debe corregir un dato antes del envío, use la edición autorizada de esa misma orden.",
+      "Genere el documento de la orden cuando la pantalla lo habilite y compruebe que el archivo descargado corresponde a su compañía.",
+      "Envíe la orden para continuar el trámite. Conserve el número para asociar el pago y realizar seguimiento."
+    ],
+    "despues": "Orden registrada con sus detalles y estado económico. Todavía no constituye un pago aprobado ni un AOCR.",
+    "correo": "El servicio de orquestación administra las notificaciones aplicables a la transición. La confirmación de pantalla y el estado de la orden son la referencia inmediata.",
+    "error": "Orden pendiente o tarifa no localizada: continúe la orden existente o solicite revisión del catálogo. No cambie el tipo de trámite para obtener una tarifa distinta."
+  },
+  {
+    "id": "P04",
+    "titulo": "Registrar un comprobante de pago",
+    "rol": "RT",
+    "menu": "Detalle de orden y registro de pago",
+    "ctl": "OrdenRecaudacionController",
+    "acciones": [
+      "RegistrarPago",
+      "Detalles"
+    ],
+    "servicios": [
+      "ComprobanteService"
+    ],
+    "dao": [
+      "OrdenRecaudacionDAO"
+    ],
+    "tablas": [
+      "aocr_or_orden"
+    ],
+    "estado": "Implementado",
+    "antes": "Orden enviada y habilitada para registrar comprobante.",
+    "datos": "Monto, número de factura o referencia que pida el formulario, método de pago, banco, comprobante y observaciones.",
+    "pasos": [
+      "Abra la orden que desea pagar y verifique el total y la compañía.",
+      "Ingrese los datos del pago con el formato monetario admitido por la pantalla. Evite agregar símbolos o separadores no aceptados.",
+      "Seleccione el banco y método disponibles; adjunte el comprobante legible.",
+      "Guarde el registro y compruebe que el archivo adjunto se abre desde el detalle.",
+      "Consulte el estado económico antes de avanzar a la solicitud. Un comprobante cargado no equivale a la aprobación financiera."
+    ],
+    "despues": "Comprobante asociado a la orden y pendiente de la validación que corresponda.",
+    "correo": "Los avisos de revisión económica no sustituyen la comprobación del estado de pago.",
+    "error": "Monto, formato o archivo rechazado: corrija el campo señalado. Si cargó un comprobante en otra orden, solicite revisión; no reemplace la evidencia de un pago ya validado."
+  },
+  {
+    "id": "P05",
+    "titulo": "Validar el pago y registrar la factura",
+    "rol": "Financiero",
+    "menu": "Órdenes de recaudación y Dashboard financiero",
+    "ctl": "FinancieroController",
+    "acciones": [
+      "Dashboard",
+      "DetalleOrden",
+      "AprobarPagoConFactura",
+      "RechazarOrden",
+      "ReintentarFr3"
+    ],
+    "servicios": [
+      "ComprobanteService",
+      "Fr3OutboxWorkerService"
+    ],
+    "dao": [
+      "OrdenRecaudacionDAO",
+      "ControlFR3DAO"
+    ],
+    "tablas": [
+      "aocr_or_orden",
+      "email_queue"
+    ],
+    "estado": "Implementado; DB2 y emisión financiera externa requieren validación de entorno",
+    "antes": "Orden en revisión financiera y comprobante válido. Se requiere permiso de aprobación, no solo visibilidad del menú.",
+    "datos": "Orden, pago, número y autorización de factura, fecha de emisión, subtotal, IVA, total, observaciones y archivo de factura.",
+    "pasos": [
+      "Abra la bandeja financiera y filtre las órdenes pendientes. Entre al detalle de la orden que verificó en el comprobante.",
+      "Contraste compañía, monto, concepto y evidencia del pago. Si la evidencia no corresponde, registre el motivo de rechazo mediante la acción autorizada.",
+      "Para aprobar con factura, complete los datos de facturación y adjunte el archivo exigido por el formulario.",
+      "Revise los importes antes de confirmar. La aprobación utiliza una operación transaccional e identifica una aprobación repetida.",
+      "Consulte el resultado y las advertencias de integración. Una aprobación local puede coexistir con un envío FR3 pendiente o fallido.",
+      "Use ReintentarFr3 únicamente para la orden correspondiente y después de revisar su estado de integración; no cree otra orden para resolver un reintento técnico."
+    ],
+    "despues": "Aprobación o rechazo económico registrado. El envío al sistema externo debe comprobarse por separado cuando aplique.",
+    "correo": "Los avisos financieros se registran según la transición. No se documenta el correo como prueba de factura emitida en DB2.",
+    "error": "Solo se puede registrar factura en estados admitidos; si existe corrección financiera, utilice el circuito de corrección. Las advertencias FR3 se escalan con el número de orden y el registro de integración."
+  },
+  {
+    "id": "P06",
+    "titulo": "Corregir una orden en el circuito financiero",
+    "rol": "Financiero",
+    "menu": "Detalle de orden y corrección financiera",
+    "ctl": "FinancieroController",
+    "acciones": [
+      "CorregirOrden",
+      "GuardarCorreccionOrden",
+      "ValidarCorreccionOrden"
+    ],
+    "servicios": [
+      "Fr3OutboxWorkerService"
+    ],
+    "dao": [
+      "OrdenRecaudacionDAO"
+    ],
+    "tablas": [
+      "aocr_or_orden"
+    ],
+    "estado": "Implementado",
+    "antes": "Orden elegible para corrección y permiso financiero activo.",
+    "datos": "Id de corrección, detalles corregidos, observación, total esperado, monto verificado, referencia y archivos rectificados cuando se soliciten.",
+    "pasos": [
+      "Abra la orden y su acción de corrección. Compruebe que está trabajando en la corrección vigente.",
+      "Registre la observación que justifica el cambio y ajuste los detalles permitidos.",
+      "Guarde la corrección y revise el total resultante.",
+      "Complete la validación con los importes y la referencia de respaldo; adjunte los documentos rectificados cuando corresponda.",
+      "Confirme el resultado y consulte el historial antes de cualquier reintento de integración externa."
+    ],
+    "despues": "Corrección identificada y validada según sus reglas. No sustituye decisiones técnicas ni altera documentos institucionales firmados.",
+    "correo": "El envío de avisos depende de la transición concreta; revise la campana y el estado de la corrección.",
+    "error": "Total inconsistente o versión de corrección desactualizada: recargue y contraste importes. No use la aprobación ordinaria para saltar una corrección pendiente."
+  },
+  {
+    "id": "P07",
+    "titulo": "Registrar la solicitud de emisión o renovación",
+    "rol": "RT",
+    "menu": "Solicitud AOCR o Renovación AOCR",
+    "ctl": "SolicitudAOCRController",
+    "acciones": [
+      "FormularioEmisionAOCR",
+      "FormularioCompleto",
+      "GuardarProgreso",
+      "GuardarFlota",
+      "MisSolicitudes",
+      "Detalle"
+    ],
+    "servicios": [
+      "SolicitudAOCRBL"
+    ],
+    "dao": [
+      "SolicitudAOCRDAO",
+      "AeronaveSolicitudDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud",
+      "aocr_tbaeronave_solicitud"
+    ],
+    "estado": "Implementado; requisitos económicos y de compañía condicionan acceso",
+    "antes": "Compañía activa, RT habilitado y orden o pago en el estado exigido por el sistema.",
+    "datos": "Tipo de solicitud 1 emisión o 2 renovación, datos del explotador, RUC, razón social, país, AOC y datos operativos del formulario. La obligatoriedad adicional depende del tipo y catálogo.",
+    "pasos": [
+      "Abra Solicitud AOCR o Renovación AOCR desde el menú del RT. Verifique el tipo mostrado y la compañía seleccionada.",
+      "Complete las secciones del formulario con los datos reales del explotador. No use el nombre de la empresa como país.",
+      "Registre la flota mediante la sección correspondiente y revise los modelos y matrículas de la solicitud. La matrícula puede existir en el expediente aunque no deba imprimirse en la tabla final de CL.",
+      "Guarde el progreso de las secciones y vuelva a abrir el detalle para comprobar lo persistido.",
+      "Los detalles de inspección son de solo lectura en la solicitud: no intente modificar fechas o estaciones desde una operación de guardado que el servidor rechaza.",
+      "Consulte Mis solicitudes y el detalle del trámite para continuar con los documentos. Conserve el consecutivo original para la identificación posterior del AOCR."
+    ],
+    "despues": "Solicitud identificada y vinculada al RT y compañía. El guardado de progreso no reemplaza la remisión documental ni la aceptación institucional.",
+    "correo": "El guardado de una sección no acredita una notificación institucional de aceptación. Revise los avisos generados al enviar el expediente.",
+    "error": "Acceso bloqueado por orden, compañía o rol: resuelva esa dependencia antes de repetir el formulario. Si un campo no se guarda, revise el mensaje de su sección y confirme en el detalle, no solo en el navegador."
+  },
+  {
+    "id": "P08",
+    "titulo": "Solicitar una modificación y reconocer su limitación actual",
+    "rol": "RT",
+    "menu": "Condiciones y limitaciones",
+    "ctl": "SolicitudAOCRController",
+    "acciones": [
+      "FormularioEmisionAOCR",
+      "CerrarFaseDocumentalNuevoAeropuertoModificacion",
+      "GenerarCondicionesLimitacionesModificacion"
+    ],
+    "servicios": [
+      "AocrModificationWorkflowService",
+      "AocrCierrePorTipoTramiteService"
+    ],
+    "dao": [
+      "SolicitudAOCRDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud"
+    ],
+    "estado": "Parcial en la base consultada",
+    "antes": "Reconocimiento original identificable y operación de modificación autorizada.",
+    "datos": "Tipo 3 y alcance de modificación; datos de flota, representante o nuevo aeropuerto según las secciones que realmente se habiliten.",
+    "pasos": [
+      "Abra Condiciones y limitaciones y compruebe que corresponde a modificación del reconocimiento existente.",
+      "Identifique el trámite de emisión original; una modificación conserva su número AOCR y no genera otra numeración de reconocimiento.",
+      "Revise el alcance que requiere modificar y los documentos exigidos en la pantalla.",
+      "Si el sistema rechaza el tipo de solicitud, detenga el registro y comunique la incidencia. En la base de referencia el CHECK de tipo admite 0, 1 y 2, mientras el código de modificación utiliza 3.",
+      "No cambie una modificación por una emisión para evadir esa restricción. El Administrador y el equipo técnico deben regularizar el esquema y validar el circuito antes de habilitar la operación completa."
+    ],
+    "despues": "Procedimiento documentado con bloqueo conocido; no se acredita un alta o cierre de modificación de extremo a extremo en esta base.",
+    "correo": "No se promete notificación final para un trámite que no pudo persistirse o completar su flujo.",
+    "error": "Tipo de solicitud rechazado: requiere corrección técnica del esquema y prueba institucional. Es una limitación del corte, no un dato que el RT deba falsear."
+  },
+  {
+    "id": "P09",
+    "titulo": "Cargar y consultar los documentos del expediente",
+    "rol": "RT",
+    "menu": "Documentos y expediente",
+    "ctl": "DocumentoController",
+    "acciones": [
+      "Subir",
+      "Lista",
+      "Descargar",
+      "Detalle"
+    ],
+    "servicios": [
+      "FileStorageHelper",
+      "DocumentoBL"
+    ],
+    "dao": [
+      "DocumentoDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento"
+    ],
+    "estado": "Implementado",
+    "antes": "Solicitud y compañía autorizadas; tipo documental disponible para esa etapa.",
+    "datos": "Solicitud, tipo de documento, archivo y observaciones. La carga directa revisada admite PDF, JPG, JPEG y PNG con máximo de 10 MB; otras pantallas pueden aplicar límites distintos.",
+    "pasos": [
+      "Abra Documentos y expediente desde el trámite para mantener el identificador de solicitud.",
+      "Seleccione el tipo documental que corresponde al archivo. No use OTRO para reemplazar un requisito específico que la pantalla exige.",
+      "Adjunte el documento completo y legible, compruebe el tamaño y guarde la carga.",
+      "Regrese a la lista y revise tipo, fecha y estado del archivo. Use Vista previa o Descargar para comprobar su contenido.",
+      "Repita la carga para los requisitos pendientes que indique la pantalla. El catálogo real de requisitos prevalece sobre listas genéricas de otros manuales.",
+      "Conserve las observaciones y versiones. Un documento aceptado o enviado puede tener restricciones de edición o eliminación."
+    ],
+    "despues": "Archivo almacenado y asociado al expediente. El estado de carga no equivale a aceptación documental.",
+    "correo": "Las comunicaciones de observación y revisión se producen en las acciones de revisión; una carga por sí sola no prueba aceptación ni entrega.",
+    "error": "Archivo o tamaño no permitido: prepare una versión legible dentro del límite de esa pantalla. Si no aparece, recargue la lista y verifique solicitud, estado y compañía antes de repetirlo."
+  },
+  {
+    "id": "P10",
+    "titulo": "Revisar documentos y registrar observaciones",
+    "rol": "Inspector y Coordinador según la etapa",
+    "menu": "Revisión documental",
+    "ctl": "DocumentoController",
+    "acciones": [
+      "Lista",
+      "AceptarDocumentoSolicitud",
+      "DevolverDocumentoSolicitud",
+      "ReabrirDocumentoSolicitud"
+    ],
+    "servicios": [
+      "RevisionDocumentalService"
+    ],
+    "dao": [
+      "DocumentoDAO",
+      "RevisionDocumentalDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento"
+    ],
+    "estado": "Implementado con restricciones por rol y etapa",
+    "antes": "Expediente asignado al revisor y etapa documental abierta.",
+    "datos": "Solicitud, documento, decisión de aceptación o devolución y motivo de observación.",
+    "pasos": [
+      "Abra la bandeja de revisión de su rol y el expediente asignado. Verifique el número antes de revisar archivos.",
+      "Entre en el modo de revisión disponible para esa etapa. El modo de solo lectura permite abrir y descargar, pero no muestra las mismas decisiones.",
+      "Revise cada documento desde su vista previa o descarga y confronte los datos con el requisito que representa.",
+      "Acepte el documento cuando corresponda o devuélvalo con una observación concreta que permita al RT corregirlo.",
+      "Compruebe el estado de cada ítem después de guardar. No dé por cerrado el expediente solo porque todos los archivos estén visibles.",
+      "Use la reapertura únicamente cuando la etapa y su permiso lo permitan; no reescriba archivos firmados ni elimine evidencia histórica."
+    ],
+    "despues": "Decisiones documentales registradas por ítem. La remisión del conjunto requiere la acción de cierre o revisión final prevista.",
+    "correo": "La devolución y los avances documentales pueden generar correo y notificación interna. El mensaje debe relacionarse con la misma solicitud.",
+    "error": "No aparecen Aceptar o Devolver: revise si abrió modo ver, si la fase cerró o si el expediente no está asignado. No interprete una pantalla de consulta como un fallo de carga."
+  },
+  {
+    "id": "P11",
+    "titulo": "Subsanar documentos observados",
+    "rol": "RT",
+    "menu": "Seguimiento de solicitud y subsanación",
+    "ctl": "SolicitudAOCRController",
+    "acciones": [
+      "Subsanar",
+      "SubsanarPost",
+      "EnviarSubsanacionAlInspector"
+    ],
+    "servicios": [
+      "RevisionDocumentalService"
+    ],
+    "dao": [
+      "DocumentoDAO",
+      "SolicitudAOCRDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento",
+      "aocr_tbsolicitud"
+    ],
+    "estado": "Implementado",
+    "antes": "Documentos devueltos u observados y compañía del trámite seleccionada.",
+    "datos": "Documento observado, archivo corregido y respuesta a la observación.",
+    "pasos": [
+      "Abra el detalle del trámite y lea el motivo de cada observación.",
+      "Entre a la acción de subsanación que corresponde al documento observado.",
+      "Adjunte la versión corregida y responda específicamente al motivo; no cambie documentos ajenos a la observación.",
+      "Guarde y compruebe que la nueva evidencia aparece en el mismo expediente.",
+      "Envíe la subsanación al Inspector mediante la acción habilitada y consulte el nuevo estado.",
+      "Espere la revisión; cargar un archivo corregido no lo convierte en aceptado automáticamente."
+    ],
+    "despues": "Subsanación remitida para nueva revisión, conservando la relación con el documento observado.",
+    "correo": "El flujo contempla avisos de subsanación y revisión. Verifique el estado y no utilice la llegada de un correo como única evidencia de aceptación.",
+    "error": "Reenvío no habilitado: compruebe que todos los documentos observados tengan una corrección guardada y que está usando el RT y compañía del trámite."
+  },
+  {
+    "id": "P12",
+    "titulo": "Revisar y remitir el expediente documental a DIRCAV",
+    "rol": "Coordinador",
+    "menu": "Revisión y seguimiento y revisión final de Coordinación",
+    "ctl": "CoordinacionJefaturaController",
+    "acciones": [
+      "RevisionVerificacion",
+      "RemitirADircav",
+      "DevolverAlInspector"
+    ],
+    "servicios": [
+      "RevisionDocumentalCoordinadorService"
+    ],
+    "dao": [
+      "RevisionDocumentalCoordinadorDAO"
+    ],
+    "tablas": [
+      "aocr_revision_documental_coordinador",
+      "aocr_tbsolicitud"
+    ],
+    "estado": "Implementado; comprobar la transición persistida",
+    "antes": "Revisión del Inspector completada y expediente en etapa del Coordinador.",
+    "datos": "Solicitud, observación final y versión o estado vigente que utilice la pantalla.",
+    "pasos": [
+      "Abra Revisión y seguimiento y seleccione el expediente preparado por el Inspector.",
+      "Revise documentos, observaciones y evidencias que sustentan la conclusión técnica.",
+      "Si requiere corrección, devuelva al Inspector con motivo; no remita un expediente con observaciones pendientes sin resolver.",
+      "Registre la observación de revisión final y utilice Revisar y remitir a DCAV cuando esa sea la etiqueta mostrada. DCAV se utiliza como alias histórico de DIRCAV, nunca de DIRDAC.",
+      "Compruebe que el estado y el historial cambian a la etapa de aceptación DIRCAV.",
+      "Si solo aparece una confirmación temporal sin cambio de estado, conserve el mensaje y reporte la incidencia; no lo considere una remisión concluida."
+    ],
+    "despues": "Expediente pendiente de aceptación formal por DIRCAV o devuelto al Inspector según la decisión.",
+    "correo": "La remisión debe generar los avisos que el servicio registra. El envío transaccional y la entrega SMTP son hechos diferentes.",
+    "error": "Conflicto de versión o estado: recargue el expediente antes de decidir. El Coordinador no sustituye la aceptación ni la designación formal de DIRCAV."
+  },
+  {
+    "id": "P13",
+    "titulo": "Aceptar la documentación como DIRCAV",
+    "rol": "DIRCAV",
+    "menu": "Documentación por aprobar",
+    "ctl": "DircavController",
+    "acciones": [
+      "BandejaDocumentacion",
+      "Detalle",
+      "AceptarDocumentacion",
+      "DevolverCoordinador"
+    ],
+    "servicios": [
+      "DircavDesignacionService",
+      "RevisionDocumentalCoordinadorService"
+    ],
+    "dao": [
+      "AocrDesignacionDAO",
+      "RevisionDocumentalCoordinadorDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud",
+      "aocr_revision_documental_coordinador",
+      "aocr_tbinspeccion"
+    ],
+    "estado": "Implementado; validar permisos y condiciones del expediente",
+    "antes": "Expediente remitido por el Coordinador, sin observaciones incompatibles y con la documentación y pago exigidos.",
+    "datos": "Solicitud, observación y versión esperada cuando se proporcione.",
+    "pasos": [
+      "Ingrese con DIRCAV como rol activo y abra Documentación por aprobar.",
+      "Abra el expediente y revise sus documentos y estaciones.",
+      "Si falta una corrección, use Devolver a Coordinación e indique el motivo.",
+      "Si procede la aceptación, pulse Aceptar Documentación una sola vez y espere la respuesta.",
+      "Verifique el estado de aceptación y el historial. La operación debe cerrar la fase documental y habilitar la preparación técnica conforme a las validaciones vigentes.",
+      "Si el Inspector todavía no ve la LV, compruebe la asignación, las estaciones y los requisitos de habilitación; no firme el oficio solo como intento de desbloquear una aceptación que falló."
+    ],
+    "despues": "Documentación aceptada y condiciones para continuar a inspección establecidas, o expediente devuelto al Coordinador.",
+    "correo": "Los avisos de avance y asignación se generan en sus transiciones. Debe verificarse al RT real y al Inspector, sin agregar destinatarios personales no configurados.",
+    "error": "Error interno en la transacción: la pantalla no acredita aceptación. Consulte el estado persistido y reporte fecha, solicitud y mensaje al soporte."
+  },
+  {
+    "id": "P14",
+    "titulo": "Designar al Inspector y configurar las estaciones",
+    "rol": "DIRCAV; Coordinador en asignación preliminar autorizada",
+    "menu": "Designaciones por firmar y expediente DIRCAV",
+    "ctl": "DircavController",
+    "acciones": [
+      "DesignarInspector",
+      "DesignacionDetalle",
+      "InspectoresDisponibles"
+    ],
+    "servicios": [
+      "DircavDesignacionService"
+    ],
+    "dao": [
+      "AocrDesignacionDAO",
+      "SolicitudEstacionDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud_estacion",
+      "aocr_tbinspeccion"
+    ],
+    "estado": "Implementado",
+    "antes": "Aceptación documental completada y Inspector disponible para la función.",
+    "datos": "Cédula del Inspector principal, apoyo opcional, observación, estación y versión esperada; fechas de inicio y fin por estación según la programación autorizada.",
+    "pasos": [
+      "Abra el expediente aceptado y consulte los inspectores disponibles.",
+      "Verifique la identidad del principal y, si aplica, del apoyo; no copie un correo o nombre de otra persona como identificador.",
+      "Registre la designación o reasignación permitida y el motivo correspondiente.",
+      "Revise cada estación y sus fechas independientes. UIO y GYE no deben tratarse como una única fecha cuando la inspección se programó por separado.",
+      "Guarde la decisión y consulte el detalle de designación.",
+      "Diferencie la asignación preliminar de tareas del Coordinador de la designación formal del Inspector por DIRCAV."
+    ],
+    "despues": "Inspector y estaciones relacionados con la inspección, con oficio pendiente de firma cuando corresponda.",
+    "correo": "La designación forma parte de los eventos notificables al Inspector y al RT. Verifique los destinatarios reales del expediente.",
+    "error": "Inspector no encontrado, estación ajena o versión cambiada: seleccione datos vigentes del mismo expediente y recargue antes de reintentar."
+  },
+  {
+    "id": "P15",
+    "titulo": "Revisar firmar y descargar el oficio de designación",
+    "rol": "DIRCAV para firmar; Inspector y RT para consultar según autorización",
+    "menu": "Oficio Oficial de Designación del Inspector",
+    "ctl": "DircavController",
+    "acciones": [
+      "VistaPreviaDesignacion",
+      "FirmarDesignacion",
+      "DescargarDesignacion",
+      "DescargarDesignacionInspector"
+    ],
+    "servicios": [
+      "DesignacionDocumentoService",
+      "FirmaDigitalService"
+    ],
+    "dao": [
+      "AocrDesignacionDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud",
+      "aocr_tbsolicitud_estacion"
+    ],
+    "estado": "Implementado; firma y entrega real requieren prueba institucional",
+    "antes": "Designación formal registrada, oficio generado y firmante DIRCAV autorizado.",
+    "datos": "Certificado .p12 o .pfx y contraseña del certificado. Datos del explotador, Inspector y fechas deben estar correctos antes de firmar.",
+    "pasos": [
+      "Abra Ver Vista Previa del Oficio y compruebe país, Inspector designado, estaciones, fechas y texto del mandato.",
+      "Si hay un dato incorrecto, corrija su fuente antes de firmar; no edite el PDF firmado como si fuera un borrador.",
+      "Abra la firma oficial, seleccione el certificado institucional y escriba su contraseña.",
+      "Confirme la operación y espere la validación criptográfica y el almacenamiento.",
+      "Descargue el oficio firmado y compruebe que corresponde al trámite.",
+      "El Inspector y el RT deben consultar el documento disponible en sus pantallas autorizadas y conservar su relación con el expediente."
+    ],
+    "despues": "Oficio firmado almacenado, o operación rechazada sin acreditar firma.",
+    "correo": "La implementación contempla distribución del oficio al RT y al Inspector. Un correo en cola no prueba recepción final; consulte el resultado de entrega.",
+    "error": "MAC inválida: revise archivo y contraseña del certificado. Acceso denegado a la ruta: soporte debe comprobar permisos de la identidad del aplicativo sobre el almacenamiento compartido; no repita firmas para resolver un permiso de carpeta."
+  },
+  {
+    "id": "P16",
+    "titulo": "Llenar finalizar y firmar la LV por estación",
+    "rol": "Inspector asignado",
+    "menu": "Mis inspecciones y detalle de inspección",
+    "ctl": "InspeccionController",
+    "acciones": [
+      "Detalle",
+      "GuardarListaVerificacionOperacionalEae",
+      "FinalizarListaVerificacionOperacionalEae",
+      "FirmarListaVerificacionOperacionalEae",
+      "VerLvEaeOficial"
+    ],
+    "servicios": [
+      "AocrFlujoValidacionService"
+    ],
+    "dao": [
+      "ListaVerificacionOperacionalEaeDAO",
+      "SolicitudEstacionDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud_estacion"
+    ],
+    "estado": "Implementado por estación",
+    "antes": "Fase documental habilitada y asignación del Inspector al expediente y estación.",
+    "datos": "Estación seleccionada, respuestas de la LV, observaciones, aeronaves realmente inspeccionadas y datos editables del numeral 4. La versión y estación deben corresponder al formulario abierto.",
+    "pasos": [
+      "Abra la inspección asignada y seleccione la estación antes de abrir su LV.",
+      "Compruebe el código de estación en el formulario. La LV firmada de Quito no debe usarse para llenar la de Guayaquil.",
+      "Complete las respuestas y observaciones de esa estación. Ingrese las aeronaves inspeccionadas, sin asumir que toda la flota fue inspeccionada.",
+      "Guarde el borrador y compruebe la persistencia al volver a abrirlo. Puede continuar otra estación sin modificar la LV ya firmada.",
+      "Finalice la LV cuando todas las respuestas requeridas estén completas y revise su PDF oficial.",
+      "Firme la LV mediante el mecanismo habilitado y verifique su estado antes de preparar el informe de esa estación."
+    ],
+    "despues": "LV de una estación guardada, finalizada o firmada. Cada estación mantiene su evidencia independiente.",
+    "correo": "No se acredita una notificación de aceptación por guardar respuestas. Los avisos de avance se producen en las transiciones previstas.",
+    "error": "La LV no coincide con la estación: cierre el formulario, recargue la inspección y vuelva a seleccionar la estación. No cambie el identificador oculto ni intente reutilizar una LV histórica firmada."
+  },
+  {
+    "id": "P17",
+    "titulo": "Preparar y firmar el informe técnico por estación",
+    "rol": "Inspector asignado",
+    "menu": "Informe Técnico en el detalle de inspección",
+    "ctl": "InspeccionController",
+    "acciones": [
+      "ModalInformeTecnico",
+      "GuardarInformeTecnico",
+      "PrevisualizarInformeTecnico",
+      "FinalizarInformeTecnico",
+      "FirmarInformeInspector",
+      "ReintentarNotificacionInformeDcav"
+    ],
+    "servicios": [
+      "AocrFlujoValidacionService"
+    ],
+    "dao": [
+      "InspeccionInformeDAO"
+    ],
+    "tablas": [
+      "aocr_tbinforme_inspeccion"
+    ],
+    "estado": "Implementado por estación",
+    "antes": "LV finalizada y firmada para la estación seleccionada.",
+    "datos": "Estación, contenido técnico, hallazgos, conclusión, resultado y adjuntos que solicite el formulario.",
+    "pasos": [
+      "Seleccione la estación y abra su Informe Técnico desde la inspección.",
+      "Verifique que la LV asociada es de esa estación y está firmada; no use el informe de otra estación como sustituto.",
+      "Complete el contenido y el resultado real. Registre los hallazgos y adjuntos que sustentan la conclusión.",
+      "Guarde y abra la vista previa. Compruebe que las estaciones o tablas que se imprimen corresponden al alcance de ese informe.",
+      "Finalice y firme el informe cuando esté completo. Un informe firmado no se vuelve a firmar solo para reenviar un aviso.",
+      "Si se informa una notificación pendiente, use el reintento disponible y consulte el estado del envío.",
+      "Los documentos finales solo pueden prepararse cuando todos los informes de estaciones exigidos estén finalizados, firmados y satisfactorios."
+    ],
+    "despues": "Informe firmado y trazabilidad por estación; avance o remisión a la revisión que corresponda. Los informes no satisfactorios conducen al tratamiento de no conformidades.",
+    "correo": "La firma del informe genera la remisión y notificación implementadas a DIRCAV; existen reintentos de comunicación sin repetir la firma.",
+    "error": "Debe finalizar y firmar la LV: compruebe la evidencia de la estación. Un HTTP 400 o 409 requiere revisar id, estación, versión y estado antes de repetir la operación."
+  },
+  {
+    "id": "P18",
+    "titulo": "Registrar revisar y subsanar una no conformidad",
+    "rol": "Inspector, Coordinador y RT en etapas distintas",
+    "menu": "Hallazgos y no conformidades del expediente",
+    "ctl": "InspeccionController",
+    "acciones": [
+      "RegistrarHallazgo",
+      "RegistrarNoConforme",
+      "FirmarNcInspector",
+      "CoordinadorAprobarNc",
+      "CoordinadorDevolverNc",
+      "AceptarSubsanacionNc",
+      "DevolverSubsanacionNc"
+    ],
+    "servicios": [
+      "Gate8WorkflowEventService"
+    ],
+    "dao": [
+      "NoConformidadDAO"
+    ],
+    "tablas": [
+      "aocr_tbnoconformidad"
+    ],
+    "estado": "Implementado con ciclos y precondiciones de revisión",
+    "antes": "Hallazgo o resultado que requiere no conformidad y actor autorizado para la etapa.",
+    "datos": "Hallazgo, no conformidad, motivo técnico, documento de subsanación, respuesta y relación con la inspección o ciclo.",
+    "pasos": [
+      "El Inspector registra el hallazgo y la no conformidad desde la inspección correspondiente.",
+      "Revise el PDF y complete la firma del Inspector cuando el flujo lo exija.",
+      "El Coordinador revisa la NC y decide aprobarla o devolverla con motivo; no sustituye la respuesta documental del RT.",
+      "El RT consulta su NC desde las acciones de subsanación y carga la evidencia en el mismo expediente.",
+      "El Inspector revisa el documento subsanado y acepta o devuelve con una observación concreta.",
+      "Compruebe el estado de la NC y el ciclo antes de continuar. Una NC abierta puede impedir remisiones, firmas o cierre del expediente."
+    ],
+    "despues": "NC registrada y tratada en su ciclo, con aceptación o nueva devolución de la subsanación. La carga no implica cierre automático.",
+    "correo": "Los eventos de NC, revisión y subsanación alimentan avisos del flujo. La trazabilidad debe relacionar NC raíz, inspección y respuesta.",
+    "error": "NC de otro trámite o evidencia pendiente: abra la relación correcta. No marque el informe satisfactorio para eludir una NC que continúa abierta."
+  },
+  {
+    "id": "P19",
+    "titulo": "Solicitar y seguir una nueva inspección",
+    "rol": "RT e Inspector según etapa",
+    "menu": "Acción de nueva inspección del expediente",
+    "ctl": "RTController",
+    "acciones": [
+      "SolicitarNuevaInspeccion"
+    ],
+    "servicios": [
+      "Gate8WorkflowEventService"
+    ],
+    "dao": [
+      "InspeccionDAO",
+      "NoConformidadDAO"
+    ],
+    "tablas": [
+      "aocr_tbinspeccion",
+      "aocr_tbnoconformidad",
+      "aocr_or_orden"
+    ],
+    "estado": "Implementado con dependencias de nueva orden y ciclo",
+    "antes": "Expediente y NC o resultado que habilitan una nueva inspección.",
+    "datos": "Solicitud original y relación con el ciclo, orden y nueva inspección cuando se creen.",
+    "pasos": [
+      "Abra el expediente que originó la necesidad de nueva inspección.",
+      "Revise la observación o NC que justifica la nueva actuación.",
+      "Use la solicitud de nueva inspección cuando esté habilitada para su rol.",
+      "Consulte si el sistema prepara una nueva orden y complete su circuito económico sin reutilizar indebidamente el comprobante anterior.",
+      "El actor responsable asigna y programa la nueva inspección según la bandeja resultante.",
+      "Compruebe que el nuevo ciclo conserve la referencia original y que las LV e informes firmados anteriores permanezcan como historial."
+    ],
+    "despues": "Nueva actuación vinculada al expediente o ciclo original; no una sobrescritura del informe firmado previo.",
+    "correo": "El catálogo de eventos contempla nueva inspección, nueva solicitud y nueva orden. La ejecución y entrega deben verificarse en el entorno institucional.",
+    "error": "Acción no habilitada: revise la NC, el resultado y la fase del trámite. No duplique manualmente solicitudes para simular el ciclo previsto."
+  },
+  {
+    "id": "P20",
+    "titulo": "Preparar los datos y generar AOCR y Condiciones",
+    "rol": "Inspector asignado",
+    "menu": "Documentos finales por preparar",
+    "ctl": "FirmaAocrController",
+    "acciones": [
+      "Index",
+      "GuardarDatos",
+      "GenerarPdf",
+      "VerPdf",
+      "DescargarPdf"
+    ],
+    "servicios": [
+      "FirmaAocrWorkflowService",
+      "DatosDocumentalesAocrReglas",
+      "AocrCierrePorTipoTramiteService"
+    ],
+    "dao": [
+      "CertificadoDAO",
+      "AocrDocumentoGeneradoDAO"
+    ],
+    "tablas": [
+      "aocr_tbsolicitud",
+      "aocr_tbcertificado",
+      "aocr_tbdocumento_generado"
+    ],
+    "estado": "Implementado con limitaciones de formato heredado y operación única por estación",
+    "antes": "Todos los informes exigidos finalizados, firmados y satisfactorios; Inspector asignado y expediente no enviado o firmado.",
+    "datos": "Permiso CNAC y sus dos fechas; vigencia del AOC; país de bandera; contactos independientes de explotador, gerente de Operaciones, RT y representante legal en Ecuador; operación por estación; vencimiento y nombres de firmantes institucionales.",
+    "pasos": [
+      "Abra Documentos finales por preparar y compruebe el expediente.",
+      "Complete el permiso CNAC sin copiar el número del AOC. Registre por separado emisión, vencimiento del permiso y vigencia del AOC.",
+      "Complete cada contacto con nombre, dirección, teléfono y correo propios; no sustituya el RT por el Inspector ni la base principal por el contacto en Ecuador.",
+      "Seleccione la operación de cada estación. En este corte solo puede guardar un código entre R, NR, RC, ET o A; la selección múltiple sigue pendiente.",
+      "Guarde y valide los datos. Después pulse Generar PDF o Regenerar PDF en cada tarjeta requerida. Guardar datos no regenera archivos existentes.",
+      "Abra ambos PDF y revise tipo de trámite, modelo de aeronave sin matrícula en la plantilla actual, estaciones y números. AOCR003 debe usar el reconocimiento DGAC-129-OACI-003; renovación y modificación conservan el de su original.",
+      "Si todavía aparece un número previo de borrador, solicite la regularización técnica y regenere; no altere a mano un documento enviado o firmado."
+    ],
+    "despues": "PDF vigentes de los documentos requeridos y versiones anteriores conservadas. El plan actual de modificación genera CL; no se presume un nuevo AOCR para ese tipo.",
+    "correo": "La generación registra avances; aún no representa el envío del paquete al Coordinador ni habilita firmas institucionales.",
+    "error": "Campos incompletos o fechas invertidas: corrija la fuente y vuelva a validar. Error de unicidad al regenerar: revise que esté publicada la corrección del registro transaccional de versiones; no elimine índices ni borre el historial."
+  },
+  {
+    "id": "P21",
+    "titulo": "Enviar y revisar el paquete final con el Coordinador",
+    "rol": "Inspector para enviar y Coordinador para revisar",
+    "menu": "Enviar documentos al Coordinador y CL y AOCR por revisar",
+    "ctl": "FirmaAocrController",
+    "acciones": [
+      "FinalizarDocumentosYEnviarParaFirma",
+      "PaquetesCoordinador",
+      "RevisarPaquete"
+    ],
+    "servicios": [
+      "DocumentosFinalesWorkflowService"
+    ],
+    "dao": [
+      "DocumentosFinalesWorkflowDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento_generado",
+      "aocr_proceso_estado",
+      "aocr_evento_workflow",
+      "aocr_tbnotificacion",
+      "email_queue"
+    ],
+    "estado": "Implementado; recepción del caso reportado pendiente de validación institucional",
+    "antes": "PDF requeridos vigentes, completos, íntegros y todavía editables; sin NC u observaciones que bloqueen el envío.",
+    "datos": "Solicitud, versiones y evidencias de ambos documentos; observación del Coordinador y versión esperada para decidir.",
+    "pasos": [
+      "El Inspector revisa los PDF vigentes y utiliza Enviar documentos al Coordinador una sola vez.",
+      "Espere el resultado confirmado y consulte el estado. La transición prevista es DOCUMENTOS_FINALES_COORDINADOR; un mensaje temporal no sustituye ese registro.",
+      "El Coordinador abre CL y AOCR por revisar. La bandeja de Asignación de Inspector no es la bandeja de paquetes finales.",
+      "Abra el paquete y consulte la documentación de soporte, LV, informes y PDF finales.",
+      "Si requiere corrección, devuelva con motivo; el Inspector podrá preparar nuevas versiones conforme al estado resultante.",
+      "Si está conforme, remita el paquete a DIRCAV mediante la decisión de revisión. Esa revisión no firma ninguno de los dos documentos.",
+      "Si no aparece el paquete ni sus avisos, conserve fecha, solicitud y mensaje exacto. No afirme que el correo fue enviado sin comprobar la transacción y la cola."
+    ],
+    "despues": "Paquete bloqueado en revisión del Coordinador, devuelto al Inspector o remitido a DIRCAV. Las firmas siguen separadas por autoridad.",
+    "correo": "La misma transacción registra estados, evento, avisos internos y correos de AOCR y CL al Coordinador. Un fallo revierte todo; SMTP se procesa después del commit.",
+    "error": "Versión cambiada: recargue y vuelva a revisar la evidencia. No existen destinatarios activos: Administración debe revisar roles y correos. Rechazo de transacción: soporte consulta la referencia y no reenvía masivamente por fuera del sistema."
+  },
+  {
+    "id": "P22",
+    "titulo": "Revisar y firmar Condiciones como DIRCAV",
+    "rol": "DIRCAV",
+    "menu": "Firma de Condiciones y Limitaciones",
+    "ctl": "FirmaAocrController",
+    "acciones": [
+      "Index",
+      "Firmar",
+      "DescargarFirmado"
+    ],
+    "servicios": [
+      "FirmaAocrDigitalService",
+      "DocumentosFinalesWorkflowService"
+    ],
+    "dao": [
+      "DocumentosFinalesWorkflowDAO",
+      "AocrFirmaDocumentoDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento_generado",
+      "aocr_tbfirma_documento"
+    ],
+    "estado": "Implementado; convive con circuito heredado de CL",
+    "antes": "Paquete revisado por Coordinador y CL en estado habilitado para DIRCAV; firmante institucional autorizado.",
+    "datos": "Documento vigente, certificado .p12/.pfx, contraseña y datos de firma de la pantalla.",
+    "pasos": [
+      "Abra su bandeja de Firma de Condiciones y el expediente remitido por el Coordinador.",
+      "Compruebe el estado y la versión del documento. No use la ruta heredada de vista previa como prueba de que el paquete ya fue revisado.",
+      "Revise el PDF exacto que va a firmar. La firma no debe utilizarse para transformar después el formato, retirar matrículas o corregir números.",
+      "Si el borrador no corresponde, devuelva a Coordinación con el motivo y espere una versión corregida.",
+      "Si procede, complete la firma de Condiciones con su certificado institucional.",
+      "Descargue la versión firmada y compruebe el hash o identificación que ofrece la pantalla. DIRCAV no firma el certificado AOCR en lugar de DIRDAC."
+    ],
+    "despues": "CL firmadas por DIRCAV o documento devuelto; AOCR todavía requiere remisión formal y firma DIRDAC.",
+    "correo": "La firma y avance generan los avisos del circuito. La distribución final al RT depende del cierre y entrega institucionales.",
+    "error": "Documento no habilitado, devuelto o versión diferente: revise el recorrido Coordinador-DIRCAV. Si ve el formato anterior con matrículas o AOC usado como AOCR, no lo valide por el solo hecho de ser una vista previa."
+  },
+  {
+    "id": "P23",
+    "titulo": "Remitir el AOCR formalmente a DIRDAC",
+    "rol": "DIRCAV",
+    "menu": "Remisión a DIRDAC",
+    "ctl": "DircavController",
+    "acciones": [
+      "RemitirAocrDirdac",
+      "RemitirDIRDAC"
+    ],
+    "servicios": [
+      "AocrFinalWorkflowService"
+    ],
+    "dao": [
+      "AocrFinalWorkflowDAO"
+    ],
+    "tablas": [
+      "aocr_proceso_estado",
+      "aocr_tbdocumento_generado"
+    ],
+    "estado": "Implementado con permiso granular y precondiciones",
+    "antes": "CL y AOCR en estados exigidos; revisión de informes y documentos finalizada; actor DIRCAV con permiso DIRCAV_REMITIR_DIRDAC.",
+    "datos": "Solicitud, observación, documento y versiones esperadas de expediente y AOCR.",
+    "pasos": [
+      "Abra Remisión a DIRDAC y seleccione el expediente elegible.",
+      "Revise que el AOCR sea el documento vigente del paquete y que las CL tengan la evidencia institucional requerida.",
+      "Consulte LV, informes y soporte antes de remitir.",
+      "Registre la observación y confirme la remisión formal.",
+      "Verifique el nuevo estado y la aparición en la bandeja de DIRDAC.",
+      "Si no aparece en la bandeja de remisión, revise primero el estado de CL, revisión y paquete; no cree un AOCR paralelo ni altere directamente la base para hacerlo visible."
+    ],
+    "despues": "AOCR pendiente de revisión o firma DIRDAC según la transición. DIRCAV conserva su decisión y evidencia de remisión.",
+    "correo": "Se generan los eventos y notificaciones previstos para la autoridad receptora. El correo no reemplaza el estado y permisos del expediente.",
+    "error": "Permiso requerido o versión obsoleta: revise el rol activo, permiso y versión antes de reintentar. Administrador no debe operar como autoridad firmante para resolver el bloqueo."
+  },
+  {
+    "id": "P24",
+    "titulo": "Revisar y firmar el AOCR como DIRDAC",
+    "rol": "DIRDAC",
+    "menu": "Bandeja AOCR de DIRDAC",
+    "ctl": "DirdacController",
+    "acciones": [
+      "BandejaAocr",
+      "Detalle",
+      "DevolverAocrDircav",
+      "FirmarLegalizarAocr"
+    ],
+    "servicios": [
+      "AocrFinalWorkflowService"
+    ],
+    "dao": [
+      "AocrFinalWorkflowDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento_generado",
+      "aocr_tbfirma_documento",
+      "aocr_proceso_estado"
+    ],
+    "estado": "Implementado con segregación de autoridad",
+    "antes": "Remisión formal DIRCAV y permiso DIRDAC_FIRMAR_AOCR; AOCR vigente e íntegro.",
+    "datos": "Solicitud, observación o motivo, versiones esperadas y certificado institucional para la firma.",
+    "pasos": [
+      "Ingrese con DIRDAC como rol activo y abra su Bandeja AOCR.",
+      "Abra el expediente remitido por DIRCAV y consulte el AOCR y su soporte.",
+      "Si existen observaciones, devuelva a DIRCAV con motivo; no firme una versión distinta a la revisada.",
+      "Si procede la legalización, ejecute la firma habilitada con el certificado institucional.",
+      "Espere la validación criptográfica y consulte el resultado persistido.",
+      "Verifique que la firma se identifica como DIRDAC y que las CL mantienen su firma DIRCAV. No se combinan ambas responsabilidades."
+    ],
+    "despues": "AOCR firmado/legalizado o devuelto. El sistema debe evaluar el cumplimiento del conjunto de firmas antes de entregar los documentos.",
+    "correo": "Los avisos de firma y cierre se procesan conforme al servicio de flujo. La entrega final se comprueba en su operación y cola específicas.",
+    "error": "No existe remisión DIRCAV o falta permiso: el AOCR no debe aparecer como firmable. Si el certificado falla, no comparta su contraseña con otro usuario para que firme por usted."
+  },
+  {
+    "id": "P25",
+    "titulo": "Verificar cierre entrega y descarga final",
+    "rol": "RT; DIRDAC y Administración solo en sus funciones de control",
+    "menu": "Documentos finales y Generadas firmadas",
+    "ctl": "RTController",
+    "acciones": [
+      "DocumentosFinales"
+    ],
+    "servicios": [
+      "EntregaFinalService",
+      "AocrFinalWorkflowService"
+    ],
+    "dao": [
+      "EntregaFinalDAO",
+      "AocrFinalWorkflowDAO"
+    ],
+    "tablas": [
+      "aocr_proceso_estado",
+      "aocr_tbdocumento_generado",
+      "email_queue",
+      "email_attachment"
+    ],
+    "estado": "Implementado; entrega externa real por validar en cada entorno",
+    "antes": "Conjunto de documentos y firmas exigidos por el tipo de trámite, integridad verificada y cierre institucional habilitado.",
+    "datos": "Solicitud, archivos firmados y destinatarios autorizados. Las jefaturas de aeropuerto dependen de configuración real.",
+    "pasos": [
+      "Consulte el estado final del trámite; una firma aislada no acredita entrega de todo el paquete.",
+      "Ingrese como RT de la compañía y abra Documentos finales o la bandeja de documentos generados y firmados disponible para su perfil.",
+      "Descargue los documentos que el tipo de trámite exige. En emisión o renovación se comprueban AOCR y CL; el plan de modificación no debe inventar otro AOCR.",
+      "Abra los archivos y verifique número original, firmas y correspondencia con el expediente.",
+      "Revise los avisos y el correo. Si se requiere informar a una jefatura aeroportuaria, la dirección debe existir en configuración; no se inventan destinatarios.",
+      "Si un archivo no está disponible, reporte la solicitud y estado. No utilice una URL pública o un borrador anterior como sustituto de la descarga autorizada."
+    ],
+    "despues": "Documentos finales disponibles y entrega trazable cuando el proceso se confirma. Recepción SMTP y descarga del RT son evidencias diferentes.",
+    "correo": "La entrega utiliza cola y adjuntos con rutas e integridad. Un estado pendiente o fallido de email requiere tratamiento de comunicación, sin volver a firmar PDFs.",
+    "error": "Archivo no encontrado, vacío o hash distinto: no distribuya esa copia. Soporte debe revisar almacenamiento, metadatos y hash del firmado. El RT no debe recibir una versión preliminar como final."
+  },
+  {
+    "id": "P26",
+    "titulo": "Consultar el archivo documental después de cerrar la fase",
+    "rol": "Inspector asignado y revisores autorizados",
+    "menu": "Expediente y consulta de documentos",
+    "ctl": "DocumentoController",
+    "acciones": [
+      "Lista",
+      "Descargar",
+      "Detalle"
+    ],
+    "servicios": [
+      "RevisionDocumentalBandejaService"
+    ],
+    "dao": [
+      "DocumentoDAO"
+    ],
+    "tablas": [
+      "aocr_tbdocumento"
+    ],
+    "estado": "Parcial en navegación de auditoría por rol",
+    "antes": "Permiso para el expediente, incluso si ya no figura como pendiente de revisión.",
+    "datos": "Solicitud, documento y relación con la inspección o compañía autorizada.",
+    "pasos": [
+      "Distinga la bandeja de pendientes de la consulta del expediente. Al cerrar la fase, el trámite puede dejar de aparecer en pendientes.",
+      "Abra el expediente desde el detalle de la inspección o la opción documental habilitada para su rol.",
+      "En modo de solo lectura consulte tipo, archivo, fecha, estado, observación y acciones de vista previa o descarga.",
+      "Descargue la evidencia requerida para auditoría sin cambiar su estado ni sobrescribirla.",
+      "Si no existe un enlace de consulta autorizado para el expediente cerrado, registre esa limitación. En este corte está pendiente validar y completar un acceso de archivo documental que cubra todos los escenarios del Inspector."
+    ],
+    "despues": "Consulta de la evidencia disponible; no reapertura de la fase ni modificación del historial.",
+    "correo": "Consultar o descargar no significa enviar una comunicación institucional.",
+    "error": "Bandeja vacía no prueba eliminación de documentos. Si recibe acceso denegado, valide asignación y contexto; no copie archivos directamente desde una carpeta compartida como método de trabajo del usuario final."
+  },
+  {
+    "id": "P27",
+    "titulo": "Administrar usuarios roles y permisos",
+    "rol": "Administrador",
+    "menu": "Usuarios y Roles y permisos",
+    "ctl": "AdminUsuariosController",
+    "acciones": [
+      "Index",
+      "Create",
+      "Edit",
+      "Roles",
+      "PermisosRol",
+      "CambiarEstado",
+      "ResetPassword",
+      "ReenviarCredenciales"
+    ],
+    "servicios": [
+      "UsuarioContextoService"
+    ],
+    "dao": [
+      "UsuarioDAO",
+      "RolDAO"
+    ],
+    "tablas": [
+      "usuario",
+      "rol",
+      "usuario_rol"
+    ],
+    "estado": "Implementado con permisos administrativos",
+    "antes": "Cuenta administrativa autorizada; solicitud y justificación de acceso identificadas.",
+    "datos": "Identidad, correo, perfil, estado, roles y permisos que ofrece la pantalla. Las credenciales temporales se gestionan por las acciones previstas, no se documentan en este manual.",
+    "pasos": [
+      "Abra Usuarios y localice a la persona antes de crear una cuenta nueva.",
+      "Para alta o edición, complete sus datos reales y compruebe el correo de destino.",
+      "Asigne los roles necesarios y guarde la relación; no otorgue otro rol institucional solo para eludir un bloqueo de flujo.",
+      "Abra Roles y permisos y revise los permisos granulares de las acciones que la función realmente necesita.",
+      "Active o inactive la cuenta cuando corresponda. Use restablecimiento o reenvío de credenciales desde su acción específica, comprobando destinatario y motivo.",
+      "Pida al usuario que vuelva a iniciar sesión o seleccione su rol para comprobar el contexto resultante.",
+      "El Administrador no acepta expedientes ni firma en nombre del Coordinador, DIRCAV, Inspector o DIRDAC por disponer de administración de accesos."
+    ],
+    "despues": "Cuenta y permisos modificados con trazabilidad. Las decisiones de expediente siguen perteneciendo a sus actores institucionales.",
+    "correo": "Altas, restablecimientos y reenvíos pueden generar correos de cuenta. No publique claves ni capture pantallas que las expongan.",
+    "error": "El rol se ve pero la acción no funciona: compruebe permiso granular, estado de cuenta, contexto activo y restricciones del expediente. Un menú visible no demuestra autorización completa."
+  },
+  {
+    "id": "P28",
+    "titulo": "Administrar parámetros catálogos y destinatarios",
+    "rol": "Administrador",
+    "menu": "Parámetros y catálogos y Cola y correos institucionales",
+    "ctl": "ParametroController",
+    "acciones": [
+      "Index",
+      "Crear",
+      "Editar",
+      "AplicarTarifasAocrOficiales",
+      "SincronizarConceptosAocr"
+    ],
+    "servicios": [
+      "SecureConfigurationService"
+    ],
+    "dao": [
+      "ParametroDAO"
+    ],
+    "tablas": [
+      "email_queue"
+    ],
+    "estado": "Implementado; valores oficiales y aprobación de cambio por confirmar",
+    "antes": "Permiso de administración y cambio funcional aprobado fuera de este manual.",
+    "datos": "Clave, valor y datos de catálogo que muestre la pantalla; destinatarios institucionales activos y sus ámbitos.",
+    "pasos": [
+      "Abra el catálogo o parámetro concreto y lea su descripción antes de modificarlo.",
+      "Compruebe el alcance del cambio: entorno, vigencia, tipo de trámite y usuarios afectados.",
+      "Registre únicamente valores institucionales confirmados; no copie contraseñas o cadenas de conexión en campos no destinados a secretos.",
+      "Guarde y pruebe la lectura funcional con un expediente de pruebas autorizado.",
+      "Para destinatarios, revise dirección, rol o estación y estado activo desde Correo institucional.",
+      "Conserve el registro de cambio y su responsable. Una dirección vacía o no validada no debe sustituirse por una dirección personal supuesta."
+    ],
+    "despues": "Configuración actualizada dentro de su alcance. No se valida automáticamente el efecto integral sobre trámites históricos.",
+    "correo": "La configuración de un destinatario no equivale a enviar un aviso; la comunicación se genera al ejecutar una transición.",
+    "error": "Cambio sin efecto: revise prioridades de entorno/configuración y caché con soporte. No repita cambios de tarifas en producción para probar un problema de pantalla."
+  },
+  {
+    "id": "P29",
+    "titulo": "Consultar auditoría notificaciones y correos pendientes",
+    "rol": "Administrador para soporte; cada usuario para sus notificaciones",
+    "menu": "Monitoreo y logs funcionales y campana de notificaciones",
+    "ctl": "NotificacionController",
+    "acciones": [
+      "Index",
+      "ObtenerNoLeidas",
+      "MarcarComoLeida",
+      "MarcarTodasComoLeidas"
+    ],
+    "servicios": [
+      "EmailQueueProcessor",
+      "LoggingService"
+    ],
+    "dao": [
+      "LogDAO"
+    ],
+    "tablas": [
+      "aocr_tbnotificacion",
+      "email_queue",
+      "aocr_tblog"
+    ],
+    "estado": "Implementado con visibilidad y herramientas según permisos",
+    "antes": "Cuenta autorizada para la consulta; solicitud o incidencia identificada.",
+    "datos": "Usuario, trámite, fecha, acción y referencia de error o comunicación.",
+    "pasos": [
+      "Abra la campana para revisar sus avisos; marque como leída una notificación solo después de consultar su expediente.",
+      "Si falta un correo, contraste primero que la transición del trámite quedó registrada.",
+      "El Administrador o soporte consulta el log y la cola por solicitud, fecha y tipo de notificación.",
+      "Diferencie correo pendiente, enviando, enviado o fallido. Que una notificación interna exista no demuestra recepción del correo en el buzón.",
+      "Ante un fallo de comunicación, revise destinatario y causa técnica antes de reintentar. Evite repetir firmas o decisiones para provocar correos nuevos.",
+      "Conserve la referencia de auditoría sin copiar contraseñas, certificados privados ni cuerpos de correo con información ajena al incidente."
+    ],
+    "despues": "Aviso atendido o incidencia de comunicación localizada y escalada. Leer o eliminar un aviso no revierte la decisión de expediente.",
+    "correo": "El procesador de email trabaja en segundo plano dentro de la aplicación; un reinicio de IIS puede interrumpir o retrasar la cola.",
+    "error": "No hay registro en cola ni cambio de estado: investigue la transición, no solo SMTP. Si el correo figura enviado, compruebe las evidencias de transporte y buzón mediante el procedimiento institucional de soporte."
+  }
+]

@@ -1,0 +1,33 @@
+flowchart TB
+  n0["RT: registro y compañía<br/>Orden y comprobante"]
+  n1["Financiero: validación y factura<br/>Seguimiento FR3"]
+  n2["RT: solicitud y documentos<br/>Seguimiento del expediente"]
+  n3["Coordinador: revisión y asignación<br/>preliminar de trabajo"]
+  n4["Inspector: revisión documental<br/>Observaciones y subsanación"]
+  n5["Coordinador: revisión final<br/>Remisión a DIRCAV"]
+  n6["DIRCAV: aceptación y designación<br/>Oficio institucional"]
+  n7["Inspector: LV e informe por estación<br/>NC o resultado satisfactorio"]
+  n8["Inspector: genera AOCR y CL<br/>Envía el paquete final"]
+  n9["Coordinador: revisa el paquete<br/>Devuelve o remite a DIRCAV"]
+  n10["DIRCAV: revisa soporte y firma CL<br/>Remite AOCR a DIRDAC"]
+  n11["DIRDAC: revisa y firma AOCR<br/>Evalúa firmas y cierre"]
+  n12["RT: recibe y descarga<br/>Documentos finales autorizados"]
+  n0 --> n1
+  n1 --> n2
+  n2 --> n3
+  n3 --> n4
+  n4 --> n5
+  n5 --> n6
+  n6 --> n7
+  n7 --> n8
+  n8 --> n9
+  n9 --> n10
+  n10 --> n11
+  n11 --> n12
+
+  n4 -. "Observaci?n documental: RT subsana" .-> n2
+  n5 -. "Devoluci?n a Inspector" .-> n4
+  n6 -. "Devoluci?n a Coordinador" .-> n5
+  n9 -. "Paquete devuelto para corregir" .-> n8
+  n10 -. "Devoluci?n del paquete" .-> n9
+  n11 -. "AOCR devuelto a DIRCAV" .-> n10

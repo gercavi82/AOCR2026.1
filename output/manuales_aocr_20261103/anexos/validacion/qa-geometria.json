@@ -1,0 +1,655 @@
+{
+  "Manual_Usuario_AOCR": {
+    "paginas": 46,
+    "paginas_sin_contenido": [],
+    "figuras_sin_texto_alternativo": 0,
+    "tablas": 6,
+    "detalle": [
+      {
+        "pagina": 1,
+        "palabras_cuerpo": 108,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 2,
+        "palabras_cuerpo": 229,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 3,
+        "palabras_cuerpo": 238,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 4,
+        "palabras_cuerpo": 185,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 5,
+        "palabras_cuerpo": 287,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 6,
+        "palabras_cuerpo": 159,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 7,
+        "palabras_cuerpo": 215,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 8,
+        "palabras_cuerpo": 263,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 9,
+        "palabras_cuerpo": 201,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 10,
+        "palabras_cuerpo": 287,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 11,
+        "palabras_cuerpo": 297,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 12,
+        "palabras_cuerpo": 315,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 13,
+        "palabras_cuerpo": 311,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 14,
+        "palabras_cuerpo": 292,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 15,
+        "palabras_cuerpo": 276,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 16,
+        "palabras_cuerpo": 277,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 17,
+        "palabras_cuerpo": 290,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 18,
+        "palabras_cuerpo": 204,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 19,
+        "palabras_cuerpo": 271,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 20,
+        "palabras_cuerpo": 246,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 21,
+        "palabras_cuerpo": 181,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 22,
+        "palabras_cuerpo": 293,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 23,
+        "palabras_cuerpo": 298,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 24,
+        "palabras_cuerpo": 300,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 25,
+        "palabras_cuerpo": 248,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 26,
+        "palabras_cuerpo": 196,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 27,
+        "palabras_cuerpo": 271,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 28,
+        "palabras_cuerpo": 270,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 29,
+        "palabras_cuerpo": 285,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 30,
+        "palabras_cuerpo": 279,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 31,
+        "palabras_cuerpo": 177,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 32,
+        "palabras_cuerpo": 297,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 33,
+        "palabras_cuerpo": 292,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 34,
+        "palabras_cuerpo": 358,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 35,
+        "palabras_cuerpo": 300,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 36,
+        "palabras_cuerpo": 169,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 37,
+        "palabras_cuerpo": 305,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 38,
+        "palabras_cuerpo": 145,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 39,
+        "palabras_cuerpo": 290,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 40,
+        "palabras_cuerpo": 309,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 41,
+        "palabras_cuerpo": 311,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 42,
+        "palabras_cuerpo": 186,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 43,
+        "palabras_cuerpo": 389,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 44,
+        "palabras_cuerpo": 206,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 45,
+        "palabras_cuerpo": 172,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 46,
+        "palabras_cuerpo": 86,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      }
+    ]
+  },
+  "Manual_Tecnico_AOCR": {
+    "paginas": 45,
+    "paginas_sin_contenido": [],
+    "figuras_sin_texto_alternativo": 0,
+    "tablas": 9,
+    "detalle": [
+      {
+        "pagina": 1,
+        "palabras_cuerpo": 107,
+        "imagenes": 1,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 2,
+        "palabras_cuerpo": 199,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 3,
+        "palabras_cuerpo": 222,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 4,
+        "palabras_cuerpo": 205,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 5,
+        "palabras_cuerpo": 397,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 6,
+        "palabras_cuerpo": 273,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 7,
+        "palabras_cuerpo": 244,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 8,
+        "palabras_cuerpo": 392,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 9,
+        "palabras_cuerpo": 231,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 10,
+        "palabras_cuerpo": 317,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 11,
+        "palabras_cuerpo": 202,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 12,
+        "palabras_cuerpo": 375,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 13,
+        "palabras_cuerpo": 314,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 14,
+        "palabras_cuerpo": 408,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 15,
+        "palabras_cuerpo": 369,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 16,
+        "palabras_cuerpo": 407,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 17,
+        "palabras_cuerpo": 357,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 18,
+        "palabras_cuerpo": 398,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 19,
+        "palabras_cuerpo": 270,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 20,
+        "palabras_cuerpo": 301,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 21,
+        "palabras_cuerpo": 334,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 22,
+        "palabras_cuerpo": 365,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 23,
+        "palabras_cuerpo": 335,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 24,
+        "palabras_cuerpo": 332,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 25,
+        "palabras_cuerpo": 383,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 26,
+        "palabras_cuerpo": 354,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 27,
+        "palabras_cuerpo": 306,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 28,
+        "palabras_cuerpo": 352,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 29,
+        "palabras_cuerpo": 386,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 30,
+        "palabras_cuerpo": 333,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 31,
+        "palabras_cuerpo": 309,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 32,
+        "palabras_cuerpo": 324,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 33,
+        "palabras_cuerpo": 343,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 34,
+        "palabras_cuerpo": 315,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 35,
+        "palabras_cuerpo": 350,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 36,
+        "palabras_cuerpo": 372,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 37,
+        "palabras_cuerpo": 326,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 38,
+        "palabras_cuerpo": 344,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 39,
+        "palabras_cuerpo": 369,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 40,
+        "palabras_cuerpo": 349,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 41,
+        "palabras_cuerpo": 386,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 42,
+        "palabras_cuerpo": 214,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 43,
+        "palabras_cuerpo": 202,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 44,
+        "palabras_cuerpo": 243,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      },
+      {
+        "pagina": 45,
+        "palabras_cuerpo": 76,
+        "imagenes": 0,
+        "fuera_area_segura": 0,
+        "campos_sin_actualizar": false
+      }
+    ]
+  }
+}
