@@ -751,6 +751,15 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerUsuarioIdActual();
             try
             {
+                // Los paquetes finales se firman sobre el PDF vigente del flujo conjunto,
+                // no sobre el borrador del circuito historico independiente de CL.
+                var documentoFinal = new DocumentosFinalesWorkflowDAO().ObtenerVigente(id, "CONDICIONES_LIMITACIONES");
+                if (documentoFinal != null && documentoFinal.Bloqueado
+                    && string.Equals(documentoFinal.Estado, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase))
+                {
+                    return RedirectToAction("Index", "FirmaAocr", new { solicitudId = id });
+                }
+
                 var vm = _condicionesService.ObtenerOConstruirViewModel(id, usuarioId, rolActual);
                 if (vm == null) return HttpNotFound("No se encontró el documento de Condiciones y Limitaciones.");
 

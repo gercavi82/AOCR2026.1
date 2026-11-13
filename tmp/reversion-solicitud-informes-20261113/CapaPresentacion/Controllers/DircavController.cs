@@ -1,0 +1,992 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Web;
+using System.Web.Mvc;
+using CapaDatos.Constants;
+using CapaDatos.DAOs;
+using CapaModelo;
+using CapaModelo.DTOs;
+using CapaNegocio;
+using CapaNegocio.Interfaces;
+using CapaNegocio.Services;
+using CapaPresentacion.Filters;
+using CapaPresentacion.Helpers;
+
+namespace CapaPresentacion.Controllers
+{
+    /// <summary>
+    /// Controlador exclusivo para el rol DIRCAV (Director DIRCAV / Certificación Aeronáutica).
+    /// Maneja la aceptación documental, designación oficial de inspectores, revisión de informes
+    /// técnicos, firma exclusiva de Condiciones y Limitaciones y remisión a DIRDAC.
+    /// Bloquea terminantemente acciones operativas del Administrador (Regla 7) y de DIRDAC.
+    /// </summary>
+    [Authorize(Roles = "DIRCAV,DCAV,Administrador")]
+    public class DircavController : Controller
+    {
+        private readonly DircavBandejaService _bandejaService;
+        private readonly DircavDesignacionService _designacionService;
+        private readonly DesignacionDocumentoService _documentoDesignacionService;
+        private readonly SolicitudAOCRDAO _solicitudDao;
+        private readonly InspeccionDAO _inspeccionDao;
+        private readonly AocrFirmaDocumentoDAO _firmaDao;
+        private readonly SolicitudEstacionService _estacionService;
+        private readonly CondicionesLimitacionesService _condicionesService;
+        private readonly IAocrFinalWorkflowService _finalWorkflowService;
+
+        public DircavController()
+        {
+            _bandejaService = new DircavBandejaService();
+            _designacionService = new DircavDesignacionService();
+            _documentoDesignacionService = new DesignacionDocumentoService();
+            _solicitudDao = new SolicitudAOCRDAO();
+            _inspeccionDao = new InspeccionDAO();
+            _firmaDao = new AocrFirmaDocumentoDAO();
+            _estacionService = new SolicitudEstacionService();
+            _condicionesService = new CondicionesLimitacionesService();
+            _finalWorkflowService = new AocrFinalWorkflowService();
+        }
+
+        public DircavController(
+            DircavBandejaService bandejaService,
+            DircavDesignacionService designacionService,
+            SolicitudAOCRDAO solicitudDao,
+            InspeccionDAO inspeccionDao,
+            AocrFirmaDocumentoDAO firmaDao,
+            SolicitudEstacionService estacionService,
+            DesignacionDocumentoService documentoDesignacionService = null,
+            CondicionesLimitacionesService condicionesService = null,
+            IAocrFinalWorkflowService finalWorkflowService = null)
+        {
+            _bandejaService = bandejaService;
+            _designacionService = designacionService;
+            _documentoDesignacionService = documentoDesignacionService ?? new DesignacionDocumentoService();
+            _solicitudDao = solicitudDao;
+            _inspeccionDao = inspeccionDao;
+            _firmaDao = firmaDao;
+            _estacionService = estacionService;
+            _condicionesService = condicionesService ?? new CondicionesLimitacionesService();
+            _finalWorkflowService = finalWorkflowService ?? new AocrFinalWorkflowService();
+        }
+
+        private ActionResult ResponderConflictoFirma(int solicitudId, string mensaje)
+        {
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                Response.StatusCode = 409;
+                Response.TrySkipIisCustomErrors = true;
+                return Json(new { exitoso = false, mensaje });
+            }
+            TempData["Error"] = mensaje;
+            return RedirectToAction("Detalle", new { id = solicitudId });
+        }
+
+        private string ObtenerRolActual()
+        {
+            return Session != null && Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+        }
+
+        private int ObtenerUsuarioIdActual()
+        {
+            if (Session != null)
+            {
+                foreach (var clave in new[] { "UserId", "IdUsuario", "CodigoUsuario", "UsuarioId" })
+                {
+                    int id;
+                    if (Session[clave] != null && int.TryParse(Session[clave].ToString(), out id) && id > 0)
+                        return id;
+                }
+            }
+            if (User == null || User.Identity == null || !User.Identity.IsAuthenticated) return 0;
+            return new UsuarioContextoService(HttpContext).ObtenerContextoActual().UsuarioId;
+        }
+
+        private string ObtenerUsuarioLoginActual()
+        {
+            if (Session != null && Session["Usuario"] != null)
+            {
+                return Session["Usuario"].ToString();
+            }
+            return User != null && User.Identity != null ? User.Identity.Name : "DIRCAV";
+        }
+
+        private bool EsDircavAutorizado()
+        {
+            var rolActual = ObtenerRolActual();
+            return _designacionService.EsDircavAutorizado(rolActual);
+        }
+
+        // =======================================================
+        // 1. BANDEJA INSTITUCIONAL DIRCAV
+        // =======================================================
+        [HttpGet]
+        public ActionResult Bandeja(string tab = "documentacion")
+        {
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "No tiene permisos para acceder a la bandeja DIRCAV.");
+            }
+
+            ViewBag.ActiveTab = tab ?? "documentacion";
+            ViewBag.ContadorDocumentacion = _bandejaService.ContarDocumentacionPendienteAceptacion();
+            ViewBag.ContadorDesignaciones = _bandejaService.ContarDesignacionesPendientes();
+            ViewBag.ContadorInformes = _bandejaService.ContarInformesPendientesRevision();
+            ViewBag.ContadorCondiciones = _bandejaService.ContarCondicionesPendientesFirma();
+            ViewBag.ContadorRemision = _bandejaService.ContarExpedientesPendientesRemisionDirdac();
+
+            var docPendiente = _bandejaService.ObtenerDocumentacionPendienteAceptacion();
+            if (docPendiente != null)
+            {
+                foreach (var item in docPendiente)
+                {
+                    try
+                    {
+                        item.Estaciones = _estacionService.ObtenerEstacionesPorSolicitud(
+                            item.CodigoSolicitud, item, _inspeccionDao.ListarPorSolicitud(item.CodigoSolicitud));
+                    }
+                    catch { }
+                }
+            }
+            ViewBag.DocumentacionPendiente = docPendiente;
+
+            var desigPendiente = _bandejaService.ObtenerDesignacionesPendientes();
+            if (desigPendiente != null)
+            {
+                foreach (var item in desigPendiente)
+                {
+                    try
+                    {
+                        item.Estaciones = _estacionService.ObtenerEstacionesPorSolicitud(
+                            item.CodigoSolicitud, item, _inspeccionDao.ListarPorSolicitud(item.CodigoSolicitud));
+                    }
+                    catch { }
+                }
+            }
+            ViewBag.DesignacionesPendientes = desigPendiente;
+
+            ViewBag.DesignacionesFirmadas = _bandejaService.ObtenerDesignacionesFirmadas();
+            ViewBag.InformesPendientes = _bandejaService.ObtenerInformesPendientesRevision();
+            ViewBag.CondicionesPendientes = _bandejaService.ObtenerCondicionesPendientesFirma();
+            ViewBag.ExpedientesRemision = _bandejaService.ObtenerExpedientesPendientesRemisionDirdac();
+            ViewBag.ExpedientesDevueltos = _bandejaService.ObtenerExpedientesDevueltos();
+            ViewBag.Historial = _bandejaService.ObtenerHistorialGestionados();
+
+            return View();
+        }
+
+        [HttpGet]
+        public ActionResult BandejaDocumentacion()
+        {
+            return RedirectToAction("Bandeja", new { tab = "documentacion" });
+        }
+
+        // =======================================================
+        // 2. DETALLE DE EXPEDIENTE PARA DIRCAV
+        // =======================================================
+        [HttpGet]
+        public ActionResult Detalle(int id)
+        {
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID de solicitud inválido.");
+            var solicitud = _solicitudDao.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound("Solicitud no encontrada.");
+
+            solicitud.Estaciones = _estacionService.ObtenerEstacionesPorSolicitud(
+                id, solicitud, _inspeccionDao.ListarPorSolicitud(id));
+            ViewBag.EstacionesSolicitud = solicitud.Estaciones;
+            ViewBag.ContextoRemisionDirdac = _finalWorkflowService.ObtenerContextoRemisionDircav(id);
+            ViewBag.TieneDesignacionFormal = new AocrDesignacionDAO().ObtenerDesignacionVigente(id) != null;
+
+            return View(solicitud);
+        }
+
+        [ChildActionOnly]
+        [OverrideAuthorization]
+        [Authorize(Roles = "DIRCAV,DCAV,DirectorCertificacionesDcav,DIRDAC,DirectorGeneral,COORDINADOR,Coordinador,Coordinacion,CoordinadorInspecciones,CoordinacionLegal,CoordinadorLegal")]
+        public ActionResult DocumentosRevisionExpediente(int solicitudId)
+        {
+            var listas = new ListaVerificacionOperacionalEaeDAO().ListarPorSolicitud(solicitudId)
+                .Where(l => l.FirmadoTecnico).ToList();
+            var informeDao = new InspeccionInformeDAO();
+            var informes = (_inspeccionDao.ListarPorSolicitud(solicitudId) ?? new List<Inspeccion>())
+                .SelectMany(i => informeDao.ListarUltimosPorEstacion(i.CodigoInspeccion))
+                .Where(i => i.FirmadoInspector).ToList();
+            var documentoDao = new AocrDocumentoGeneradoDAO();
+            var documentos = new[] { "RECONOCIMIENTO", "CONDICIONES_LIMITACIONES" }
+                .Select(t => documentoDao.ObtenerUltimoPorSolicitudTipo(solicitudId, t))
+                .Where(d => d != null).ToList();
+            return PartialView("_DocumentosRevisionExpediente", new CapaPresentacion.Models.ViewModels.DocumentosRevisionExpedienteVm
+            { SolicitudId=solicitudId, Listas=listas, Informes=informes, Documentos=documentos,
+                PuedeDecidirInformes=SidebarPermissionHelper.Resolve(Session["Rol"] as string ?? string.Empty, Session["RolesRaw"] ?? Session["Roles"]).EsDcavRol });
+        }
+
+        [HttpGet]
+        public ActionResult DetalleExpediente(int id)
+        {
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        // =======================================================
+        // 3. INSPECTORES DISPONIBLES (AJAX SELECTOR)
+        // =======================================================
+        [HttpGet]
+        public ActionResult InspectoresDisponibles()
+        {
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol DIRCAV.");
+            }
+
+            var inspectores = _designacionService.ListarInspectoresDisponibles()
+                .Select(i => new
+                {
+                    cedula = i.Cedula ?? i.UsuarioLogin,
+                    nombre = i.NombreCompleto ?? i.UsuarioLogin,
+                    tipo = i.Tipo ?? "AIR",
+                    rol = i.RolInterno ?? "Inspector"
+                })
+                .ToList();
+
+            return Json(inspectores, JsonRequestBehavior.AllowGet);
+        }
+
+        // =======================================================
+        // 4. ACEPTAR DOCUMENTACIÓN FORMALMENTE (DIRCAV)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AceptarDocumentacion(int id, string observacion, int? versionEsperada = null)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede aceptar formalmente la documentación técnica.");
+            }
+
+            var resultado = _designacionService.AceptarDocumentacion(id, usuarioId, usuarioLogin, rol, versionEsperada, observacion);
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 403)
+                {
+                    return new HttpStatusCodeResult(403, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 409)
+                {
+                    return ResponderConflictoFirma(id, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 404)
+                {
+                    return HttpNotFound(resultado.Mensaje);
+                }
+
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            return RedirectToAction("Bandeja", new { tab = "designaciones" });
+        }
+
+        // =======================================================
+        // 5. DEVOLVER AL COORDINADOR (DIRCAV)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverCoordinador(int id, string motivo)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede devolver el expediente al Coordinador.");
+            }
+
+            var resultado = _designacionService.DevolverAlCoordinador(id, usuarioId, usuarioLogin, motivo, rol);
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 403)
+                {
+                    return new HttpStatusCodeResult(403, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 409)
+                {
+                    return new HttpStatusCodeResult(409, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 404)
+                {
+                    return HttpNotFound(resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 400)
+                {
+                    TempData["Error"] = resultado.Mensaje;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["Warning"] = resultado.Mensaje;
+            return RedirectToAction("Bandeja", new { tab = "devueltos" });
+        }
+
+        // =======================================================
+        // 6. DESIGNAR FORMALMENTE AL INSPECTOR (DIRCAV)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DesignarInspector(int id, string inspectorCedula, string inspectorApoyoCedula, string observacion, int? estacionId, int? versionEsperada = null)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede designar formalmente al Inspector responsable.");
+            }
+
+            var request = new DircavDesignacionRequest
+            {
+                SolicitudId = id,
+                EstacionId = estacionId,
+                InspectorPrincipalCedula = inspectorCedula,
+                InspectorApoyoCedula = inspectorApoyoCedula,
+                Motivo = observacion,
+                DircavUsuarioId = usuarioId,
+                DircavUsuarioNombre = usuarioLogin,
+                RolSolicitante = rol,
+                VersionEsperada = versionEsperada
+            };
+
+            var resultado = _designacionService.DesignarInspector(request);
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 403)
+                {
+                    return new HttpStatusCodeResult(403, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 409)
+                {
+                    return new HttpStatusCodeResult(409, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 404)
+                {
+                    return HttpNotFound(resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 400)
+                {
+                    TempData["Error"] = resultado.Mensaje;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            return RedirectToAction("Bandeja", new { tab = "designaciones" });
+        }
+
+        // =======================================================
+        // 6. DETALLE DE DESIGNACIÓN (DIRCAV / COORDINACIÓN)
+        // =======================================================
+        [HttpGet]
+        public ActionResult DesignacionDetalle(int id)
+        {
+            var rol = ObtenerRolActual();
+            if (!_designacionService.EsDircavAutorizado(rol) && !AocrRolesInstitucionales.EsCoordinador(rol))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol DIRCAV o Coordinación.");
+            }
+
+            try
+            {
+                var vm = _documentoDesignacionService.ConstruirDatosDesignacion(id);
+                return Json(vm, JsonRequestBehavior.AllowGet);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return new HttpStatusCodeResult(400, ex.Message);
+            }
+        }
+
+        // =======================================================
+        // 7. VISTA PREVIA DEL PDF DE DESIGNACIÓN (DIRCAV)
+        // =======================================================
+        [HttpGet]
+        public ActionResult VistaPreviaDesignacion(int id)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+
+            try
+            {
+                var pdfBytes = _documentoDesignacionService.GenerarVistaPrevia(id, usuarioId, rol);
+                Response.AppendHeader("Content-Disposition", $"inline; filename=VistaPrevia_Designacion_{id}.pdf");
+                return File(pdfBytes, "application/pdf");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new HttpStatusCodeResult(403, ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("Detalle", new { id });
+            }
+        }
+
+        // =======================================================
+        // 8. FIRMAR DESIGNACIÓN DE INSPECTOR (EXCLUSIVO DIRCAV - AC-06)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult FirmarDesignacion(int id, string passwordCertificado, HttpPostedFileBase certificadoDigital = null)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            // Validación estricta de rol exclusivo DIRCAV (bloquea DIRDAC, Admin, Coord, Inspector, RT, Financiero con 403)
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: La firma del oficio de designación es competencia exclusiva de la Autoridad DIRCAV.");
+            }
+
+            var archivo = certificadoDigital;
+            if (archivo == null && Request != null && Request.Files != null && Request.Files.Count > 0)
+            {
+                archivo = Request.Files["certificadoDigital"] ?? Request.Files[0];
+            }
+
+            if (archivo == null || archivo.ContentLength == 0)
+            {
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = "Debe adjuntar el archivo de certificado digital (.p12 o .pfx)." });
+                }
+                TempData["Error"] = "Debe adjuntar el archivo de certificado digital (.p12 o .pfx).";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var extension = Path.GetExtension(archivo.FileName)?.ToLowerInvariant();
+            if (extension != ".p12" && extension != ".pfx")
+            {
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx." });
+                }
+                TempData["Error"] = "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            byte[] certBytes;
+            using (var ms = new MemoryStream())
+            {
+                archivo.InputStream.CopyTo(ms);
+                certBytes = ms.ToArray();
+            }
+
+            var resultado = _documentoDesignacionService.FirmarDesignacion(
+                id,
+                usuarioId,
+                usuarioLogin,
+                rol,
+                certificadoBytes: certBytes,
+                passwordCert: passwordCertificado
+            );
+
+            LoggingServiceFactory.Create().LogInfo("[DIRCAV][FIRMAR_DESIGNACION_RESULTADO] SolicitudId=" + id
+                + "; Ok=" + resultado.Exitoso + "; Codigo=" + resultado.HttpStatusCode + "; Mensaje=" + resultado.Mensaje);
+
+            if (!resultado.Exitoso)
+            {
+                if (resultado.HttpStatusCode == 401)
+                {
+                    return new HttpStatusCodeResult(401, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 403)
+                {
+                    return new HttpStatusCodeResult(403, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 409)
+                {
+                    return ResponderConflictoFirma(id, resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 404)
+                {
+                    return HttpNotFound(resultado.Mensaje);
+                }
+                if (resultado.HttpStatusCode == 400)
+                {
+                    if (Request != null && Request.IsAjaxRequest())
+                    {
+                        return Json(new { exitoso = false, mensaje = resultado.Mensaje });
+                    }
+                    TempData["Error"] = resultado.Mensaje;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new { exitoso = false, mensaje = resultado.Mensaje });
+                }
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { exitoso = true, mensaje = resultado.Mensaje, nuevoEstado = resultado.NuevoEstado, version = resultado.Version });
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            return RedirectToAction("Bandeja", new { tab = "designaciones" });
+        }
+
+        // =======================================================
+        // 9. DESCARGAR DESIGNACIÓN FIRMADA (DIRCAV / COORDINACIÓN)
+        // =======================================================
+        [HttpGet]
+        public ActionResult DescargarDesignacion(int id)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            try
+            {
+                string nombreArchivo;
+                var pdfBytes = _documentoDesignacionService.ObtenerDocumentoParaDescarga(
+                    id,
+                    usuarioId,
+                    rol,
+                    usuarioLogin,
+                    out nombreArchivo
+                );
+
+                Response.AppendHeader("Content-Disposition", $"attachment; filename={nombreArchivo}");
+                return File(pdfBytes, "application/pdf", nombreArchivo);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new HttpStatusCodeResult(403, ex.Message);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception)
+            {
+                return new HttpStatusCodeResult(500, "No fue posible generar el documento de designación.");
+            }
+        }
+
+        // =======================================================
+        // 10. DESCARGAR DESIGNACIÓN PARA EL INSPECTOR ASIGNADO (AC-06)
+        // =======================================================
+        [HttpGet]
+        [OverrideAuthorization]
+        [Authorize(Roles = "Inspector,INSPECTOR,DIRCAV,DCAV,Coordinador,COORDINADOR,Administrador,ADMINISTRADOR,RT,Solicitante,SOLICITANTE,Operador")]
+        public ActionResult DescargarDesignacionInspector(int id)
+        {
+            var rol = ObtenerRolActual();
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            try
+            {
+                string nombreArchivo;
+                var pdfBytes = _documentoDesignacionService.ObtenerDocumentoParaDescarga(
+                    id,
+                    usuarioId,
+                    rol,
+                    usuarioLogin,
+                    out nombreArchivo
+                );
+
+                Response.AppendHeader("Content-Disposition", $"attachment; filename={nombreArchivo}");
+                return File(pdfBytes, "application/pdf", nombreArchivo);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return new HttpStatusCodeResult(403, ex.Message);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return HttpNotFound(ex.Message);
+            }
+            catch (Exception)
+            {
+                return new HttpStatusCodeResult(500, "No fue posible descargar el documento de designación.");
+            }
+        }
+
+        // =======================================================
+        // 11. ALIASES CANÓNICOS AC-06: /GenerarPdf y /Firmar
+        // =======================================================
+        [HttpGet]
+        public ActionResult GenerarPdf(int id)
+        {
+            return VistaPreviaDesignacion(id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult GenerarPdf(int id, string dummy = null)
+        {
+            return VistaPreviaDesignacion(id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Firmar(int id, string passwordCertificado)
+        {
+            return FirmarDesignacion(id, passwordCertificado);
+        }
+
+        // =======================================================
+        // 7. REVISAR INFORME TÉCNICO (DIRCAV)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RevisarInforme(int id, string observacion, bool aprobado = true)
+        {
+            return new HttpStatusCodeResult(409,
+                "El Informe Tecnico es responsabilidad del Inspector y se consulta sin aprobacion. Devuelva el documento en gestion indicando el motivo.");
+        }
+
+        // =======================================================
+        // 8. AC-10: REVISIÓN, DEVOLUCIÓN Y FIRMA DE CONDICIONES Y LIMITACIONES (EXCLUSIVO DIRCAV)
+        // =======================================================
+        [HttpGet]
+        [Route("Dircav/RevisionCl/{id:int}")]
+        public ActionResult RevisionCl(int id)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: El rol Administrador no puede revisar ni firmar Condiciones y Limitaciones (Regla 7).");
+            }
+            if (AocrRolesInstitucionales.EsDirdac(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: DIRDAC no participa en la revisión ni firma de Condiciones y Limitaciones.");
+            }
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Se requiere rol DIRCAV para revisar Condiciones y Limitaciones.");
+            }
+
+            if (id <= 0) return new HttpStatusCodeResult(400, "ID de solicitud inválido.");
+
+            var usuarioId = ObtenerUsuarioIdActual();
+            try
+            {
+                // Los paquetes finales se firman sobre el PDF vigente del flujo conjunto,
+                // no sobre el borrador del circuito historico independiente de CL.
+                var documentoFinal = new DocumentosFinalesWorkflowDAO().ObtenerVigente(id, "CONDICIONES_LIMITACIONES");
+                if (documentoFinal != null && documentoFinal.Bloqueado
+                    && string.Equals(documentoFinal.Estado, AocrEstadosProceso.PendienteFirmaCondicionesDcav, StringComparison.OrdinalIgnoreCase))
+                {
+                    return RedirectToAction("Index", "FirmaAocr", new { solicitudId = id });
+                }
+
+                var vm = _condicionesService.ObtenerOConstruirViewModel(id, usuarioId, rolActual);
+                if (vm == null) return HttpNotFound("No se encontró el documento de Condiciones y Limitaciones.");
+
+                return View(vm);
+            }
+            catch (KeyNotFoundException)
+            {
+                return HttpNotFound("Solicitud no encontrada.");
+            }
+            catch (Exception ex)
+            {
+                var correlationId = Guid.NewGuid().ToString("N");
+                System.Diagnostics.Trace.TraceError("[Dircav][RevisionCl] CorrelationId=" + correlationId + "; SolicitudId=" + id + "; Error=" + ex.Message);
+                TempData["Error"] = "Error interno al cargar la revisión de Condiciones y Limitaciones. Código de referencia: " + correlationId;
+                return RedirectToAction("Bandeja", new { tab = "condiciones" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Dircav/DevolverClCoordinador")]
+        public ActionResult DevolverClCoordinador(CondicionesLimitacionesTransicionRequest request)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual) || AocrRolesInstitucionales.EsDirdac(rolActual) || (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV")))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo DIRCAV puede devolver Condiciones y Limitaciones a Coordinación.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(400, "Datos de solicitud inválidos.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Observacion))
+            {
+                return new HttpStatusCodeResult(400, "La observación motivada es obligatoria para devolver a Coordinación.");
+            }
+
+            var usuarioId = ObtenerUsuarioIdActual();
+            var usuarioLogin = ObtenerUsuarioLoginActual();
+
+            var resultado = _condicionesService.DevolverACoordinador(request.SolicitudId, usuarioId, usuarioLogin, rolActual, request.Observacion);
+            if (!resultado.Exitoso)
+            {
+                return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+            }
+
+            TempData["Success"] = resultado.Mensaje;
+            if (Request != null && Request.IsAjaxRequest())
+            {
+                return Json(new { ok = true, message = resultado.Mensaje, estado = resultado.Estado });
+            }
+
+            return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Route("Dircav/FirmarCondicionesLimitaciones")]
+        public ActionResult FirmarCondicionesLimitaciones(CondicionesLimitacionesFirmaRequest request, HttpPostedFileBase certificadoDigital = null)
+        {
+            var rolActual = ObtenerRolActual();
+            if (AocrRolesInstitucionales.EsAdministrador(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: El rol Administrador no puede firmar Condiciones y Limitaciones (Regla 7).");
+            }
+            if (AocrRolesInstitucionales.EsDirdac(rolActual))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: DIRDAC no puede firmar Condiciones y Limitaciones.");
+            }
+            if (!EsDircavAutorizado() && !User.IsInRole("DIRCAV") && !User.IsInRole("DCAV"))
+            {
+                return new HttpStatusCodeResult(403, "Acceso denegado: Solo la Autoridad DIRCAV puede firmar institucionalmente las Condiciones y Limitaciones.");
+            }
+
+            if (request == null || request.SolicitudId <= 0)
+            {
+                return new HttpStatusCodeResult(400, "Datos de solicitud inválidos.");
+            }
+
+            // Extraer archivo de certificado si fue cargado en la petición
+            var archivo = certificadoDigital;
+            if (archivo == null && Request != null && Request.Files != null && Request.Files.Count > 0)
+            {
+                archivo = Request.Files["certificadoDigital"] ?? Request.Files["CertificadoDigital"] ?? Request.Files[0];
+            }
+
+            if (archivo != null && archivo.ContentLength > 0)
+            {
+                var extension = Path.GetExtension(archivo.FileName)?.ToLowerInvariant();
+                if (extension != ".p12" && extension != ".pfx")
+                {
+                    return new HttpStatusCodeResult(400, "Formato no permitido. Solo se aceptan certificados digitales con extensión .p12 o .pfx.");
+                }
+
+                using (var ms = new MemoryStream())
+                {
+                    archivo.InputStream.CopyTo(ms);
+                    request.CertificadoBytes = ms.ToArray();
+                }
+            }
+
+            request.DircavUsuarioId = ObtenerUsuarioIdActual();
+            request.DircavUsuarioNombre = ObtenerUsuarioLoginActual();
+            request.RolSolicitante = rolActual;
+
+            try
+            {
+                var resultado = _condicionesService.FirmarCondicionesLimitaciones(request);
+                if (!resultado.Exitoso)
+                {
+                    return new HttpStatusCodeResult((HttpStatusCode)resultado.HttpStatusCode, resultado.Mensaje);
+                }
+
+                TempData["Success"] = resultado.Mensaje;
+                if (Request != null && Request.IsAjaxRequest())
+                {
+                    return Json(new
+                    {
+                        ok = true,
+                        message = resultado.Mensaje,
+                        estado = resultado.Estado,
+                        documentoId = resultado.DocumentoId,
+                        hashPdf = resultado.HashPdf,
+                        expedienteFinalizado = resultado.ExpedienteFinalizado,
+                        idempotente = resultado.Idempotente
+                    });
+                }
+
+                return RedirectToAction("RevisionCl", new { id = request.SolicitudId });
+            }
+            catch (Exception)
+            {
+                return new HttpStatusCodeResult(500, "Ocurrió un error al procesar la firma de Condiciones y Limitaciones.");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult FirmarCondiciones(int id, string passwordCertificado, HttpPostedFileBase certificadoDigital = null)
+        {
+            return FirmarCondicionesLimitaciones(new CondicionesLimitacionesFirmaRequest
+            {
+                SolicitudId = id,
+                PasswordCertificado = passwordCertificado
+            }, certificadoDigital);
+        }
+
+        // =======================================================
+        // 9. REMITIR EXPEDIENTE Y AOCR A DIRDAC (DIRCAV)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemitirDIRDACLegacy(int id, string observacion)
+        {
+            if (!EsDircavAutorizado())
+            {
+                return new HttpStatusCodeResult(403, "Solo el rol DIRCAV puede remitir el expediente aprobado a DIRDAC.");
+            }
+
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            var usuarioId = ObtenerUsuarioIdActual();
+            if (usuarioId <= 0)
+            {
+                return new HttpStatusCodeResult(401, "Sesión no válida o expirada.");
+            }
+
+            var request = new RemitirAocrDirdacRequest
+            {
+                SolicitudId = id,
+                Observacion = observacion,
+                Actor = new AocrWorkflowActor
+                {
+                    UsuarioId = usuarioId,
+                    UsuarioNombre = ObtenerUsuarioLoginActual(),
+                    RolActivo = rol,
+                    Ip = Request != null ? Request.UserHostAddress : null,
+                    TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { rol })
+                },
+                BaseUrl = Request != null && Request.Url != null ? Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/') : string.Empty
+            };
+
+            var resultado = _finalWorkflowService.RemitirAocrDirdac(request);
+            if (!resultado.Exito)
+            {
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Bandeja", new { tab = "remision" });
+            }
+
+            TempData["Success"] = "Expediente y AOCR remitidos formalmente al Director General (DIRDAC) para su firma y legalización.";
+            return RedirectToAction("Bandeja", new { tab = "remision" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission(AocrFinalWorkflowService.PermisoRemitirDirdac)]
+        public ActionResult RemitirAocrDirdac(RemitirAocrDirdacRequest request)
+        {
+            if (request == null) return JsonWorkflow(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la remisión."));
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            request.Actor = new AocrWorkflowActor
+            {
+                UsuarioId = ObtenerUsuarioIdActual(),
+                UsuarioNombre = ObtenerUsuarioLoginActual(),
+                RolActivo = rol,
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { rol })
+            };
+            request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
+            return JsonWorkflow(_finalWorkflowService.RemitirAocrDirdac(request));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RemitirDIRDAC(int id, string observacion, long versionEsperada = 0, int documentoId = 0, int versionAocrEsperada = 0)
+        {
+            return RemitirAocrDirdac(new RemitirAocrDirdacRequest { SolicitudId=id,Observacion=observacion,VersionEsperada=versionEsperada,DocumentoId=documentoId,VersionAocrEsperada=versionAocrEsperada });
+        }
+
+        // =======================================================
+        // 10. DEVOLVER AOCR DESDE DIRDAC (AC-11)
+        // =======================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DevolverAocrDirdac(DevolverAocrDircavRequest request)
+        {
+            if (request == null) return JsonWorkflow(AocrWorkflowResult.Error(400, "REQUEST_INVALIDO", "No se recibió la devolución."));
+            var rol = ObtenerRolActual();
+            var codigoUsuario = Convert.ToString(Session != null ? Session["CodigoUsuario"] : null);
+            request.Actor = new AocrWorkflowActor
+            {
+                UsuarioId = ObtenerUsuarioIdActual(),
+                UsuarioNombre = ObtenerUsuarioLoginActual(),
+                RolActivo = rol,
+                Ip = Request != null ? Request.UserHostAddress : null,
+                TienePermiso = true
+            };
+            request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
+            return JsonWorkflow(_finalWorkflowService.DevolverAocrDircav(request));
+        }
+
+        private ActionResult JsonWorkflow(AocrWorkflowResult result)
+        {
+            Response.StatusCode = result.HttpStatusCode > 0 ? result.HttpStatusCode : (result.Exito ? 200 : 500);
+            Response.TrySkipIisCustomErrors = true;
+            return Json(new AocrWorkflowResponse { Ok=result.Exito,Codigo=result.Codigo,Mensaje=result.Mensaje,Estado=result.EstadoNuevo,Version=result.VersionNueva,CorrelationId=result.CorrelationId });
+        }
+    }
+}

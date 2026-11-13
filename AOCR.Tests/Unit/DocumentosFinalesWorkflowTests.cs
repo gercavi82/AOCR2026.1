@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
@@ -12,6 +12,21 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DocumentosFinalesWorkflowTests
     {
+        [TestMethod] public void Coordinador_ConsultaSoloDocumentosRemitidosParaSuRevision()
+        {
+            var permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("COORDINADOR", "COORDINADOR");
+            var documento = new AocrDocumentoGenerado { Estado = AocrEstadosProceso.DocumentosFinalesCoordinador, Bloqueado = true };
+            Assert.IsTrue(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(permisos, documento));
+            documento.Bloqueado = false;
+            Assert.IsFalse(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(permisos, documento));
+            documento.Bloqueado = true;
+            documento.Estado = AocrEstadosProceso.DocumentosFinalesPorGenerar;
+            Assert.IsFalse(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(permisos, documento));
+            documento.Estado = AocrEstadosProceso.DocumentosFinalesCoordinador;
+            permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("FINANCIERO", "FINANCIERO");
+            Assert.IsFalse(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(permisos, documento));
+        }
+
         [TestMethod] public void EstadosInstitucionales_SonExactosEIndependientes()
         {
             Assert.AreEqual("DOCUMENTOS_FINALES_POR_GENERAR", AocrEstadosProceso.DocumentosFinalesPorGenerar);

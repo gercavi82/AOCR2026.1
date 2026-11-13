@@ -135,6 +135,13 @@ namespace CapaPresentacion.Services
     /// </summary>
     public static class FirmaAocrActiveRoleViewPolicy
     {
+        public static bool PuedeConsultarPaqueteCoordinador(SidebarPermissionSnapshot permisos, AocrDocumentoGenerado documento)
+        {
+            return permisos != null && permisos.EsCoordinadorRol
+                && documento != null && documento.Bloqueado
+                && string.Equals(documento.Estado, AocrEstadosProceso.DocumentosFinalesCoordinador, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static void Aplicar(FirmaAocrInstitucionalViewModel model, SidebarPermissionSnapshot permisos)
         {
             if (model == null || permisos == null)

@@ -693,11 +693,13 @@ namespace CapaPresentacion.Controllers
                 && _authorizationService.UsuarioPuedeGenerar(User)
                 && contexto.Inspeccion != null
                 && EsSolicitudAsignadaAlInspectorActivo(solicitudId);
-            if (!inspectorAsignado && (!EsFirmanteActivo(tipoDocumento) || !_authorizationService.UsuarioPuedeFirmar(User, tipoDocumento)))
+            var documentoGenerado = ObtenerDocumentoGeneradoPorTipo(contexto, tipoDocumento);
+            var coordinadorRevisor = FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(
+                ObtenerPermisosRolActivo(), documentoGenerado);
+            if (!inspectorAsignado && !coordinadorRevisor && (!EsFirmanteActivo(tipoDocumento) || !_authorizationService.UsuarioPuedeFirmar(User, tipoDocumento)))
                 return new HttpStatusCodeResult(403, "No esta autorizado para visualizar este tipo de documento.");
 
             var firma = ObtenerFirmaPorTipo(contexto, tipoDocumento);
-            var documentoGenerado = ObtenerDocumentoGeneradoPorTipo(contexto, tipoDocumento);
             var ruta = firmado
                 ? (firma != null ? firma.RutaDocumento : null)
                 : (documentoGenerado != null ? documentoGenerado.RutaDocumento : null);

@@ -1,0 +1,1184 @@
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using Npgsql;
+using CapaModelo;
+using System.Linq;
+using CapaDatos.Constants;
+
+namespace CapaDatos.DAOs
+{
+    public class InspeccionInformeDAO
+    {
+        private readonly string _cs;
+        private static readonly object SyncLock = new object();
+        private static bool _schemaReady;
+
+        public InspeccionInformeDAO(string connectionString)
+        {
+            _cs = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        }
+
+        public InspeccionInformeDAO()
+        {
+            var settings = ConfigurationManager.ConnectionStrings["AOCRConnection"];
+            _cs = (settings != null && !string.IsNullOrWhiteSpace(settings.ConnectionString))
+                ? settings.ConnectionString
+                : ConexionDAO.CadenaConexion;
+        }
+
+        public List<InspeccionInformeTecnico> ListarUltimosPorEstacion(int codigoInspeccion)
+        {
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open(); EnsureSchema(cn);
+                using (var cmd = new NpgsqlCommand(@"SELECT DISTINCT ON (estacion_id) codigo_informe
+                    FROM public.aocr_tbinforme_inspeccion WHERE codigo_inspeccion=@id
+                    ORDER BY estacion_id, version DESC, codigo_informe DESC", cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+                    using (var rd = cmd.ExecuteReader()) while (rd.Read()) ids.Add(rd.GetInt32(0));
+                }
+            }
+            return ids.Select(ObtenerPorId).ToList();
+        }
+
+        public InspeccionInformeTecnico ObtenerUltimoPorInspeccion(int codigoInspeccion, int? estacionId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open(); EnsureSchema(cn);
+                return ObtenerUltimoPorInspeccionInterno(cn, codigoInspeccion, estacionId, true);
+            }
+        }
+
+        public InspeccionInformeTecnico ObtenerUltimoPorInspeccion(int codigoInspeccion)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_informe,
+                           codigo_inspeccion, estacion_id,
+                           version,
+                           titulo,
+                           resumen,
+                           antecedentes,
+                           base_legal,
+                           alcance,
+                           desarrollo,
+                           evidencias,
+                           numero_licencia_inspector,
+                           trabajos_realizados,
+                           fechas_inspeccion_manual,
+                           estaciones_inspeccion_manual,
+                           operacion_comercial,
+                           servicios_estaciones,
+                           notas,
+                           no_conformidades,
+                           documentos_adjuntos,
+                           documentos_adjuntos_archivos,
+                           otros_adjuntos,
+                           resultado,
+                           tipo_resultado_insatisfactorio,
+                           observaciones,
+                           conclusiones,
+                           recomendaciones,
+                           ruta_pdf,
+                              estado_informe,
+                              firmado_inspector,
+                              firmado_dirdac,
+                              ruta_documento_firmado,
+                              hash_documento,
+                              fecha_firma_1,
+                              fecha_firma_2,
+                              usuario_firma_1,
+                              usuario_firma_2,
+                              fecha_envio_dirdac,
+                              usuario_envio_dirdac,
+                           finalizado,
+                           correo_enviado,
+                           notificado_rt,
+                           fecha_notificacion_rt,
+                           fecha_finalizacion,
+                           created_at,
+                           created_by,
+                           updated_at,
+                           updated_by
+                    FROM public.aocr_tbinforme_inspeccion
+                    WHERE codigo_inspeccion = @codigo_inspeccion
+                    ORDER BY version DESC
+                    LIMIT 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_inspeccion", codigoInspeccion);
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        return dr.Read() ? Map(dr) : null;
+                    }
+                }
+            }
+        }
+
+        public List<InspeccionInformeTecnico> ListarPendientesFirmaDirdac()
+        {
+            var lista = new List<InspeccionInformeTecnico>();
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                  const string sql = @"
+                      WITH ultimos AS (
+                       SELECT DISTINCT ON (codigo_inspeccion, estacion_id)
+                           codigo_informe,
+                           codigo_inspeccion, estacion_id,
+                           version,
+                           titulo,
+                           resumen,
+                           antecedentes,
+                           base_legal,
+                           alcance,
+                           desarrollo,
+                           evidencias,
+                           numero_licencia_inspector,
+                           trabajos_realizados,
+                           fechas_inspeccion_manual,
+                           estaciones_inspeccion_manual,
+                           operacion_comercial,
+                           servicios_estaciones,
+                           notas,
+                           no_conformidades,
+                           documentos_adjuntos,
+                           documentos_adjuntos_archivos,
+                           otros_adjuntos,
+                           resultado,
+                           tipo_resultado_insatisfactorio,
+                           observaciones,
+                           conclusiones,
+                           recomendaciones,
+                           ruta_pdf,
+                           estado_informe,
+                           firmado_inspector,
+                           firmado_dirdac,
+                           ruta_documento_firmado,
+                           hash_documento,
+                           fecha_firma_1,
+                           fecha_firma_2,
+                           usuario_firma_1,
+                           usuario_firma_2,
+                           fecha_envio_dirdac,
+                           usuario_envio_dirdac,
+                           finalizado,
+                           correo_enviado,
+                           notificado_rt,
+                           fecha_notificacion_rt,
+                           fecha_finalizacion,
+                           created_at,
+                           created_by,
+                           updated_at,
+                           updated_by
+                       FROM public.aocr_tbinforme_inspeccion
+                       ORDER BY codigo_inspeccion, estacion_id, version DESC, codigo_informe DESC
+                      )
+                      SELECT codigo_informe,
+                          codigo_inspeccion, estacion_id,
+                          version,
+                          titulo,
+                          resumen,
+                          antecedentes,
+                          base_legal,
+                          alcance,
+                          desarrollo,
+                          evidencias,
+                          numero_licencia_inspector,
+                          trabajos_realizados,
+                          fechas_inspeccion_manual,
+                          estaciones_inspeccion_manual,
+                          operacion_comercial,
+                          servicios_estaciones,
+                          notas,
+                          no_conformidades,
+                          documentos_adjuntos,
+                          documentos_adjuntos_archivos,
+                          otros_adjuntos,
+                          resultado,
+                          tipo_resultado_insatisfactorio,
+                          observaciones,
+                          conclusiones,
+                          recomendaciones,
+                          ruta_pdf,
+                          estado_informe,
+                          firmado_inspector,
+                          firmado_dirdac,
+                          ruta_documento_firmado,
+                          hash_documento,
+                          fecha_firma_1,
+                          fecha_firma_2,
+                          usuario_firma_1,
+                          usuario_firma_2,
+                          fecha_envio_dirdac,
+                          usuario_envio_dirdac,
+                          finalizado,
+                          correo_enviado,
+                          notificado_rt,
+                          fecha_notificacion_rt,
+                          fecha_finalizacion,
+                          created_at,
+                          created_by,
+                          updated_at,
+                          updated_by
+                      FROM ultimos
+                      WHERE finalizado = TRUE
+                     AND COALESCE(firmado_dirdac, FALSE) = FALSE
+                            AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') IN (
+                                'ENVIADO_A_DIRDAC',
+                                'ENVIADO_A_DIRECCION',
+                                'PENDIENTE_REVISION_DIRDAC',
+                                'PENDIENTE_REVISION_DIRECCION',
+                                'PENDIENTE_REVISION_INSTITUCIONAL',
+                                'PENDIENTE_FIRMA_DIRECCION',
+                                'PENDIENTE_FIRMA_INSTITUCIONAL',
+                                'FIRMADO_INSPECTOR',
+                                'FIRMADO_POR_INSPECTOR',
+                                'INFORME_TECNICO_FIRMADO_INSPECTOR',
+                                'PENDIENTE_REVISION_INFORME_DCAV', 'PENDIENTE_REVISION_INFORME_DIRDAC'
+                            )
+                      ORDER BY COALESCE(fecha_envio_dirdac, fecha_finalizacion, updated_at, created_at) DESC,
+                         codigo_inspeccion DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(Map(dr));
+                    }
+                }
+            }
+
+            return lista;
+        }
+
+        public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDcav()
+        {
+            return ListarPendientesRevisionInformeDirdac();
+        }
+
+        public List<InspeccionInformeTecnico> ListarPendientesRevisionInformeDirdac()
+        {
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            using (var cmd = new NpgsqlCommand(@"SELECT DISTINCT codigo_inspeccion
+FROM public.aocr_tbinforme_inspeccion WHERE finalizado=TRUE AND firmado_inspector=TRUE
+AND NULLIF(TRIM(ruta_documento_firmado),'') IS NOT NULL", cn))
+            {
+                cn.Open();
+                using (var rd = cmd.ExecuteReader())
+                    while (rd.Read()) ids.Add(rd.GetInt32(0));
+            }
+            return ids.SelectMany(ListarUltimosPorEstacion)
+                .Where(x => x != null && x.Finalizado && x.FirmadoInspector
+                    && !string.IsNullOrWhiteSpace(x.RutaDocumentoFirmado))
+                .OrderByDescending(x => x.FechaFirma1 ?? x.UpdatedAt ?? x.CreatedAt).ToList();
+        }
+
+        private IList<int> ListarInspeccionesFirmadasSinTransicionDcav()
+        {
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+WITH ultimos AS (
+    SELECT DISTINCT ON (inf.codigo_inspeccion, inf.estacion_id)
+           inf.codigo_inspeccion, inf.estacion_id,
+           inf.estado_informe,
+           inf.finalizado,
+           inf.firmado_inspector,
+           inf.firmado_dirdac,
+           inf.resultado,
+           inf.ruta_documento_firmado
+    FROM public.aocr_tbinforme_inspeccion inf
+    ORDER BY inf.codigo_inspeccion,inf.estacion_id,inf.version DESC,inf.codigo_informe DESC
+)
+SELECT u.codigo_inspeccion
+FROM ultimos u
+JOIN public.aocr_tbinspeccion i ON i.codigo_inspeccion=u.codigo_inspeccion
+WHERE u.finalizado=TRUE
+  AND u.firmado_inspector=TRUE
+  AND COALESCE(u.firmado_dirdac,FALSE)=FALSE
+  AND UPPER(TRIM(COALESCE(u.resultado,'')))='SATISFACTORIO'
+  AND NULLIF(TRIM(COALESCE(u.ruta_documento_firmado,'')),'') IS NOT NULL
+  AND regexp_replace(UPPER(COALESCE(u.estado_informe,'')),'[\s_-]+','_','g') IN
+      ('FIRMADO_INSPECTOR','FIRMADO_POR_INSPECTOR','INFORME_TECNICO_FIRMADO_INSPECTOR')
+  AND NOT EXISTS (
+      SELECT 1
+      FROM public.aocr_proceso_estado pe
+      WHERE pe.solicitud_id=i.codigo_solicitud
+        AND pe.activo=TRUE
+        AND pe.estado_actual IN ('PENDIENTE_REVISION_INFORME_DIRDAC','PENDIENTE_REVISION_INFORME_DCAV')
+  );";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        ids.Add(dr.GetInt32(0));
+                    }
+                }
+            }
+
+            return ids;
+        }
+
+        public List<InspeccionInformeTecnico> ListarTodos()
+        {
+            var lista = new List<InspeccionInformeTecnico>();
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_informe,
+                           codigo_inspeccion, estacion_id,
+                           version,
+                           titulo,
+                           resumen,
+                           resultado,
+                           estado_informe,
+                           firmado_inspector,
+                           firmado_dirdac,
+                           ruta_pdf,
+                           ruta_documento_firmado,
+                           fecha_firma_1,
+                           fecha_firma_2,
+                           fecha_finalizacion,
+                           finalizado,
+                           created_at,
+                           created_by,
+                           updated_at,
+                           updated_by
+                    FROM public.aocr_tbinforme_inspeccion
+                    ORDER BY COALESCE(fecha_finalizacion, fecha_firma_2, fecha_firma_1, updated_at, created_at) DESC,
+                             codigo_informe DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new InspeccionInformeTecnico
+                        {
+                            CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
+                            CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                            EstacionId = dr["estacion_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(dr["estacion_id"]),
+                            Version = dr.GetInt32(dr.GetOrdinal("version")),
+                            Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
+                            Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
+                            Resultado = dr["resultado"] == DBNull.Value ? null : dr["resultado"].ToString(),
+                            EstadoInforme = dr["estado_informe"] == DBNull.Value ? null : dr["estado_informe"].ToString(),
+                            FirmadoInspector = dr["firmado_inspector"] != DBNull.Value && Convert.ToBoolean(dr["firmado_inspector"]),
+                            FirmadoDirdac = dr["firmado_dirdac"] != DBNull.Value && Convert.ToBoolean(dr["firmado_dirdac"]),
+                            RutaPdf = dr["ruta_pdf"] == DBNull.Value ? null : dr["ruta_pdf"].ToString(),
+                            RutaDocumentoFirmado = dr["ruta_documento_firmado"] == DBNull.Value ? null : dr["ruta_documento_firmado"].ToString(),
+                            FechaFirma1 = dr["fecha_firma_1"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_1"]),
+                            FechaFirma2 = dr["fecha_firma_2"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_2"]),
+                            FechaFinalizacion = dr["fecha_finalizacion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_finalizacion"]),
+                            Finalizado = dr["finalizado"] != DBNull.Value && Convert.ToBoolean(dr["finalizado"]),
+                            CreatedAt = dr["created_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["created_at"]),
+                            CreatedBy = dr["created_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["created_by"]),
+                            UpdatedAt = dr["updated_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["updated_at"]),
+                            UpdatedBy = dr["updated_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["updated_by"])
+                        });
+                    }
+                }
+            }
+
+            return lista;
+        }
+
+        public InspeccionInformeTecnico GuardarBorrador(InspeccionInformeTecnico informe, int usuarioId)
+        {
+            if (informe == null)
+            {
+                throw new ArgumentNullException(nameof(informe));
+            }
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                using (var tx = cn.BeginTransaction())
+                {
+                using (var bloqueo = new NpgsqlCommand("SELECT pg_advisory_xact_lock(129, @id)", cn, tx))
+                {
+                    bloqueo.Parameters.AddWithValue("@id", informe.CodigoInspeccion);
+                    bloqueo.ExecuteNonQuery();
+                }
+                var ultimo = ObtenerUltimoPorInspeccionInterno(cn, informe.CodigoInspeccion, informe.EstacionId, true);
+                if (ultimo != null && !ultimo.Finalizado)
+                {
+                    const string updateSql = @"
+                        UPDATE public.aocr_tbinforme_inspeccion
+                        SET titulo = @titulo,
+                            resumen = @resumen,
+                            antecedentes = @antecedentes,
+                            base_legal = @base_legal,
+                            alcance = @alcance,
+                            desarrollo = @desarrollo,
+                            evidencias = @evidencias,
+                            numero_licencia_inspector = @numero_licencia_inspector,
+                            trabajos_realizados = @trabajos_realizados,
+                            fechas_inspeccion_manual = @fechas_inspeccion_manual,
+                            estaciones_inspeccion_manual = @estaciones_inspeccion_manual,
+                            operacion_comercial = @operacion_comercial,
+                            servicios_estaciones = @servicios_estaciones,
+                            notas = @notas,
+                            no_conformidades = @no_conformidades,
+                            documentos_adjuntos = @documentos_adjuntos,
+                            documentos_adjuntos_archivos = @documentos_adjuntos_archivos,
+                            otros_adjuntos = @otros_adjuntos,
+                            resultado = @resultado,
+                            tipo_resultado_insatisfactorio = @tipo_resultado_insatisfactorio,
+                            observaciones = @observaciones,
+                            conclusiones = @conclusiones,
+                            recomendaciones = @recomendaciones,
+                            updated_at = NOW(),
+                            updated_by = @updated_by
+                        WHERE codigo_informe = @codigo_informe;";
+
+                    using (var cmd = new NpgsqlCommand(updateSql, cn))
+                    {
+                        Bind(cmd, informe, usuarioId);
+                        cmd.Parameters.AddWithValue("@codigo_informe", ultimo.CodigoInforme);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    var guardado = ObtenerPorIdInterno(cn, ultimo.CodigoInforme);
+                    tx.Commit();
+                    return guardado;
+                }
+
+                var ultimoGlobal = ObtenerUltimoPorInspeccionInterno(cn, informe.CodigoInspeccion);
+                var version = ultimoGlobal != null ? ultimoGlobal.Version + 1 : 1;
+                const string insertSql = @"
+                    INSERT INTO public.aocr_tbinforme_inspeccion
+                    (
+                        codigo_inspeccion, estacion_id,
+                        version,
+                        codigo_informe_anterior,
+                        titulo,
+                        resumen,
+                        antecedentes,
+                        base_legal,
+                        alcance,
+                        desarrollo,
+                        evidencias,
+                        numero_licencia_inspector,
+                        trabajos_realizados,
+                        fechas_inspeccion_manual,
+                        estaciones_inspeccion_manual,
+                        operacion_comercial,
+                        servicios_estaciones,
+                        notas,
+                        no_conformidades,
+                        documentos_adjuntos,
+                        documentos_adjuntos_archivos,
+                        otros_adjuntos,
+                        resultado,
+                        tipo_resultado_insatisfactorio,
+                        observaciones,
+                        conclusiones,
+                        recomendaciones,
+                        finalizado,
+                        correo_enviado,
+                        created_at,
+                        created_by,
+                        updated_at,
+                        updated_by
+                    )
+                    VALUES
+                    (
+                        @codigo_inspeccion, @estacion_id,
+                        @version,
+                        @codigo_informe_anterior,
+                        @titulo,
+                        @resumen,
+                        @antecedentes,
+                        @base_legal,
+                        @alcance,
+                        @desarrollo,
+                        @evidencias,
+                        @numero_licencia_inspector,
+                        @trabajos_realizados,
+                        @fechas_inspeccion_manual,
+                        @estaciones_inspeccion_manual,
+                        @operacion_comercial,
+                        @servicios_estaciones,
+                        @notas,
+                        @no_conformidades,
+                        @documentos_adjuntos,
+                        @documentos_adjuntos_archivos,
+                        @otros_adjuntos,
+                        @resultado,
+                        @tipo_resultado_insatisfactorio,
+                        @observaciones,
+                        @conclusiones,
+                        @recomendaciones,
+                        FALSE,
+                        FALSE,
+                        NOW(),
+                        @created_by,
+                        NOW(),
+                        @updated_by
+                    )
+                    RETURNING codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(insertSql, cn))
+                {
+                    Bind(cmd, informe, usuarioId);
+                    cmd.Parameters.AddWithValue("@version", version);
+                    cmd.Parameters.AddWithValue("@codigo_informe_anterior", (object)(ultimo != null ? (int?)ultimo.CodigoInforme : null) ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@created_by", usuarioId);
+                    var codigoInforme = Convert.ToInt32(cmd.ExecuteScalar());
+                    var guardado = ObtenerPorIdInterno(cn, codigoInforme);
+                    tx.Commit();
+                    return guardado;
+                }
+                }
+            }
+        }
+
+        public void MarcarFinalizado(int codigoInforme, string rutaPdf, bool correoEnviado, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET ruta_pdf = @ruta_pdf,
+                        estado_informe = @estado_informe,
+                        finalizado = TRUE,
+                        correo_enviado = @correo_enviado,
+                        fecha_finalizacion = NOW(),
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@ruta_pdf", (object)rutaPdf ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@correo_enviado", correoEnviado);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public InspeccionInformeTecnico ObtenerPorId(int codigoInforme)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+                return ObtenerPorIdInterno(cn, codigoInforme);
+            }
+        }
+
+        public void RegistrarFirmaInspector(int codigoInforme, string rutaDocumentoFirmado, string hashDocumento, DateTime fechaFirma, string usuarioFirma, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET firmado_inspector = TRUE,
+                        ruta_documento_firmado = @ruta_documento_firmado,
+                        hash_documento = @hash_documento,
+                        fecha_firma_1 = @fecha_firma_1,
+                        usuario_firma_1 = @usuario_firma_1,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@ruta_documento_firmado", (object)rutaDocumentoFirmado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@hash_documento", (object)hashDocumento ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fecha_firma_1", fechaFirma);
+                    cmd.Parameters.AddWithValue("@usuario_firma_1", (object)usuarioFirma ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void MarcarEnviadoADirdac(int codigoInforme, DateTime fechaEnvio, string usuarioEnvio, bool correoEnviado, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET correo_enviado = @correo_enviado,
+                        fecha_envio_dirdac = @fecha_envio_dirdac,
+                        usuario_envio_dirdac = @usuario_envio_dirdac,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@correo_enviado", correoEnviado);
+                    cmd.Parameters.AddWithValue("@fecha_envio_dirdac", fechaEnvio);
+                    cmd.Parameters.AddWithValue("@usuario_envio_dirdac", (object)usuarioEnvio ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void RegistrarFirmaDirdac(int codigoInforme, string rutaDocumentoFirmado, string hashDocumento, DateTime fechaFirma, string usuarioFirma, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET firmado_dirdac = TRUE,
+                        ruta_documento_firmado = @ruta_documento_firmado,
+                        hash_documento = @hash_documento,
+                        fecha_firma_2 = @fecha_firma_2,
+                        usuario_firma_2 = @usuario_firma_2,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@ruta_documento_firmado", (object)rutaDocumentoFirmado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@hash_documento", (object)hashDocumento ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fecha_firma_2", fechaFirma);
+                    cmd.Parameters.AddWithValue("@usuario_firma_2", (object)usuarioFirma ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void RegistrarAprobacionDireccion(int codigoInforme, DateTime fechaRevision, string usuarioRevision, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET fecha_firma_2 = @fecha_firma_2,
+                        usuario_firma_2 = @usuario_firma_2,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@fecha_firma_2", fechaRevision);
+                    cmd.Parameters.AddWithValue("@usuario_firma_2", (object)usuarioRevision ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void ActualizarEstadoInforme(int codigoInforme, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void ActualizarCorreoEnviado(int codigoInforme, bool correoEnviado, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET correo_enviado = @correo_enviado,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@correo_enviado", correoEnviado);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void MarcarNotificadoRt(int codigoInforme, bool notificadoRt, DateTime? fechaNotificacionRt, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET notificado_rt = @notificado_rt,
+                        fecha_notificacion_rt = @fecha_notificacion_rt,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@notificado_rt", notificadoRt);
+                    cmd.Parameters.AddWithValue("@fecha_notificacion_rt", (object)fechaNotificacionRt ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void RegistrarDevolucionCoordinador(int codigoInforme, string observacion, string usuarioDevolucion, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET observacion_devolucion = @observacion_devolucion,
+                        fecha_devolucion = NOW(),
+                        usuario_devolucion = @usuario_devolucion,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@observacion_devolucion", (object)observacion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@usuario_devolucion", (object)usuarioDevolucion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void Bind(NpgsqlCommand cmd, InspeccionInformeTecnico informe, int usuarioId)
+        {
+            cmd.Parameters.AddWithValue("@codigo_inspeccion", informe.CodigoInspeccion);
+            cmd.Parameters.Add("@estacion_id", NpgsqlTypes.NpgsqlDbType.Integer).Value = (object)informe.EstacionId ?? DBNull.Value;
+            cmd.Parameters.AddWithValue("@titulo", (object)informe.Titulo ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@resumen", (object)informe.Resumen ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@antecedentes", (object)informe.Antecedentes ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@base_legal", (object)informe.BaseLegal ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@alcance", (object)informe.Alcance ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@desarrollo", (object)informe.Desarrollo ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@evidencias", (object)informe.Evidencias ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@numero_licencia_inspector", (object)informe.NumeroLicenciaInspector ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@trabajos_realizados", (object)informe.TrabajosRealizados ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@fechas_inspeccion_manual", (object)informe.FechasInspeccionManual ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@estaciones_inspeccion_manual", (object)informe.EstacionesInspeccionManual ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@operacion_comercial", (object)informe.OperacionComercial ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@servicios_estaciones", (object)informe.ServiciosEstaciones ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@notas", (object)informe.Notas ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@no_conformidades", (object)informe.NoConformidades ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@documentos_adjuntos", (object)informe.DocumentosAdjuntos ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@documentos_adjuntos_archivos", (object)informe.DocumentosAdjuntosArchivos ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@otros_adjuntos", (object)informe.OtrosAdjuntos ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@resultado", (object)informe.Resultado ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@tipo_resultado_insatisfactorio", (object)informe.TipoResultadoInsatisfactorio ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@observaciones", (object)informe.Observaciones ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@conclusiones", (object)informe.Conclusiones ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@recomendaciones", (object)informe.Recomendaciones ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+        }
+
+        private static InspeccionInformeTecnico Map(NpgsqlDataReader dr)
+        {
+            var m = new InspeccionInformeTecnico
+            {
+                CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
+                CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                EstacionId = dr["estacion_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(dr["estacion_id"]),
+                Version = dr.GetInt32(dr.GetOrdinal("version")),
+                Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
+                Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
+                Antecedentes = dr["antecedentes"] == DBNull.Value ? null : dr["antecedentes"].ToString(),
+                BaseLegal = dr["base_legal"] == DBNull.Value ? null : dr["base_legal"].ToString(),
+                Alcance = dr["alcance"] == DBNull.Value ? null : dr["alcance"].ToString(),
+                Desarrollo = dr["desarrollo"] == DBNull.Value ? null : dr["desarrollo"].ToString(),
+                Evidencias = dr["evidencias"] == DBNull.Value ? null : dr["evidencias"].ToString(),
+                NumeroLicenciaInspector = dr["numero_licencia_inspector"] == DBNull.Value ? null : dr["numero_licencia_inspector"].ToString(),
+                TrabajosRealizados = dr["trabajos_realizados"] == DBNull.Value ? null : dr["trabajos_realizados"].ToString(),
+                FechasInspeccionManual = dr["fechas_inspeccion_manual"] == DBNull.Value ? null : dr["fechas_inspeccion_manual"].ToString(),
+                EstacionesInspeccionManual = dr["estaciones_inspeccion_manual"] == DBNull.Value ? null : dr["estaciones_inspeccion_manual"].ToString(),
+                OperacionComercial = dr["operacion_comercial"] == DBNull.Value ? null : dr["operacion_comercial"].ToString(),
+                ServiciosEstaciones = dr["servicios_estaciones"] == DBNull.Value ? null : dr["servicios_estaciones"].ToString(),
+                Notas = dr["notas"] == DBNull.Value ? null : dr["notas"].ToString(),
+                NoConformidades = dr["no_conformidades"] == DBNull.Value ? null : dr["no_conformidades"].ToString(),
+                DocumentosAdjuntos = dr["documentos_adjuntos"] == DBNull.Value ? null : dr["documentos_adjuntos"].ToString(),
+                DocumentosAdjuntosArchivos = dr["documentos_adjuntos_archivos"] == DBNull.Value ? null : dr["documentos_adjuntos_archivos"].ToString(),
+                OtrosAdjuntos = dr["otros_adjuntos"] == DBNull.Value ? null : dr["otros_adjuntos"].ToString(),
+                Resultado = dr["resultado"] == DBNull.Value ? null : dr["resultado"].ToString(),
+                Observaciones = dr["observaciones"] == DBNull.Value ? null : dr["observaciones"].ToString(),
+                Conclusiones = dr["conclusiones"] == DBNull.Value ? null : dr["conclusiones"].ToString(),
+                Recomendaciones = dr["recomendaciones"] == DBNull.Value ? null : dr["recomendaciones"].ToString(),
+                RutaPdf = dr["ruta_pdf"] == DBNull.Value ? null : dr["ruta_pdf"].ToString(),
+                EstadoInforme = dr["estado_informe"] == DBNull.Value ? null : dr["estado_informe"].ToString(),
+                FirmadoInspector = dr["firmado_inspector"] != DBNull.Value && Convert.ToBoolean(dr["firmado_inspector"]),
+                FirmadoDirdac = dr["firmado_dirdac"] != DBNull.Value && Convert.ToBoolean(dr["firmado_dirdac"]),
+                RutaDocumentoFirmado = dr["ruta_documento_firmado"] == DBNull.Value ? null : dr["ruta_documento_firmado"].ToString(),
+                HashDocumento = dr["hash_documento"] == DBNull.Value ? null : dr["hash_documento"].ToString(),
+                FechaFirma1 = dr["fecha_firma_1"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_1"]),
+                FechaFirma2 = dr["fecha_firma_2"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_2"]),
+                UsuarioFirma1 = dr["usuario_firma_1"] == DBNull.Value ? null : dr["usuario_firma_1"].ToString(),
+                UsuarioFirma2 = dr["usuario_firma_2"] == DBNull.Value ? null : dr["usuario_firma_2"].ToString(),
+                FechaEnvioDirdac = dr["fecha_envio_dirdac"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_envio_dirdac"]),
+                UsuarioEnvioDirdac = dr["usuario_envio_dirdac"] == DBNull.Value ? null : dr["usuario_envio_dirdac"].ToString(),
+                Finalizado = dr["finalizado"] != DBNull.Value && Convert.ToBoolean(dr["finalizado"]),
+                CorreoEnviado = dr["correo_enviado"] != DBNull.Value && Convert.ToBoolean(dr["correo_enviado"]),
+                NotificadoRt = dr["notificado_rt"] != DBNull.Value && Convert.ToBoolean(dr["notificado_rt"]),
+                FechaNotificacionRt = dr["fecha_notificacion_rt"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_notificacion_rt"]),
+                FechaFinalizacion = dr["fecha_finalizacion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_finalizacion"]),
+                CreatedAt = dr["created_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["created_at"]),
+                CreatedBy = dr["created_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["created_by"]),
+                UpdatedAt = dr["updated_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["updated_at"]),
+                UpdatedBy = dr["updated_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["updated_by"])
+            };
+
+            try { m.TipoResultadoInsatisfactorio = dr["tipo_resultado_insatisfactorio"] == DBNull.Value ? null : dr["tipo_resultado_insatisfactorio"].ToString(); } catch { }
+            try { m.ObservacionDevolucion = dr["observacion_devolucion"] == DBNull.Value ? null : dr["observacion_devolucion"].ToString(); } catch { }
+            try { m.FechaDevolucion = dr["fecha_devolucion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_devolucion"]); } catch { }
+            try { m.UsuarioDevolucion = dr["usuario_devolucion"] == DBNull.Value ? null : dr["usuario_devolucion"].ToString(); } catch { }
+
+            try { m.CodigoInformeAnterior = dr["codigo_informe_anterior"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["codigo_informe_anterior"]); } catch { }
+            try { m.CodigoNoConformidadOrigen = dr["codigo_no_conformidad_origen"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["codigo_no_conformidad_origen"]); } catch { }
+            try { m.CicloEvaluacion = dr["ciclo_evaluacion"] == DBNull.Value ? 1 : Convert.ToInt32(dr["ciclo_evaluacion"]); } catch { }
+            try { m.EsReevaluacion = dr["es_reevaluacion"] != DBNull.Value && Convert.ToBoolean(dr["es_reevaluacion"]); } catch { }
+
+            return m;
+        }
+
+        private static void EnsureSchema(NpgsqlConnection cn)
+        {
+            if (_schemaReady)
+            {
+                return;
+            }
+
+            lock (SyncLock)
+            {
+                if (_schemaReady)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    CREATE TABLE IF NOT EXISTS public.aocr_tbinforme_inspeccion
+                    (
+                        codigo_informe SERIAL PRIMARY KEY,
+                        codigo_inspeccion INTEGER NOT NULL,
+                        estacion_id INTEGER NULL,
+                        version INTEGER NOT NULL,
+                        titulo VARCHAR(250),
+                        resumen TEXT,
+                        antecedentes TEXT,
+                        base_legal TEXT,
+                        alcance TEXT,
+                        desarrollo TEXT,
+                        evidencias TEXT,
+                        numero_licencia_inspector VARCHAR(120),
+                        trabajos_realizados TEXT,
+                        fechas_inspeccion_manual TEXT,
+                        estaciones_inspeccion_manual TEXT,
+                        operacion_comercial TEXT,
+                        servicios_estaciones TEXT,
+                        notas TEXT,
+                        no_conformidades TEXT,
+                        documentos_adjuntos TEXT,
+                        documentos_adjuntos_archivos TEXT,
+                        otros_adjuntos TEXT,
+                        resultado VARCHAR(100),
+                        tipo_resultado_insatisfactorio VARCHAR(30),
+                        observaciones TEXT,
+                        conclusiones TEXT,
+                        recomendaciones TEXT,
+                        ruta_pdf VARCHAR(500),
+                        estado_informe VARCHAR(80),
+                        firmado_inspector BOOLEAN NOT NULL DEFAULT FALSE,
+                        firmado_dirdac BOOLEAN NOT NULL DEFAULT FALSE,
+                        ruta_documento_firmado VARCHAR(500),
+                        hash_documento VARCHAR(256),
+                        fecha_firma_1 TIMESTAMP,
+                        fecha_firma_2 TIMESTAMP,
+                        usuario_firma_1 VARCHAR(160),
+                        usuario_firma_2 VARCHAR(160),
+                        fecha_envio_dirdac TIMESTAMP,
+                        usuario_envio_dirdac VARCHAR(160),
+                        finalizado BOOLEAN NOT NULL DEFAULT FALSE,
+                        correo_enviado BOOLEAN NOT NULL DEFAULT FALSE,
+                        notificado_rt BOOLEAN NOT NULL DEFAULT FALSE,
+                        fecha_notificacion_rt TIMESTAMP,
+                        fecha_finalizacion TIMESTAMP,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        created_by INTEGER,
+                        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        updated_by INTEGER
+                    );
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_informe_inspeccion_version
+                        ON public.aocr_tbinforme_inspeccion(codigo_inspeccion, version);
+
+                    CREATE INDEX IF NOT EXISTS idx_informe_inspeccion_codigo
+                        ON public.aocr_tbinforme_inspeccion(codigo_inspeccion, version DESC);";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                const string alterSql = @"
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estacion_id INTEGER NULL;
+                    CREATE INDEX IF NOT EXISTS idx_informe_inspeccion_estacion ON public.aocr_tbinforme_inspeccion(codigo_inspeccion, estacion_id, version DESC);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS antecedentes TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS base_legal TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS alcance TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS desarrollo TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS evidencias TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS numero_licencia_inspector VARCHAR(120);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS trabajos_realizados TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fechas_inspeccion_manual TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estaciones_inspeccion_manual TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS operacion_comercial TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS servicios_estaciones TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS notas TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS no_conformidades TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos_archivos TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS otros_adjuntos TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS tipo_resultado_insatisfactorio VARCHAR(30);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS codigo_informe_anterior INTEGER NULL;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estado_informe VARCHAR(80);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_inspector BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_dirdac BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS ruta_documento_firmado VARCHAR(500);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS hash_documento VARCHAR(256);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_firma_1 TIMESTAMP;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_firma_2 TIMESTAMP;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_firma_1 VARCHAR(160);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_firma_2 VARCHAR(160);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_envio_dirdac TIMESTAMP;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_envio_dirdac VARCHAR(160);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS observacion_devolucion TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_devolucion TIMESTAMP;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_devolucion VARCHAR(160);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS notificado_rt BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_notificacion_rt TIMESTAMP;";
+
+                using (var cmd = new NpgsqlCommand(alterSql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _schemaReady = true;
+            }
+        }
+
+        private static InspeccionInformeTecnico ObtenerUltimoPorInspeccionInterno(NpgsqlConnection cn, int codigoInspeccion, int? estacionId = null, bool filtrarEstacion = false)
+        {
+            const string sql = @"
+                SELECT codigo_informe,
+                       codigo_inspeccion, estacion_id,
+                       version,
+                       titulo,
+                       resumen,
+                       antecedentes,
+                       base_legal,
+                       alcance,
+                       desarrollo,
+                       evidencias,
+                       numero_licencia_inspector,
+                       trabajos_realizados,
+                       fechas_inspeccion_manual,
+                       estaciones_inspeccion_manual,
+                       operacion_comercial,
+                       servicios_estaciones,
+                       notas,
+                       no_conformidades,
+                       documentos_adjuntos,
+                       documentos_adjuntos_archivos,
+                       otros_adjuntos,
+                       resultado,
+                       tipo_resultado_insatisfactorio,
+                       observaciones,
+                       conclusiones,
+                       recomendaciones,
+                       ruta_pdf,
+                      estado_informe,
+                      firmado_inspector,
+                      firmado_dirdac,
+                      ruta_documento_firmado,
+                      hash_documento,
+                      fecha_firma_1,
+                      fecha_firma_2,
+                      usuario_firma_1,
+                      usuario_firma_2,
+                      fecha_envio_dirdac,
+                      usuario_envio_dirdac,
+                       finalizado,
+                       correo_enviado,
+                       notificado_rt,
+                       fecha_notificacion_rt,
+                       fecha_finalizacion,
+                       created_at,
+                       created_by,
+                       updated_at,
+                       updated_by
+                FROM public.aocr_tbinforme_inspeccion
+                WHERE codigo_inspeccion = @codigo_inspeccion
+                  AND (NOT @filtrar_estacion OR estacion_id IS NOT DISTINCT FROM @estacion_id)
+                ORDER BY version DESC
+                LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@codigo_inspeccion", codigoInspeccion);
+                cmd.Parameters.AddWithValue("@filtrar_estacion", filtrarEstacion);
+                cmd.Parameters.Add("@estacion_id", NpgsqlTypes.NpgsqlDbType.Integer).Value = (object)estacionId ?? DBNull.Value;
+                using (var dr = cmd.ExecuteReader())
+                {
+                    return dr.Read() ? Map(dr) : null;
+                }
+            }
+        }
+
+        private static InspeccionInformeTecnico ObtenerPorIdInterno(NpgsqlConnection cn, int codigoInforme)
+        {
+            const string sql = @"
+                SELECT codigo_informe,
+                       codigo_inspeccion, estacion_id,
+                       version,
+                       titulo,
+                       resumen,
+                       antecedentes,
+                       base_legal,
+                       alcance,
+                       desarrollo,
+                       evidencias,
+                       numero_licencia_inspector,
+                       trabajos_realizados,
+                       fechas_inspeccion_manual,
+                       estaciones_inspeccion_manual,
+                       operacion_comercial,
+                       servicios_estaciones,
+                       notas,
+                       no_conformidades,
+                       documentos_adjuntos,
+                       documentos_adjuntos_archivos,
+                       otros_adjuntos,
+                       resultado,
+                       tipo_resultado_insatisfactorio,
+                       observaciones,
+                       conclusiones,
+                       recomendaciones,
+                       ruta_pdf,
+                      estado_informe,
+                      firmado_inspector,
+                      firmado_dirdac,
+                      ruta_documento_firmado,
+                      hash_documento,
+                      fecha_firma_1,
+                      fecha_firma_2,
+                      usuario_firma_1,
+                      usuario_firma_2,
+                      fecha_envio_dirdac,
+                      usuario_envio_dirdac,
+                       finalizado,
+                       correo_enviado,
+                       notificado_rt,
+                       fecha_notificacion_rt,
+                       fecha_finalizacion,
+                       created_at,
+                       created_by,
+                       updated_at,
+                       updated_by
+                FROM public.aocr_tbinforme_inspeccion
+                WHERE codigo_informe = @codigo_informe
+                LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                using (var dr = cmd.ExecuteReader())
+                {
+                    return dr.Read() ? Map(dr) : null;
+                }
+            }
+        }
+    }
+}
