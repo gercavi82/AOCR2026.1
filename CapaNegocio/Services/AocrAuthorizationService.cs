@@ -627,7 +627,10 @@ namespace CapaNegocio.Services
                 var esAdministrador = rolesInspeccion.Contains("Administrador", Comparer);
 
                 if (codigoInspeccion.GetValueOrDefault() > 0
-                    && !ValidarAccesoInspeccion(usuario, codigoInspeccion.GetValueOrDefault(), out motivo))
+                    && !ValidarAccesoInspeccion(usuario, codigoInspeccion.GetValueOrDefault(), out motivo,
+                        new[] { "VerInforme", "DescargarInforme", "VerListaVerificacionOperacionalEae",
+                            "DescargarListaVerificacionOperacionalEae", "VerLvEaeOficial", "DescargarLvEaeOficial" }
+                            .Contains(accion, Comparer)))
                 {
                     return false;
                 }
@@ -1099,7 +1102,7 @@ namespace CapaNegocio.Services
             return inspeccion != null ? inspeccion.CodigoSolicitud : 0;
         }
 
-        private bool ValidarAccesoInspeccion(AocrAuthorizationContext usuario, int codigoInspeccion, out string motivo)
+        private bool ValidarAccesoInspeccion(AocrAuthorizationContext usuario, int codigoInspeccion, out string motivo, bool soloConsultaTecnica = false)
         {
             motivo = string.Empty;
             if (codigoInspeccion <= 0)
@@ -1133,6 +1136,11 @@ namespace CapaNegocio.Services
 
             if (roles.Contains("Coordinacion", Comparer)
                 || roles.Contains("DireccionJefaturaTecnica", Comparer))
+            {
+                return true;
+            }
+
+            if (soloConsultaTecnica && (roles.Contains("DIRCAV", Comparer) || roles.Contains("DIRDAC", Comparer)))
             {
                 return true;
             }

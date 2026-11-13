@@ -10,6 +10,35 @@ namespace CapaDatos.DAOs
 {
     public class InspeccionInformeDAO
     {
+        public List<int> ListarSolicitudesConDocumentosTecnicosFirmados()
+        {
+            const string sql = @"WITH informes_vigentes AS (
+SELECT DISTINCT ON (codigo_inspeccion, estacion_id) codigo_inspeccion, finalizado,
+firmado_inspector, ruta_documento_firmado
+FROM public.aocr_tbinforme_inspeccion
+ORDER BY codigo_inspeccion, estacion_id, version DESC, codigo_informe DESC
+)
+SELECT i.codigo_solicitud FROM informes_vigentes r
+JOIN public.aocr_tbinspeccion i ON i.codigo_inspeccion=r.codigo_inspeccion
+WHERE r.finalizado=TRUE AND r.firmado_inspector=TRUE
+AND NULLIF(TRIM(r.ruta_documento_firmado),'') IS NOT NULL
+UNION
+SELECT COALESCE(lv.solicitud_id,i.codigo_solicitud)
+FROM public.aocr_tblv_operacional_eae lv
+LEFT JOIN public.aocr_tbinspeccion i ON i.codigo_inspeccion=lv.codigo_inspeccion
+WHERE lv.vigente=TRUE AND lv.firmado_tecnico=TRUE
+AND COALESCE(lv.solicitud_id,i.codigo_solicitud) IS NOT NULL;";
+            var ids = new List<int>();
+            using (var cn = new NpgsqlConnection(_cs))
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cn.Open();
+                using (var rd = cmd.ExecuteReader())
+                    while (rd.Read()) ids.Add(rd.GetInt32(0));
+            }
+            return ids;
+        }
+
         private readonly string _cs;
         private static readonly object SyncLock = new object();
         private static bool _schemaReady;

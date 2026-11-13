@@ -8,6 +8,14 @@ namespace CapaNegocio.Services
 {
     public sealed class CoordinacionBandejaService
     {
+        public List<SolicitudAOCR> ObtenerExpedientesConDocumentosTecnicosFirmados()
+        {
+            var ids = new HashSet<int>(new InspeccionInformeDAO().ListarSolicitudesConDocumentosTecnicosFirmados());
+            return (_solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>())
+                .Where(s => ids.Contains(s.CodigoSolicitud))
+                .OrderByDescending(s => s.CodigoSolicitud).ToList();
+        }
+
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly DashboardInspeccionDAO _dashboardDao = new DashboardInspeccionDAO();
 

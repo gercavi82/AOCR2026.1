@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.Constants;
@@ -82,14 +82,7 @@ namespace CapaNegocio.Services
         // 4. Informes técnicos pendientes de revisión por DIRCAV (AC-04: Remitido por Coordinador)
         public List<SolicitudAOCR> ObtenerInformesPendientesRevision()
         {
-            var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
-            return solicitudes.Where(s =>
-                string.Equals(s.Estado, AocrEstadosProceso.ClPendienteDircav, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionFinalDircav, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(s.Estado, AocrEstadosProceso.PendienteRevisionInformeDcav, StringComparison.OrdinalIgnoreCase)
-                  || string.Equals(s.Estado, AocrEstadosProceso.DocumentosFinalesEnFirma, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(s.Estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
+            return new CoordinacionBandejaService().ObtenerExpedientesConDocumentosTecnicosFirmados();
         }
 
         public int ContarInformesPendientesRevision()

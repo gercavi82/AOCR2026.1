@@ -40,6 +40,8 @@ namespace CapaPresentacion.Controllers
 
             var pendientes = new CoordinacionBandejaService().ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>();
             ViewBag.TotalPendientes = pendientes.Count;
+            ViewBag.ExpedientesDocumentosTecnicos = new CoordinacionBandejaService()
+                .ObtenerExpedientesConDocumentosTecnicosFirmados();
 
             _logger.LogInfo("[AOCR][ASIGNACION_INSPECTOR] Bandeja de coordinacion cargada. Usuario=" + ObtenerUsuarioActual() + ", Pendientes=" + pendientes.Count);
 

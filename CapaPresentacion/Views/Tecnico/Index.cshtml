@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.SolicitudAOCR>>
+﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.SolicitudAOCR>>
 @using System
 @using System.Linq
 @using System.Web.Mvc
@@ -275,3 +275,20 @@
         }
     </section>
 </div>
+
+<section class="card mt-4">
+    <div class="card-header"><h2 class="h5 mb-0">LV e informes t&eacute;cnicos firmados</h2></div>
+    <div class="card-body">
+        @{ var expedientesTecnicos = ViewBag.ExpedientesDocumentosTecnicos as System.Collections.Generic.List<CapaModelo.SolicitudAOCR>
+            ?? new System.Collections.Generic.List<CapaModelo.SolicitudAOCR>(); }
+        @if (expedientesTecnicos.Count == 0)
+        {
+            <div class="alert alert-info">No hay LV ni informes firmados disponibles.</div>
+        }
+        @foreach (var expediente in expedientesTecnicos)
+        {
+            <h3 class="h6">@expediente.NumeroSolicitud &middot; @expediente.RazonSocial</h3>
+            @Html.Action("DocumentosRevisionExpediente", "Dircav", new { solicitudId = expediente.CodigoSolicitud })
+        }
+    </div>
+</section>

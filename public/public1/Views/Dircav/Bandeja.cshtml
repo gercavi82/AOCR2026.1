@@ -1,4 +1,4 @@
-@using CapaModelo
+﻿@using CapaModelo
 @using CapaModelo.Common
 @{
     ViewBag.Title = "Bandeja Institucional DIRCAV";
@@ -238,6 +238,24 @@
                             }
                         </tbody>
                     </table>
+                </div>
+            }
+            else if (activeTab == "informes")
+            {
+                var expedientes = ViewBag.InformesPendientes as List<SolicitudAOCR> ?? new List<SolicitudAOCR>();
+                <div class="p-3">
+                    <h3 class="h5">LV e informes t&eacute;cnicos firmados</h3>
+                    @if (expedientes.Count == 0)
+                    {
+                        <div class="alert alert-info">No hay LV ni informes firmados disponibles.</div>
+                    }
+                    @foreach (var expediente in expedientes)
+                    {
+                        <article class="mb-3">
+                            <h4 class="h6">@expediente.NumeroSolicitud &middot; @expediente.RazonSocial</h4>
+                            @Html.Action("DocumentosRevisionExpediente", "Dircav", new { solicitudId = expediente.CodigoSolicitud })
+                        </article>
+                    }
                 </div>
             }
             else if (activeTab == "condiciones")

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -551,6 +551,13 @@ namespace CapaPresentacion.Controllers
             }
 
             return ids;
+        }
+
+        private bool PuedeConsultarDocumentosTecnicosInstitucionales()
+        {
+            var permisos = SidebarPermissionHelper.Resolve(Session["Rol"] as string ?? string.Empty,
+                Session["RolesRaw"] ?? Session["Roles"]);
+            return permisos.EsCoordinadorRol || permisos.EsDcavRol || permisos.EsDirdacRol;
         }
 
         private bool PuedeAccederInspeccion(Inspeccion ins)
@@ -1673,16 +1680,14 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ VER INFORME (ÚNICO) - SEGURO
         // ============================================================
         [HttpGet]
-        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerInforme", CodigoInspeccionParameter = "id")]
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE + ",DIRCAV,DCAV,DIRDAC,COORDINADOR")]
         public ActionResult VerInforme(int id)
         {
             return ServirInformePdf(id, false);
         }
 
         [HttpGet]
-        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarInforme", CodigoInspeccionParameter = "id")]
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE + ",DIRCAV,DCAV,DIRDAC,COORDINADOR")]
         public ActionResult DescargarInforme(int id)
         {
             return ServirInformePdf(id, true);
@@ -1739,16 +1744,14 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [AocrAuthorize(Modulo = "Inspeccion", Accion = "VerListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE + ",DIRCAV,DCAV,DIRDAC,COORDINADOR")]
         public ActionResult VerListaVerificacionOperacionalEae(int id, int? estacionId = null)
         {
             return ServirListaVerificacionOperacionalEaePdf(id, false, estacionId);
         }
 
         [HttpGet]
-        [AocrAuthorize(Modulo = "Inspeccion", Accion = "DescargarListaVerificacionOperacionalEae", CodigoInspeccionParameter = "id")]
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE + ",DIRCAV,DCAV,DIRDAC,COORDINADOR")]
         public ActionResult DescargarListaVerificacionOperacionalEae(int id, int? estacionId = null)
         {
             return ServirListaVerificacionOperacionalEaePdf(id, true, estacionId);
@@ -1794,13 +1797,15 @@ namespace CapaPresentacion.Controllers
             if (inspeccion == null)
                 return HttpNotFound("Inspección no encontrada.");
 
-            if (!PuedeAccederInspeccion(inspeccion))
+            if (!PuedeAccederInspeccion(inspeccion) && !PuedeConsultarDocumentosTecnicosInstitucionales())
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
             if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
                 return new HttpStatusCodeResult(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
 
             var informeTecnico = ObtenerInformeEstacionActual(id);
+            if (PuedeConsultarDocumentosTecnicosInstitucionales() && (informeTecnico == null || !informeTecnico.FirmadoInspector))
+                return new HttpStatusCodeResult(403, "El informe debe estar firmado por el Inspector para su consulta institucional.");
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
             var rutasCandidatas = new[]
@@ -1984,7 +1989,7 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            if (!PuedeAccederInspeccion(inspeccion))
+            if (!PuedeAccederInspeccion(inspeccion) && !PuedeConsultarDocumentosTecnicosInstitucionales())
             {
                 return new HttpStatusCodeResult(403, "No autorizado para ver la lista de verificación operacional.");
             }
@@ -2006,6 +2011,8 @@ namespace CapaPresentacion.Controllers
             var errorEstacion = ValidarEstacionLista(inspeccion, estacionId, false);
             if (errorEstacion != null) return errorEstacion;
             var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id, estacionId);
+            if (PuedeConsultarDocumentosTecnicosInstitucionales() && (lista == null || !lista.FirmadoTecnico))
+                return new HttpStatusCodeResult(403, "La LV debe estar firmada por el Inspector para su consulta institucional.");
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
             var rutasCandidatas = new[]

@@ -1,4 +1,4 @@
-@model CapaPresentacion.Models.ViewModels.DocumentosRevisionExpedienteVm
+﻿@model CapaPresentacion.Models.ViewModels.DocumentosRevisionExpedienteVm
 <section class="card shadow-sm mb-3">
     <div class="card-header"><strong>Documentos del expediente para revisión</strong></div>
     <div class="card-body d-flex flex-wrap gap-2">
@@ -8,10 +8,10 @@
         }
         @foreach (var informe in Model.Informes)
         {
-            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerInforme", "Inspeccion", new { id=informe.CodigoInspeccion, codigoInforme=informe.CodigoInforme })">Informe firmado · @informe.EstacionesInspeccionManual</a>
+            <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="@Url.Action("VerInforme", "Inspeccion", new { id=informe.CodigoInspeccion, codigoInforme=informe.CodigoInforme, estacionId=informe.EstacionId })">Informe firmado · @informe.EstacionesInspeccionManual</a>
             if (Model.PuedeDecidirInformes && !informe.FirmadoDirdac)
             {
-                <a class="btn btn-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme })">Revisar y resolver informe · @informe.EstacionesInspeccionManual</a>
+                <a class="btn btn-primary" href="@Url.Action("RevisionDireccion", "Inspeccion", new { codigoInforme=informe.CodigoInforme, estacionId=informe.EstacionId })">Revisar y resolver informe · @informe.EstacionesInspeccionManual</a>
             }
         }
         @foreach (var documento in Model.Documentos)

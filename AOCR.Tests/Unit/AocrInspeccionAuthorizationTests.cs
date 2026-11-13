@@ -7,6 +7,36 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class AocrInspeccionAuthorizationTests
     {
+        [DataTestMethod]
+        [DataRow("DIRCAV")]
+        [DataRow("DIRDAC")]
+        public void Autoridad_ConsultaInspeccionExistenteSinPermisoDeEditar(string rol)
+        {
+            CapaModelo.Inspeccion inspeccion;
+            try
+            {
+                var lista = new CapaDatos.DAOs.InspeccionDAO().ListarTodas();
+                inspeccion = lista != null && lista.Count > 0 ? lista[0] : null;
+            }
+            catch (Npgsql.NpgsqlException)
+            {
+                Assert.Inconclusive("Base de datos no disponible para verificar el acceso al recurso.");
+                return;
+            }
+            if (inspeccion == null) { Assert.Inconclusive("No existen inspecciones para validar el acceso."); return; }
+            var service = new AocrAuthorizationService(new FakeUsuarioAS400DAO(), new FakeEmpresaAS400DAO());
+            var usuario = new AocrAuthorizationContext {
+                UserId = 97, IsAuthenticated = true, SelectedRole = rol, Roles = new List<string> { rol }
+            };
+            foreach (var accion in new[] { "VerInforme", "DescargarInforme", "VerListaVerificacionOperacionalEae", "DescargarListaVerificacionOperacionalEae" })
+            {
+                var resultado = service.PuedeEjecutarAccion(accion, usuario, codigoInspeccion: inspeccion.CodigoInspeccion, modulo: "Inspeccion");
+                Assert.IsTrue(resultado.Permitido, rol + ": " + accion + ": " + resultado.Motivo);
+            }
+            Assert.IsFalse(service.PuedeEjecutarAccion("GuardarListaVerificacionOperacionalEae", usuario,
+                codigoInspeccion: inspeccion.CodigoInspeccion, modulo: "Inspeccion").Permitido);
+        }
+
     public class FakeUsuarioAS400DAO : CapaDatos.Interfaces.IUsuarioAS400DAO
     {
         public string ObtenerCodigoCiudadPorCodigoUsuario(string codigoUsuario) => "UIO";
