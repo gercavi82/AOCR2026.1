@@ -54,7 +54,6 @@
 }
 
 <div class="aocr-page">
-    <div class="topline"><span>RDAC 129</span><span>Direccion General de Aviacion Civil</span></div>
 
     <div class="official-box">
         <div class="title">
@@ -127,7 +126,7 @@
 
         <div class="row signature-row">
             <div class="cell signature-left" style="width:39%;">
-                <div class="bold">Fecha de emision / renovacion /<br />modificacion: @fecha(Model != null ? (DateTime?)Model.FechaEmisionDocumento : null)</div>
+                <div class="bold">Fecha de @CapaNegocio.Services.DatosDocumentalesAocrReglas.TipoTramite(Model.Solicitud.TipoSolicitud): @fecha(Model.FechaEmisionDocumento)</div>
                 <div class="small">/ Date of issue / renovation / modification</div>
                 <div>@(Model.Solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue</div>
                 <div>@(Model.Solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal</div>
@@ -145,5 +144,4 @@
         </div>
     </div>
 
-    <div class="footerline"><span>Enmienda No.: 1</span><span>10</span><span>Actualizada: xxx</span></div>
 </div>

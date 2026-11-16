@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -50,6 +50,40 @@ namespace AOCR.Tests.Integration
         }
 
         [TestMethod]
+        public void OperacionesMultiples_ConservanFormatoAnteriorYValidanCadaCodigo()
+        {
+            var datos = Datos();
+            datos.Estaciones[0].Codigos = new[] { "ET", "R", "R" };
+            Assert.AreEqual(0, DatosDocumentalesAocrReglas.Validar(datos, Estaciones(), true).Count);
+            Assert.AreEqual("R, ET", datos.Estaciones[0].Codigo);
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(datos);
+            var recuperado = Newtonsoft.Json.JsonConvert.DeserializeObject<DatosDocumentalesAocr>(json);
+            CollectionAssert.AreEqual(new[] { "R", "ET" }, recuperado.Estaciones[0].Codigos);
+            datos.Estaciones[0].Codigo = "R, INVALIDO";
+            Assert.IsTrue(DatosDocumentalesAocrReglas.Validar(datos, Estaciones(), true).Count > 0);
+            var anterior = Newtonsoft.Json.JsonConvert.DeserializeObject<OperacionEstacionDocumentalAocr>("{\"Codigo\":\"NR\"}");
+            CollectionAssert.AreEqual(new[] { "NR" }, anterior.Codigos);
+        }
+
+        [TestMethod]
+        public void Lv_CabeceraUsaBaseRtYModelosSinModificarDocumentosFirmados()
+        {
+            var lista = new ListaVerificacionOperacionalEae();
+            var datos = Datos();
+            var aeronaves = new[] { new AeronaveSolicitud { Modelo = "B777", Matricula = "NO-INCLUIR" } };
+            ListaVerificacionService.CompletarDatosCabecera(lista, new SolicitudAOCR(), datos, aeronaves);
+            StringAssert.Contains(lista.DireccionEstadoExplotador, "Base EXPLOTADOR");
+            StringAssert.Contains(lista.DireccionEstadoReconocimiento, "RTEAE");
+            Assert.AreEqual("B777", lista.TiposAeronaves);
+            lista.FirmadoTecnico = true;
+            datos.Explotador.Direccion = "BASE CAMBIADA";
+            ListaVerificacionService.CompletarDatosCabecera(lista, new SolicitudAOCR(), datos, aeronaves);
+            Assert.IsFalse(lista.DireccionEstadoExplotador.Contains("BASE CAMBIADA"));
+            Assert.AreNotEqual(new ListaVerificacionOperacionalEae { CodigoInspeccion = 2, EstacionId = 36 }.NumeroInspeccionEstacion,
+                new ListaVerificacionOperacionalEae { CodigoInspeccion = 2, EstacionId = 37 }.NumeroInspeccionEstacion);
+        }
+
+        [TestMethod]
         public void NumeroAocr_RechazaReferenciaSinConsecutivoOriginal()
         {
             foreach(var tramite in new[]{"", "OT-002", "AOCR000", "AOCR003/OT002", "2026"})
@@ -60,7 +94,7 @@ namespace AOCR.Tests.Integration
         {
             return new DatosDocumentalesAocr{PermisoCnacNumero="CNAC-PRUEBA-026",PermisoCnacEmision=new DateTime(2026,1,2),PermisoCnacVencimiento=new DateTime(2028,3,4),AocVigenteHasta=new DateTime(2029,5,6),PaisBandera="QATAR",
                 Explotador=Contacto("EXPLOTADOR"),GerenteOperaciones=Contacto("GERENTE"),RepresentanteTecnico=Contacto("RTEAE"),RepresentanteLegalEcuador=Contacto("LEGALECUADOR"),
-                Estaciones=new List<OperacionEstacionDocumentalAocr>{new OperacionEstacionDocumentalAocr{EstacionId=36,Codigo="R"},new OperacionEstacionDocumentalAocr{EstacionId=37,Codigo="ET"}}};
+                Estaciones=new List<OperacionEstacionDocumentalAocr>{new OperacionEstacionDocumentalAocr{EstacionId=36,Codigo="R, NR"},new OperacionEstacionDocumentalAocr{EstacionId=37,Codigo="ET"}}};
         }
         private static List<SolicitudEstacionInspeccion> Estaciones() {return new List<SolicitudEstacionInspeccion>{new SolicitudEstacionInspeccion{Id=36,EstacionCodigo="UIO",Activo=true},new SolicitudEstacionInspeccion{Id=37,EstacionCodigo="GYE",Activo=true}};}
 
@@ -70,12 +104,13 @@ namespace AOCR.Tests.Integration
             var valores=new System.Collections.Specialized.NameValueCollection {
                 {"SolicitudId","901"},{"DatosDocumentales.PermisoCnacNumero","CNAC-026"},{"DatosDocumentales.PermisoCnacEmision","2026-01-02"},
                 {"DatosDocumentales.GerenteOperaciones.Nombre","GERENTE"},{"DatosDocumentales.RepresentanteTecnico.Nombre","RT EAE"},{"DatosDocumentales.RepresentanteLegalEcuador.Nombre","LEGAL"},
-                {"DatosDocumentales.Estaciones[0].EstacionId","36"},{"DatosDocumentales.Estaciones[0].Codigo","R"},{"DatosDocumentales.Estaciones[1].EstacionId","37"},{"DatosDocumentales.Estaciones[1].Codigo","ET"}
+                {"DatosDocumentales.Estaciones[0].EstacionId","36"},{"DatosDocumentales.Estaciones[0].Codigos","R"},{"DatosDocumentales.Estaciones[0].Codigos","ET"},{"DatosDocumentales.Estaciones[1].EstacionId","37"},{"DatosDocumentales.Estaciones[1].Codigo","ET"}
             };
             var contexto=new System.Web.Mvc.ModelBindingContext {ModelMetadata=System.Web.Mvc.ModelMetadataProviders.Current.GetMetadataForType(null,typeof(GuardarDatosFirmaAocrRequest)),ValueProvider=new System.Web.Mvc.NameValueCollectionValueProvider(valores,System.Globalization.CultureInfo.InvariantCulture)};
             var request=(GuardarDatosFirmaAocrRequest)new System.Web.Mvc.DefaultModelBinder().BindModel(new System.Web.Mvc.ControllerContext(),contexto);
             Assert.IsTrue(contexto.ModelState.IsValid);Assert.AreEqual(new DateTime(2026,1,2),request.DatosDocumentales.PermisoCnacEmision);
             Assert.AreEqual("GERENTE",request.DatosDocumentales.GerenteOperaciones.Nombre);Assert.AreEqual("RT EAE",request.DatosDocumentales.RepresentanteTecnico.Nombre);Assert.AreEqual("LEGAL",request.DatosDocumentales.RepresentanteLegalEcuador.Nombre);
+            CollectionAssert.AreEqual(new[] { "R", "ET" }, request.DatosDocumentales.Estaciones[0].Codigos);
             Assert.AreEqual("ET",request.DatosDocumentales.Estaciones.Single(e=>e.EstacionId==37).Codigo);
             Assert.AreEqual("AOCR-2026-0007",GeneracionAOCRService.GenerarNumeroAOCR(7,new DateTime(2026,1,1)),"El helper de numeración anterior mantiene su contrato; no se usa para asignar el nuevo AOCR.");
         }
@@ -116,10 +151,14 @@ namespace AOCR.Tests.Integration
                     Assert.AreEqual(1,Regex.Matches(HttpUtility.HtmlDecode(body),Regex.Escape("[X]")).Count,"Se marca exactamente un tipo de trámite.");
                     StringAssert.Contains(body,"RTEAE");
                     if(vista=="AocrReconocimientoPdf") {StringAssert.Contains(body,"CNAC-PRUEBA-026");StringAssert.Contains(body,"02/01/2026");StringAssert.Contains(body,"04/03/2028");Assert.IsTrue(Regex.Matches(body,"06/05/2029").Count>=2);StringAssert.Contains(body,"LEGALECUADOR");StringAssert.Contains(body,"GERENTE");}
-                    else {StringAssert.Contains(body,"B767");StringAssert.Contains(body,"A320");StringAssert.Contains(body,">R<");StringAssert.Contains(body,">ET<");}
+                    else {StringAssert.Contains(body,"B767");StringAssert.Contains(body,"A320");StringAssert.Contains(body,">R, NR<");StringAssert.Contains(body,">ET<");}
                     var layout=File.ReadAllText(Path.Combine(root,"CapaPresentacion/Views/Shared/_PdfLayoutDGACAocr.cshtml"));layout=Regex.Replace(layout,@"\A@\{.*?\}","",RegexOptions.Singleline).Replace("@RenderSection(\"PdfHead\", required: false)",pagina.Output.ToString()).Replace("@RenderBody()",body);
                     var output=Path.Combine(root,"output/pdf/observaciones-19");Directory.CreateDirectory(output);var nombre=vista+"_"+tipo;var html=Path.Combine(output,nombre+".html");var pdf=Path.Combine(output,nombre+".pdf");File.WriteAllText(html,layout,Encoding.UTF8);
                     using(var proc=Process.Start(new ProcessStartInfo(Path.Combine(root,"CapaPresentacion/Rotativa/wkhtmltopdf.exe"),"--encoding utf-8 --enable-local-file-access --disable-smart-shrinking --page-size A4 --margin-top 0 --margin-bottom 0 --margin-left 0 --margin-right 0 \""+html+"\" \""+pdf+"\""){UseShellExecute=false,CreateNoWindow=true,RedirectStandardError=true})) {var error=proc.StandardError.ReadToEnd();Assert.IsTrue(proc.WaitForExit(30000));Assert.AreEqual(0,proc.ExitCode,error);}
+                    Assert.IsFalse(body.Contains("Otorgado en base al AOC No."));
+                    Assert.IsFalse(body.Contains("<div class=\"footerline\">"));
+                    Assert.IsFalse(body.Contains("<div class=\"topline\">"));
+                    StringAssert.Contains(body, "08/07/2031");
                     Assert.IsTrue(new FileInfo(pdf).Length>1000);
                 }
             }

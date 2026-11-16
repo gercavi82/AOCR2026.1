@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -155,6 +155,17 @@ namespace CapaPresentacion.Controllers
                 if (!puedeVer)
                 {
                     return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "No tiene permisos para ver los documentos de esta solicitud.");
+                }
+
+                if (esModoVerDocumentacion && new RevisionDocumentalService().ObtenerEstadoFaseDocumental(solicitudId).DocumentacionAprobada)
+                {
+                    // La aceptacion de fase se proyecta solo en consulta; no altera decisiones ni auditoria.
+                    foreach (var doc in documentos.Where(d => d != null))
+                    {
+                        var visible = (doc.EstadoRevisionVisible ?? string.Empty).ToUpperInvariant();
+                        if (visible == "PENDIENTE" || visible == "PENDIENTE_REVISION" || visible == "SOLO CONSULTA")
+                            doc.EstadoRevisionVisible = "ACEPTADO";
+                    }
                 }
 
                 var stats = CalcularEstadisticasDocumentos(documentos);
@@ -1289,6 +1300,8 @@ namespace CapaPresentacion.Controllers
 
         private static string ObtenerEstadoRevisionNormalizado(Documento documento)
         {
+            if (string.Equals(documento != null ? documento.EstadoRevisionVisible : null, "ACEPTADO", StringComparison.OrdinalIgnoreCase))
+                return "APROBADO";
             var decision = NormalizarDecisionRevision(documento != null ? documento.DecisionRevision : null);
             switch (decision)
             {

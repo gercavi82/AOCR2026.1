@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,9 +26,9 @@ namespace CapaPresentacion.Helpers
         {
             new TipoDocumentoOrdenDef("COMPROBANTE_PAGO", "Comprobante de pago", 1,
                 "COMPROBANTE_PAGO", "COMPROBANTE_DE_PAGO"),
-            new TipoDocumentoOrdenDef("SOLICITUD_INSPECCION_EXT", "Solicitud de inspecciones generada", 98,
+            new TipoDocumentoOrdenDef("SOLICITUD_INSPECCION_EXT", "Solicitud de inspecciones generada", 2,
                 "SOLICITUD_INSPECCION_EXT", "SOLICITUD_DE_INSPECCIONES", "SOLICITUD_INSPECCIONES"),
-            new TipoDocumentoOrdenDef("OFICIO_ACEPTACION_REVISION_DOCUMENTAL", "Oficio de aceptaciÃ³n y designaciÃ³n de inspector", 97,
+            new TipoDocumentoOrdenDef("OFICIO_ACEPTACION_REVISION_DOCUMENTAL", "Oficio de aceptaciÃ³n y designaciÃ³n de inspector", 1,
                 "OFICIO_ACEPTACION_REVISION_DOCUMENTAL", "OFICIO_REVISION_DOCUMENTAL"),
             new TipoDocumentoOrdenDef("SOLICITUD_INSPECCIONES_FIRMADA", "Solicitud de inspecciones firmada", 2,
                 "SOLICITUD_INSPECCIONES_FIRMADA", "SOLICITUD_DE_INSPECCIONES_FIRMADA"),
@@ -42,9 +42,9 @@ namespace CapaPresentacion.Helpers
                 "PERMISO_OPERACION_CNAC", "PERMISO_OPERACION"),
             new TipoDocumentoOrdenDef("COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "Copia certificada del poder del representante en Ecuador", 7,
                 "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "PODER_REPRESENTANTE_ECUADOR", "COPIA_CERTIFICADA_PODER_REPRESENTANTE", "PODER_REPRESENTANTE"),
-            new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 8,
+            new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 90,
                 "CERTIFICADO_AERONAVEGABILIDAD", "CERTIFICADO_AERONAVEGABILIDAD_AERONAVES_EAE"),
-            new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 9,
+            new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 91,
                 "CERTIFICADO_RUIDO_AERONAVES_EAE", "CERTIFICADO_RUIDO", "CERTIFICADO_RUIDO_AERONAVES")
         };
 

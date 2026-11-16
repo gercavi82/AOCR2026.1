@@ -17,6 +17,12 @@ namespace CapaModelo
         public int EstacionId { get; set; }
         public string EstacionCodigo { get; set; }
         public string Codigo { get; set; }
+        // Codigo se conserva para leer los JSON anteriores con una sola operacion.
+        public string[] Codigos
+        {
+            get { return (Codigo ?? string.Empty).Split(new[] { ',', ';', '/', ' ' }, StringSplitOptions.RemoveEmptyEntries); }
+            set { Codigo = value == null ? string.Empty : string.Join(", ", value); }
+        }
     }
 
     public sealed class DatosDocumentalesAocr

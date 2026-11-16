@@ -57,7 +57,10 @@ namespace CapaNegocio.Services
                 var real=vigentes.SingleOrDefault(e=>e.Id==op.EstacionId);
                 if(real==null){errores.Add("Estación ajena al trámite");continue;}
                 op.EstacionCodigo=real.EstacionCodigo; // Nunca confiar en el nombre o código remitido por el navegador.
-                if(!string.IsNullOrWhiteSpace(op.Codigo) && !new[]{"R","NR","RC","ET","A"}.Contains(op.Codigo))errores.Add("Código de operación inválido en "+real.EstacionCodigo);
+                var permitidos = new[] { "R", "NR", "RC", "ET", "A" };
+                var seleccionados = op.Codigos.Select(c => c.Trim().ToUpperInvariant()).Distinct().ToArray();
+                if (seleccionados.Any(c => !permitidos.Contains(c))) errores.Add("Código de operación inválido en " + real.EstacionCodigo);
+                else op.Codigo = string.Join(", ", permitidos.Where(seleccionados.Contains));
             }
             if(completo)foreach(var estacion in vigentes)if(!opciones.Any(o=>o!=null&&o.EstacionId==estacion.Id&&!string.IsNullOrWhiteSpace(o.Codigo)))errores.Add("Operación de estación "+estacion.EstacionCodigo);
             return errores.Distinct().ToList();

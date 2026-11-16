@@ -787,6 +787,7 @@ namespace CapaPresentacion.Services
             documento.Solicitud.Estaciones=estacionesDatos;
             documento.DatosDocumentales=datos;
             documento.EstadoOtorgante=datos.PaisBandera;
+            documento.EstadoExplotador=PrimerValorNoVacio(datos.PaisBandera, documento.Solicitud.Pais);
             documento.NombreExplotador=PrimerValorNoVacio(datos.Explotador.Nombre,documento.NombreExplotador);
             documento.DireccionExplotador=datos.Explotador.Direccion;documento.TelefonoExplotador=datos.Explotador.Telefono;documento.CorreoExplotador=datos.Explotador.Correo;
             documento.PuntoContactoEcuador=datos.RepresentanteLegalEcuador.Nombre;documento.ContactoDireccion=datos.RepresentanteLegalEcuador.Direccion;documento.ContactoTelefono=datos.RepresentanteLegalEcuador.Telefono;documento.ContactoCorreo=datos.RepresentanteLegalEcuador.Correo;

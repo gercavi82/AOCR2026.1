@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using CapaDatos.Constants;
@@ -50,6 +50,42 @@ namespace CapaNegocio.Services
             _auditoriaDao = auditoriaDao ?? new AuditoriaDAO();
             _catalogService = catalogService ?? new ListaVerificacionCatalogService();
             _resolverIdentidad = resolverIdentidad ?? (id => new InspectorIdentityService().ObtenerIdentidadInspector(id, null, null));
+        }
+
+        private void CompletarCabeceraDesdeSolicitud(ListaVerificacionOperacionalEae lista, int solicitudId)
+        {
+            if (lista.Finalizado || lista.FirmadoTecnico) return;
+            var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+            var datos = new CertificadoDAO().ObtenerDatosDocumentales(solicitudId);
+            var aeronaves = new AeronaveSolicitudDAO().ObtenerPorSolicitud(solicitudId);
+            CompletarDatosCabecera(lista, solicitud, datos, aeronaves);
+        }
+
+        public static void CompletarDatosCabecera(ListaVerificacionOperacionalEae lista, SolicitudAOCR solicitud,
+            DatosDocumentalesAocr datos, IEnumerable<AeronaveSolicitud> aeronaves)
+        {
+            if (lista == null || lista.Finalizado || lista.FirmadoTecnico) return;
+            Func<ContactoDocumentalAocr, string> contacto = c => c == null ? string.Empty :
+                string.Join(" | ", new[] { c.Nombre, c.Direccion, c.Telefono, c.Correo }.Where(v => !string.IsNullOrWhiteSpace(v)));
+            var baseOperaciones = string.Join(" | ", new[] {
+                contacto(datos != null ? datos.Explotador : null),
+                contacto(datos != null ? datos.GerenteOperaciones : null)
+            }.Where(v => !string.IsNullOrWhiteSpace(v)).Distinct());
+            if (!string.IsNullOrWhiteSpace(baseOperaciones)
+                && (string.IsNullOrWhiteSpace(lista.DireccionEstadoExplotador)
+                    || (solicitud != null && lista.DireccionEstadoExplotador == solicitud.Direccion)))
+                lista.DireccionEstadoExplotador = baseOperaciones;
+            if (string.IsNullOrWhiteSpace(lista.DireccionEstadoReconocimiento))
+            {
+                var rt = contacto(datos != null ? datos.RepresentanteTecnico : null);
+                if (string.IsNullOrWhiteSpace(rt)) rt = contacto(datos != null ? datos.RepresentanteLegalEcuador : null);
+                if (string.IsNullOrWhiteSpace(rt) && solicitud != null)
+                    rt = string.Join(" | ", new[] { solicitud.RepresentanteLegal, solicitud.CorreoRepresentanteTecnico }.Where(v => !string.IsNullOrWhiteSpace(v)));
+                lista.DireccionEstadoReconocimiento = rt;
+            }
+            if (string.IsNullOrWhiteSpace(lista.TiposAeronaves))
+                lista.TiposAeronaves = string.Join(", ", (aeronaves ?? Enumerable.Empty<AeronaveSolicitud>())
+                    .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Modelo)).Select(a => a.Modelo.Trim()).Distinct(StringComparer.OrdinalIgnoreCase));
         }
 
         #region Validaciones de Autorización Institucional (Segregación de Roles)
@@ -138,6 +174,8 @@ namespace CapaNegocio.Services
             var lvExistente = _lvDao.ObtenerUltimaPorInspeccion(inspeccionId, estacionId);
             if (lvExistente != null)
             {
+                if (!lvExistente.Finalizado && !lvExistente.FirmadoTecnico)
+                    CompletarCabeceraDesdeSolicitud(lvExistente, solicitudId);
                 AsegurarItemsDeserializados(lvExistente);
                 return lvExistente;
             }
@@ -179,7 +217,7 @@ namespace CapaNegocio.Services
                     EstadoLista = AocrEstadosListaVerificacion.Borrador,
                     NombreEae = solicitud?.NombreOperador ?? solicitud?.RazonSocial ?? string.Empty,
                     NumeroAocFechaValidez = solicitud?.NumeroAOC ?? string.Empty,
-                    DireccionEstadoExplotador = solicitud?.Direccion ?? string.Empty,
+                    DireccionEstadoExplotador = string.Empty,
                     DireccionEstadoReconocimiento = string.Empty,
                     TiposAeronaves = string.Empty,
                     TipoOperacion = solicitud?.TipoOperacion ?? "TRANSPORTE AÉREO",
@@ -195,6 +233,7 @@ namespace CapaNegocio.Services
                     FirmadoTecnico = false
                 };
 
+                CompletarCabeceraDesdeSolicitud(nueva, solicitudId);
                 var guardada = _lvDao.GuardarBorrador(nueva, usuarioId);
                 AsegurarItemsDeserializados(guardada);
 
