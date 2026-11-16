@@ -29,13 +29,13 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>11/16/2026 15:06:06</publishTime>
+      <publishTime>11/16/2026 15:35:14</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>11/16/2026 15:06:06</publishTime>
+      <publishTime>11/16/2026 15:35:14</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
       <publishTime>11/16/2026 08:44:57</publishTime>
@@ -44,19 +44,19 @@
       <publishTime>11/16/2026 08:44:57</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>11/16/2026 15:06:07</publishTime>
+      <publishTime>11/16/2026 15:35:15</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>11/16/2026 15:06:07</publishTime>
+      <publishTime>11/16/2026 15:35:15</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>11/16/2026 15:06:10</publishTime>
+      <publishTime>11/16/2026 15:35:18</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>11/16/2026 15:06:10</publishTime>
+      <publishTime>11/16/2026 15:35:18</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8129,7 +8129,7 @@
       <publishTime>06/05/2026 10:35:55</publishTime>
     </File>
     <File Include="Views/Dircav/Bandeja.cshtml">
-      <publishTime>11/13/2026 16:12:04</publishTime>
+      <publishTime>11/16/2026 15:26:11</publishTime>
     </File>
     <File Include="Views/Dircav/Detalle.cshtml">
       <publishTime>10/22/2026 16:43:08</publishTime>
@@ -8633,7 +8633,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>11/16/2026 15:07:09</publishTime>
+      <publishTime>11/16/2026 15:36:17</publishTime>
     </File>
   </ItemGroup>
 </Project>

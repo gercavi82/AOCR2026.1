@@ -348,6 +348,18 @@
                                         <a href="@Url.Action("Detalle", "Dircav", new { id = item.SolicitudId })" class="btn btn-sm btn-outline-primary me-1" title="Ver detalles del expediente">
                                             <i class="fas fa-search me-1"></i>Detalle
                                         </a>
+                                        @if (item.Estado.IndexOf("DEVUELTO", System.StringComparison.OrdinalIgnoreCase) < 0)
+                                        {
+                                            using (Html.BeginForm("RemitirAocrDirdac", "Dircav", FormMethod.Post, new { @class = "d-inline", data_confirm = "Remitir el AOCR vigente a DIRDAC para firma?" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("SolicitudId", item.SolicitudId)
+                                            @Html.Hidden("DocumentoId", item.DocumentoId)
+                                            @Html.Hidden("VersionAocrEsperada", item.VersionDocumento)
+                                            @Html.Hidden("VersionEsperada", item.VersionExpediente)
+                                            <button type="submit" class="btn btn-primary btn-sm btn-prevenir-doble"><i class="fas fa-paper-plane me-1"></i>Remitir a DIRDAC</button>
+                                        }
+                                        }
                                         @if (item.Estado.IndexOf("DEVUELTO", System.StringComparison.OrdinalIgnoreCase) >= 0)
                                         {
                                             <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalReRemitir" 
