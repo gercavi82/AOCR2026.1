@@ -90,7 +90,9 @@ namespace CapaPresentacion.Controllers
         // La decisión institucional final es exclusiva de DIRDAC/Dirección/Jefatura (más Administrador).
         // Inspector y Coordinador no deben tener acceso ni siquiera a nivel de atributo: el guard interno
         // EsRolDireccionOJefatura() ya los rechazaba, esto alinea la primera capa de autorización.
-        private const string ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL = ROLES_FIRMA_DIRDAC;
+        // Los filtros MVC deben reconocer los mismos alias DIRCAV/DCAV que la
+        // matriz central y la validacion del rol activo dentro de las acciones.
+        private const string ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL = ROLES_FIRMA_DIRDAC + ",DIRCAV,DCAV";
 
         // Seguridad: tamaño máximo permitido para PDF (10MB)
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;

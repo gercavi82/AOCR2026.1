@@ -98,7 +98,7 @@
                     <div class="firma-aocr__box-head">
                         <div>
                             <p class="firma-aocr__eyebrow">Datos obligatorios AOCR</p>
-                            <h2>Datos obligatorios pendientes</h2>
+                            <h2 class="h1 fw-bold">AOCR</h2>
                         </div>
                         <span class="firma-aocr__badge @(Model.DocumentoCompleto ? "is-success" : "is-warning")">
                             @(Model.DocumentoCompleto ? "Datos completos" : "Datos incompletos")
@@ -111,7 +111,7 @@
                         @Html.Partial("_DatosDocumentales",Model)
                         <div class="firma-aocr__form-grid">
                             <label class="firma-aocr__field">
-                                <span>Estado del explotador (pa?s) *</span>
+                                <span>Estado del explotador (pa&iacute;s) *</span>
                                 <input type="text" id="EstadoExplotador" name="EstadoExplotador" maxlength="100" value="@(Model.EstadoExplotador ?? "")" autocomplete="off" />
                             </label>
                             <label class="firma-aocr__field">

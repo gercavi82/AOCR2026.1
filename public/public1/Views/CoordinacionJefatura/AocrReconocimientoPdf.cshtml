@@ -49,7 +49,8 @@
         .field-space { min-height: 4.5mm; display: block; padding-top: .8mm; }
         .footer-sign { height: 22mm; }
         .footerline { position: absolute; left: 4mm; right: 4mm; bottom: 2mm; border-top: 1px solid #111; padding-top: .6mm; display: flex; justify-content: space-between; font-family: "Times New Roman", serif; font-style: italic; font-weight: 700; font-size: 8pt; }
-        .op-block { font-size: 5.95pt; line-height: 1.06; }
+        .op-block { font-size: 7pt; line-height: 1.15; }
+        .contact-name { font-size: 10pt; font-weight: 700; margin: 2mm 0; line-height: 1.15; }
         .op-block br { display: none; }
         .op-title { text-align: center; font-size: 8.8pt; line-height: 1.0; font-weight: 700; margin: 3mm 0; }
         .data-center { text-align: center; font-size: 8.8pt; font-weight: 700; margin: 2.2mm 0; line-height: 1.02; }
@@ -63,7 +64,6 @@
 }
 
 <div class="aocr-page">
-    <div class="topline"><span>RDAC 129</span><span>Direccion General de Aviacion Civil</span></div>
     <div class="official-box">
         <div class="title">
             RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS<br />
@@ -93,11 +93,9 @@
             <div class="cell" style="width:35%;">
                 <div class="section-head">AOCR #:</div>
                 <div class="field-space">@val(Model != null ? Model.NumeroAocr : null)</div>
-                <div class="xl">Otorgado en base al AOC No. @aocOriginal<br />emitido por @val(datos.PaisBandera)</div>
-                <div class="small">Issued based on the original AOC granted by (State of the Operator)</div>
                 <div class="section-head" style="margin-top:4mm;">Fecha de Vencimiento:</div>
                 <div class="small">/ Expiry date</div>
-                <div class="field-space">@aocVence</div>
+                <div class="field-space">@fecha(Model.FechaVencimiento)</div>
                 <div class="op-title">PUNTOS DE CONTACTO<br />OPERACIONALES:<br />/OPERATIONAL POINTS OF<br />CONTACT:</div>
                 <div class="op-block">
                     <div class="bold">La informacion de contacto donde se puede ubicar a las autoridades de gestion operacional sin demoras indebidas se proporciona en:</div>
@@ -105,12 +103,12 @@
                     <div><u><em>"Gerencia de Seguridad Operacional"</em></u></div>
                     <div><em>"Operational Safety Manage's office".</em></div>
                     <br />
-                    <div class="bold">@val(datos.GerenteOperaciones.Nombre)</div>
+                    <div class="contact-name">@val(datos.GerenteOperaciones.Nombre)</div>
                     <div><span class="bold">Direccion</span> /Address: @val(datos.GerenteOperaciones.Direccion)</div><br />
                     <div><span class="bold">Telefono:</span> /Telephone: @val(datos.GerenteOperaciones.Telefono)</div><br />
                     <div><span class="bold">Correo-e</span> /Email: @val(datos.GerenteOperaciones.Correo)</div><br />
                     <div><u><em><span class="bold">"Representante Tecnico"</span></em></u> / <em>"Technical Representative"</em></div>
-                    <div class="bold">@val(datos.RepresentanteTecnico.Nombre)</div>
+                    <div class="contact-name">@val(datos.RepresentanteTecnico.Nombre)</div>
                     <div><span class="bold">Direccion</span> /Address: @val(datos.RepresentanteTecnico.Direccion)</div><br />
                     <div><span class="bold">Telefono</span> /Telephone: @val(datos.RepresentanteTecnico.Telefono)</div><br />
                     <div><span class="bold">Correo e</span> /Email: @val(datos.RepresentanteTecnico.Correo)</div>
@@ -156,7 +154,7 @@
         </div>
         <div class="row footer-sign">
             <div class="cell" style="width:35%;">
-                <div class="section-head">Fecha / Date: @fecha(fechaEmision)</div>
+                <div class="section-head">Fecha de @CapaNegocio.Services.DatosDocumentalesAocrReglas.TipoTramite(solicitud.TipoSolicitud): @fecha(fechaEmision)</div>
                 <div style="margin-top:2mm;">@(solicitud.TipoSolicitud==1?"[X]":"[ ]") Emisión / Issue</div>
                 <div>@(solicitud.TipoSolicitud==2?"[X]":"[ ]") Renovación / Renewal</div>
                 <div>@(solicitud.TipoSolicitud==3?"[X]":"[ ]") Modificación / Modification</div>
@@ -170,5 +168,4 @@
             </div>
         </div>
     </div>
-    <div class="footerline"><span>Enmienda No.: 1</span><span>9</span><span>Actualizada: xxx</span></div>
 </div>

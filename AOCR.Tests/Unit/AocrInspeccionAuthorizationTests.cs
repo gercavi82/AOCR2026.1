@@ -8,6 +8,31 @@ namespace AOCR.Tests.Unit
     public class AocrInspeccionAuthorizationTests
     {
         [DataTestMethod]
+        [DataRow("RevisionDireccion")]
+        [DataRow("VerInformeFirmadoInspectorDireccion")]
+        [DataRow("DescargarInformeFirmadoInspectorDireccion")]
+        [DataRow("AprobarDecisionFinalDireccion")]
+        [DataRow("DevolverDecisionFinalDireccion")]
+        public void FiltroMvc_InformeReconoceRolDircavCanonico(string accion)
+        {
+            var metodo = typeof(CapaPresentacion.Controllers.InspeccionController).GetMethod(accion);
+            Assert.IsNotNull(metodo);
+            var filtros = metodo.GetCustomAttributes(typeof(CapaPresentacion.Filters.AocrAuthorizeAttribute), true);
+            var encontroFiltroRoles = false;
+            foreach (CapaPresentacion.Filters.AocrAuthorizeAttribute filtro in filtros)
+            {
+                if (string.IsNullOrWhiteSpace(filtro.Roles)) continue;
+                encontroFiltroRoles = true;
+                var roles = new List<string>(filtro.Roles.Split(','));
+                CollectionAssert.Contains(roles, "DIRCAV", "El filtro MVC no debe rechazar un rol permitido por la matriz central.");
+                CollectionAssert.Contains(roles, "DCAV");
+                CollectionAssert.DoesNotContain(roles, "Inspector");
+                CollectionAssert.DoesNotContain(roles, "COORDINADOR");
+            }
+            Assert.IsTrue(encontroFiltroRoles);
+        }
+
+        [DataTestMethod]
         [DataRow("DIRCAV")]
         [DataRow("DIRDAC")]
         public void Autoridad_ConsultaInspeccionExistenteSinPermisoDeEditar(string rol)
