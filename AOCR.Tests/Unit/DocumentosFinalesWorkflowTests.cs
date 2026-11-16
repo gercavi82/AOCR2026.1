@@ -12,6 +12,25 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DocumentosFinalesWorkflowTests
     {
+        [TestMethod] public void BandejaRemisionDircav_EntregaVersionesYClFirmadaSinRemitir()
+        {
+            var filas = new DircavBandejaService().ObtenerExpedientesPendientesRemisionDirdac();
+            Assert.IsNotNull(filas);
+            if (filas.Count == 0) { Assert.Inconclusive("No hay expedientes listos para remision."); return; }
+            var dao = new DocumentosFinalesWorkflowDAO();
+            foreach (var fila in filas)
+            {
+                Assert.IsTrue(fila.DocumentoId > 0 && fila.VersionDocumento > 0 && fila.VersionExpediente > 0);
+                var aocr = dao.ObtenerVigente(fila.SolicitudId, "RECONOCIMIENTO");
+                var cl = dao.ObtenerVigente(fila.SolicitudId, "CONDICIONES_LIMITACIONES");
+                Assert.AreEqual(aocr.CodigoDocumento, fila.DocumentoId);
+                Assert.AreEqual(aocr.VersionDocumento, fila.VersionDocumento);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(cl.RutaPdfFirmado));
+                Assert.IsFalse(string.IsNullOrWhiteSpace(cl.HashPdfFirmado));
+                Assert.AreEqual(AocrEstadosProceso.CondicionesFirmadasDcav, cl.Estado);
+            }
+        }
+
         [TestMethod] public void Dircav_ConsultaAocrRemitidoSinPermisoDeFirmarlo()
         {
             var permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("DIRCAV", "DIRCAV");

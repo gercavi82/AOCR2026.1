@@ -227,6 +227,41 @@ WHERE pe.activo=TRUE AND s.codigo_solicitud=@solicitud ORDER BY pe.id DESC LIMIT
             using(var cn=new NpgsqlConnection(_connectionString))using(var cmd=new NpgsqlCommand(sql,cn)){cmd.Parameters.AddWithValue("@solicitud",solicitudId);cn.Open();using(var rd=cmd.ExecuteReader())return rd.Read()?MapBandeja(rd):null;}
         }
 
+        public List<BandejaAocrDirdacItemViewModel> ListarPendientesRemisionDircav()
+        {
+            const string sql = @"SELECT s.codigo_solicitud,
+COALESCE(NULLIF(s.numero_solicitud,''),s.codigo_solicitud::text) numero_solicitud,
+COALESCE(NULLIF(s.razon_social,''),NULLIF(s.nombre_operador,''),'No registrada') compania,
+a.codigo_documento,a.version_documento,a.hash_pdf,pe.version version_expediente,pe.fecha_estado,
+COALESCE(c.usuario_nombre,'DIRCAV') usuario_remitente,pe.estado_actual,
+GREATEST(0,FLOOR(EXTRACT(EPOCH FROM (NOW()-pe.fecha_estado))/60))::int minutos_pendiente
+FROM public.aocr_proceso_estado pe
+JOIN public.aocr_tbsolicitud s ON s.codigo_solicitud=pe.solicitud_id
+JOIN public.aocr_tbdocumento_generado a ON a.codigo_solicitud=s.codigo_solicitud
+ AND a.vigente=TRUE AND UPPER(a.tipo_documento)='RECONOCIMIENTO'
+JOIN public.aocr_tbdocumento_generado c ON c.codigo_solicitud=s.codigo_solicitud
+ AND c.vigente=TRUE AND UPPER(c.tipo_documento)='CONDICIONES_LIMITACIONES'
+WHERE pe.activo=TRUE
+AND pe.estado_actual IN ('CL_FIRMADA_DIRCAV','PENDIENTE_REVISION_FINAL_DIRCAV',
+ 'DOCUMENTOS_FINALES_POR_GENERAR','DOCUMENTOS_FINALES_EN_FIRMA','DEVUELTO_DIRCAV')
+AND c.estado IN ('CL_FIRMADA_DIRCAV','CONDICIONES_FIRMADAS_DCAV')
+AND UPPER(COALESCE(c.rol_firma,'')) IN ('DIRCAV','DCAV')
+AND NULLIF(TRIM(c.hash_pdf_firmado),'') IS NOT NULL
+AND NULLIF(TRIM(c.ruta_pdf_firmado),'') IS NOT NULL
+AND NULLIF(TRIM(a.hash_pdf),'') IS NOT NULL AND NULLIF(TRIM(a.ruta_documento),'') IS NOT NULL
+AND COALESCE(a.estado,'') NOT IN ('AOCR_PENDIENTE_DIRDAC','AOCR_FIRMADA_DIRDAC')
+ORDER BY pe.fecha_estado, s.codigo_solicitud;";
+            var items = new List<BandejaAocrDirdacItemViewModel>();
+            using (var cn = new NpgsqlConnection(_connectionString))
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cn.Open();
+                using (var rd = cmd.ExecuteReader())
+                    while (rd.Read()) items.Add(MapBandeja(rd));
+            }
+            return items;
+        }
+
         private const string BandejaSql = @"SELECT s.codigo_solicitud,COALESCE(NULLIF(s.numero_solicitud,''),s.codigo_solicitud::text) numero_solicitud,
 COALESCE(NULLIF(s.razon_social,''),NULLIF(s.nombre_operador,''),'No registrada') compania,
 a.codigo_documento,a.version_documento,a.hash_pdf,pe.version version_expediente,pe.fecha_estado,

@@ -103,13 +103,9 @@ namespace CapaNegocio.Services
         }
 
         // 6. Expedientes pendientes de remisión a DIRDAC
-        public List<SolicitudAOCR> ObtenerExpedientesPendientesRemisionDirdac()
+        public List<BandejaAocrDirdacItemViewModel> ObtenerExpedientesPendientesRemisionDirdac()
         {
-            var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
-            return solicitudes.Where(s =>
-                string.Equals(s.Estado, AocrEstadosProceso.ClFirmadaDircav, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(s.Estado, AocrEstadosProceso.CondicionesFirmadasDcav, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
+            return new AocrFinalWorkflowDAO().ListarPendientesRemisionDircav();
         }
 
         public int ContarExpedientesPendientesRemisionDirdac()

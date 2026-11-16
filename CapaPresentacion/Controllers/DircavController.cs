@@ -972,7 +972,13 @@ namespace CapaPresentacion.Controllers
                 TienePermiso = SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoRemitirDirdac, new[] { rol })
             };
             request.BaseUrl = Request == null || Request.Url == null ? string.Empty : Request.Url.GetLeftPart(UriPartial.Authority) + Url.Content("~").TrimEnd('/');
-            return JsonWorkflow(_finalWorkflowService.RemitirAocrDirdac(request));
+            var resultado = _finalWorkflowService.RemitirAocrDirdac(request);
+            if (Request != null && !Request.IsAjaxRequest())
+            {
+                TempData[resultado.Exito ? "Success" : "Error"] = resultado.Mensaje;
+                return RedirectToAction("Bandeja", new { tab = "remision" });
+            }
+            return JsonWorkflow(resultado);
         }
 
         [HttpPost]
