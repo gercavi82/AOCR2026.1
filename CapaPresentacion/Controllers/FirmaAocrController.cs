@@ -541,7 +541,9 @@ namespace CapaPresentacion.Controllers
 
                 if (!FirmaAocrWorkflowService.InformesAprobados(contexto))
                 {
-                    return JsonError(409, "El informe tecnico no esta aprobado por Direccion.", id);
+                    string motivoInforme;
+                    new AocrFlujoValidacionService().PuedePrepararDocumentosFinales(id, out motivoInforme, true);
+                    return JsonError(409, motivoInforme, id);
                 }
 
                 var archivoCertificado = request.CertificadoDigital;

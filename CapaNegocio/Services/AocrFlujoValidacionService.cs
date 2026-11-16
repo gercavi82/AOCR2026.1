@@ -71,7 +71,15 @@ namespace CapaNegocio.Services
                     if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion))) return false;
                 }
                 foreach (var estacion in estacionesInspeccion)
-                    if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion, estacion.Id))) return false;
+                {
+                    if (!cumple(InformeDao.ObtenerUltimoPorInspeccion(inspeccion.CodigoInspeccion, estacion.Id)))
+                    {
+                        motivo = requiereAprobacion
+                            ? "El informe de la estacion " + estacion.EstacionCodigo + " debe estar finalizado, firmado y aprobado antes de firmar los documentos finales."
+                            : "Debe finalizar y firmar el informe satisfactorio de la estacion " + estacion.EstacionCodigo + ".";
+                        return false;
+                    }
+                }
             }
             motivo = string.Empty;
             return true;

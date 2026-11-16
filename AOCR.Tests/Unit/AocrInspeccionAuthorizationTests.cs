@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CapaNegocio.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -7,6 +8,23 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class AocrInspeccionAuthorizationTests
     {
+        [TestMethod]
+        public void BandejaIncluyeInformesPendientesAunqueCambieEstadoCentral()
+        {
+            var dao = new CapaDatos.DAOs.InspeccionInformeDAO();
+            var inspecciones = new CapaDatos.DAOs.InspeccionDAO().ListarTodas();
+            var esperados = inspecciones.SelectMany(i => dao.ListarUltimosPorEstacion(i.CodigoInspeccion))
+                .Where(i => i.Finalizado && i.FirmadoInspector && !i.FirmadoDirdac
+                    && !string.IsNullOrWhiteSpace(i.RutaDocumentoFirmado)
+                    && string.Equals(i.Resultado, "SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase)
+                    && new[] { "PENDIENTE_REVISION_INFORME_DCAV", "PENDIENTE_REVISION_INFORME_DIRDAC" }.Contains(i.EstadoInforme))
+                .Select(i => i.CodigoInforme).ToList();
+            if (esperados.Count == 0) { Assert.Inconclusive("No hay informes pendientes para verificar la bandeja."); return; }
+            var listados = dao.ListarPendientesRevisionInformeDirdac().Select(i => i.CodigoInforme).ToList();
+            foreach (var id in esperados)
+                CollectionAssert.Contains(listados, id, "Un informe pendiente no debe desaparecer al aprobar otra estacion.");
+        }
+
         private sealed class ContextoPrincipal : System.Web.HttpContextBase
         {
             public override System.Security.Principal.IPrincipal User { get; set; }
