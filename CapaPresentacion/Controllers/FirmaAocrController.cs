@@ -696,7 +696,9 @@ namespace CapaPresentacion.Controllers
             var documentoGenerado = ObtenerDocumentoGeneradoPorTipo(contexto, tipoDocumento);
             var coordinadorRevisor = FirmaAocrActiveRoleViewPolicy.PuedeConsultarPaqueteCoordinador(
                 ObtenerPermisosRolActivo(), documentoGenerado);
-            if (!inspectorAsignado && !coordinadorRevisor && (!EsFirmanteActivo(tipoDocumento) || !_authorizationService.UsuarioPuedeFirmar(User, tipoDocumento)))
+            var dircavRevisor = FirmaAocrActiveRoleViewPolicy.PuedeConsultarDocumentoDircav(
+                ObtenerPermisosRolActivo(), documentoGenerado);
+            if (!inspectorAsignado && !coordinadorRevisor && !dircavRevisor && (!EsFirmanteActivo(tipoDocumento) || !_authorizationService.UsuarioPuedeFirmar(User, tipoDocumento)))
                 return new HttpStatusCodeResult(403, "No esta autorizado para visualizar este tipo de documento.");
 
             var firma = ObtenerFirmaPorTipo(contexto, tipoDocumento);

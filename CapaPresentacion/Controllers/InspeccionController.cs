@@ -9957,6 +9957,8 @@ namespace CapaPresentacion.Controllers
                 if (User.IsInRole(ROL_DIRECTOR)) roles.Add(ROL_DIRECTOR);
                 if (User.IsInRole(ROL_DIRECTOR_GENERAL)) roles.Add(ROL_DIRECTOR_GENERAL);
                 if (User.IsInRole(ROL_DIRDAC)) roles.Add(ROL_DIRDAC);
+                if (User.IsInRole(ROL_DIRCAV)) roles.Add(ROL_DIRCAV);
+                if (User.IsInRole("DCAV")) roles.Add("DCAV");
                 if (User.IsInRole(ROL_DIRECTOR_CERTIFICACIONES_DCAV)) roles.Add(ROL_DIRECTOR_CERTIFICACIONES_DCAV);
                 if (User.IsInRole(ROL_LEGAL)) roles.Add(ROL_LEGAL);
                 if (User.IsInRole(ROL_COORD_LEGAL)) roles.Add(ROL_COORD_LEGAL);

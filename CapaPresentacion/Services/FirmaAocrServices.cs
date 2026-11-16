@@ -135,6 +135,12 @@ namespace CapaPresentacion.Services
     /// </summary>
     public static class FirmaAocrActiveRoleViewPolicy
     {
+        public static bool PuedeConsultarDocumentoDircav(SidebarPermissionSnapshot permisos, AocrDocumentoGenerado documento)
+        {
+            return permisos != null && permisos.EsDcavRol
+                && documento != null && documento.Bloqueado;
+        }
+
         public static bool PuedeConsultarPaqueteCoordinador(SidebarPermissionSnapshot permisos, AocrDocumentoGenerado documento)
         {
             return permisos != null && permisos.EsCoordinadorRol

@@ -12,6 +12,20 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DocumentosFinalesWorkflowTests
     {
+        [TestMethod] public void Dircav_ConsultaAocrRemitidoSinPermisoDeFirmarlo()
+        {
+            var permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("DIRCAV", "DIRCAV");
+            var documento = new AocrDocumentoGenerado { TipoDocumento = "RECONOCIMIENTO", Bloqueado = true, Estado = AocrEstadosProceso.AocrListoParaFirma };
+            Assert.IsTrue(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarDocumentoDircav(permisos, documento));
+            var usuario = new System.Security.Principal.GenericPrincipal(new System.Security.Principal.GenericIdentity("DIRCAV"), new[] { "DIRCAV" });
+            Assert.IsFalse(new CapaPresentacion.Services.FirmaAocrAuthorizationService().UsuarioPuedeFirmar(usuario, "RECONOCIMIENTO"));
+            documento.Bloqueado = false;
+            Assert.IsFalse(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarDocumentoDircav(permisos, documento));
+            documento.Bloqueado = true;
+            permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("FINANCIERO", "FINANCIERO");
+            Assert.IsFalse(CapaPresentacion.Services.FirmaAocrActiveRoleViewPolicy.PuedeConsultarDocumentoDircav(permisos, documento));
+        }
+
         [TestMethod] public void Coordinador_ConsultaSoloDocumentosRemitidosParaSuRevision()
         {
             var permisos = CapaPresentacion.Helpers.SidebarPermissionHelper.Resolve("COORDINADOR", "COORDINADOR");

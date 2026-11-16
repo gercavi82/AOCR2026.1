@@ -7,6 +7,31 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class AocrInspeccionAuthorizationTests
     {
+        private sealed class ContextoPrincipal : System.Web.HttpContextBase
+        {
+            public override System.Security.Principal.IPrincipal User { get; set; }
+        }
+
+        [DataTestMethod]
+        [DataRow("DIRCAV")]
+        [DataRow("DCAV")]
+        public void ConsultaLv_ReconoceRolCanonicoSinPermisoDeOperacion(string rol)
+        {
+            // La deteccion de rol solo usa HttpContext: no inicializar conexiones AS400.
+            var controller = (CapaPresentacion.Controllers.InspeccionController)System.Runtime.Serialization.FormatterServices
+                .GetUninitializedObject(typeof(CapaPresentacion.Controllers.InspeccionController));
+            var http = new ContextoPrincipal {
+                User = new System.Security.Principal.GenericPrincipal(new System.Security.Principal.GenericIdentity("director"), new[] { rol })
+            };
+            controller.ControllerContext = new System.Web.Mvc.ControllerContext(http, new System.Web.Routing.RouteData(), controller);
+            var metodo = controller.GetType().GetMethod("ObtenerRolActual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var detectado = (string)metodo.Invoke(controller, null);
+            Assert.AreEqual(rol, detectado);
+            var service = new ListaVerificacionService();
+            Assert.IsTrue(service.EsRolAutorizadoLectura(detectado));
+            Assert.IsFalse(service.EsRolAutorizadoOperacion(detectado));
+        }
+
         [DataTestMethod]
         [DataRow("RevisionDireccion")]
         [DataRow("VerInformeFirmadoInspectorDireccion")]
