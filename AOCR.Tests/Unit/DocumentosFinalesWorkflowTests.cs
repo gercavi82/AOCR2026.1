@@ -12,6 +12,36 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DocumentosFinalesWorkflowTests
     {
+        [TestMethod, TestCategory("Integration")]
+        public void FirmaDirdac_InsertCompatibleConIndiceRealSinGuardarFirma()
+        {
+            var source = Read("CapaDatos/DAOs/AocrFinalWorkflowDAO.cs");
+            var match = System.Text.RegularExpressions.Regex.Match(source, "const string firma = @\"(.*?)\";",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+            Assert.IsTrue(match.Success);
+            using (var cn = CapaDatos.DAOs.ConexionDAO.CrearConexion())
+            using (var cmd = new Npgsql.NpgsqlCommand("EXPLAIN " + match.Groups[1].Value, cn))
+            {
+                cmd.Parameters.AddWithValue("solicitud", 1);
+                cmd.Parameters.AddWithValue("inspeccion", 1);
+                cmd.Parameters.AddWithValue("nombre", "VALIDACION_NO_EJECUTADA.pdf");
+                cmd.Parameters.AddWithValue("ruta", "VALIDACION_NO_EJECUTADA.pdf");
+                cmd.Parameters.AddWithValue("hash", new string('0', 64));
+                cmd.Parameters.AddWithValue("bytes", 1L);
+                cmd.Parameters.AddWithValue("sujeto", "VALIDACION");
+                cmd.Parameters.AddWithValue("firmante", "VALIDACION");
+                cmd.Parameters.AddWithValue("cargo", "VALIDACION");
+                cmd.Parameters.AddWithValue("usuario", 1);
+                cmd.Parameters.AddWithValue("usuario_nombre", "VALIDACION");
+                cmd.Parameters.AddWithValue("version", 1);
+                cn.Open();
+                var plan = new System.Text.StringBuilder();
+                using (var reader = cmd.ExecuteReader())
+                    while (reader.Read()) plan.AppendLine(reader.GetString(0));
+                StringAssert.Contains(plan.ToString(), "ux_aocr_firma_documento_evidencia");
+            }
+        }
+
         [TestMethod] public void BandejaRemisionDircav_EntregaVersionesYClFirmadaSinRemitir()
         {
             var filas = new DircavBandejaService().ObtenerExpedientesPendientesRemisionDirdac();

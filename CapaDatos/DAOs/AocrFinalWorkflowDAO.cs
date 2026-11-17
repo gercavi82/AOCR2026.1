@@ -121,7 +121,8 @@ namespace CapaDatos.DAOs
  fecha_firma,codigo_usuario,usuario_nombre,created_at,estado_documento,version)
 VALUES(@solicitud,NULLIF(@inspeccion,0),'RECONOCIMIENTO',@nombre,@ruta,@hash,@bytes,'DIRDAC',
  @sujeto,@firmante,@cargo,NOW(),@usuario,@usuario_nombre,NOW(),'AOCR_FIRMADA_DIRDAC',@version)
-ON CONFLICT (codigo_solicitud,UPPER(tipo_documento),version) DO NOTHING;";
+ON CONFLICT (codigo_solicitud,UPPER(tipo_documento),hash_documento)
+WHERE NULLIF(TRIM(hash_documento),'') IS NOT NULL DO NOTHING;";
                 using (var cmd = new NpgsqlCommand(firma, cn, tx))
                 {
                     cmd.Parameters.AddWithValue("@solicitud", request.SolicitudId); cmd.Parameters.AddWithValue("@inspeccion", actual.InspeccionId);

@@ -626,6 +626,8 @@ namespace CapaPresentacion.Controllers
                             TienePermiso = CapaNegocio.SeguridadBL.UsuarioTienePermiso(codigoUsuario, AocrFinalWorkflowService.PermisoFirmarAocr, new[] { rolActivo })
                         }
                     });
+                    if (!resultadoAc11.Exito)
+                        return JsonError(resultadoAc11.HttpStatusCode > 0 ? resultadoAc11.HttpStatusCode : 500, resultadoAc11.Mensaje, id);
                     finalizacion = new DocumentosFinalesResultado { Exitoso=resultadoAc11.Exito,Finalizado=false,Mensaje=resultadoAc11.Mensaje,EstadoExpediente=resultadoAc11.EstadoNuevo,EstadoAocr=AocrEstadosProceso.AocrFirmadaDirdac };
                 }
                 else

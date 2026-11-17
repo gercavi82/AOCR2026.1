@@ -237,7 +237,20 @@ namespace CapaNegocio.Services
             try { return operacion(); }
             catch (UnauthorizedAccessException ex) { return AocrWorkflowResult.Error(403, "ACCESO_DENEGADO", ex.Message); }
             catch (InvalidOperationException ex) { return AocrWorkflowResult.Error(409, "CONFLICTO", ex.Message); }
-            catch (Exception) { return AocrWorkflowResult.Error(500, "ERROR_INTERNO", "No fue posible completar la operación; la transacción fue revertida."); }
+            catch (Exception ex)
+            {
+                var referencia = "AC11-" + Guid.NewGuid().ToString("N").Substring(0, 12);
+                try
+                {
+                    CapaNegocio.LogBL.RegistrarError("[AC11][WORKFLOW_ERROR] Referencia=" + referencia,
+                        ex.ToString(), "AocrFinalWorkflowService");
+                    CapaDatos.Services.LoggingServiceFactory.Create().LogError(ex,
+                        new CapaDatos.Services.LogContext { CorrelationId = referencia, ErrorCode = "AC11_WORKFLOW_ERROR" });
+                }
+                catch { /* El registro no debe ocultar el error original. */ }
+                return AocrWorkflowResult.Error(500, "ERROR_INTERNO",
+                    "No fue posible completar la operación; la transacción fue revertida. Referencia: " + referencia + ".");
+            }
         }
 
         private static bool EsSha256(string value)
