@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -566,7 +566,7 @@ namespace CapaNegocio.Services
                         var detalleFont = new Font(baseNormal, esAocr ? 5.2f : (esCertificado ? 5.9f : 8.5f), Font.NORMAL, BaseColor.BLACK);
 
                         var ct = new ColumnText(canvas);
-                        ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.8f : (esCertificado ? 7.2f : 12f), Element.ALIGN_LEFT);
+                        ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 9f : (esCertificado ? 7.2f : 12f), Element.ALIGN_LEFT);
                         var tituloBloque = ObtenerTituloBloqueFirma(rolFirmante);
                         if (!string.IsNullOrWhiteSpace(tituloBloque))
                         {

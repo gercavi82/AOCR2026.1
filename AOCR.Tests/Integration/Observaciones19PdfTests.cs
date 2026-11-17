@@ -39,6 +39,53 @@ namespace AOCR.Tests.Integration
     [TestClass]
     public class Observaciones19PdfTests
     {
+        private sealed class TextoVisibleFirma : iTextSharp.text.pdf.parser.ITextExtractionStrategy
+        {
+            public readonly List<Tuple<iTextSharp.text.Rectangle, string>> Fragmentos = new List<Tuple<iTextSharp.text.Rectangle, string>>();
+            public void BeginTextBlock() { }
+            public void EndTextBlock() { }
+            public void RenderImage(iTextSharp.text.pdf.parser.ImageRenderInfo info) { }
+            public string GetResultantText() { return string.Empty; }
+            public void RenderText(iTextSharp.text.pdf.parser.TextRenderInfo info)
+            {
+                if (string.IsNullOrWhiteSpace(info.GetText())) return;
+                var superior = info.GetAscentLine();
+                var inferior = info.GetDescentLine();
+                var rect = new iTextSharp.text.Rectangle(inferior.GetStartPoint()[0], inferior.GetStartPoint()[1],
+                    superior.GetEndPoint()[0], superior.GetEndPoint()[1]);
+                if (rect.Height > 2f) Fragmentos.Add(Tuple.Create(rect, info.GetText()));
+            }
+        }
+
+        private static void ValidarEspacioFirmaYCrearVistaPrevia(string pdf, string vista, int tipo)
+        {
+            var bytes = File.ReadAllBytes(pdf);
+            using (var reader = new iTextSharp.text.pdf.PdfReader(bytes))
+            {
+                Assert.AreEqual(1, reader.NumberOfPages);
+                var ancla = PdfTextAnchorLocator.BuscarAnclaPorRol(reader, "AOCR_FIRMANTE");
+                Assert.IsNotNull(ancla, "Debe existir un espacio reservado para el sello.");
+                var texto = new TextoVisibleFirma();
+                new iTextSharp.text.pdf.parser.PdfReaderContentParser(reader).ProcessContent(ancla.Pagina, texto);
+                var firma = ancla.RectanguloFirma;
+                foreach (var fragmento in texto.Fragmentos)
+                {
+                    var r = fragmento.Item1;
+                    Assert.IsFalse(r.Left < firma.Right && r.Right > firma.Left && r.Bottom < firma.Top && r.Top > firma.Bottom,
+                        "La firma se superpone al texto: " + fragmento.Item2);
+                }
+            }
+            if (tipo != 1) return;
+            var estampar = typeof(FirmaDigitalService).GetMethod("EstamparBloqueFirmaVisual",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var muestra = (byte[])estampar.Invoke(null, new object[] { bytes, "VISTA PREVIA SIN VALIDEZ",
+                "TITULAR DEL CERTIFICADO DE PRUEBA", "AOCR_FIRMANTE", new DateTime(2026, 11, 17, 15, 0, 0),
+                null, "VISTA PREVIA", "PRUEBA", "CERTIFICADO DE PRUEBA" });
+            var destino = Path.Combine(Ac09InformeTecnicoTests.Root(), "output/pdf/firma-vista-previa");
+            Directory.CreateDirectory(destino);
+            File.WriteAllBytes(Path.Combine(destino, vista + "_firma_vista_previa.pdf"), muestra);
+        }
+
         [DataTestMethod]
         [DataRow("DGAC-GOP-2026-AOCR003", "DGAC-129-QTR-003")]
         [DataRow("AOCR003", "DGAC-129-QTR-003")]
@@ -160,6 +207,7 @@ namespace AOCR.Tests.Integration
                     Assert.IsFalse(body.Contains("<div class=\"topline\">"));
                     StringAssert.Contains(body, "08/07/2031");
                     Assert.IsTrue(new FileInfo(pdf).Length>1000);
+                    ValidarEspacioFirmaYCrearVistaPrevia(pdf, vista, tipo);
                 }
             }
         }
