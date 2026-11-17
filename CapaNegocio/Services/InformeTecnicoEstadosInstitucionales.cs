@@ -63,6 +63,13 @@ namespace CapaNegocio.Services
                 && PendientesRevisionDireccion.Contains(token);
         }
 
+        public static bool EstaPendienteRevision(CapaModelo.InspeccionInformeTecnico informe)
+        {
+            return informe != null && informe.Finalizado && informe.FirmadoInspector && !informe.FirmadoDirdac
+                && !string.IsNullOrWhiteSpace(informe.RutaDocumentoFirmado)
+                && PuedeRevisarDireccion(informe.EstadoInforme);
+        }
+
         public static bool FueEnviadoDireccion(string estado)
         {
             var token = NormalizarToken(estado);

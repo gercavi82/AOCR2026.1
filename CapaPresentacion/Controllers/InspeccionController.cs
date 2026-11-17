@@ -1240,6 +1240,7 @@ namespace CapaPresentacion.Controllers
                 _logger.LogInfo("[INFTEC_DIR][BANDEJA_IN] Usuario=" + ObtenerUsuarioActual() + "; Rol=" + ObtenerRolActual() + ";");
 
                 var pendientes = (_informeDAO.ListarPendientesRevisionInformeDirdac() ?? new List<InspeccionInformeTecnico>())
+                    .Where(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision)
                     .Select(informe =>
                     {
                         var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
@@ -4583,6 +4584,7 @@ namespace CapaPresentacion.Controllers
                 + "; Usuario=" + usuarioActual
                 + ";");
 
+            SidebarMenuBuilder.InvalidarContadores(Session);
             TempData[resultadoSincronizacionAocr.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
                 resultadoSincronizacionAocr.Mensaje,
                 resultadoSincronizacionAocr.Exitoso

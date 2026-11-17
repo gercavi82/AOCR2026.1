@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
@@ -12,6 +13,59 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class DocumentosFinalesWorkflowTests
     {
+        [DataTestMethod]
+        [DataRow("PENDIENTE_REVISION_INFORME_DCAV", true)]
+        [DataRow("PENDIENTE_REVISION_INFORME_DIRDAC", true)]
+        [DataRow("APROBADO_DIRECCION", false)]
+        [DataRow("APROBADO_DIRDAC", false)]
+        [DataRow("INFORME_TECNICO_APROBADO_DIRDAC", false)]
+        [DataRow("INFORME_TECNICO_APROBADO_DCAV", false)]
+        [DataRow("DEVUELTO_DIRECCION", false)]
+        public void InformeAprobado_NoSeCuentaNiPermiteNuevaDecision(string estado, bool pendiente)
+        {
+            var informe = new InspeccionInformeTecnico {
+                Finalizado = true, FirmadoInspector = true, FirmadoDirdac = false,
+                RutaDocumentoFirmado = "informe-firmado.pdf", EstadoInforme = estado
+            };
+            Assert.AreEqual(pendiente, InformeTecnicoEstadosInstitucionales.EstaPendienteRevision(informe));
+            informe.RutaDocumentoFirmado = null;
+            Assert.IsFalse(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision(informe));
+        }
+
+        [TestMethod]
+        public void EstacionesIndependientes_SoloQuedaPendienteLaQueNoFueAprobada()
+        {
+            var quito = new InspeccionInformeTecnico { Finalizado = true, FirmadoInspector = true,
+                RutaDocumentoFirmado = "quito.pdf", EstadoInforme = "INFORME_TECNICO_APROBADO_DIRDAC" };
+            var guayaquil = new InspeccionInformeTecnico { Finalizado = true, FirmadoInspector = true,
+                RutaDocumentoFirmado = "guayaquil.pdf", EstadoInforme = "PENDIENTE_REVISION_INFORME_DCAV" };
+            Assert.IsFalse(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision(quito));
+            Assert.IsTrue(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision(guayaquil));
+            guayaquil.EstadoInforme = "INFORME_TECNICO_APROBADO_DIRDAC";
+            Assert.IsFalse(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision(guayaquil));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(quito.RutaDocumentoFirmado));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(guayaquil.RutaDocumentoFirmado));
+        }
+
+        [TestMethod, TestCategory("Integration")]
+        public void BandejaDircav_ConservaConsultaPeroCuentaSoloRevisionesPendientes()
+        {
+            var servicio = new DircavBandejaService();
+            var disponibles = servicio.ObtenerExpedientesConInformesDisponibles();
+            var pendientes = servicio.ObtenerInformesPendientesRevision().Select(s => s.CodigoSolicitud).ToList();
+            var inspecciones = new InspeccionDAO();
+            var informes = new InspeccionInformeDAO();
+            Assert.AreEqual(pendientes.Count, servicio.ContarInformesPendientesRevision());
+            foreach (var solicitud in disponibles)
+            {
+                var tienePendientes = inspecciones.ListarPorSolicitud(solicitud.CodigoSolicitud)
+                    .SelectMany(i => informes.ListarUltimosPorEstacion(i.CodigoInspeccion))
+                    .Any(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision);
+                Assert.AreEqual(tienePendientes, pendientes.Contains(solicitud.CodigoSolicitud),
+                    "El contador debe reflejar las estaciones pendientes del expediente " + solicitud.CodigoSolicitud);
+            }
+        }
+
         [TestMethod, TestCategory("Integration")]
         public void FirmaDirdac_InsertCompatibleConIndiceRealSinGuardarFirma()
         {

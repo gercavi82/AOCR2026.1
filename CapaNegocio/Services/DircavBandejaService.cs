@@ -82,6 +82,16 @@ namespace CapaNegocio.Services
         // 4. Informes técnicos pendientes de revisión por DIRCAV (AC-04: Remitido por Coordinador)
         public List<SolicitudAOCR> ObtenerInformesPendientesRevision()
         {
+            var pendientes = new HashSet<int>(new InspeccionInformeDAO().ListarPendientesRevisionInformeDirdac()
+                .Where(InformeTecnicoEstadosInstitucionales.EstaPendienteRevision).Select(i => i.CodigoInspeccion));
+            var solicitudes = new HashSet<int>((_inspeccionDao.ListarTodas() ?? new List<Inspeccion>())
+                .Where(i => pendientes.Contains(i.CodigoInspeccion)).Select(i => i.CodigoSolicitud));
+            return (_solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>())
+                .Where(s => solicitudes.Contains(s.CodigoSolicitud)).ToList();
+        }
+
+        public List<SolicitudAOCR> ObtenerExpedientesConInformesDisponibles()
+        {
             return new CoordinacionBandejaService().ObtenerExpedientesConDocumentosTecnicosFirmados();
         }
 

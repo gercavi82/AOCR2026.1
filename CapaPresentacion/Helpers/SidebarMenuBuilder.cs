@@ -18,6 +18,14 @@ namespace CapaPresentacion.Helpers
 {
     public static class SidebarMenuBuilder
     {
+        public static void InvalidarContadores(HttpSessionStateBase session)
+        {
+            if (session == null) return;
+            var claves = session.Keys.Cast<string>()
+                .Where(k => k != null && k.StartsWith("_Sidebar_Badges_", StringComparison.Ordinal)).ToList();
+            foreach (var clave in claves) session.Remove(clave);
+        }
+
         private sealed class SidebarBadgeSnapshot
         {
             public int UnreadNotifications { get; set; }
@@ -1525,7 +1533,7 @@ namespace CapaPresentacion.Helpers
             {
                 group.Items.Add(CreateItem(context, "dcav-documentacion-pendiente", "Documentación por aprobar", "Expedientes remitidos por Coordinación pendientes de aceptación documental.", "fas fa-folder-open", "Dircav", "Bandeja", new { tab = "documentacion" }, PendingBadge(context.Badges.DcavPendingDocumentation), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "documentacion", string.Empty));
                 group.Items.Add(CreateItem(context, "dcav-designaciones-pendientes", "Designaciones por firmar", "Aceptación y designación de inspectores pendientes de firma institucional.", "fas fa-user-check", "Dircav", "Bandeja", new { tab = "designaciones" }, PendingBadge(context.Badges.DcavPendingDesignations), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "designaciones", string.Empty));
-                group.Items.Add(CreateItem(context, "dcav-informes-pendientes", "Informes por revisar", "Informes técnicos remitidos a DCAV para su revisión.", "fas fa-file-alt", "Dircav", "Bandeja", new { tab = "informes" }, PendingBadge(context.Badges.DcavPendingReports), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "informes", string.Empty));
+                group.Items.Add(CreateItem(context, "dcav-informes-pendientes", "LV e informes", "Consulta de documentos firmados. El contador muestra solo expedientes pendientes de revision.", "fas fa-file-alt", "Dircav", "Bandeja", new { tab = "informes" }, PendingBadge(context.Badges.DcavPendingReports), "warning", true, true, string.Empty, new[] { "Bandeja" }, "tab", "informes", string.Empty));
                 group.Items.Add(CreateItem(context, "dcav-condiciones-pendientes", "Firma de Condiciones y Limitaciones", "Revise y firme digitalmente de forma exclusiva Condiciones y Limitaciones.", "fas fa-file-contract", "Dircav", "Bandeja", new { tab = "condiciones", DocumentoPendiente = AocrFirmaPendientePolicy.DocumentoCondiciones }, PendingBadge(context.Badges.DcavPendingConditions), "warning", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "DocumentoPendiente", AocrFirmaPendientePolicy.DocumentoCondiciones, string.Empty));
                 group.Items.Add(CreateItem(context, "dcav-remision-dirdac", "Remisión a DIRDAC", "Expedientes aprobados por DIRCAV listos para remisión a la Dirección General.", "fas fa-paper-plane", "Dircav", "Bandeja", new { tab = "remision" }, PendingBadge(context.Badges.DcavPendingRemissions), "success", true, true, string.Empty, new[] { "Bandeja", "Detalle" }, "tab", "remision", string.Empty));
             }

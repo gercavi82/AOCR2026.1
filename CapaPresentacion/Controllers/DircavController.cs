@@ -167,7 +167,7 @@ namespace CapaPresentacion.Controllers
             ViewBag.DesignacionesPendientes = desigPendiente;
 
             ViewBag.DesignacionesFirmadas = _bandejaService.ObtenerDesignacionesFirmadas();
-            ViewBag.InformesPendientes = _bandejaService.ObtenerInformesPendientesRevision();
+            ViewBag.InformesDisponibles = _bandejaService.ObtenerExpedientesConInformesDisponibles();
             ViewBag.CondicionesPendientes = _bandejaService.ObtenerCondicionesPendientesFirma();
             ViewBag.ExpedientesRemision = _bandejaService.ObtenerExpedientesPendientesRemisionDirdac();
             ViewBag.ExpedientesDevueltos = _bandejaService.ObtenerExpedientesDevueltos();
