@@ -1680,7 +1680,7 @@
                         }
                     }
                 }
-                else
+                else if (permisosRolActivo.EsInspectorRol)
                 {
                     <button type="button"
                             class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked"
@@ -1696,10 +1696,18 @@
                     </button>
                 }
 
+                @if (permisosRolActivo.EsSolicitanteORT && flujoDetalle != null && flujoDetalle.PuedeCargarDocumentos)
+                {
+                    <a href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })"
+                       class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked">
+                        <span class="aocr-action-btn-full__title"><i class="fas fa-file-upload"></i> Completar solicitud y cargar documentos</span>
+                        <span class="aocr-action-btn-full__hint">Continúe el formulario y adjunte la documentación requerida.</span>
+                    </a>
+                }
                 @Html.Partial("_DocumentoWorkflowActions", accesosDocumentalesSolicitudVm)
             </div>
 
-            @if (!puedeGenerarAocr && !aocrYaGenerado)
+            @if (permisosRolActivo.EsInspectorRol && !puedeGenerarAocr && !aocrYaGenerado)
             {
                 <div class="alert alert-info aocr-document-status mt-2 mb-0">
                     <i class="fas fa-info-circle me-1"></i>

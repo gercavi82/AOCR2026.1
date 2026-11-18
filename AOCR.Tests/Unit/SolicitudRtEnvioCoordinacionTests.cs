@@ -11,6 +11,18 @@ namespace AOCR.Tests.Unit
     public class SolicitudRtEnvioCoordinacionTests
     {
         [DataTestMethod]
+        [DataRow("SOLICITUD_AOCR_HABILITADA", true)]
+        [DataRow("PENDIENTE_CARGA_DOCUMENTAL_RT", true)]
+        [DataRow("DOCUMENTACION_EN_CARGA", true)]
+        [DataRow("EN_REVISION_DOCUMENTAL", false)]
+        [DataRow("EN_INSPECCION", false)]
+        [DataRow("CERRADA", false)]
+        public void FormularioRt_SeEditaEnCargaPeroNoEnRevisionOInspeccion(string estado, bool editable)
+        {
+            Assert.AreEqual(editable, CapaDatos.Constants.EstadoSolicitud.PermiteEdicionFormularioEmision(estado));
+        }
+
+        [DataTestMethod]
         [DataRow(true)]
         [DataRow(false)]
         public void Historial_ComparteTransaccionSinConexionAdicional(bool confirmar)

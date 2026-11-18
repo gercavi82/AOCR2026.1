@@ -768,6 +768,9 @@ namespace CapaDatos.Constants
 
         private static readonly HashSet<string> ClavesEditablesFormularioEmision = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
+            "SOLICITUD_AOCR_HABILITADA",
+            "PENDIENTE_CARGA_DOCUMENTAL_RT",
+            "DOCUMENTACION_EN_CARGA",
             "BORRADOR",
             "NO_GENERADO",
             "PENDIENTE_SUBSANACION",
@@ -841,14 +844,14 @@ namespace CapaDatos.Constants
                 return true;
             }
 
-            if (PermiteEdicion(estado))
-            {
-                return true;
-            }
-
             if (ClavesNoEditablesFormularioEmision.Contains(clave))
             {
                 return false;
+            }
+
+            if (PermiteEdicion(estado))
+            {
+                return true;
             }
 
             var actual = Normalizar(estado);
