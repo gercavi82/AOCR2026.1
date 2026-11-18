@@ -5410,6 +5410,22 @@ namespace CapaPresentacion.Controllers
             ViewBag.ProcesoCerradoOperativamente = procesoCerradoOperativamente;
             ViewBag.DocumentosObligatoriosFaltantes = documentosObligatoriosFaltantes;
 
+            // Resolver las acciones RT independientemente del resumen general del expediente.
+            // Un fallo de consulta de inspecciones o de generación AOCR no debe ocultar la carga.
+            ViewBag.PuedeCompletarInformacionRt = false;
+            ViewBag.PuedeSubirDocumentosRt = false;
+            var permisosCargaRt = SidebarPermissionHelper.Resolve(
+                Session["Rol"] as string ?? string.Empty, Session["RolesRaw"] ?? Session["Roles"]);
+            if (!procesoCerradoOperativamente && permisosCargaRt.EsSolicitanteORT)
+            {
+                var contextoCargaRt = CrearContextoAutorizacionAocr();
+                var autorizacionCargaRt = new AocrAuthorizationService();
+                ViewBag.PuedeCompletarInformacionRt = autorizacionCargaRt.PuedeEjecutarAccion(
+                    "EditarRT", contextoCargaRt, id, modulo: "SolicitudAOCR").Permitido;
+                ViewBag.PuedeSubirDocumentosRt = autorizacionCargaRt.PuedeEjecutarAccion(
+                    "Subir", contextoCargaRt, id, modulo: "Documento").Permitido;
+            }
+
             IList<Inspeccion> inspeccionesSolicitud;
             try
             {
