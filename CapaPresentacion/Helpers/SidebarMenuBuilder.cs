@@ -22,7 +22,8 @@ namespace CapaPresentacion.Helpers
         {
             if (session == null) return;
             var claves = session.Keys.Cast<string>()
-                .Where(k => k != null && k.StartsWith("_Sidebar_Badges_", StringComparison.Ordinal)).ToList();
+                .Where(k => k != null && (k.StartsWith("_Sidebar_Badges_", StringComparison.Ordinal)
+                    || k.StartsWith("_Sidebar_OrdenStatus_", StringComparison.Ordinal))).ToList();
             foreach (var clave in claves) session.Remove(clave);
         }
 
@@ -354,7 +355,7 @@ namespace CapaPresentacion.Helpers
                     return;
                 }
 
-                var cacheKey = "_Sidebar_OrdenStatus_" + context.UserId + "_" + (context.CodigoCompaniaActiva ?? "ALL");
+                var cacheKey = "_Sidebar_OrdenStatus_v2_" + context.UserId + "_" + (context.CodigoCompaniaActiva ?? "ALL");
                 var cached = session[cacheKey] as int[];
                 var cacheTimeKey = cacheKey + "_t";
                 var cachedTime = session[cacheTimeKey] as long?;
@@ -387,7 +388,6 @@ namespace CapaPresentacion.Helpers
                         context.UserId,
                         companiaCodigo,
                         companiaNombre);
-                    context.TieneOrdenGenerada = context.TieneOrdenPendienteProceso || context.TieneOrdenPendienteComprobante;
                 }
                 else
                 {
@@ -401,6 +401,13 @@ namespace CapaPresentacion.Helpers
                 var procesoActivo = !string.IsNullOrWhiteSpace(companiaCodigo)
                     ? procesoService.ObtenerProcesoActivoPorCompania(context.UserId, companiaCodigo, companiaNombre)
                     : null;
+                if (!string.IsNullOrWhiteSpace(companiaCodigo))
+                {
+                    var ordenActiva = procesoActivo != null ? procesoActivo.OrdenActiva : null;
+                    context.TieneOrdenGenerada = ordenActiva != null
+                        && (EstadoOrden.EsPagado(ordenActiva.Estado)
+                            || EstadoOrden.EsOrdenCerradaPostAprobacionFinanciera(ordenActiva.Estado));
+                }
                 context.ExisteProcesoActivoCompania = procesoActivo != null && procesoActivo.ExisteProcesoActivo;
                 context.ProcesoActivoReferencia = procesoActivo != null
                     ? (procesoActivo.NumeroSolicitudActiva ?? procesoActivo.NumeroOrdenActiva)
@@ -603,8 +610,14 @@ namespace CapaPresentacion.Helpers
                     .OrderByDescending(s => s.CodigoSolicitud)
                     .ToList();
 
+                var workflow = new AocrPostPagoWorkflowService();
                 var solicitudEditable = solicitudesFiltradas
-                    .FirstOrDefault(s => EstadoSolicitud.PermiteEdicionFormularioEmision(s.Estado));
+                    .FirstOrDefault(s =>
+                    {
+                        string motivoBloqueo;
+                        return EstadoSolicitud.PermiteEdicionFormularioEmision(s.Estado)
+                            && workflow.PuedeRtAccederModuloSolicitud(s.CodigoSolicitud, context.UserId, out motivoBloqueo);
+                    });
 
                 SolicitudAOCR solicitudOrden = null;
                 var codigoSolicitudOrden = ordenDao.ObtenerCodigoSolicitudOrdenRecienteUsuario(context.UserId, soloOrdenGenerada: true);

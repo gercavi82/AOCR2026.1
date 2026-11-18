@@ -108,6 +108,15 @@ namespace CapaNegocio.Services
                 return vm;
             }
 
+            // El borrador debe generarse antes de habilitar el comprobante.
+            if (EstadoOrden.NormalizarEstado(vm.EstadoOrden) == EstadoOrden.Borrador)
+            {
+                vm.SiguientePaso = "GENERAR_ORDEN_RECAUDACION";
+                vm.UrlDestino = "/OrdenRecaudacion/Detalles/" + vm.OrdenRecaudacionId;
+                vm.MensajeUsuario = "Complete y genere su Orden de Recaudación antes de cargar el comprobante. La Solicitud AOCR y la carga documental se habilitarán cuando Financiero apruebe el pago.";
+                return vm;
+            }
+
             // Si hay orden generada pero sin comprobante
             if (!vm.TieneComprobante)
             {
@@ -115,7 +124,7 @@ namespace CapaNegocio.Services
                     usuarioId, companiaCodigo, vm.OrdenRecaudacionId, vm.EstadoOrden));
 
                 vm.SiguientePaso = "SUBIR_COMPROBANTE";
-                vm.UrlDestino = "/OrdenRecaudacion/Index"; // Cambiado a Index ya que Detalles no existe
+                vm.UrlDestino = "/OrdenRecaudacion/Detalles/" + vm.OrdenRecaudacionId;
                 vm.MensajeUsuario = "Debe registrar el comprobante de pago para continuar.";
                 return vm;
             }
