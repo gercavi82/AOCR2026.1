@@ -72,6 +72,13 @@ namespace CapaNegocio.Services
             return SepararLugares(lugarInspeccion).Any(lugar => !LugaresSinViaticos.Contains(lugar));
         }
 
+        public static List<string> ObtenerDestinosConViaticos(string lugares)
+        {
+            return SepararLugares(lugares)
+                .Where(lugar => LugaresPermitidos.Contains(lugar) && !LugaresSinViaticos.Contains(lugar))
+                .ToList();
+        }
+
         public static List<string> SepararLugares(string lugarInspeccion)
         {
             return (lugarInspeccion ?? string.Empty)

@@ -189,13 +189,16 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
-                var testPath = Path.Combine(Server.MapPath("~/App_Data"), "health_check_" + Guid.NewGuid() + ".tmp");
+                var appDataPath = CapaNegocio.Helpers.FileStorageHelper.AppDataRoot;
+                Directory.CreateDirectory(appDataPath);
+                var testPath = Path.Combine(appDataPath, "health_check_" + Guid.NewGuid() + ".tmp");
                 System.IO.File.WriteAllText(testPath, "test");
                 System.IO.File.Delete(testPath);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                CapaNegocio.LogBL.RegistrarError("Health: fallo de escritura en App_Data", ex.ToString(), "HealthController");
                 return false;
             }
         }

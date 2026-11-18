@@ -594,7 +594,24 @@ namespace CapaPresentacion.Controllers
                         }
 
                         var codigoConcepto = OrdenInspeccionViaticosReglas.Normalizar(concepto.Codigo);
-                        if (!conceptosVistos.Add(conceptoId) || !codigosVistos.Add(codigoConcepto))
+                        var esViaticoPorDestino = codigoConcepto == OrdenInspeccionViaticosReglas.ViaticosInspector;
+                        var destinoViatico = esViaticoPorDestino && d.ContainsKey("LugarInspeccion")
+                            ? OrdenInspeccionViaticosReglas.Normalizar(Convert.ToString(d["LugarInspeccion"])) : null;
+                        if (esViaticoPorDestino)
+                        {
+                            var destinosEsperados = OrdenInspeccionViaticosReglas.ObtenerDestinosConViaticos(model.LugarInspeccion);
+                            // Un formulario anterior solo puede reutilizarse si hay un único destino externo.
+                            if (string.IsNullOrEmpty(destinoViatico) && destinosEsperados.Count == 1)
+                                destinoViatico = destinosEsperados[0];
+                            if (!destinosEsperados.Contains(destinoViatico)
+                                || detalles.Any(det => det.LugarInspeccion == destinoViatico
+                                    && conceptosPorId[det.ConceptoId].Codigo == OrdenInspeccionViaticosReglas.ViaticosInspector))
+                            {
+                                errorDetalles = "Los viáticos deben incluir una sola fila por destino externo seleccionado.";
+                                break;
+                            }
+                        }
+                        if (!esViaticoPorDestino && (!conceptosVistos.Add(conceptoId) || !codigosVistos.Add(codigoConcepto)))
                         {
                             errorDetalles = "No se permite duplicar conceptos en la orden.";
                             break;
@@ -647,8 +664,8 @@ namespace CapaPresentacion.Controllers
                             DiasPagadosViatico = diasPagadosViaticoDetalle,
                             PrecioUnitario = precioUnitario,
                             Subtotal = subtotalLinea,
-                            LugarInspeccion = esDetalleInspeccion ? OrdenInspeccionViaticosReglas.Normalizar(model.LugarInspeccion) : null,
-                            ProvinciaInspeccion = esDetalleInspeccion && OrdenInspeccionViaticosReglas.RequiereProvinciaLocalidad(model.LugarInspeccion)
+                            LugarInspeccion = esViaticoPorDestino ? destinoViatico : (esDetalleInspeccion ? OrdenInspeccionViaticosReglas.Normalizar(model.LugarInspeccion) : null),
+                            ProvinciaInspeccion = esDetalleInspeccion && OrdenInspeccionViaticosReglas.RequiereProvinciaLocalidad(esViaticoPorDestino ? destinoViatico : model.LugarInspeccion)
                                 ? (model.ProvinciaInspeccion ?? string.Empty).Trim()
                                 : null
                         });
@@ -657,6 +674,16 @@ namespace CapaPresentacion.Controllers
                 catch (Exception ex) when (ex is InvalidOperationException || ex is FormatException || ex is OverflowException)
                 {
                     errorDetalles = "No fue posible validar el detalle de conceptos enviado.";
+                }
+
+                if (string.IsNullOrWhiteSpace(errorDetalles) && detalles.Any(det =>
+                    conceptosPorId[det.ConceptoId].Codigo == OrdenInspeccionViaticosReglas.InspeccionExterna))
+                {
+                    var destinosEsperados = OrdenInspeccionViaticosReglas.ObtenerDestinosConViaticos(model.LugarInspeccion);
+                    var destinosRecibidos = detalles.Where(det => conceptosPorId[det.ConceptoId].Codigo == OrdenInspeccionViaticosReglas.ViaticosInspector)
+                        .Select(det => det.LugarInspeccion).ToList();
+                    if (destinosEsperados.Any(destino => !destinosRecibidos.Contains(destino)))
+                        errorDetalles = "Complete los días de inspección de cada destino con viáticos.";
                 }
 
                 if (!string.IsNullOrWhiteSpace(errorDetalles))
@@ -853,6 +880,11 @@ namespace CapaPresentacion.Controllers
                         }
 
                         string conceptoNombreAMostrar = concepto?.Nombre;
+                        if (string.Equals(concepto?.Codigo, OrdenInspeccionViaticosReglas.ViaticosInspector, StringComparison.OrdinalIgnoreCase))
+                        {
+                            conceptoNombreAMostrar += " - " + (det.LugarInspeccion == OrdenInspeccionViaticosReglas.OtraProvincia
+                                ? det.ProvinciaInspeccion : FormatearLugarInspeccion(det.LugarInspeccion));
+                        }
                         if (concepto?.Codigo == "INSPECCION_EXT" && !string.IsNullOrWhiteSpace(model.AeropuertosSolicitados))
                         {
                             conceptoNombreAMostrar += $" - Estaciones: {model.AeropuertosSolicitados.Trim()}";
@@ -939,7 +971,8 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Error al crear orden: " + ex.ToString());
-                ModelState.AddModelError("", "Error interno al crear la orden: " + ex.Message);
+                CapaNegocio.LogBL.RegistrarError("[ORDEN][CREACION_FALLIDA]", ex.ToString(), "OrdenRecaudacionController");
+                ModelState.AddModelError("", "No se pudo completar la orden. Revise sus órdenes antes de volver a intentarlo y comunique este incidente al administrador.");
                 PrepararNuevaOrdenViewModel(model);
                 return View(model);
             }

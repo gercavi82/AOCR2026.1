@@ -12,6 +12,18 @@ namespace CapaNegocio.Helpers
 {
     public static class FileStorageHelper
     {
+        // Datos auxiliares de la aplicación; independiente del almacenamiento histórico de documentos.
+        public static string AppDataRoot
+        {
+            get
+            {
+                var configured = ConfigurationManager.AppSettings["AOCR_AppDataPath"];
+                return string.IsNullOrWhiteSpace(configured)
+                    ? MapLocalVirtualPath("~/App_Data")
+                    : MapLocalVirtualPath(configured.Trim());
+            }
+        }
+
         public static int MaxFileSizeMb
         {
             get

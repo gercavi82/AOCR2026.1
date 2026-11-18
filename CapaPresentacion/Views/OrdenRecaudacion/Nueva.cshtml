@@ -891,17 +891,28 @@
                      }
                  }
 
-                 if (permiteViaticos && !tieneViaticos && $opcionViaticos && $opcionViaticos.length) {
-                     agregarDetalleDesdeOpcion($opcionViaticos, 1, 1);
-                     renderTabla();
-                     actualizarTotales();
-                     return;
-                 }
-
-                 if ((!permiteViaticos || !requiereDatosInspeccion) && tieneViaticos) {
-                     detalles = detalles.filter(function (d) {
-                         return (d.ConceptoCodigo || '').toString().trim().toUpperCase() !== 'VIATICOS_INSPECTOR';
+                 // Una fila independiente por destino; conserva sus días al cambiar la selección.
+                 var destinosViaticos = permiteViaticos ? lugares.filter(function (lugar) {
+                     return lugar !== 'QUITO' && lugar !== 'LATACUNGA';
+                 }) : [];
+                 var viaticosActuales = detalles.filter(function (d) { return d.ConceptoCodigo === 'VIATICOS_INSPECTOR'; });
+                 var nuevasFilas = [];
+                 if ($opcionViaticos && $opcionViaticos.length) {
+                     destinosViaticos.forEach(function (destino) {
+                         var anterior = viaticosActuales.filter(function (d) { return d.LugarInspeccion === destino; })[0];
+                         if (!anterior && destinosViaticos.length === 1 && viaticosActuales.length === 1 && !viaticosActuales[0].LugarInspeccion) {
+                             anterior = viaticosActuales[0];
+                         }
+                         var fila = crearDetalleDesdeOpcion($opcionViaticos, 1, anterior ? anterior.NumeroDiasInspeccion : 1);
+                         fila.LugarInspeccion = destino;
+                         fila.ProvinciaInspeccion = destino === 'OTRA_PROVINCIA' ? ($('#ProvinciaInspeccion').val() || '').trim() : null;
+                         var etiqueta = destino === 'OTRA_PROVINCIA' ? (fila.ProvinciaInspeccion || 'Otra provincia/localidad') : destino;
+                         fila.ConceptoNombre += ' - ' + etiqueta;
+                         nuevasFilas.push(fila);
                      });
+                 }
+                 if (JSON.stringify(viaticosActuales) !== JSON.stringify(nuevasFilas)) {
+                     detalles = detalles.filter(function (d) { return d.ConceptoCodigo !== 'VIATICOS_INSPECTOR'; }).concat(nuevasFilas);
                      renderTabla();
                      actualizarTotales();
                      return;
@@ -978,7 +989,8 @@
                     return {
                         ConceptoId: d.ConceptoId,
                         Cantidad: d.Cantidad,
-                        NumeroDiasInspeccion: d.NumeroDiasInspeccion
+                        NumeroDiasInspeccion: d.NumeroDiasInspeccion,
+                        LugarInspeccion: d.LugarInspeccion
                     };
                 });
                 $('#DetallesJson').val(JSON.stringify(payload));
@@ -1142,7 +1154,13 @@
                                             return;
                                         }
 
-                                         agregarDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion);
+                                         if (codigo === 'VIATICOS_INSPECTOR') {
+                                             var filaInicial = crearDetalleDesdeOpcion($opt, 1, numeroDiasInspeccion);
+                                             filaInicial.LugarInspeccion = item.LugarInspeccion || item.lugarInspeccion || null;
+                                             detalles.push(filaInicial);
+                                         } else {
+                                             agregarDetalleDesdeOpcion($opt, cantidad, numeroDiasInspeccion);
+                                         }
                                     });
 
                                     renderTabla();
@@ -1237,7 +1255,11 @@
                                  actualizarReglasInspeccionSeguras();
                              });
 
-                             $('#ProvinciaInspeccion').on('input change', sincronizarLugaresYAeropuertos);
+                             $('#ProvinciaInspeccion').on('input change', function () {
+                                 sincronizarLugaresYAeropuertos();
+                                 renderTabla();
+                                 actualizarTotales();
+                             });
 
                              $('#ConceptoId').on('change', actualizarEtiquetaCantidadSeleccionada);
 

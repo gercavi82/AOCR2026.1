@@ -6,6 +6,23 @@ namespace AOCR.Tests.Unit
     [TestClass]
     public class OrdenInspeccionViaticosReglasTests
     {
+        [TestMethod]
+        public void ViaticosPorDestino_ExcluyeQuitoLatacungaYDuplicados()
+        {
+            CollectionAssert.AreEqual(new[] { "GUAYAQUIL", "MANTA", "OTRA_PROVINCIA" },
+                OrdenInspeccionViaticosReglas.ObtenerDestinosConViaticos("QUITO,GUAYAQUIL,MANTA,LATACUNGA,guayaquil,OTRA_PROVINCIA").ToArray());
+        }
+
+        [TestMethod]
+        public void ViaticosPorDestino_DiasSeCalculanPorSeparado()
+        {
+            // Dos días de inspección en cada destino pagan un día por destino.
+            var guayaquil = OrdenInspeccionViaticosReglas.CalcularSubtotalViatico(2, 80m);
+            var manta = OrdenInspeccionViaticosReglas.CalcularSubtotalViatico(2, 80m);
+            Assert.AreEqual(160m, guayaquil + manta);
+            Assert.AreEqual(172.80m, (guayaquil + manta) * 1.08m);
+            Assert.AreEqual(0, OrdenInspeccionViaticosReglas.ObtenerDestinosConViaticos("QUITO,LATACUNGA").Count);
+        }
         [DataTestMethod]
         [DataRow("EMI_AOCR")]
         [DataRow("REN_AOCR")]

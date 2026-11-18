@@ -4319,7 +4319,7 @@ namespace CapaPresentacion.Controllers
                 return null;
             }
 
-            var carpetaTemporal = Server.MapPath("~/App_Data/Temp/PdfBranding");
+            var carpetaTemporal = Path.Combine(FileStorageHelper.AppDataRoot, "Temp", "PdfBranding");
             if (!Directory.Exists(carpetaTemporal))
             {
                 Directory.CreateDirectory(carpetaTemporal);
@@ -4935,7 +4935,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var logDir = Server.MapPath("~/App_Data/Logs");
+                var logDir = Path.Combine(FileStorageHelper.AppDataRoot, "Logs");
                 if (!Directory.Exists(logDir))
                 {
                     Directory.CreateDirectory(logDir);

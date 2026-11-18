@@ -44,19 +44,19 @@
       <publishTime>11/16/2026 08:44:57</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>11/17/2026 14:41:47</publishTime>
+      <publishTime>11/17/2026 15:32:30</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>06/23/2026 16:43:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>11/17/2026 14:41:47</publishTime>
+      <publishTime>11/17/2026 15:32:30</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>11/17/2026 14:41:49</publishTime>
+      <publishTime>11/17/2026 15:32:33</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>11/17/2026 14:41:49</publishTime>
+      <publishTime>11/17/2026 15:32:33</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>10/19/2026 19:30:13</publishTime>
@@ -8072,10 +8072,10 @@
       <publishTime>06/05/2026 10:57:07</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml">
-      <publishTime>11/16/2026 08:34:41</publishTime>
+      <publishTime>11/17/2026 14:55:18</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml">
-      <publishTime>11/16/2026 08:34:41</publishTime>
+      <publishTime>11/17/2026 14:55:18</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/DashboardInspeccion.cshtml">
       <publishTime>07/28/2026 12:11:10</publishTime>
@@ -8129,7 +8129,7 @@
       <publishTime>06/05/2026 10:35:55</publishTime>
     </File>
     <File Include="Views/Dircav/Bandeja.cshtml">
-      <publishTime>11/16/2026 15:26:11</publishTime>
+      <publishTime>11/17/2026 15:15:01</publishTime>
     </File>
     <File Include="Views/Dircav/Detalle.cshtml">
       <publishTime>10/22/2026 16:43:08</publishTime>
@@ -8138,7 +8138,7 @@
       <publishTime>09/15/2026 11:01:00</publishTime>
     </File>
     <File Include="Views/Dircav/_DocumentosRevisionExpediente.cshtml">
-      <publishTime>11/13/2026 16:12:48</publishTime>
+      <publishTime>11/17/2026 15:15:01</publishTime>
     </File>
     <File Include="Views/Dirdac/Bandeja.cshtml">
       <publishTime>09/04/2026 09:09:36</publishTime>
@@ -8633,7 +8633,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>11/17/2026 14:43:00</publishTime>
+      <publishTime>11/17/2026 15:33:31</publishTime>
     </File>
   </ItemGroup>
 </Project>
