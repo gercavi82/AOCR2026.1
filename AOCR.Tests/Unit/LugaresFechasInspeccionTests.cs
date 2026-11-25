@@ -11,6 +11,21 @@ namespace AOCR.Tests.Unit
     public class LugaresFechasInspeccionTests
     {
         [TestMethod]
+        public void Planificacion_CadaEstacionConservaSuFechaYNoPermiteOmisionesNiDuplicados()
+        {
+            var quito = Lugar("UIO", "");
+            quito.FechaInicio = quito.FechaFin = new DateTime(2026, 12, 1);
+            var manta = Lugar("MEC", "");
+            manta.FechaInicio = manta.FechaFin = new DateTime(2026, 12, 3);
+            Assert.IsNull(SolicitudEstacionService.ValidarPlanificacionAcordada(new[] { quito }));
+            Assert.IsNull(SolicitudEstacionService.ValidarPlanificacionAcordada(new[] { quito, manta }));
+            Assert.AreEqual(new DateTime(2026, 12, 1), quito.FechaInicio);
+            manta.FechaFin = default(DateTime);
+            Assert.IsNotNull(SolicitudEstacionService.ValidarPlanificacionAcordada(new[] { quito, manta }));
+            Assert.IsNotNull(SolicitudEstacionService.ValidarPlanificacionAcordada(new[] { quito, quito }));
+        }
+
+        [TestMethod]
         public void SolicitudAocr_RechazaEdicionDirectaDeLugaresYFechas()
         {
             var controller = (CapaPresentacion.Controllers.SolicitudAOCRController)

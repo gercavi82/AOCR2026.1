@@ -2668,6 +2668,7 @@
             function recolectarRevisionesDocumentales() {
                 var revisiones = [];
                 var sinObservacion = [];
+                var sinRevisar = [];
 
                 tabla.querySelectorAll('tbody tr[data-doc-revision="true"][data-document-id]').forEach(function (fila) {
                     var puedeRevisar = String(fila.getAttribute('data-puede-revisar') || '').toLowerCase() === 'true';
@@ -2706,6 +2707,7 @@
                     var observacion = observacionInput ? (observacionInput.value || '').trim() : '';
 
                     if (!decision || decision === 'PENDIENTE') {
+                        sinRevisar.push(documentId);
                         return;
                     }
 
@@ -2724,7 +2726,8 @@
 
                 return {
                     revisiones: revisiones,
-                    sinObservacion: sinObservacion
+                    sinObservacion: sinObservacion,
+                    sinRevisar: sinRevisar
                 };
             }
 
@@ -2838,6 +2841,13 @@
                     });
 
                     var payload = recolectarRevisionesDocumentales();
+                    if (window.__finalizarRevisionDocumentalActual === true && payload.sinRevisar.length > 0) {
+                        showAlert('warning', 'Debe revisar todos los documentos adjuntos. Quedan ' + payload.sinRevisar.length + ' documento(s) pendientes; puede guardar el avance sin finalizar.');
+                        window.__guardandoRevisionDocumental = false;
+                        btnGuardarRevision.disabled = false;
+                        window.__finalizarRevisionDocumentalActual = false;
+                        return false;
+                    }
                     if (payload.sinObservacion.length > 0) {
                         showAlert('warning', 'Existen documentos rechazados sin observación. Ingrese el motivo antes de guardar.');
                         window.__guardandoRevisionDocumental = false;

@@ -2784,6 +2784,12 @@
                         <div class="hero-metric">
                             <span class="hero-metric-label">Fechas de inspección</span>
                             <span class="hero-metric-value">@fechaProgramada</span>
+                            @if (puedePlanificar)
+                            {
+                                <a class="btn btn-sm btn-outline-primary mt-2" href="@Url.Action("Planificacion", "Inspeccion", new { id = Model.CodigoInspeccion })">
+                                    <i class="fas fa-calendar-alt me-1"></i> Registrar fechas por estación
+                                </a>
+                            }
                         </div>
 
                         @if (solicitud != null && Model.CodigoSolicitud > 0)

@@ -38,7 +38,9 @@ namespace CapaNegocio.Services
         public static string ValidarPlanificacionAcordada(IEnumerable<SolicitudEstacionInspeccion> estaciones)
         {
             var lista = (estaciones ?? Enumerable.Empty<SolicitudEstacionInspeccion>()).Where(e => e != null).ToList();
-            if (!lista.Any() || lista.Any(e => e.FechaInicio == default(DateTime)
+            if (!lista.Any() || lista.Any(e => string.IsNullOrWhiteSpace(e.EstacionCodigo))
+                || lista.Select(e => SolicitudEstacionDAO.NormalizarCodigoEstacion(e.EstacionCodigo)).Distinct(StringComparer.OrdinalIgnoreCase).Count() != lista.Count
+                || lista.Any(e => e.FechaInicio == default(DateTime)
                 || e.FechaFin == default(DateTime) || e.FechaFin.Date < e.FechaInicio.Date))
                 return "Antes de aceptar la solicitud, coordine por email con el RT y guarde las fechas de todas las estaciones en Planificación de inspección.";
             return null;

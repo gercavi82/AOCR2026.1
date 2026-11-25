@@ -281,6 +281,17 @@ namespace CapaNegocio.Services
             };
         }
 
+        public static string ValidarRevisionCompleta(int total, int aceptados, int devueltos, bool requiereAceptacion = false)
+        {
+            if (total <= 0)
+                return "No se puede finalizar la revisión sin documentos vigentes para revisar.";
+            if (aceptados < 0 || devueltos < 0 || aceptados + devueltos != total)
+                return "Debe revisar todos los documentos adjuntos antes de finalizar. Guarde el avance y complete las decisiones pendientes.";
+            if (requiereAceptacion && devueltos > 0)
+                return "No se puede pasar a la siguiente fase mientras existan documentos observados o devueltos pendientes de subsanación.";
+            return null;
+        }
+
         public bool EstaFaseDocumentalAprobada(int codigoSolicitud)
         {
             var estado = ObtenerEstadoFaseDocumental(codigoSolicitud);

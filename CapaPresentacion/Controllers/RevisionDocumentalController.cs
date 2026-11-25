@@ -442,6 +442,13 @@ namespace CapaPresentacion.Controllers
             var pendientes = documentosCierre.Count - aceptados - devueltos;
             var siguienteEstado = solicitud.Estado;
 
+            if (request.Finalizar)
+            {
+                var errorCierre = RevisionDocumentalService.ValidarRevisionCompleta(documentosCierre.Count, aceptados, devueltos);
+                if (errorCierre != null)
+                    return JsonRevisionError(400, errorCierre, solicitud.CodigoSolicitud, "Documentos pendientes: " + pendientes);
+            }
+
             if (pendientes <= 0 && request.Finalizar)
             {
                 request.ObservacionRevisionDocumental =

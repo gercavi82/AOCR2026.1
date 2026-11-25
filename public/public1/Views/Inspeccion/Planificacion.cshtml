@@ -77,7 +77,7 @@
                         @for (int i = 0; i < estacionesPlan.Count; i++)
                         {
                             var est = estacionesPlan[i];
-                            var fIniStr = est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("yyyy-MM-dd") : (Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "");
+                            var fIniStr = est.FechaInicio != default(DateTime) ? est.FechaInicio.ToString("yyyy-MM-dd") : "";
                             var fFinStr = est.FechaFin != default(DateTime) ? est.FechaFin.ToString("yyyy-MM-dd") : fIniStr;
                             <tr>
                                 <td>

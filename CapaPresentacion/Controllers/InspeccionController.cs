@@ -5003,7 +5003,7 @@ namespace CapaPresentacion.Controllers
                     var existentes = estacionService.ObtenerEstacionesPorSolicitud(inspeccion.CodigoSolicitud, solicitud, new[] { inspeccion });
                     var mapaExistentes = existentes.ToDictionary(e => (e.EstacionCodigo ?? string.Empty).Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase);
                     var recibidas = (estaciones ?? new List<SolicitudEstacionInspeccionItemVM>()).Where(e => e != null).ToList();
-                    if (!ModelState.IsValid
+                    if (!ModelState.IsValid || existentes.Count == 0
                         || recibidas.Count != existentes.Count
                         || recibidas.Select(e => (e.EstacionCodigo ?? "").Trim().ToUpperInvariant()).Distinct().Count() != recibidas.Count
                         || recibidas.Any(e => !mapaExistentes.ContainsKey((e.EstacionCodigo ?? "").Trim().ToUpperInvariant())))

@@ -28,6 +28,10 @@
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
     var estadoVisibleExpediente = (ViewBag.EstadoDocumentalVisible as string ?? Model.Estado ?? string.Empty);
     var procesoCerradoOperativamente = (bool)(ViewBag.ProcesoCerradoOperativamente ?? false);
+    var puedeCompletarInformacionRt = permisosRolActivo.EsSolicitanteORT
+        && !procesoCerradoOperativamente && (bool)(ViewBag.PuedeCompletarInformacionRt ?? false);
+    var puedeSubirDocumentosRt = permisosRolActivo.EsSolicitanteORT
+        && !procesoCerradoOperativamente && (bool)(ViewBag.PuedeSubirDocumentosRt ?? false);
     var documentosObligatoriosFaltantes = (ViewBag.DocumentosObligatoriosFaltantes as List<string>) ?? new List<string>();
     var esSolicitudModificacion = Model.TipoSolicitud.GetValueOrDefault() == 3;
     var modificacionConNuevoAeropuerto = esSolicitudModificacion
@@ -1298,6 +1302,28 @@
         </div>
     }
 
+    @if (puedeCompletarInformacionRt || puedeSubirDocumentosRt)
+    {
+        <div class="card aocr-detail-card mb-3" id="rtCargaInformacion">
+            <div class="card-body p-4">
+                <h5>Información y documentos de la solicitud</h5>
+                <p>Complete los datos del operador y adjunte los documentos requeridos antes de enviar la solicitud.</p>
+                @if (puedeCompletarInformacionRt)
+                {
+                    <a class="btn btn-primary me-2 mb-2" href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })">
+                        <i class="fas fa-edit me-1"></i> Completar información
+                    </a>
+                }
+                @if (puedeSubirDocumentosRt)
+                {
+                    <a class="btn btn-success mb-2" href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })">
+                        <i class="fas fa-file-upload me-1"></i> Cargar documentos
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
     <div class="card aocr-detail-card aocr-hero mb-1">
         <div class="card-body">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
@@ -1388,7 +1414,7 @@
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(direccionCompleta) ? "No registrada" : direccionCompleta)</div>
                         </div>
                         <div class="aocr-info-item aocr-info-item--wide">
-                            <div class="aocr-info-label"><i class="fas fa-user-tie"></i> Representante legal</div>
+                            <div class="aocr-info-label"><i class="fas fa-user-tie"></i> Representante Técnico</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.RepresentanteLegal) ? "No registrado" : Model.RepresentanteLegal + (string.IsNullOrWhiteSpace(Model.CedulaRepresentante) ? string.Empty : " (" + Model.CedulaRepresentante + ")"))</div>
                         </div>
                     </div>
@@ -1696,7 +1722,7 @@
                     </button>
                 }
 
-                @if (permisosRolActivo.EsSolicitanteORT && flujoDetalle != null && flujoDetalle.PuedeCargarDocumentos)
+                @if (puedeCompletarInformacionRt)
                 {
                     <a href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })"
                        class="btn btn-primary aocr-action-btn-full aocr-action-btn-full--stacked">

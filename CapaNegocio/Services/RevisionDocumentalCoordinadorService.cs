@@ -170,6 +170,9 @@ namespace CapaNegocio.Services
             if (solicitudId <= 0) return Error("Identificador de solicitud invalido.");
             if (coordinadorId <= 0) return Error("Identificador de coordinador invalido.");
 
+            var errorDocumentos = ValidarDocumentosAceptados(solicitudId);
+            if (errorDocumentos != null) return Error(errorDocumentos);
+
             var solicitud = _solicitudDao.ObtenerPorId(solicitudId);
             if (solicitud == null) return Error("La solicitud no existe.");
 
@@ -308,6 +311,8 @@ namespace CapaNegocio.Services
             string observacionGeneral)
         {
             Trace.TraceInformation("[REV_DOC][FINALIZAR_INSPECTOR_IN] SolicitudId={0}; InspectorId={1};", solicitudId, inspectorId);
+            var errorDocumentos = ValidarDocumentosAceptados(solicitudId);
+            if (errorDocumentos != null) return Error(errorDocumentos);
             var observacion = NormalizarObservacion(observacionGeneral);
             if (observacion == null)
             {
@@ -385,6 +390,8 @@ namespace CapaNegocio.Services
             int inspectorId,
             string observacion)
         {
+            var errorDocumentos = ValidarDocumentosAceptados(solicitudId);
+            if (errorDocumentos != null) return Error(errorDocumentos);
             var texto = NormalizarObservacion(observacion);
             if (texto == null) return Error("La observacion no puede contener HTML ni superar 2000 caracteres.");
             if (new OrdenRecaudacionDAO().ListarCorreccionesFinancieras(solicitudId: solicitudId).Count > 0)
@@ -456,6 +463,15 @@ namespace CapaNegocio.Services
                 && registro.InspectorConfirmadoId.GetValueOrDefault() == inspectorId
                 && registro.FechaHabilitacionLv.HasValue
                 && registro.FechaHabilitacionInforme.HasValue;
+        }
+
+        private string ValidarDocumentosAceptados(int solicitudId)
+        {
+            var estado = InfraBl != null ? InfraBl.ObtenerEstadoRevisionDocumental(solicitudId) : null;
+            return estado == null
+                ? "No se pudo verificar la revisión de todos los documentos. No se habilitó la siguiente fase."
+                : RevisionDocumentalService.ValidarRevisionCompleta(estado.TotalDocumentosVigentes,
+                    estado.DocumentosAceptados, estado.DocumentosObservadosDevueltos, requiereAceptacion: true);
         }
 
         public static string NormalizarObservacion(string valor)

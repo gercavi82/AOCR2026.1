@@ -8,6 +8,21 @@ namespace AOCR.Tests.Unit
     public class RevisionDocumentalFirmaPlanningTests
     {
         [DataTestMethod]
+        [DataRow(0, 0, 0, false, false)]
+        [DataRow(7, 6, 0, false, false)]
+        [DataRow(7, 5, 1, false, false)]
+        [DataRow(7, 6, 1, false, true)]
+        [DataRow(7, 6, 1, true, false)]
+        [DataRow(7, 7, 0, true, true)]
+        [DataRow(7, 8, 0, true, false)]
+        public void CierreDocumental_ExigeRevisionCompletaYSubsanacionParaAvanzar(
+            int total, int aceptados, int devueltos, bool avanzar, bool permitido)
+        {
+            Assert.AreEqual(permitido,
+                RevisionDocumentalService.ValidarRevisionCompleta(total, aceptados, devueltos, avanzar) == null);
+        }
+
+        [DataTestMethod]
         [DataRow(1, EstadoSolicitud.PendienteAsignacionRT)]
         [DataRow(2, EstadoSolicitud.PendienteAsignacionRT)]
         [DataRow(3, EstadoSolicitud.FirmadoCoordinador)]
